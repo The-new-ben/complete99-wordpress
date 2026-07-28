@@ -150,9 +150,10 @@ echo json_encode($results);
             re.findall(r"c99-[a-z0-9-]+\.(?:jpg|jpeg|png|webp|avif)", combined)
         )
 
-        self.assertIn(
+        self.assertIn("assets/images/complete99-mark.svg", combined)
+        self.assertNotIn(
             "c99-identity-legacy-logo-square-2021-wp-v01.png",
-            assets,
+            combined,
         )
         self.assertIn(
             "c99-food-sabich-pita-gallery-2021-wp-v01.jpg",

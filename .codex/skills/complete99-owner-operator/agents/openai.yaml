@@ -1,0 +1,4 @@
+interface:
+  display_name: "Complete99 Owner Operator"
+  short_description: "Govern Complete99 as one coherent operating system"
+  default_prompt: "Use $complete99-owner-operator to plan and execute this Complete99 work within its business, public/private, SEO, content, commerce, and proof rules."

@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-28 09:25:00"
+RELEASE_LAST_UPDATED = "2026-07-28 16:45:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -211,8 +211,10 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Corrected the canonical Hebrew brand to קומפלט 99 while preserving future editor-owned identity changes.</li>"
-                "<li>Made the scoped Windows deployment use the already-installed Python 3.11 runtime without administrator elevation.</li>"
+                "<li>Introduced a premium bilingual public shell with crawlable mega navigation, deep breadcrumbs, accessible mobile controls and a structured six-cluster footer.</li>"
+                "<li>Added eight substantive Hebrew and English topic hubs, truthful legal foundations and governed sitemap, robots and translation behavior.</li>"
+                "<li>Replaced remote presentation imagery with optimized local archive assets and an original Complete99 editorial illustration.</li>"
+                "<li>Added a deliberately non-transactional, noindex commerce foundation that cannot imply products, prices or checkout before merchant configuration is complete.</li>"
                 "</ul>"
             )
         },

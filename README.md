@@ -13,10 +13,10 @@ existing Sites runtime:
 
 ## What is ready
 
-- Plugin `complete99-platform` version `1.0.4`.
+- Plugin `complete99-platform` version `1.1.0`.
 - Nine governed content types, seven taxonomies and four scoped editor roles.
-- Twenty-two bilingual launch concepts (40 public records and four private
-  sector records held back from launch).
+- A governed bilingual launch graph with eight substantive topic hubs, legal
+  foundations, service pages and proof-gated sector records.
 - Six bilingual dish research files created as drafts with explicit verification gates.
 - Hebrew root and deterministic English `/en/` hierarchy.
 - Premium accessible RTL/LTR shell with the operations command centre and campaign
@@ -46,7 +46,7 @@ python scripts/build-plugin-zip.py --verify-reproducible
 python scripts/validate-package.py
 ```
 
-The release artifact is `plugin-dist/complete99-platform-1.0.4.zip`. The public
+The release artifact is `plugin-dist/complete99-platform-1.1.0.zip`. The public
 WordPress update manifest is `plugin-dist/complete99-platform.json`; immutable
 artifact digest, size and deployment metadata live separately in
 `plugin-dist/complete99-platform-integrity.json`.

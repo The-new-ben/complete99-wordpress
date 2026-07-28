@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Complete99_Content {
-	const SEED_VERSION = '2026-07-28.1';
+	const SEED_VERSION = '2026-07-28.2';
 	const DISH_MIN_WORDS_PER_LANGUAGE = 5000;
 	const DISH_MIN_SOURCES            = 8;
 	const DISH_MIN_AUTHORITATIVE      = 2;
@@ -22,6 +22,18 @@ final class Complete99_Content {
 		'c99_team_member'      => array( 'team_member', 'team_members', 'צוות', 'Team', 'team' ),
 	);
 
+	private static $hub_by_post_type = array(
+		'c99_service'          => 'services',
+		'c99_industry'         => 'industries',
+		'c99_platform_feature' => 'platform',
+		'c99_dish'             => 'dishes',
+		'c99_ingredient'       => 'ingredients',
+		'c99_guide'            => 'knowledge',
+		'c99_location'         => 'locations',
+		'c99_case_study'       => 'case-studies',
+		'c99_team_member'      => 'about',
+	);
+
 	private static $taxonomies = array(
 		'c99_service_family' => array( 'משפחת שירות', 'Service family', array( 'c99_service', 'c99_case_study' ) ),
 		'c99_sector'         => array( 'מגזר', 'Sector', array( 'c99_service', 'c99_industry', 'c99_case_study' ) ),
@@ -31,6 +43,14 @@ final class Complete99_Content {
 		'c99_dietary_note'   => array( 'הערת תזונה', 'Dietary note', array( 'c99_dish' ) ),
 		'c99_region'         => array( 'אזור', 'Region', array( 'c99_location', 'c99_case_study' ) ),
 	);
+
+	public static function boot_governance() {
+		add_filter( 'wp_sitemaps_add_provider', array( __CLASS__, 'filter_sitemap_provider' ), 10, 2 );
+		add_filter( 'wp_sitemaps_post_types', array( __CLASS__, 'filter_sitemap_post_types' ) );
+		add_filter( 'wp_sitemaps_taxonomies', array( __CLASS__, 'filter_sitemap_taxonomies' ) );
+		add_filter( 'wp_sitemaps_posts_query_args', array( __CLASS__, 'filter_sitemap_posts_query_args' ), 10, 2 );
+		add_filter( 'wp_robots', array( __CLASS__, 'robots_index_gate' ), 20 );
+	}
 
 	public static function register() {
 		foreach ( self::$post_types as $post_type => $definition ) {
@@ -92,12 +112,64 @@ final class Complete99_Content {
 		foreach ( $public_types as $post_type ) {
 			register_post_meta(
 				$post_type,
+				'_complete99_managed',
+				array(
+					'type'              => 'boolean',
+					'single'            => true,
+					'show_in_rest'      => true,
+					'sanitize_callback' => 'rest_sanitize_boolean',
+					'auth_callback'     => static function () {
+						return current_user_can( 'edit_posts' );
+					},
+				)
+			);
+			register_post_meta(
+				$post_type,
+				'_complete99_translation_group',
+				array(
+					'type'              => 'string',
+					'single'            => true,
+					'show_in_rest'      => true,
+					'sanitize_callback' => 'sanitize_key',
+					'auth_callback'     => static function () {
+						return current_user_can( 'edit_posts' );
+					},
+				)
+			);
+			register_post_meta(
+				$post_type,
 				'_complete99_language',
 				array(
 					'type'              => 'string',
 					'single'            => true,
 					'show_in_rest'      => true,
 					'sanitize_callback' => array( __CLASS__, 'sanitize_language' ),
+					'auth_callback'     => static function () {
+						return current_user_can( 'edit_posts' );
+					},
+				)
+			);
+			register_post_meta(
+				$post_type,
+				'_complete99_parent_hub',
+				array(
+					'type'              => 'string',
+					'single'            => true,
+					'show_in_rest'      => true,
+					'sanitize_callback' => 'sanitize_key',
+					'auth_callback'     => static function () {
+						return current_user_can( 'edit_posts' );
+					},
+				)
+			);
+			register_post_meta(
+				$post_type,
+				'_complete99_index_eligible',
+				array(
+					'type'              => 'boolean',
+					'single'            => true,
+					'show_in_rest'      => true,
+					'sanitize_callback' => 'rest_sanitize_boolean',
 					'auth_callback'     => static function () {
 						return current_user_can( 'edit_posts' );
 					},
@@ -205,6 +277,99 @@ final class Complete99_Content {
 				)
 			);
 		}
+	}
+
+	public static function filter_sitemap_provider( $provider, $name ) {
+		return 'users' === (string) $name ? false : $provider;
+	}
+
+	public static function filter_sitemap_post_types( $post_types ) {
+		if ( ! is_array( $post_types ) ) {
+			return array();
+		}
+		$allowed = array_fill_keys( array_merge( array( 'page' ), array_keys( self::$post_types ) ), true );
+		foreach ( array_keys( $post_types ) as $post_type ) {
+			if ( ! isset( $allowed[ $post_type ] ) ) {
+				unset( $post_types[ $post_type ] );
+			}
+		}
+		return $post_types;
+	}
+
+	public static function filter_sitemap_taxonomies( $taxonomies ) {
+		return array();
+	}
+
+	public static function filter_sitemap_posts_query_args( $args, $post_type ) {
+		$allowed = array_merge( array( 'page' ), array_keys( self::$post_types ) );
+		if ( ! in_array( (string) $post_type, $allowed, true ) ) {
+			$args['post__in'] = array( 0 );
+			return $args;
+		}
+
+		$eligibility = array(
+			'relation' => 'AND',
+			array(
+				'key'     => '_complete99_managed',
+				'value'   => '1',
+				'compare' => '=',
+			),
+			array(
+				'key'     => '_complete99_index_eligible',
+				'value'   => '1',
+				'compare' => '=',
+			),
+			array(
+				'key'     => '_complete99_verification_state',
+				'value'   => array( 'editorial_review', 'verified', 'product_demo', 'launch_ready' ),
+				'compare' => 'IN',
+			),
+		);
+		if ( ! empty( $args['meta_query'] ) ) {
+			$args['meta_query'] = array(
+				'relation' => 'AND',
+				$args['meta_query'],
+				$eligibility,
+			);
+		} else {
+			$args['meta_query'] = $eligibility;
+		}
+		$args['post_status']  = 'publish';
+		$args['has_password'] = false;
+		return $args;
+	}
+
+	public static function robots_index_gate( $robots ) {
+		if ( is_tax( array_keys( self::$taxonomies ) ) ) {
+			unset( $robots['index'] );
+			$robots['noindex']  = true;
+			$robots['nofollow'] = false;
+			return $robots;
+		}
+		if ( ! is_singular() ) {
+			return $robots;
+		}
+		$post_id = (int) get_queried_object_id();
+		if ( ! self::is_complete99_post( $post_id ) || self::is_index_eligible( $post_id ) ) {
+			return $robots;
+		}
+		unset( $robots['index'] );
+		$robots['noindex']  = true;
+		$robots['nofollow'] = false;
+		return $robots;
+	}
+
+	public static function is_index_eligible( $post_id ) {
+		$post = get_post( (int) $post_id );
+		if ( ! $post
+			|| 'publish' !== (string) $post->post_status
+			|| '' !== (string) $post->post_password
+			|| ! self::is_complete99_post( $post->ID )
+			|| ! rest_sanitize_boolean( get_post_meta( $post->ID, '_complete99_index_eligible', true ) ) ) {
+			return false;
+		}
+		$verification = (string) get_post_meta( $post->ID, '_complete99_verification_state', true );
+		return in_array( $verification, array( 'editorial_review', 'verified', 'product_demo', 'launch_ready' ), true );
 	}
 
 	public static function sanitize_language( $value ) {
@@ -612,7 +777,11 @@ final class Complete99_Content {
 
 		self::store_seed_meta( $id, '_complete99_seed_key', $seed_key );
 		self::store_seed_meta( $id, '_complete99_translation_key', $blueprint['key'] );
+		self::store_seed_meta( $id, '_complete99_translation_group', $blueprint['key'] );
 		self::store_seed_meta( $id, '_complete99_language', $language );
+		self::store_seed_meta( $id, '_complete99_managed', true );
+		self::store_seed_meta( $id, '_complete99_parent_hub', self::parent_hub_for_blueprint( $blueprint ) );
+		self::store_seed_meta( $id, '_complete99_index_eligible', self::seed_index_eligible( $blueprint ) );
 		self::store_seed_meta( $id, '_complete99_seed_version', self::SEED_VERSION );
 		self::store_seed_meta( $id, '_complete99_verification_state', isset( $blueprint['verification'] ) ? $blueprint['verification'] : 'editorial_review' );
 		if ( ! empty( $blueprint['image'] ) ) {
@@ -628,8 +797,9 @@ final class Complete99_Content {
 		$post_type = get_post_type( $post_id );
 		$canonical = sanitize_meta( $key, $value, 'post', $post_type ? $post_type : '' );
 		update_post_meta( $post_id, $key, wp_slash( $value ) );
-		$stored = self::direct_single_meta_state( $post_id, $key );
-		if ( ! $stored['exists'] || maybe_serialize( $stored['value'] ) !== maybe_serialize( $canonical ) ) {
+		$stored           = self::direct_single_meta_state( $post_id, $key );
+		$stored_canonical = $stored['exists'] ? sanitize_meta( $key, $stored['value'], 'post', $post_type ? $post_type : '' ) : null;
+		if ( ! $stored['exists'] || maybe_serialize( $stored_canonical ) !== maybe_serialize( $canonical ) ) {
 			throw new \RuntimeException( 'Complete99 seed metadata failed readback.' );
 		}
 	}
@@ -686,6 +856,25 @@ final class Complete99_Content {
 
 	private static function is_sha256( $value ) {
 		return is_string( $value ) && 1 === preg_match( '/\A[a-f0-9]{64}\z/', $value );
+	}
+
+	private static function parent_hub_for_blueprint( $blueprint ) {
+		if ( isset( $blueprint['parent_hub'] ) ) {
+			return sanitize_key( (string) $blueprint['parent_hub'] );
+		}
+		$post_type = isset( $blueprint['type'] ) ? (string) $blueprint['type'] : '';
+		return isset( self::$hub_by_post_type[ $post_type ] ) ? self::$hub_by_post_type[ $post_type ] : '';
+	}
+
+	private static function seed_index_eligible( $blueprint ) {
+		if ( array_key_exists( 'index_eligible', $blueprint ) ) {
+			return rest_sanitize_boolean( $blueprint['index_eligible'] );
+		}
+		if ( 'publish' !== self::expected_seed_status( $blueprint ) ) {
+			return false;
+		}
+		$verification = isset( $blueprint['verification'] ) ? (string) $blueprint['verification'] : 'editorial_review';
+		return in_array( $verification, array( 'editorial_review', 'verified', 'product_demo', 'launch_ready' ), true );
 	}
 
 	private static function expected_seed_status( $blueprint ) {
@@ -837,13 +1026,19 @@ final class Complete99_Content {
 				$expected_meta = array(
 					'_complete99_seed_key'          => $seed_key,
 					'_complete99_translation_key'   => $blueprint['key'],
+					'_complete99_translation_group' => $blueprint['key'],
 					'_complete99_language'          => $language,
+					'_complete99_managed'           => true,
+					'_complete99_parent_hub'        => self::parent_hub_for_blueprint( $blueprint ),
+					'_complete99_index_eligible'    => self::seed_index_eligible( $blueprint ),
 					'_complete99_seed_version'      => self::SEED_VERSION,
 					'_complete99_verification_state'=> isset( $blueprint['verification'] ) ? $blueprint['verification'] : 'editorial_review',
 				);
 				foreach ( $expected_meta as $key => $value ) {
-					$stored = self::direct_single_meta_state( $post_id, $key );
-					if ( ! $stored['exists'] || maybe_serialize( $value ) !== maybe_serialize( $stored['value'] ) ) {
+					$stored           = self::direct_single_meta_state( $post_id, $key );
+					$expected_value   = sanitize_meta( $key, $value, 'post', (string) $post['post_type'] );
+					$stored_canonical = $stored['exists'] ? sanitize_meta( $key, $stored['value'], 'post', (string) $post['post_type'] ) : null;
+					if ( ! $stored['exists'] || maybe_serialize( $expected_value ) !== maybe_serialize( $stored_canonical ) ) {
 						throw new \RuntimeException( 'Required Complete99 seed metadata is missing.' );
 					}
 				}
@@ -903,14 +1098,128 @@ final class Complete99_Content {
 		return $ids ? (int) $ids[0] : 0;
 	}
 
+	public static function translation_group_for_post( $post_id ) {
+		$group = (string) get_post_meta( (int) $post_id, '_complete99_translation_group', true );
+		if ( '' === $group ) {
+			$group = (string) get_post_meta( (int) $post_id, '_complete99_translation_key', true );
+		}
+		return sanitize_key( $group );
+	}
+
+	public static function find_translation_post_id( $translation_group, $language, $public_only = false ) {
+		$translation_group = sanitize_key( (string) $translation_group );
+		$language          = self::sanitize_language( (string) $language );
+		if ( '' === $translation_group ) {
+			return 0;
+		}
+		$ids = get_posts(
+			array(
+				'post_type'              => array_merge( array( 'page' ), array_keys( self::$post_types ) ),
+				'post_status'            => $public_only ? array( 'publish' ) : array( 'publish', 'draft', 'private', 'pending', 'future' ),
+				'posts_per_page'         => 2,
+				'fields'                 => 'ids',
+				'meta_query'             => array(
+					'relation' => 'AND',
+					array(
+						'key'     => '_complete99_translation_group',
+						'value'   => $translation_group,
+						'compare' => '=',
+					),
+					array(
+						'key'     => '_complete99_language',
+						'value'   => $language,
+						'compare' => '=',
+					),
+				),
+				'no_found_rows'          => true,
+				'update_post_meta_cache' => false,
+				'update_post_term_cache' => false,
+			)
+		);
+		if ( 1 === count( $ids ) ) {
+			return (int) $ids[0];
+		}
+		if ( 1 < count( $ids ) ) {
+			return 0;
+		}
+
+		$legacy = self::find_seed_post_id( $translation_group . ':' . $language );
+		if ( ! $legacy ) {
+			return 0;
+		}
+		return ! $public_only || 'publish' === get_post_status( $legacy ) ? $legacy : 0;
+	}
+
 	public static function route_url( $translation_key, $language ) {
-		$id = self::find_seed_post_id( $translation_key . ':' . $language );
-		return $id ? get_permalink( $id ) : home_url( '/' );
+		$id = self::find_translation_post_id( $translation_key, $language, true );
+		return $id ? (string) get_permalink( $id ) : '';
 	}
 
 	public static function language_for_post( $post_id ) {
 		$lang = (string) get_post_meta( $post_id, '_complete99_language', true );
 		return in_array( $lang, array( 'he', 'en' ), true ) ? $lang : 'he';
+	}
+
+	public static function breadcrumb_trail( $post_id ) {
+		$post_id = (int) $post_id;
+		$post    = get_post( $post_id );
+		if ( ! $post || ! self::is_complete99_post( $post_id ) ) {
+			return array();
+		}
+		$language = self::language_for_post( $post_id );
+		$home_id  = self::find_translation_post_id( 'home', $language, true );
+		$trail    = array();
+		if ( $home_id ) {
+			$trail[] = array(
+				'id'      => $home_id,
+				'label'   => 'he' === $language ? 'בית' : 'Home',
+				'url'     => (string) get_permalink( $home_id ),
+				'current' => $home_id === $post_id,
+			);
+		}
+		if ( $home_id === $post_id ) {
+			return $trail;
+		}
+
+		$ancestor_ids = array();
+		$parent_id    = (int) $post->post_parent;
+		$guard        = 0;
+		while ( $parent_id && $parent_id !== $home_id && $guard < 8 ) {
+			$parent = get_post( $parent_id );
+			if ( ! $parent || ! self::is_complete99_post( $parent_id ) || self::language_for_post( $parent_id ) !== $language ) {
+				break;
+			}
+			array_unshift( $ancestor_ids, $parent_id );
+			$parent_id = (int) $parent->post_parent;
+			++$guard;
+		}
+
+		if ( empty( $ancestor_ids ) ) {
+			$hub_key = (string) get_post_meta( $post_id, '_complete99_parent_hub', true );
+			if ( '' === $hub_key && isset( self::$hub_by_post_type[ $post->post_type ] ) ) {
+				$hub_key = self::$hub_by_post_type[ $post->post_type ];
+			}
+			$hub_id = $hub_key ? self::find_translation_post_id( $hub_key, $language, true ) : 0;
+			if ( $hub_id && $hub_id !== $post_id && $hub_id !== $home_id ) {
+				$ancestor_ids[] = $hub_id;
+			}
+		}
+
+		foreach ( array_values( array_unique( $ancestor_ids ) ) as $ancestor_id ) {
+			$trail[] = array(
+				'id'      => (int) $ancestor_id,
+				'label'   => (string) get_the_title( $ancestor_id ),
+				'url'     => (string) get_permalink( $ancestor_id ),
+				'current' => false,
+			);
+		}
+		$trail[] = array(
+			'id'      => $post_id,
+			'label'   => (string) get_the_title( $post_id ),
+			'url'     => (string) get_permalink( $post_id ),
+			'current' => true,
+		);
+		return $trail;
 	}
 
 	public static function dish_gate_status( $post_id, $candidate_content = null ) {
@@ -1170,7 +1479,8 @@ final class Complete99_Content {
 	}
 
 	public static function is_complete99_post( $post_id ) {
-		return '' !== (string) get_post_meta( $post_id, '_complete99_seed_key', true );
+		return rest_sanitize_boolean( get_post_meta( (int) $post_id, '_complete99_managed', true ) )
+			|| '' !== (string) get_post_meta( (int) $post_id, '_complete99_seed_key', true );
 	}
 
 	public static function post_types() {
