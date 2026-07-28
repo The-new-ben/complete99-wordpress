@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.0.3.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.0.4.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-28 07:30:00",
+  "last_updated": "2026-07-28 09:25:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.0.3</h4><ul><li>Added a guarded first-install and recovery path for the live UPress site.</li><li>Strengthened durable migration checks while preserving editor-owned content.</li><li>Corrected public assets and made stored enquiries actionable in WordPress.</li></ul>"
+    "changelog": "<h4>1.0.4</h4><ul><li>Corrected the canonical Hebrew brand to קומפלט 99 while preserving future editor-owned identity changes.</li><li>Made the scoped Windows deployment use the already-installed Python 3.11 runtime without administrator elevation.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.0.3"
+  "version": "1.0.4"
 }
