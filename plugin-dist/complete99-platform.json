@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.0.4.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.1.0.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-28 09:25:00",
+  "last_updated": "2026-07-28 16:45:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.0.4</h4><ul><li>Corrected the canonical Hebrew brand to קומפלט 99 while preserving future editor-owned identity changes.</li><li>Made the scoped Windows deployment use the already-installed Python 3.11 runtime without administrator elevation.</li></ul>"
+    "changelog": "<h4>1.1.0</h4><ul><li>Introduced a premium bilingual public shell with crawlable mega navigation, deep breadcrumbs, accessible mobile controls and a structured six-cluster footer.</li><li>Added eight substantive Hebrew and English topic hubs, truthful legal foundations and governed sitemap, robots and translation behavior.</li><li>Replaced remote presentation imagery with optimized local archive assets and an original Complete99 editorial illustration.</li><li>Added a deliberately non-transactional, noindex commerce foundation that cannot imply products, prices or checkout before merchant configuration is complete.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.0.4"
+  "version": "1.1.0"
 }

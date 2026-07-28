@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Complete99</title>
+  <desc id="desc">Two numeral nines in a rounded green square</desc>
+  <rect width="128" height="128" rx="32" fill="#0b5d43"/>
+  <path fill="#f4c74b" d="M22 37c0-10.5 8.5-19 19-19h9c10.5 0 19 8.5 19 19v33c0 22-12.6 36-34.5 40l-3.7-15.3C43.1 92.2 49 85.6 50.7 76H41c-10.5 0-19-8.5-19-19V37Zm19-3.5a5.5 5.5 0 0 0-5.5 5.5v16a5.5 5.5 0 0 0 5.5 5.5h10V39a5.5 5.5 0 0 0-5.5-5.5H41Z"/>
+  <path fill="#fff4d6" d="M72 37c0-10.5 8.5-19 19-19h9c10.5 0 19 8.5 19 19v33c0 22-12.6 36-34.5 40l-3.7-15.3C93.1 92.2 99 85.6 100.7 76H91c-10.5 0-19-8.5-19-19V37Zm19-3.5a5.5 5.5 0 0 0-5.5 5.5v16a5.5 5.5 0 0 0 5.5 5.5h10V39a5.5 5.5 0 0 0-5.5-5.5H91Z"/>
+</svg>

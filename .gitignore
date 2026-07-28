@@ -1,4 +1,5 @@
 deploy-audit/
+.seo-cache/
 __pycache__/
 tests/__pycache__/
 *.pyc

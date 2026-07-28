@@ -106,15 +106,23 @@ final class Complete99_Frontend {
 		}
 		$post      = get_queried_object();
 		$lang      = Complete99_Content::language_for_post( $post->ID );
-		$key       = (string) get_post_meta( $post->ID, '_complete99_translation_key', true );
-		$alternate = Complete99_Content::route_url( $key, 'he' === $lang ? 'en' : 'he' );
+		$key       = Complete99_Content::translation_group_for_post( $post->ID );
+		$he_url     = Complete99_Content::route_url( $key, 'he' );
+		$en_url     = Complete99_Content::route_url( $key, 'en' );
+		$alternate = 'he' === $lang ? $en_url : $he_url;
 		$canonical = get_permalink( $post );
 		$image     = self::post_image_url( $post->ID );
+		$brand_mark = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
 
+		echo '<link rel="icon" href="' . esc_url( $brand_mark ) . '" type="image/svg+xml" sizes="any" />' . "\n";
 		echo '<link rel="canonical" href="' . esc_url( $canonical ) . '" />' . "\n";
-		echo '<link rel="alternate" hreflang="' . esc_attr( 'he' ) . '" href="' . esc_url( Complete99_Content::route_url( $key, 'he' ) ) . '" />' . "\n";
-		echo '<link rel="alternate" hreflang="' . esc_attr( 'en' ) . '" href="' . esc_url( Complete99_Content::route_url( $key, 'en' ) ) . '" />' . "\n";
-		echo '<link rel="alternate" hreflang="x-default" href="' . esc_url( Complete99_Content::route_url( $key, 'he' ) ) . '" />' . "\n";
+		if ( $he_url ) {
+			echo '<link rel="alternate" hreflang="' . esc_attr( 'he' ) . '" href="' . esc_url( $he_url ) . '" />' . "\n";
+			echo '<link rel="alternate" hreflang="x-default" href="' . esc_url( $he_url ) . '" />' . "\n";
+		}
+		if ( $en_url ) {
+			echo '<link rel="alternate" hreflang="' . esc_attr( 'en' ) . '" href="' . esc_url( $en_url ) . '" />' . "\n";
+		}
 		echo '<meta name="description" content="' . esc_attr( wp_strip_all_tags( $post->post_excerpt ) ) . '" />' . "\n";
 		echo '<meta property="og:type" content="website" />' . "\n";
 		echo '<meta property="og:locale" content="' . esc_attr( 'he' === $lang ? 'he_IL' : 'en_US' ) . '" />' . "\n";
@@ -139,7 +147,7 @@ final class Complete99_Frontend {
 		$org_id  = home_url( '/#organization' );
 		$page_id = $url . '#webpage';
 		$image   = self::post_image_url( $post->ID );
-		$key     = (string) get_post_meta( $post->ID, '_complete99_translation_key', true );
+		$key     = Complete99_Content::translation_group_for_post( $post->ID );
 		$graph   = array(
 			array(
 				'@type' => 'Organization',
@@ -159,28 +167,24 @@ final class Complete99_Frontend {
 		);
 
 		if ( 'home' !== $key ) {
+			$breadcrumb_items = array();
+			foreach ( self::breadcrumb_items( $post, $lang ) as $position => $breadcrumb ) {
+				$breadcrumb_items[] = array(
+					'@type'    => 'ListItem',
+					'position' => $position + 1,
+					'name'     => $breadcrumb['label'],
+					'item'     => $breadcrumb['url'],
+				);
+			}
 			$graph[1]['breadcrumb'] = array( '@id' => $url . '#breadcrumb' );
 			$graph[]                = array(
 				'@type'           => 'BreadcrumbList',
 				'@id'             => $url . '#breadcrumb',
-				'itemListElement' => array(
-					array(
-						'@type'    => 'ListItem',
-						'position' => 1,
-						'name'     => 'he' === $lang ? 'בית' : 'Home',
-						'item'     => Complete99_Content::route_url( 'home', $lang ),
-					),
-					array(
-						'@type'    => 'ListItem',
-						'position' => 2,
-						'name'     => wp_strip_all_tags( $post->post_title ),
-						'item'     => $url,
-					),
-				),
+				'itemListElement' => $breadcrumb_items,
 			);
 		}
 
-		$graph[0]['logo'] = Complete99_Settings::owned_asset_url( 'c99-identity-legacy-logo-square-2021-wp-v01.png' );
+		$graph[0]['logo'] = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
 		$graph[]          = array(
 			'@type'       => 'WebSite',
 			'@id'         => home_url( '/#website' ),
@@ -263,16 +267,97 @@ final class Complete99_Frontend {
 		return $schema;
 	}
 
-	public static function render_header( $post_id, $lang ) {
-		$is_he      = 'he' === $lang;
-		$brand_home = Complete99_Content::route_url( 'home', $lang );
-		$items      = array(
-			array( 'institutional-catering', $is_he ? 'שירותים' : 'Services' ),
-			array( 'companies-offices', $is_he ? 'למי זה מתאים' : 'Industries' ),
-			array( 'operations-command-center', $is_he ? 'מרכז השליטה' : 'Command centre' ),
-			array( 'marketing-campaigns', $is_he ? 'מותג וקמפיינים' : 'Brand & campaigns' ),
-			array( 'about', $is_he ? 'אודות' : 'About' ),
+	private static function navigation_groups( $lang ) {
+		$is_he = 'he' === $lang;
+		return array(
+			array(
+				'key'      => 'services',
+				'label'    => $is_he ? 'שירותים' : 'Services',
+				'summary'  => $is_he ? 'מסלולי שירות למזון ארגוני שוטף' : 'Ongoing organisational foodservice pathways',
+				'children' => array(
+					array( 'institutional-catering', $is_he ? 'הסעדה מוסדית' : 'Institutional foodservice' ),
+					array( 'employee-meals', $is_he ? 'ארוחות לעובדים' : 'Employee meals' ),
+					array( 'dining-room-management', $is_he ? 'ניהול חדרי אוכל' : 'Dining-room management' ),
+					array( 'central-kitchen-delivery', $is_he ? 'מטבח מרכזי והפצה' : 'Central kitchen & delivery' ),
+				),
+			),
+			array(
+				'key'      => 'industries',
+				'label'    => $is_he ? 'למי זה מתאים' : 'Industries',
+				'summary'  => $is_he ? 'התאמה לסביבת העבודה, לשעות ולקהל' : 'Designed around each workplace, schedule and audience',
+				'children' => array(
+					array( 'companies-offices', $is_he ? 'חברות ומשרדים' : 'Companies & offices' ),
+					array( 'manufacturing-logistics', $is_he ? 'ייצור ולוגיסטיקה' : 'Manufacturing & logistics' ),
+					array( 'proposal', $is_he ? 'בדיקת התאמה לארגון' : 'Organisational fit review' ),
+				),
+			),
+			array(
+				'key'      => 'dishes',
+				'label'    => $is_he ? 'מנות וידע' : 'Food & knowledge',
+				'summary'  => $is_he ? 'מנות, מרכיבים, מסורות ומדריכים' : 'Dishes, ingredients, traditions and practical guides',
+				'children' => array(
+					array( 'dishes', $is_he ? 'ספריית המנות' : 'Dish library' ),
+					array( 'ingredients', $is_he ? 'מרכיבים' : 'Ingredients' ),
+					array( 'traditions', $is_he ? 'מסורות קולינריות' : 'Culinary traditions' ),
+					array( 'knowledge', $is_he ? 'מרכז הידע' : 'Knowledge centre' ),
+				),
+			),
+			array(
+				'key'      => 'platform',
+				'label'    => $is_he ? 'המערכת' : 'Platform',
+				'summary'  => $is_he ? 'עבודה יומית ברורה לצוות ולמנהלים' : 'Clear daily work for teams and managers',
+				'children' => array(
+					array( 'operations-command-center', $is_he ? 'מרכז שליטה תפעולי' : 'Operations command centre' ),
+					array( 'opening-workflows', $is_he ? 'פתיחת יום ורשימות בקרה' : 'Opening workflows' ),
+					array( 'inventory-procurement', $is_he ? 'מלאי ורכש' : 'Inventory & procurement' ),
+					array( 'multi-location', $is_he ? 'ניהול רב־סניפי' : 'Multi-location management' ),
+				),
+			),
+			array(
+				'key'      => 'store',
+				'label'    => $is_he ? 'חנות' : 'Store',
+				'summary'  => '',
+				'children' => array(),
+			),
+			array(
+				'key'      => 'about',
+				'label'    => $is_he ? 'אודות' : 'About',
+				'summary'  => $is_he ? 'הגישה, התהליך והדרך להתחיל' : 'Our approach, process and how to begin',
+				'children' => array(
+					array( 'about', $is_he ? 'על קומפלט 99' : 'About Complete99' ),
+					array( 'tender-pack', $is_he ? 'מידע למכרזים' : 'Tender information' ),
+					array( 'contact', $is_he ? 'יצירת קשר' : 'Contact' ),
+				),
+			),
 		);
+	}
+
+	private static function navigation_url( $key, $lang ) {
+		$url = Complete99_Content::route_url( $key, $lang );
+		if ( $url ) {
+			return $url;
+		}
+		$prefix = 'en' === $lang ? 'en/' : '';
+		return home_url( '/' . $prefix . sanitize_title( $key ) . '/' );
+	}
+
+	private static function navigation_group_is_current( $group, $key ) {
+		if ( $group['key'] === $key ) {
+			return true;
+		}
+		foreach ( $group['children'] as $child ) {
+			if ( $child[0] === $key ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static function render_header( $post_id, $lang ) {
+		$is_he       = 'he' === $lang;
+		$brand_home  = self::navigation_url( 'home', $lang );
+		$current_key = Complete99_Content::translation_group_for_post( $post_id );
+		$groups      = self::navigation_groups( $lang );
 		?>
 		<a class="c99-skip-link" href="#c99-main"><?php echo esc_html( $is_he ? 'דילוג לתוכן' : 'Skip to content' ); ?></a>
 		<header class="c99-site-header">
@@ -282,13 +367,39 @@ final class Complete99_Frontend {
 					<span class="c99-brand-copy"><strong><?php echo esc_html( $is_he ? 'קומפלט 99' : 'Complete99' ); ?></strong><small><?php echo esc_html( $is_he ? 'אוכל · תפעול · צמיחה' : 'Food · operations · growth' ); ?></small></span>
 				</a>
 				<button class="c99-menu-toggle" type="button" aria-expanded="false" aria-controls="c99-primary-nav">
-					<span aria-hidden="true">☰</span><span><?php echo esc_html( $is_he ? 'תפריט' : 'Menu' ); ?></span>
+					<span class="c99-menu-icon" aria-hidden="true"><i></i><i></i><i></i></span><span><?php echo esc_html( $is_he ? 'תפריט' : 'Menu' ); ?></span>
 				</button>
 				<nav id="c99-primary-nav" class="c99-primary-nav" aria-label="<?php echo esc_attr( $is_he ? 'ניווט ראשי' : 'Primary navigation' ); ?>">
-					<?php foreach ( $items as $item ) : ?>
-						<a href="<?php echo esc_url( Complete99_Content::route_url( $item[0], $lang ) ); ?>"><?php echo esc_html( $item[1] ); ?></a>
+					<div class="c99-nav-groups">
+					<?php foreach ( $groups as $index => $group ) : ?>
+						<?php
+						$is_current = self::navigation_group_is_current( $group, $current_key );
+						$panel_id   = 'c99-mega-panel-' . absint( $index );
+						?>
+						<div class="c99-nav-group<?php echo $is_current ? ' is-current' : ''; ?>">
+							<a class="c99-nav-hub" href="<?php echo esc_url( self::navigation_url( $group['key'], $lang ) ); ?>"<?php echo $group['key'] === $current_key ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $group['label'] ); ?></a>
+							<?php if ( $group['children'] ) : ?>
+								<button class="c99-mega-toggle" type="button" aria-expanded="false" aria-controls="<?php echo esc_attr( $panel_id ); ?>" aria-haspopup="true" aria-label="<?php echo esc_attr( sprintf( $is_he ? 'פתיחת תפריט %s' : 'Open %s menu', $group['label'] ) ); ?>"><span aria-hidden="true">⌄</span></button>
+								<div id="<?php echo esc_attr( $panel_id ); ?>" class="c99-mega-panel" hidden>
+									<div class="c99-mega-intro">
+										<span class="c99-mega-kicker"><?php echo esc_html( $group['label'] ); ?></span>
+										<strong><?php echo esc_html( $group['summary'] ); ?></strong>
+										<a href="<?php echo esc_url( self::navigation_url( $group['key'], $lang ) ); ?>"><?php echo esc_html( $is_he ? 'לכל הנושאים' : 'View the full hub' ); ?><span aria-hidden="true"> ←</span></a>
+									</div>
+									<ul>
+										<?php foreach ( $group['children'] as $child ) : ?>
+											<li><a href="<?php echo esc_url( self::navigation_url( $child[0], $lang ) ); ?>"<?php echo $child[0] === $current_key ? ' aria-current="page"' : ''; ?>><span><?php echo esc_html( $child[1] ); ?></span><span aria-hidden="true">←</span></a></li>
+										<?php endforeach; ?>
+									</ul>
+								</div>
+							<?php endif; ?>
+						</div>
 					<?php endforeach; ?>
-					<a class="c99-nav-cta" href="<?php echo esc_url( Complete99_Content::route_url( 'proposal', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'בדיקת התאמה' : 'Fit review' ); ?></a>
+					</div>
+					<div class="c99-nav-actions">
+						<a class="c99-nav-dishes" href="<?php echo esc_url( self::navigation_url( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'לספריית המנות' : 'Explore dishes' ); ?></a>
+						<a class="c99-nav-cta" href="<?php echo esc_url( self::navigation_url( 'proposal', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'בדיקת התאמה למוסד' : 'Institutional fit review' ); ?></a>
+					</div>
 				</nav>
 				<?php self::render_language_switch( $post_id, $lang ); ?>
 			</div>
@@ -297,16 +408,19 @@ final class Complete99_Frontend {
 	}
 
 	private static function render_language_switch( $post_id, $lang ) {
-		$key      = (string) get_post_meta( $post_id, '_complete99_translation_key', true );
+		$key      = Complete99_Content::translation_group_for_post( $post_id );
 		$other    = 'he' === $lang ? 'en' : 'he';
 		$label    = 'he' === $lang ? 'EN' : 'עברית';
 		$language = 'he' === $other ? 'עברית' : 'English';
-		echo '<a class="c99-language-switch" href="' . esc_url( Complete99_Content::route_url( $key, $other ) ) . '" hreflang="' . esc_attr( $other ) . '" lang="' . esc_attr( $other ) . '" aria-label="' . esc_attr( $language ) . '">' . esc_html( $label ) . '</a>';
+		$url      = Complete99_Content::route_url( $key, $other );
+		if ( $url ) {
+			echo '<a class="c99-language-switch" href="' . esc_url( $url ) . '" hreflang="' . esc_attr( $other ) . '" lang="' . esc_attr( $other ) . '" aria-label="' . esc_attr( $language ) . '">' . esc_html( $label ) . '</a>';
+		}
 	}
 
 	public static function render_current( $post ) {
 		$lang  = Complete99_Content::language_for_post( $post->ID );
-		$key   = (string) get_post_meta( $post->ID, '_complete99_translation_key', true );
+		$key   = Complete99_Content::translation_group_for_post( $post->ID );
 		$is_he = 'he' === $lang;
 		$image = self::post_image_url( $post->ID );
 
@@ -338,6 +452,9 @@ final class Complete99_Frontend {
 				<?php endif; ?>
 			</div>
 		</section>
+		<?php if ( self::is_hub_key( $key ) ) : ?>
+			<?php self::render_hub_experience( $key, $lang ); ?>
+		<?php endif; ?>
 		<section class="c99-content-section">
 			<div class="c99-container c99-content-grid">
 				<article class="c99-article"><?php echo apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></article>
@@ -378,8 +495,11 @@ final class Complete99_Frontend {
 					</ul>
 				</div>
 				<figure class="c99-home-image">
-					<?php if ( $image ) : ?><img src="<?php echo esc_url( $image ); ?>" alt="" width="840" height="640" fetchpriority="high" /><?php endif; ?>
-					<figcaption><?php echo esc_html( $is_he ? 'צילום מקורי בבעלות העסק' : 'Original business-owned image' ); ?></figcaption>
+					<picture>
+						<source srcset="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/c99-food-house-spread-hero-2021-wp-v01.avif' ); ?>" type="image/avif" />
+						<img src="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/c99-food-house-spread-hero-2021-wp-v01.webp' ); ?>" alt="<?php echo esc_attr( $is_he ? 'מבט מלמעלה על קובה סלק, קוסקוס, קציצות, סלט ומנות נוספות' : 'Overhead spread of beet kubeh, couscous, meatballs, salad and additional dishes' ); ?>" width="1400" height="788" decoding="async" fetchpriority="high" />
+					</picture>
+					<figcaption><?php echo esc_html( $is_he ? 'צילום אוכל מארכיון קומפלט 99' : 'Complete99 archive food photograph' ); ?></figcaption>
 				</figure>
 			</div>
 		</section>
@@ -441,6 +561,8 @@ final class Complete99_Frontend {
 				</div>
 			</div>
 		</section>
+		<?php self::render_connected_table( $lang ); ?>
+		<?php self::render_food_archive( $lang ); ?>
 		<section class="c99-editorial-section">
 			<div class="c99-container c99-content-grid">
 				<article class="c99-article"><?php echo apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></article>
@@ -455,22 +577,293 @@ final class Complete99_Frontend {
 		<?php
 	}
 
+	private static function is_hub_key( $key ) {
+		return in_array( $key, array( 'services', 'industries', 'platform', 'dishes', 'ingredients', 'traditions', 'knowledge', 'store' ), true );
+	}
+
+	private static function hub_experience_data( $key, $lang ) {
+		$is_he = 'he' === $lang;
+		$hubs  = array(
+			'services' => array(
+				'eyebrow' => $is_he ? 'שירות שנבנה סביב האתר' : 'Service designed around the site',
+				'title'    => $is_he ? 'מהתכנון ועד יום השירות' : 'From service design to the daily meal',
+				'summary'  => $is_he ? 'כל מסלול מתחיל בקהל, בשעות, בתשתית ובחלוקת האחריות. משם מחברים תפריט, ייצור, הגשה ושיפור שוטף.' : 'Each pathway begins with audience, hours, infrastructure and responsibilities, then connects menu, production, service and ongoing improvement.',
+				'cards'    => array(
+					array( 'institutional-catering', '01', $is_he ? 'הסעדה מוסדית' : 'Institutional foodservice', $is_he ? 'מסגרת שירות, אחריות ומדדים לארגון.' : 'Service scope, accountability and measures for an organisation.' ),
+					array( 'employee-meals', '02', $is_he ? 'ארוחות לעובדים' : 'Employee meals', $is_he ? 'חוויה יום־יומית שמחברת קהל, תפריט ותקציב.' : 'A daily experience connecting audience, menu and budget.' ),
+					array( 'dining-room-management', '03', $is_he ? 'ניהול חדרי אוכל' : 'Dining-room management', $is_he ? 'פתיחה, קבלה, הגשה, חריגים וסגירה.' : 'Opening, receiving, service, exceptions and close.' ),
+					array( 'onsite-kitchen-operations', '04', $is_he ? 'מטבח באתר הלקוח' : 'On-site kitchen operations', $is_he ? 'מודל עבודה שמתאים לתשתית ולזרימת האתר.' : 'An operating model matched to site infrastructure and flow.' ),
+					array( 'central-kitchen-delivery', '05', $is_he ? 'מטבח מרכזי והפצה' : 'Central kitchen & delivery', $is_he ? 'חיבור בין ייצור, אריזה, מסירה וקבלה.' : 'Connecting production, packing, dispatch and receipt.' ),
+					array( 'menu-nutrition-planning', '06', $is_he ? 'תפריט ומידע תזונתי' : 'Menu & nutrition information', $is_he ? 'תכנון קולינרי ברור לצד בדיקה מקצועית נדרשת.' : 'Clear culinary planning alongside the qualified review required.' ),
+				),
+			),
+			'industries' => array(
+				'eyebrow' => $is_he ? 'הקשר לפני פתרון' : 'Context before solution',
+				'title'    => $is_he ? 'סביבת העבודה משנה את כללי השירות' : 'The workplace changes how foodservice should work',
+				'summary'  => $is_he ? 'משמרות, שעות שיא, נקודות שירות, תשתיות וקהל יוצרים צרכים שונים. המסלול מתחיל בהיכרות עם המציאות באתר.' : 'Shifts, peaks, service points, infrastructure and audience create distinct needs. The pathway starts with the reality on site.',
+				'cards'    => array(
+					array( 'companies-offices', '01', $is_he ? 'חברות ומשרדים' : 'Companies & offices', $is_he ? 'שירות שמתחבר לחוויית העובד וליום העבודה.' : 'Foodservice aligned with employee experience and the working day.' ),
+					array( 'manufacturing-logistics', '02', $is_he ? 'ייצור ולוגיסטיקה' : 'Manufacturing & logistics', $is_he ? 'תכנון למשמרות, עומסים ואזורי שירות שונים.' : 'Planning for shifts, peak demand and multiple service zones.' ),
+					array( 'proposal', '03', $is_he ? 'מיפוי התאמה לארגון' : 'Organisational fit mapping', $is_he ? 'שיחה ממוקדת על קהל, אתר, תשתית ודרישות.' : 'A focused conversation about audience, site, infrastructure and requirements.' ),
+				),
+			),
+			'platform' => array(
+				'eyebrow' => $is_he ? 'פחות חיפוש, יותר פעולה' : 'Less searching, clearer action',
+				'title'    => $is_he ? 'מערכת עבודה שמחברת תפקיד, סניף והמשך פעולה' : 'A work system connecting role, location and next action',
+				'summary'  => $is_he ? 'המערכת מלווה את התקשרות המזון ומארגנת את הפעולות הקצרות של היום סביב אחריות, זמן ומידע ברור.' : 'The platform supports the foodservice engagement and organises short daily actions around ownership, timing and clear information.',
+				'cards'    => array(
+					array( 'operations-command-center', '01', $is_he ? 'מרכז שליטה' : 'Command centre', $is_he ? 'תמונה אחת של משימות, חריגים וסניפים.' : 'One view of actions, exceptions and locations.' ),
+					array( 'opening-workflows', '02', $is_he ? 'פתיחת יום' : 'Opening workflows', $is_he ? 'רשימות קצרות לפי תפקיד וסניף.' : 'Short role- and location-aware checklists.' ),
+					array( 'recipes-bom-food-cost', '03', $is_he ? 'מתכונים ועלויות' : 'Recipes & food cost', $is_he ? 'גרסאות, תשואה, מרכיבים ועלות מנה.' : 'Versions, yield, ingredients and dish cost.' ),
+					array( 'inventory-procurement', '04', $is_he ? 'מלאי ורכש' : 'Inventory & procurement', $is_he ? 'מקבלה ומחסור ועד הזמנה וטיפול בפער.' : 'From receiving and shortage to ordering and discrepancy handling.' ),
+					array( 'multi-location', '05', $is_he ? 'ריבוי סניפים' : 'Multi-location', $is_he ? 'סטנדרט מרכזי עם התאמות מקומיות מבוקרות.' : 'Central standards with controlled local adaptation.' ),
+					array( 'marketing-campaigns', '06', $is_he ? 'מותג וקמפיינים' : 'Brand & campaigns', $is_he ? 'בריף, נכסים, תקשורת ומדידה באותו הקשר.' : 'Brief, assets, communication and measurement in one context.' ),
+				),
+			),
+			'dishes' => array(
+				'eyebrow' => $is_he ? 'מנה היא יותר מרשימת מרכיבים' : 'A dish is more than an ingredient list',
+				'title'    => $is_he ? 'ספריית אוכל שמחברת טעם, מקור ועבודה במטבח' : 'A food library connecting flavour, origin and kitchen practice',
+				'summary'  => $is_he ? 'כל מנה מיועדת לקבל מקום מסודר לסיפור, למרכיבים, לשיטות הכנה, למסורות ולמידע שימושי — רק כשהחומר שלם ואחראי.' : 'Each dish is designed to have a structured place for its story, ingredients, preparation, traditions and useful information once the material is complete and responsible.',
+				'cards'    => array(
+					array( 'ingredients', '01', $is_he ? 'מרכיבים' : 'Ingredients', $is_he ? 'מה נכנס למנה, מה תפקידו ואיך עובדים איתו.' : 'What goes into a dish, why it is there and how it is handled.' ),
+					array( 'traditions', '02', $is_he ? 'מסורות קולינריות' : 'Culinary traditions', $is_he ? 'הקשרים משפחתיים, אזוריים ויהודיים בלי לקצר את הסיפור.' : 'Family, regional and Jewish contexts without flattening the story.' ),
+					array( 'knowledge', '03', $is_he ? 'מרכז הידע' : 'Knowledge centre', $is_he ? 'שיטות, מדריכים ושאלות שימושיות סביב האוכל.' : 'Methods, guides and practical questions around food.' ),
+					array( 'menu-nutrition-planning', '04', $is_he ? 'תכנון תפריט' : 'Menu planning', $is_he ? 'חיבור בין קהל, עונה, שירות ומידע מקצועי.' : 'Connecting audience, season, service and qualified information.' ),
+				),
+			),
+			'ingredients' => array(
+				'eyebrow' => $is_he ? 'להכיר את חומרי הגלם' : 'Know the ingredients',
+				'title'    => $is_he ? 'מרכיבים, שימושים והקשרים קולינריים' : 'Ingredients, uses and culinary context',
+				'summary'  => $is_he ? 'המרכז מארגן מידע על חומרי גלם לפי שימוש במנה, מסורת, עונה וטכניקת הכנה, בשפה ברורה לקוראים ולצוותים.' : 'The centre organises ingredient information by dish use, tradition, season and preparation method in clear language for readers and teams.',
+				'cards'    => array(
+					array( 'dishes', '01', $is_he ? 'מהמרכיב אל המנה' : 'From ingredient to dish', $is_he ? 'לראות איך חומרי גלם מתחברים למנות שלמות.' : 'See how ingredients come together in complete dishes.' ),
+					array( 'traditions', '02', $is_he ? 'מרכיב בתוך מסורת' : 'Ingredients in tradition', $is_he ? 'להבין הקשרים אזוריים ומשפחתיים.' : 'Understand regional and family contexts.' ),
+					array( 'knowledge', '03', $is_he ? 'שיטות עבודה' : 'Methods & guides', $is_he ? 'אחסון, הכנה, טכניקה ושאלות נפוצות.' : 'Storage, preparation, technique and common questions.' ),
+				),
+			),
+			'traditions' => array(
+				'eyebrow' => $is_he ? 'אוכל נושא זיכרון' : 'Food carries memory',
+				'title'    => $is_he ? 'מסורות קולינריות דרך אנשים, מקומות ומנות' : 'Culinary traditions through people, places and dishes',
+				'summary'  => $is_he ? 'המרכז נועד לתת הקשר למסורות יהודיות, משפחתיות ואזוריות, להציג הבדלים בכבוד ולחבר אותן לעבודה קולינרית עכשווית.' : 'The centre gives context to Jewish, family and regional traditions, respects their differences and connects them to contemporary culinary practice.',
+				'cards'    => array(
+					array( 'dishes', '01', $is_he ? 'מנות וסיפורים' : 'Dishes & stories', $is_he ? 'מנות שמובילות אל מקורות, וריאציות וזיכרונות.' : 'Dishes leading to origins, variations and memories.' ),
+					array( 'ingredients', '02', $is_he ? 'חומרי גלם' : 'Ingredients', $is_he ? 'מרכיבים שחוזרים בין קהילות ומקבלים משמעות אחרת.' : 'Ingredients shared across communities and interpreted differently.' ),
+					array( 'knowledge', '03', $is_he ? 'מדריכים והקשרים' : 'Guides & context', $is_he ? 'קריאה מעמיקה יותר סביב טכניקות ומנהגים.' : 'Deeper reading around methods and customs.' ),
+				),
+			),
+			'knowledge' => array(
+				'eyebrow' => $is_he ? 'ידע שאפשר לנווט בו' : 'Knowledge designed to be explored',
+				'title'    => $is_he ? 'מרכז ידע לאוכל, שירות ותפעול' : 'A knowledge centre for food, service and operations',
+				'summary'  => $is_he ? 'המרכז מחבר מדריכי עומק עם ספריות מנות, מרכיבים ומסורות, ומוביל כל קורא למסלול ברור במקום לערבב כוונות שונות בעמוד אחד.' : 'The centre connects in-depth guides with dish, ingredient and tradition libraries, giving each reader a clear path instead of mixing different needs on one page.',
+				'cards'    => array(
+					array( 'dishes', '01', $is_he ? 'ספריית מנות' : 'Dish library', $is_he ? 'הסיפור, המרכיבים והעשייה של כל מנה.' : 'The story, ingredients and practice behind each dish.' ),
+					array( 'ingredients', '02', $is_he ? 'ספריית מרכיבים' : 'Ingredient library', $is_he ? 'חומרי גלם לפי שימוש והקשר.' : 'Ingredients organised by use and context.' ),
+					array( 'traditions', '03', $is_he ? 'מסורות קולינריות' : 'Culinary traditions', $is_he ? 'אוכל דרך משפחות, קהילות ומקומות.' : 'Food through families, communities and places.' ),
+					array( 'tender-pack', '04', $is_he ? 'מידע למקבלי החלטות' : 'Decision-maker information', $is_he ? 'מבנה שירות, שאלות ומסמכים לתהליך מסודר.' : 'Service structure, questions and documents for a clear process.' ),
+				),
+			),
+			'store' => array(
+				'eyebrow' => $is_he ? 'קטלוג בתכנון אחראי' : 'A catalogue being planned responsibly',
+				'title'    => $is_he ? 'ציוד, כלי עבודה ומוצרי מזווה — כשהמסחר יהיה מוכן' : 'Equipment, working tools and pantry goods — when commerce is ready',
+				'summary'  => $is_he ? 'החנות נבנית סביב מוצרים שימושיים למטבח ולשירות. מכירה, תשלום ומשלוח יוצגו רק לאחר השלמת פרטי הסוחר, המחירים, המלאי, האספקה וההחזרות.' : 'The store is being shaped around useful kitchen and service products. Sales, payment and delivery will appear only after merchant, pricing, stock, fulfilment and returns details are complete.',
+				'cards'    => array(
+					array( '', '01', $is_he ? 'ציוד וכלי מטבח' : 'Kitchen equipment & tools', $is_he ? 'כלים לעבודה יום־יומית, הכנה, הגשה וארגון.' : 'Tools for daily work, preparation, service and organisation.' ),
+					array( '', '02', $is_he ? 'מזווה ושמנים' : 'Pantry & oils', $is_he ? 'מוצרים עם מידע ברור על שימוש, מקור ואחסון.' : 'Goods with clear information about use, origin and storage.' ),
+					array( '', '03', $is_he ? 'כלים לתפעול' : 'Operating essentials', $is_he ? 'אביזרים שתומכים בסדר, סימון ותהליכי שירות.' : 'Accessories supporting order, labelling and service routines.' ),
+				),
+			),
+		);
+		return isset( $hubs[ $key ] ) ? $hubs[ $key ] : array();
+	}
+
+	private static function render_hub_experience( $key, $lang ) {
+		$data = self::hub_experience_data( $key, $lang );
+		if ( ! $data ) {
+			return;
+		}
+		$is_he = 'he' === $lang;
+		?>
+		<section class="c99-hub-overview" aria-labelledby="c99-hub-overview-title">
+			<div class="c99-container">
+				<div class="c99-hub-heading">
+					<div>
+						<p class="c99-eyebrow"><?php echo esc_html( $data['eyebrow'] ); ?></p>
+						<h2 id="c99-hub-overview-title"><?php echo esc_html( $data['title'] ); ?></h2>
+					</div>
+					<p><?php echo esc_html( $data['summary'] ); ?></p>
+				</div>
+				<div class="c99-hub-card-grid">
+					<?php foreach ( $data['cards'] as $card ) : ?>
+						<?php if ( $card[0] ) : ?>
+							<a class="c99-hub-card" href="<?php echo esc_url( self::navigation_url( $card[0], $lang ) ); ?>">
+						<?php else : ?>
+							<article class="c99-hub-card c99-hub-card-static">
+						<?php endif; ?>
+								<span class="c99-hub-card-number" aria-hidden="true"><?php echo esc_html( $card[1] ); ?></span>
+								<h3><?php echo esc_html( $card[2] ); ?></h3>
+								<p><?php echo esc_html( $card[3] ); ?></p>
+								<?php if ( $card[0] ) : ?><span class="c99-hub-card-action"><?php echo esc_html( $is_he ? 'לפרטים' : 'Explore' ); ?><span aria-hidden="true"> ←</span></span><?php endif; ?>
+						<?php if ( $card[0] ) : ?>
+							</a>
+						<?php else : ?>
+							</article>
+						<?php endif; ?>
+					<?php endforeach; ?>
+				</div>
+			</div>
+		</section>
+		<?php
+		if ( in_array( $key, array( 'dishes', 'ingredients', 'traditions', 'knowledge' ), true ) ) {
+			self::render_connected_table( $lang );
+		}
+		if ( 'dishes' === $key ) {
+			self::render_food_archive( $lang );
+		}
+	}
+
+	private static function render_connected_table( $lang ) {
+		$is_he = 'he' === $lang;
+		?>
+		<section class="c99-connected-table" aria-labelledby="c99-connected-table-title">
+			<div class="c99-container c99-connected-table-frame">
+				<picture class="c99-connected-table-art">
+					<source srcset="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/complete99-connected-table-editorial-v1.avif' ); ?>" type="image/avif" />
+					<img src="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/complete99-connected-table-editorial-v1.webp' ); ?>" width="1536" height="1024" loading="lazy" decoding="async" alt="<?php echo esc_attr( $is_he ? 'איור מערכתי של שולחן אוכל, מרכיבים, רשימת משימות וחיבור בין אתרים' : 'Editorial illustration of a shared food table, ingredients, an action list and connected locations' ); ?>" />
+				</picture>
+				<div class="c99-connected-table-copy">
+					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'שולחן אחד, מערכת הקשרים שלמה' : 'One table, a connected system' ); ?></p>
+					<h2 id="c99-connected-table-title"><?php echo esc_html( $is_he ? 'מחברים אוכל, ידע ותפעול בלי לאבד את הסיפור' : 'Connect food, knowledge and operations without losing the story' ); ?></h2>
+					<p><?php echo esc_html( $is_he ? 'מנות ומרכיבים מקבלים הקשר; צוותים וסניפים מקבלים דרך עבודה; ומקבלי החלטות מקבלים מסלול ברור מהשאלה ועד הפעולה.' : 'Dishes and ingredients gain context, teams and locations gain a way of working, and decision-makers gain a clear path from question to action.' ); ?></p>
+					<div class="c99-hero-actions">
+						<a class="c99-button c99-button-primary" href="<?php echo esc_url( self::navigation_url( 'knowledge', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'כניסה למרכז הידע' : 'Enter the knowledge centre' ); ?></a>
+						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( self::navigation_url( 'platform', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'היכרות עם המערכת' : 'Explore the platform' ); ?></a>
+					</div>
+				</div>
+			</div>
+		</section>
+		<?php
+	}
+
+	private static function render_food_archive( $lang ) {
+		$is_he = 'he' === $lang;
+		$images = array(
+			array(
+				'c99-food-sabich-pita-gallery-2021-wp-v01',
+				1000,
+				700,
+				$is_he ? 'פיתה עם חציל, ביצה, ירקות ורטבים' : 'Pita filled with aubergine, egg, vegetables and sauces',
+			),
+			array(
+				'c99-food-kubeh-beet-soup-gallery-2021-wp-v01',
+				1000,
+				700,
+				$is_he ? 'קובה במרק סלק אדום' : 'Kubeh dumplings in red beet soup',
+			),
+			array(
+				'c99-food-couscous-beef-gallery-2021-wp-v01',
+				1000,
+				700,
+				$is_he ? 'קוסקוס עם ירקות ובשר' : 'Couscous with vegetables and beef',
+			),
+			array(
+				'c99-food-shakshuka-plate-gallery-2021-wp-v01',
+				1000,
+				700,
+				$is_he ? 'שקשוקה עגבניות וביצים בצלחת' : 'Tomato and egg shakshuka served on a plate',
+			),
+		);
+		?>
+		<section class="c99-food-archive" aria-labelledby="c99-food-archive-title">
+			<div class="c99-container">
+				<div class="c99-section-heading">
+					<div>
+						<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מארכיון האוכל של קומפלט 99' : 'From the Complete99 food archive' ); ?></p>
+						<h2 id="c99-food-archive-title"><?php echo esc_html( $is_he ? 'אוכל שנראה כמו אוכל, עם מקום לסיפור שמאחוריו' : 'Food shown as food, with room for the story behind it' ); ?></h2>
+					</div>
+					<p class="c99-food-archive-note"><?php echo esc_html( $is_he ? 'הצילומים מציגים נושאים קולינריים מארכיון המותג ואינם מציגים תפריט זמין או הצעת מכירה.' : 'These archive photographs illustrate culinary subjects; they do not represent a currently available menu or sales offer.' ); ?></p>
+				</div>
+				<div class="c99-food-mosaic">
+					<?php foreach ( $images as $index => $archive_image ) : ?>
+						<figure class="<?php echo 0 === $index ? 'c99-food-mosaic-featured' : ''; ?>">
+							<picture>
+								<source srcset="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/' . $archive_image[0] . '.avif' ); ?>" type="image/avif" />
+								<img src="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/' . $archive_image[0] . '.webp' ); ?>" width="<?php echo esc_attr( $archive_image[1] ); ?>" height="<?php echo esc_attr( $archive_image[2] ); ?>" loading="lazy" decoding="async" alt="<?php echo esc_attr( $archive_image[3] ); ?>" />
+							</picture>
+						</figure>
+					<?php endforeach; ?>
+				</div>
+			</div>
+		</section>
+		<?php
+	}
+
 	private static function render_system_preview( $lang ) {
 		$is_he = 'he' === $lang;
 		?>
-		<div class="c99-system-top"><span class="c99-live-dot" aria-hidden="true"></span><strong><?php echo esc_html( $is_he ? 'היום · תפעול לפי סניף' : 'Today · location operations' ); ?></strong><span><?php echo esc_html( $is_he ? 'סקירה' : 'Overview' ); ?></span></div>
+		<div class="c99-system-top"><span class="c99-preview-dot" aria-hidden="true">99</span><strong><?php echo esc_html( $is_he ? 'מבנה מייצג של לוח היום' : 'Representative Today layout' ); ?></strong><span><?php echo esc_html( $is_he ? 'תצוגת יכולות' : 'Capability preview' ); ?></span></div>
 		<div class="c99-kpi-row"><div><small><?php echo esc_html( $is_he ? 'פתיחת היום' : 'Opening' ); ?></small><strong>✓</strong></div><div><small><?php echo esc_html( $is_he ? 'משימות צוות' : 'Team tasks' ); ?></small><strong>↗</strong></div><div><small><?php echo esc_html( $is_he ? 'חריגים לטיפול' : 'Exceptions' ); ?></small><strong>!</strong></div></div>
 		<div class="c99-task-list">
 			<div><span class="c99-task-icon">✓</span><p><strong><?php echo esc_html( $is_he ? 'פתיחת מטבח' : 'Kitchen opening' ); ?></strong><small><?php echo esc_html( $is_he ? 'משימות לפי תפקיד' : 'Role-based actions' ); ?></small></p></div>
 			<div><span class="c99-task-icon c99-task-warn">!</span><p><strong><?php echo esc_html( $is_he ? 'מחסור בפריט' : 'Item shortage' ); ?></strong><small><?php echo esc_html( $is_he ? 'בעלים והמשך פעולה' : 'Owner and next action' ); ?></small></p></div>
 			<div><span class="c99-task-icon">↗</span><p><strong><?php echo esc_html( $is_he ? 'מהלך שיווקי' : 'Marketing activity' ); ?></strong><small><?php echo esc_html( $is_he ? 'בריף, בקרה ומדידה' : 'Brief, review and measurement' ); ?></small></p></div>
 		</div>
+		<p class="c99-preview-disclaimer"><?php echo esc_html( $is_he ? 'זהו מבנה המחשה בלבד. לא מוצגים נתוני אמת של סניפים, ספקים, מצלמות או קמפיינים.' : 'Illustrative layout only. No live location, supplier, camera or campaign data is shown.' ); ?></p>
 		<?php
+	}
+
+	private static function breadcrumb_items( $post, $lang ) {
+		$items = array();
+		if ( method_exists( 'Complete99_Content', 'breadcrumb_trail' ) ) {
+			$trail = Complete99_Content::breadcrumb_trail( $post->ID );
+			if ( is_array( $trail ) ) {
+				foreach ( $trail as $item ) {
+					if ( empty( $item['label'] ) ) {
+						continue;
+					}
+					$items[] = array(
+						'label'   => wp_strip_all_tags( (string) $item['label'] ),
+						'url'     => ! empty( $item['url'] ) ? (string) $item['url'] : get_permalink( $post ),
+						'current' => ! empty( $item['current'] ),
+					);
+				}
+			}
+		}
+		if ( count( $items ) >= 2 ) {
+			return $items;
+		}
+		return array(
+			array(
+				'label'   => 'he' === $lang ? 'בית' : 'Home',
+				'url'     => self::navigation_url( 'home', $lang ),
+				'current' => false,
+			),
+			array(
+				'label'   => wp_strip_all_tags( $post->post_title ),
+				'url'     => get_permalink( $post ),
+				'current' => true,
+			),
+		);
 	}
 
 	private static function render_breadcrumb( $post, $lang ) {
 		$is_he = 'he' === $lang;
-		echo '<nav class="c99-breadcrumb c99-container" aria-label="' . esc_attr( $is_he ? 'פירורי לחם' : 'Breadcrumb' ) . '"><a href="' . esc_url( Complete99_Content::route_url( 'home', $lang ) ) . '">' . esc_html( $is_he ? 'בית' : 'Home' ) . '</a><span aria-hidden="true">/</span><span aria-current="page">' . esc_html( $post->post_title ) . '</span></nav>';
+		$items = self::breadcrumb_items( $post, $lang );
+		?>
+		<nav class="c99-breadcrumb c99-container" aria-label="<?php echo esc_attr( $is_he ? 'פירורי לחם' : 'Breadcrumb' ); ?>">
+			<ol>
+				<?php foreach ( $items as $index => $item ) : ?>
+					<li>
+						<?php if ( $item['current'] ) : ?>
+							<span aria-current="page"><?php echo esc_html( $item['label'] ); ?></span>
+						<?php else : ?>
+							<a href="<?php echo esc_url( $item['url'] ); ?>"><?php echo esc_html( $item['label'] ); ?></a>
+						<?php endif; ?>
+						<?php if ( $index < count( $items ) - 1 ) : ?><span class="c99-breadcrumb-separator" aria-hidden="true">›</span><?php endif; ?>
+					</li>
+				<?php endforeach; ?>
+			</ol>
+		</nav>
+		<?php
 	}
 
 	private static function render_app_tour( $lang ) {
@@ -500,23 +893,93 @@ final class Complete99_Frontend {
 
 	public static function render_footer( $lang ) {
 		$is_he = 'he' === $lang;
-		$links = array(
-			array( 'institutional-catering', $is_he ? 'הסעדה מוסדית' : 'Institutional foodservice' ),
-			array( 'dining-room-management', $is_he ? 'ניהול חדרי אוכל' : 'Dining-room management' ),
-			array( 'operations-command-center', $is_he ? 'מרכז שליטה' : 'Command centre' ),
-			array( 'recipes-bom-food-cost', $is_he ? 'מתכונים ו-BOM' : 'Recipes and BOM' ),
-			array( 'marketing-campaigns', $is_he ? 'מותג וקמפיינים' : 'Brand and campaigns' ),
-			array( 'tender-pack', $is_he ? 'מרכז מכרזים' : 'Tender pack' ),
-			array( 'about', $is_he ? 'אודות' : 'About' ),
-			array( 'contact', $is_he ? 'יצירת קשר' : 'Contact' ),
+		$clusters = array(
+			array(
+				$is_he ? 'שירותים' : 'Services',
+				array(
+					array( 'services', $is_he ? 'כל השירותים' : 'All services' ),
+					array( 'institutional-catering', $is_he ? 'הסעדה מוסדית' : 'Institutional foodservice' ),
+					array( 'employee-meals', $is_he ? 'ארוחות לעובדים' : 'Employee meals' ),
+					array( 'dining-room-management', $is_he ? 'ניהול חדרי אוכל' : 'Dining-room management' ),
+				),
+			),
+			array(
+				$is_he ? 'מנות וידע' : 'Dishes & knowledge',
+				array(
+					array( 'dishes', $is_he ? 'ספריית המנות' : 'Dish library' ),
+					array( 'ingredients', $is_he ? 'מרכיבים' : 'Ingredients' ),
+					array( 'traditions', $is_he ? 'מסורות קולינריות' : 'Culinary traditions' ),
+					array( 'knowledge', $is_he ? 'מרכז הידע' : 'Knowledge centre' ),
+				),
+			),
+			array(
+				$is_he ? 'המערכת' : 'Platform',
+				array(
+					array( 'platform', $is_he ? 'כל יכולות המערכת' : 'Platform overview' ),
+					array( 'operations-command-center', $is_he ? 'מרכז שליטה' : 'Command centre' ),
+					array( 'opening-workflows', $is_he ? 'פתיחת יום' : 'Opening workflows' ),
+					array( 'inventory-procurement', $is_he ? 'מלאי ורכש' : 'Inventory & procurement' ),
+				),
+			),
+			array(
+				$is_he ? 'חנות' : 'Store',
+				array(
+					array( 'store', $is_he ? 'תכנון הקטלוג' : 'Catalogue planning' ),
+				),
+			),
+			array(
+				$is_he ? 'החברה' : 'Company',
+				array(
+					array( 'about', $is_he ? 'אודות' : 'About' ),
+					array( 'proposal', $is_he ? 'בדיקת התאמה' : 'Fit review' ),
+					array( 'tender-pack', $is_he ? 'מידע למכרזים' : 'Tender information' ),
+					array( 'contact', $is_he ? 'יצירת קשר' : 'Contact' ),
+				),
+			),
+			array(
+				$is_he ? 'מידע משפטי ונגישות' : 'Legal & accessibility',
+				array(
+					array( 'privacy', $is_he ? 'פרטיות' : 'Privacy' ),
+					array( 'terms', $is_he ? 'תנאי שימוש' : 'Terms of use' ),
+					array( 'accessibility', $is_he ? 'נגישות' : 'Accessibility' ),
+				),
+			),
 		);
 		?>
 		<footer class="c99-site-footer">
-			<div class="c99-container c99-footer-top">
-				<div class="c99-footer-brand"><div class="c99-brand-mark" aria-hidden="true"><span>9</span><span>9</span></div><h2><?php echo esc_html( $is_he ? 'קומפלט 99' : 'Complete99' ); ?></h2><p><?php echo esc_html( $is_he ? 'שירותי מזון שוטפים לארגונים, עם תפעול, ידע ותקשורת באותה שפה.' : 'Ongoing organisational foodservice with operations, knowledge and communication working together.' ); ?></p></div>
-				<nav class="c99-footer-links" aria-label="<?php echo esc_attr( $is_he ? 'קישורים נוספים' : 'Additional links' ); ?>"><?php foreach ( $links as $link ) : ?><a href="<?php echo esc_url( Complete99_Content::route_url( $link[0], $lang ) ); ?>"><?php echo esc_html( $link[1] ); ?></a><?php endforeach; ?></nav>
+			<div class="c99-container c99-footer-callout">
+				<div>
+					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מתכננים שירות מזון לארגון?' : 'Planning organisational foodservice?' ); ?></p>
+					<h2><?php echo esc_html( $is_he ? 'מתחילים מהאתר, מהאנשים ומהיום שצריך לעבוד' : 'Start with the site, the people and the day that needs to work' ); ?></h2>
+				</div>
+				<div class="c99-footer-callout-actions">
+					<a class="c99-button c99-button-light" href="<?php echo esc_url( self::navigation_url( 'proposal', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'בדיקת התאמה למוסד' : 'Institutional fit review' ); ?></a>
+					<a class="c99-button c99-button-ghost" href="<?php echo esc_url( self::navigation_url( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'לספריית המנות' : 'Explore dishes' ); ?></a>
+				</div>
 			</div>
-			<div class="c99-container c99-footer-bottom"><span>© <?php echo esc_html( gmdate( 'Y' ) ); ?> Complete99</span><span><?php echo esc_html( $is_he ? 'שירותי מזון שוטפים לארגונים, עם תפעול ותוכן מאותה תשתית.' : 'Ongoing organisational foodservice, operations and content on one foundation.' ); ?></span></div>
+			<div class="c99-container c99-footer-main">
+				<div class="c99-footer-brand">
+					<a class="c99-footer-brand-link" href="<?php echo esc_url( self::navigation_url( 'home', $lang ) ); ?>">
+						<span class="c99-brand-mark" aria-hidden="true"><span>9</span><span>9</span></span>
+						<span><strong><?php echo esc_html( $is_he ? 'קומפלט 99' : 'Complete99' ); ?></strong><small><?php echo esc_html( $is_he ? 'אוכל · תפעול · צמיחה' : 'Food · operations · growth' ); ?></small></span>
+					</a>
+					<p><?php echo esc_html( $is_he ? 'שירותי מזון שוטפים לארגונים, עם תפעול, ידע ותקשורת באותה שפה.' : 'Ongoing organisational foodservice with operations, knowledge and communication working together.' ); ?></p>
+					<p class="c99-footer-store-note"><?php echo esc_html( $is_he ? 'קטלוג החנות נמצא בתכנון. מכירה ומשלוח יופעלו רק לאחר השלמת כל פרטי המסחר והשירות.' : 'The store catalogue is being planned. Sales and delivery will open only after all commerce and service details are complete.' ); ?></p>
+				</div>
+				<nav class="c99-footer-nav" aria-label="<?php echo esc_attr( $is_he ? 'מפת האתר' : 'Site map' ); ?>">
+					<?php foreach ( $clusters as $cluster ) : ?>
+						<div class="c99-footer-cluster">
+							<h2><?php echo esc_html( $cluster[0] ); ?></h2>
+							<ul>
+								<?php foreach ( $cluster[1] as $link ) : ?>
+									<li><a href="<?php echo esc_url( self::navigation_url( $link[0], $lang ) ); ?>"><?php echo esc_html( $link[1] ); ?></a></li>
+								<?php endforeach; ?>
+							</ul>
+						</div>
+					<?php endforeach; ?>
+				</nav>
+			</div>
+			<div class="c99-container c99-footer-bottom"><span>© <?php echo esc_html( gmdate( 'Y' ) ); ?> Complete99</span><span><?php echo esc_html( $is_he ? 'שירות מזון, ידע וכלי עבודה המחוברים סביב אותה חוויה.' : 'Foodservice, knowledge and working tools connected around one experience.' ); ?></span></div>
 		</footer>
 		<?php
 	}

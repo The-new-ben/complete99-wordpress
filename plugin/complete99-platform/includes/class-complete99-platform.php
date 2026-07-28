@@ -31,6 +31,7 @@ final class Complete99_Platform {
 		add_action( 'init', array( 'Complete99_Leads', 'register_post_type' ), 6 );
 		add_action( 'init', array( __CLASS__, 'maybe_upgrade' ), 40 );
 
+		Complete99_Content::boot_governance();
 		Complete99_Settings::boot();
 		Complete99_Leads::boot();
 		Complete99_REST::boot();
