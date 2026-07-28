@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-28 18:32:00"
+RELEASE_LAST_UPDATED = "2026-07-28 18:48:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -211,8 +211,8 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Raised the mobile home brand and language switch to full 44 CSS-pixel interaction targets.</li>"
-                "<li>Completed closed- and open-menu mobile target-size acceptance without horizontal overflow.</li>"
+                "<li>Expanded the desktop header canvas for long English navigation labels while preserving Hebrew and responsive behavior.</li>"
+                "<li>Verified non-overlapping header geometry at 1181, 1200, 1366 and 1440 CSS pixels.</li>"
                 "</ul>"
             )
         },
