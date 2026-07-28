@@ -410,6 +410,10 @@ class PipelineHardeningTests(unittest.TestCase):
             "runs-on: [self-hosted, Windows, X64, complete99-deploy]",
             workflow,
         )
+        deploy_job = workflow.split("  deploy:", 1)[1]
+        self.assertNotIn("actions/setup-python@", deploy_job)
+        self.assertIn("python --version", deploy_job)
+        self.assertIn("sys.version_info >= (3, 11)", deploy_job)
         self.assertGreaterEqual(workflow.count("shell: powershell"), 2)
 
 

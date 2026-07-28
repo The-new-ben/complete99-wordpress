@@ -465,6 +465,8 @@ final class Complete99_Content {
 		$launch = require COMPLETE99_PLATFORM_DIR . 'data/launch-content.php';
 		$dishes = require COMPLETE99_PLATFORM_DIR . 'data/dish-seeds.php';
 
+		self::ensure_site_identity();
+
 		$english_home = 0;
 		foreach ( array( 'he', 'en' ) as $language ) {
 			foreach ( $launch as $blueprint ) {
@@ -504,6 +506,32 @@ final class Complete99_Content {
 				if ( ! self::upsert_seed( $blueprint, $language, 0 ) ) {
 					throw new \RuntimeException( 'Complete99 dish seed failed.' );
 				}
+			}
+		}
+	}
+
+	/**
+	 * Correct only empty, default, or known legacy/misspelled launch identity.
+	 *
+	 * Later editor-owned identity changes remain untouched on future releases.
+	 */
+	private static function ensure_site_identity() {
+		$current_name = (string) get_option( 'blogname', '' );
+		$legacy_name  = false !== strpos( $current_name, 'קומפליט' )
+			|| in_array( trim( $current_name ), array( '', 'WordPress', 'Complete99', 'Complete 99' ), true );
+
+		if ( $legacy_name ) {
+			update_option( 'blogname', 'קומפלט 99 | Complete99' );
+			if ( 'קומפלט 99 | Complete99' !== (string) get_option( 'blogname', '' ) ) {
+				throw new \RuntimeException( 'Complete99 site-name correction failed readback.' );
+			}
+		}
+
+		$current_description = (string) get_option( 'blogdescription', '' );
+		if ( '' === trim( $current_description ) || 'Just another WordPress site' === $current_description ) {
+			update_option( 'blogdescription', 'אוכל של בית. תפעול של מחר.' );
+			if ( 'אוכל של בית. תפעול של מחר.' !== (string) get_option( 'blogdescription', '' ) ) {
+				throw new \RuntimeException( 'Complete99 site-description correction failed readback.' );
 			}
 		}
 	}

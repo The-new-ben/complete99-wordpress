@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-28 07:30:00"
+RELEASE_LAST_UPDATED = "2026-07-28 09:25:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -211,9 +211,8 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Added a guarded first-install and recovery path for the live UPress site.</li>"
-                "<li>Strengthened durable migration checks while preserving editor-owned content.</li>"
-                "<li>Corrected public assets and made stored enquiries actionable in WordPress.</li>"
+                "<li>Corrected the canonical Hebrew brand to קומפלט 99 while preserving future editor-owned identity changes.</li>"
+                "<li>Made the scoped Windows deployment use the already-installed Python 3.11 runtime without administrator elevation.</li>"
                 "</ul>"
             )
         },
