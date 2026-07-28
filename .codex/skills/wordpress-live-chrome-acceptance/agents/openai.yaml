@@ -1,0 +1,4 @@
+interface:
+  display_name: "WordPress Live Chrome Acceptance"
+  short_description: "Prove a WordPress release in real Chrome"
+  default_prompt: "Use $wordpress-live-chrome-acceptance after the deploy to verify the exact live public release across desktop, mobile, languages, SEO, accessibility, images, routes and screenshots."
