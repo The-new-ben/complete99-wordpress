@@ -12,6 +12,8 @@ final class Complete99_Leads {
 		add_action( 'admin_post_nopriv_' . self::ACTION, array( __CLASS__, 'handle' ) );
 		add_filter( 'manage_c99_lead_posts_columns', array( __CLASS__, 'columns' ) );
 		add_action( 'manage_c99_lead_posts_custom_column', array( __CLASS__, 'column_value' ), 10, 2 );
+		add_action( 'add_meta_boxes_c99_lead', array( __CLASS__, 'register_detail_meta_box' ) );
+		add_action( 'wp_dashboard_setup', array( __CLASS__, 'register_dashboard_widget' ) );
 	}
 
 	public static function register_post_type() {
@@ -27,7 +29,7 @@ final class Complete99_Leads {
 				'show_ui'             => true,
 				'show_in_menu'        => true,
 				'show_in_rest'        => false,
-				'supports'            => array( 'title' ),
+				'supports'            => array(),
 				'menu_icon'           => 'dashicons-email-alt',
 				'capability_type'     => array( 'c99_lead', 'c99_leads' ),
 				'capabilities'        => array(
@@ -102,32 +104,33 @@ final class Complete99_Leads {
 	public static function handle() {
 		$nonce = isset( $_POST['complete99_lead_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['complete99_lead_nonce'] ) ) : '';
 		if ( ! wp_verify_nonce( $nonce, 'complete99_lead_form' ) ) {
-			wp_die( esc_html__( 'The form expired. Please return and try again.', 'complete99-platform' ), 403 );
+			wp_die( esc_html__( 'The form expired. Please return and try again.', 'complete99-platform' ), '', array( 'response' => 403 ) );
 		}
 		if ( ! empty( $_POST['website'] ) ) {
 			self::redirect_back( false );
 		}
 		if ( ! isset( $_POST['consent'] ) || '1' !== (string) $_POST['consent'] ) {
-			wp_die( esc_html__( 'Consent is required to store the enquiry.', 'complete99-platform' ), 400 );
+			wp_die( esc_html__( 'Consent is required to store the enquiry.', 'complete99-platform' ), '', array( 'response' => 400 ) );
 		}
 
 		$rate_key = self::rate_key();
 		$count    = (int) get_transient( $rate_key );
 		if ( $count >= 5 ) {
-			wp_die( esc_html__( 'Too many submissions. Please wait before trying again.', 'complete99-platform' ), 429 );
+			wp_die( esc_html__( 'Too many submissions. Please wait before trying again.', 'complete99-platform' ), '', array( 'response' => 429 ) );
 		}
 		set_transient( $rate_key, $count + 1, HOUR_IN_SECONDS );
 
-		$contact_name = isset( $_POST['contact_name'] ) ? sanitize_text_field( wp_unslash( $_POST['contact_name'] ) ) : '';
-		$organisation = isset( $_POST['organisation'] ) ? sanitize_text_field( wp_unslash( $_POST['organisation'] ) ) : '';
-		$email        = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
-		$phone        = isset( $_POST['phone'] ) ? sanitize_text_field( wp_unslash( $_POST['phone'] ) ) : '';
-		$message      = isset( $_POST['message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['message'] ) ) : '';
+		$contact_name = isset( $_POST['contact_name'] ) ? self::limit_text( sanitize_text_field( wp_unslash( $_POST['contact_name'] ) ), 120 ) : '';
+		$organisation = isset( $_POST['organisation'] ) ? self::limit_text( sanitize_text_field( wp_unslash( $_POST['organisation'] ) ), 160 ) : '';
+		$email        = isset( $_POST['email'] ) ? self::limit_text( sanitize_email( wp_unslash( $_POST['email'] ) ), 190 ) : '';
+		$phone        = isset( $_POST['phone'] ) ? self::limit_text( sanitize_text_field( wp_unslash( $_POST['phone'] ) ), 40 ) : '';
+		$message      = isset( $_POST['message'] ) ? self::limit_text( sanitize_textarea_field( wp_unslash( $_POST['message'] ) ), 3000 ) : '';
 		$language     = isset( $_POST['language'] ) && 'en' === sanitize_key( wp_unslash( $_POST['language'] ) ) ? 'en' : 'he';
-		$interest     = isset( $_POST['interest'] ) ? sanitize_key( wp_unslash( $_POST['interest'] ) ) : 'general';
+		$interest     = isset( $_POST['interest'] ) ? self::limit_text( sanitize_key( wp_unslash( $_POST['interest'] ) ), 80 ) : 'general';
+		$interest     = '' !== $interest ? $interest : 'general';
 
 		if ( '' === $contact_name || '' === $organisation || ! is_email( $email ) || '' === $message ) {
-			wp_die( esc_html__( 'Please complete all required fields.', 'complete99-platform' ), 400 );
+			wp_die( esc_html__( 'Please complete all required fields.', 'complete99-platform' ), '', array( 'response' => 400 ) );
 		}
 
 		$lead_id = wp_insert_post(
@@ -138,8 +141,8 @@ final class Complete99_Leads {
 			),
 			true
 		);
-		if ( is_wp_error( $lead_id ) ) {
-			wp_die( esc_html__( 'The enquiry could not be stored. Please try again later.', 'complete99-platform' ), 500 );
+		if ( is_wp_error( $lead_id ) || 0 >= (int) $lead_id ) {
+			wp_die( esc_html__( 'The enquiry could not be stored. Please try again later.', 'complete99-platform' ), '', array( 'response' => 500 ) );
 		}
 
 		$fields = array(
@@ -153,10 +156,86 @@ final class Complete99_Leads {
 			'_c99_consent_at'   => gmdate( 'c' ),
 			'_c99_source_url'   => self::safe_source_url(),
 		);
-		foreach ( $fields as $key => $value ) {
-			update_post_meta( $lead_id, $key, $value );
+		if ( ! self::store_and_verify_fields( $lead_id, $fields ) ) {
+			self::discard_failed_lead( $lead_id, array_keys( $fields ) );
+			wp_die( esc_html__( 'The enquiry could not be stored. Please try again later.', 'complete99-platform' ), '', array( 'response' => 500 ) );
 		}
 		self::redirect_back( true );
+	}
+
+	private static function limit_text( $value, $maximum ) {
+		$value   = (string) $value;
+		$maximum = max( 0, (int) $maximum );
+		if ( function_exists( 'mb_substr' ) ) {
+			return mb_substr( $value, 0, $maximum, 'UTF-8' );
+		}
+		$characters = preg_split( '//u', $value, -1, PREG_SPLIT_NO_EMPTY );
+		if ( is_array( $characters ) ) {
+			return implode( '', array_slice( $characters, 0, $maximum ) );
+		}
+		return substr( $value, 0, $maximum );
+	}
+
+	private static function text_length( $value ) {
+		if ( function_exists( 'mb_strlen' ) ) {
+			return mb_strlen( (string) $value, 'UTF-8' );
+		}
+		$matched = preg_match_all( '/./us', (string) $value, $characters );
+		return false === $matched ? strlen( (string) $value ) : $matched;
+	}
+
+	private static function store_and_verify_fields( $lead_id, $fields ) {
+		foreach ( $fields as $key => $value ) {
+			$updated = update_post_meta( $lead_id, $key, wp_slash( $value ) );
+			if (
+				false === $updated
+				&& (
+					! metadata_exists( 'post', $lead_id, $key )
+					|| (string) get_post_meta( $lead_id, $key, true ) !== (string) $value
+				)
+			) {
+				return false;
+			}
+		}
+
+		/*
+		 * Evict the metadata cache so the success decision comes from a fresh
+		 * database read, not from the values just handed to update_post_meta().
+		 */
+		wp_cache_delete( $lead_id, 'post_meta' );
+		foreach ( $fields as $key => $value ) {
+			if (
+				! metadata_exists( 'post', $lead_id, $key )
+				|| (string) get_post_meta( $lead_id, $key, true ) !== (string) $value
+			) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static function discard_failed_lead( $lead_id, $field_keys ) {
+		$deleted = wp_delete_post( $lead_id, true );
+		if ( $deleted ) {
+			return;
+		}
+
+		/*
+		 * A failed post deletion must not leave a partially written PII record
+		 * visible to operators. Remove every known field and retain, at worst,
+		 * a private reference-only shell for host-level diagnosis.
+		 */
+		foreach ( $field_keys as $key ) {
+			delete_post_meta( $lead_id, $key );
+		}
+		wp_cache_delete( $lead_id, 'post_meta' );
+		wp_update_post(
+			array(
+				'ID'          => $lead_id,
+				'post_status' => 'private',
+				'post_title'  => 'C99-STORAGE-FAILED-' . (int) $lead_id,
+			)
+		);
 	}
 
 	private static function rate_key() {
@@ -165,11 +244,46 @@ final class Complete99_Leads {
 	}
 
 	private static function safe_source_url() {
-		$referrer = wp_get_referer();
-		if ( ! $referrer || wp_parse_url( $referrer, PHP_URL_HOST ) !== wp_parse_url( home_url(), PHP_URL_HOST ) ) {
+		return self::normalise_source_url( wp_get_referer() );
+	}
+
+	private static function normalise_source_url( $url ) {
+		$url = (string) $url;
+		if ( '' === $url || strlen( $url ) > 2048 ) {
 			return '';
 		}
-		return esc_url_raw( $referrer );
+		$source = wp_parse_url( $url );
+		$home   = wp_parse_url( home_url( '/' ) );
+		if ( ! is_array( $source ) || ! is_array( $home ) ) {
+			return '';
+		}
+		$source_scheme = strtolower( (string) ( $source['scheme'] ?? '' ) );
+		$home_scheme   = strtolower( (string) ( $home['scheme'] ?? '' ) );
+		$source_host   = strtolower( (string) ( $source['host'] ?? '' ) );
+		$home_host     = strtolower( (string) ( $home['host'] ?? '' ) );
+		$source_port   = isset( $source['port'] ) ? (int) $source['port'] : ( 'https' === $source_scheme ? 443 : 80 );
+		$home_port     = isset( $home['port'] ) ? (int) $home['port'] : ( 'https' === $home_scheme ? 443 : 80 );
+		$path          = (string) ( $source['path'] ?? '/' );
+		if (
+			! in_array( $source_scheme, array( 'http', 'https' ), true )
+			|| $source_scheme !== $home_scheme
+			|| '' === $source_host
+			|| $source_host !== $home_host
+			|| $source_port !== $home_port
+			|| isset( $source['user'] )
+			|| isset( $source['pass'] )
+			|| '' === $path
+			|| '/' !== $path[0]
+			|| strlen( $path ) > 1024
+		) {
+			return '';
+		}
+		$origin = $source_scheme . '://' . $source_host;
+		$default_port = 'https' === $source_scheme ? 443 : 80;
+		if ( $source_port !== $default_port ) {
+			$origin .= ':' . $source_port;
+		}
+		return esc_url_raw( $origin . $path );
 	}
 
 	private static function redirect_back( $success ) {
@@ -184,18 +298,207 @@ final class Complete99_Leads {
 		exit;
 	}
 
+	private static function can_view_leads() {
+		return current_user_can( 'edit_c99_leads' ) && current_user_can( 'read_private_c99_leads' );
+	}
+
+	public static function register_detail_meta_box( $post ) {
+		if (
+			! $post instanceof WP_Post
+			|| 'c99_lead' !== $post->post_type
+			|| ! current_user_can( 'read_post', $post->ID )
+		) {
+			return;
+		}
+		remove_meta_box( 'submitdiv', 'c99_lead', 'side' );
+		remove_meta_box( 'slugdiv', 'c99_lead', 'normal' );
+		add_meta_box(
+			'complete99-lead-details',
+			__( 'Enquiry details', 'complete99-platform' ),
+			array( __CLASS__, 'render_detail_meta_box' ),
+			'c99_lead',
+			'normal',
+			'high'
+		);
+	}
+
+	public static function render_detail_meta_box( $post ) {
+		if (
+			! $post instanceof WP_Post
+			|| 'c99_lead' !== $post->post_type
+			|| ! current_user_can( 'read_post', $post->ID )
+		) {
+			wp_die( esc_html__( 'You are not allowed to view this enquiry.', 'complete99-platform' ), '', array( 'response' => 403 ) );
+		}
+
+		$contact      = (string) get_post_meta( $post->ID, '_c99_contact_name', true );
+		$organisation = (string) get_post_meta( $post->ID, '_c99_organisation', true );
+		$email        = sanitize_email( (string) get_post_meta( $post->ID, '_c99_email', true ) );
+		$phone        = (string) get_post_meta( $post->ID, '_c99_phone', true );
+		$message      = (string) get_post_meta( $post->ID, '_c99_message', true );
+		$interest     = (string) get_post_meta( $post->ID, '_c99_interest', true );
+		$language     = (string) get_post_meta( $post->ID, '_c99_language', true );
+		$consent_at   = self::format_consent_time( (string) get_post_meta( $post->ID, '_c99_consent_at', true ) );
+		$source_url   = self::normalise_source_url( (string) get_post_meta( $post->ID, '_c99_source_url', true ) );
+		$language     = 'en' === $language ? __( 'English', 'complete99-platform' ) : __( 'Hebrew', 'complete99-platform' );
+		?>
+		<p><strong><?php echo esc_html__( 'Read-only record.', 'complete99-platform' ); ?></strong>
+			<?php echo esc_html__( 'Use the reference when recording follow-up in the authorised operating process.', 'complete99-platform' ); ?></p>
+		<table class="widefat striped c99-lead-details">
+			<tbody>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Contact name', 'complete99-platform' ); ?></th>
+					<td><?php echo esc_html( $contact ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Organisation', 'complete99-platform' ); ?></th>
+					<td><?php echo esc_html( $organisation ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Email', 'complete99-platform' ); ?></th>
+					<td>
+						<?php if ( $email && is_email( $email ) ) : ?>
+							<a href="<?php echo esc_url( 'mailto:' . $email ); ?>"><?php echo esc_html( $email ); ?></a>
+						<?php else : ?>
+							<?php echo esc_html__( 'Not provided', 'complete99-platform' ); ?>
+						<?php endif; ?>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Telephone', 'complete99-platform' ); ?></th>
+					<td><?php echo esc_html( '' !== $phone ? $phone : __( 'Not provided', 'complete99-platform' ) ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Full request', 'complete99-platform' ); ?></th>
+					<td><div class="c99-lead-full-request" style="white-space: pre-wrap;"><?php echo esc_html( $message ); ?></div></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Interest', 'complete99-platform' ); ?></th>
+					<td><?php echo esc_html( $interest ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Language', 'complete99-platform' ); ?></th>
+					<td><?php echo esc_html( $language ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Consent recorded', 'complete99-platform' ); ?></th>
+					<td><?php echo esc_html( $consent_at ); ?></td>
+				</tr>
+				<tr>
+					<th scope="row"><?php echo esc_html__( 'Safe source', 'complete99-platform' ); ?></th>
+					<td>
+						<?php if ( $source_url ) : ?>
+							<a href="<?php echo esc_url( $source_url ); ?>"><?php echo esc_html( $source_url ); ?></a>
+						<?php else : ?>
+							<?php echo esc_html__( 'Not available', 'complete99-platform' ); ?>
+						<?php endif; ?>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+		<?php
+	}
+
+	private static function format_consent_time( $value ) {
+		$timestamp = strtotime( (string) $value );
+		if ( false === $timestamp ) {
+			return (string) $value;
+		}
+		return wp_date(
+			get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
+			$timestamp
+		);
+	}
+
+	private static function bounded_preview( $value, $maximum ) {
+		$value = trim( (string) preg_replace( '/\s+/u', ' ', (string) $value ) );
+		if ( '' === $value ) {
+			return '';
+		}
+		$maximum = max( 4, (int) $maximum );
+		$length  = self::text_length( $value );
+		if ( $length <= $maximum ) {
+			return $value;
+		}
+		return rtrim( self::limit_text( $value, $maximum - 1 ) ) . '…';
+	}
+
+	public static function register_dashboard_widget() {
+		if ( ! self::can_view_leads() ) {
+			return;
+		}
+		wp_add_dashboard_widget(
+			'complete99-latest-enquiries',
+			__( 'Latest enquiries', 'complete99-platform' ),
+			array( __CLASS__, 'render_dashboard_widget' )
+		);
+	}
+
+	public static function render_dashboard_widget() {
+		if ( ! self::can_view_leads() ) {
+			echo '<p>' . esc_html__( 'You are not allowed to view enquiries.', 'complete99-platform' ) . '</p>';
+			return;
+		}
+		$leads = get_posts(
+			array(
+				'post_type'              => 'c99_lead',
+				'post_status'            => 'private',
+				'posts_per_page'         => 5,
+				'orderby'                => array(
+					'date' => 'DESC',
+					'ID'   => 'DESC',
+				),
+				'no_found_rows'          => true,
+				'perm'                   => 'readable',
+				'suppress_filters'       => false,
+				'update_post_meta_cache' => true,
+				'update_post_term_cache' => false,
+			)
+		);
+		if ( empty( $leads ) ) {
+			echo '<p>' . esc_html__( 'No enquiries have been stored yet.', 'complete99-platform' ) . '</p>';
+			return;
+		}
+		echo '<ul class="c99-dashboard-enquiries">';
+		foreach ( $leads as $lead ) {
+			if ( ! $lead instanceof WP_Post || ! current_user_can( 'read_post', $lead->ID ) ) {
+				continue;
+			}
+			$contact      = (string) get_post_meta( $lead->ID, '_c99_contact_name', true );
+			$organisation = (string) get_post_meta( $lead->ID, '_c99_organisation', true );
+			$preview      = self::bounded_preview( (string) get_post_meta( $lead->ID, '_c99_message', true ), 120 );
+			$link         = get_edit_post_link( $lead->ID, '' );
+			echo '<li>';
+			if ( $link ) {
+				echo '<a href="' . esc_url( $link ) . '"><strong>' . esc_html( $organisation ) . '</strong> — ' . esc_html( $contact ) . '</a>';
+			} else {
+				echo '<strong>' . esc_html( $organisation ) . '</strong> — ' . esc_html( $contact );
+			}
+			echo '<br><span>' . esc_html( $preview ) . '</span>';
+			echo '<br><small>' . esc_html( get_the_date( '', $lead ) ) . '</small>';
+			echo '</li>';
+		}
+		echo '</ul>';
+		echo '<p><a href="' . esc_url( admin_url( 'edit.php?post_type=c99_lead' ) ) . '">' . esc_html__( 'View all enquiries', 'complete99-platform' ) . '</a></p>';
+	}
+
 	public static function columns( $columns ) {
 		return array(
 			'cb'           => isset( $columns['cb'] ) ? $columns['cb'] : '<input type="checkbox" />',
 			'title'        => __( 'Reference', 'complete99-platform' ),
 			'organisation' => __( 'Organisation', 'complete99-platform' ),
 			'contact'      => __( 'Contact', 'complete99-platform' ),
+			'phone'        => __( 'Telephone', 'complete99-platform' ),
+			'request'      => __( 'Request preview', 'complete99-platform' ),
 			'interest'     => __( 'Interest', 'complete99-platform' ),
 			'date'         => __( 'Received', 'complete99-platform' ),
 		);
 	}
 
 	public static function column_value( $column, $post_id ) {
+		if ( ! current_user_can( 'read_post', $post_id ) ) {
+			return;
+		}
 		if ( 'organisation' === $column ) {
 			echo esc_html( (string) get_post_meta( $post_id, '_c99_organisation', true ) );
 		} elseif ( 'contact' === $column ) {
@@ -204,6 +507,10 @@ final class Complete99_Leads {
 			if ( $email ) {
 				echo '<br><a href="' . esc_url( 'mailto:' . $email ) . '">' . esc_html( $email ) . '</a>';
 			}
+		} elseif ( 'phone' === $column ) {
+			echo esc_html( (string) get_post_meta( $post_id, '_c99_phone', true ) );
+		} elseif ( 'request' === $column ) {
+			echo esc_html( self::bounded_preview( (string) get_post_meta( $post_id, '_c99_message', true ), 160 ) );
 		} elseif ( 'interest' === $column ) {
 			echo esc_html( (string) get_post_meta( $post_id, '_c99_interest', true ) );
 		}

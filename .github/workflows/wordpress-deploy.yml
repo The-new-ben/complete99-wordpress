@@ -6,12 +6,12 @@ on:
       rollback_exercise:
         description: Exercise rollback and redeploy (requires an existing healthy release)
         required: true
-        default: true
+        default: false
         type: boolean
       bootstrap_code_snippets:
         description: Install the approved WordPress.org Code Snippets plugin if absent
         required: true
-        default: false
+        default: true
         type: boolean
 permissions:
   actions: read
@@ -104,12 +104,17 @@ jobs:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
         shell: bash
         run: |
           bootstrap_args=()
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.bootstrap_code_snippets }}" == "true" ]]; then
             bootstrap_args+=(--bootstrap-code-snippets)
           fi
+          python scripts/recover-wordpress.py \
+            --discover \
+            --probe-id "c99-recovery-probe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            "${bootstrap_args[@]}"
           dry_id="c99-dry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           python scripts/deploy-wordpress.py \
             --dry-run \
@@ -139,15 +144,21 @@ jobs:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
         shell: bash
         run: |
           recovery_failed=0
+          bootstrap_args=()
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.bootstrap_code_snippets }}" == "true" ]]; then
+            bootstrap_args+=(--bootstrap-code-snippets)
+          fi
           for deployment_id in \
             "c99-dry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
             "c99-prod-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           do
             python scripts/recover-wordpress.py \
-              --deployment-id "$deployment_id" || recovery_failed=1
+              --deployment-id "$deployment_id" \
+              "${bootstrap_args[@]}" || recovery_failed=1
           done
           exit "$recovery_failed"
 

@@ -89,7 +89,7 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertTrue(required.issubset(manifest))
         self.assertEqual(version, manifest["version"])
         self.assertEqual("complete99-platform", manifest["slug"])
-        self.assertEqual("6.9", manifest["tested"])
+        self.assertEqual("7.0", manifest["tested"])
         self.assertEqual(
             f"https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/"
             f"plugin-dist/complete99-platform-{version}.zip",
@@ -499,7 +499,7 @@ class Complete99ContractTests(unittest.TestCase):
         client = FakeClient()
         self.assertEqual(71, DEPLOY.create_snippet(client, "code", deployment_id))
 
-    def test_ambiguous_snippet_delete_is_verified_by_absence_and_route_404(self) -> None:
+    def test_inactive_snippet_row_prevents_false_delete_success(self) -> None:
         deployment_id = "c99-test-ambiguous-delete"
         name = DEPLOY.snippet_name(deployment_id)
 
@@ -513,28 +513,26 @@ class Complete99ContractTests(unittest.TestCase):
                 payload: dict[str, object] | None = None,
                 expected: tuple[int, ...] = (200, 201),
             ) -> tuple[int, object]:
+                if method == "GET" and f"/snippets/88?" in path:
+                    return 200, dict(self.snippets[0])
                 if method == "GET":
                     return 200, list(self.snippets)
                 if method == "POST" and path.endswith("/deactivate"):
+                    self.snippets[0]["active"] = False
+                    return 200, {}
+                if method == "POST" and path.endswith("/retire"):
                     raise DEPLOY.DeployError("proxy returned a misleading response")
-                if method == "DELETE":
-                    for snippet in self.snippets:
-                        snippet["active"] = False
-                    raise DEPLOY.DeployError("proxy returned a misleading response")
-                if path.endswith(f"/{deployment_id}/preflight"):
-                    return 404, {"code": "rest_no_route"}
                 raise AssertionError((method, path, payload, expected))
 
         client = FakeClient()
-        result = DEPLOY.delete_snippet_and_prove_404(
-            client,
-            None,
-            "temporary-token",
-            deployment_id,
-            True,
-        )
-        self.assertFalse(result["snippet_active"])
-        self.assertTrue(result["route_404"])
+        with self.assertRaises(DEPLOY.DeployError):
+            DEPLOY.delete_snippet_and_prove_404(
+                client,
+                None,
+                "temporary-token",
+                deployment_id,
+                True,
+            )
         self.assertEqual(1, len(client.snippets))
         self.assertFalse(client.snippets[0]["active"])
 

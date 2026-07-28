@@ -117,7 +117,7 @@ def main() -> int:
     assert update_manifest["slug"] == SLUG
     assert update_manifest["version"] == metadata["version"], "Manifest and artifact versions differ"
     assert update_manifest["requires"] == "6.4"
-    assert update_manifest["tested"] == "6.9"
+    assert update_manifest["tested"] == "7.0"
     assert update_manifest["requires_php"] == "8.0"
     assert update_manifest["download_url"] == (
         f"{RAW_REPOSITORY_ROOT}/plugin-dist/{artifact.name}"

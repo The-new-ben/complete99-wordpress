@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-28 00:00:00"
+RELEASE_LAST_UPDATED = "2026-07-28 07:30:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -203,7 +203,7 @@ def main() -> int:
         "author": "Complete99",
         "homepage": "https://complete99.co.il/",
         "requires": "6.4",
-        "tested": "6.9",
+        "tested": "7.0",
         "requires_php": "8.0",
         "download_url": f"{RAW_REPOSITORY_ROOT}/plugin-dist/{artifact.name}",
         "last_updated": RELEASE_LAST_UPDATED,
@@ -211,8 +211,9 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Added anonymous rendered-body release verification for cache-safe deployments.</li>"
-                "<li>Hardened transactional install, rollback, cleanup and UPress cache handling.</li>"
+                "<li>Added a guarded first-install and recovery path for the live UPress site.</li>"
+                "<li>Strengthened durable migration checks while preserving editor-owned content.</li>"
+                "<li>Corrected public assets and made stored enquiries actionable in WordPress.</li>"
                 "</ul>"
             )
         },

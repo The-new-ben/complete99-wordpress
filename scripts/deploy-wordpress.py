@@ -25,13 +25,33 @@ SLUG = "complete99-platform"
 BRIDGE_TEMPLATE = ROOT / "deploy" / "temporary-bridge.php"
 USER_AGENT = "Complete99WordPressDeploy/1.0"
 ALLOWED_PRODUCTION_HOSTS = {"complete99.co.il", "www.complete99.co.il"}
+SUPPORTED_TRANSITIONAL_HOSTS = {"a235232-tmp.s1242.upress.link"}
 ALLOWED_LOCAL_TEST_HOSTS = {"127.0.0.1", "localhost", "::1"}
 PLUGIN_REST_PATH = "/wp-json/wp/v2/plugins/complete99-platform/complete99-platform?context=edit"
 SNIPPET_PREFIX = "tmp-complete99-deploy-"
+BOOTSTRAP_SNIPPET_NAME = "c99-deploy-bootstrap"
+BOOTSTRAP_SNIPPET_KNOWN_ID = 5
 
 
 class DeployError(RuntimeError):
     pass
+
+
+class HTTPDeployError(DeployError):
+    """A sanitized WordPress REST error with safe structured recovery metadata."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        status: int,
+        code: str,
+        data: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.data = data or {}
 
 
 class FinalizeCommittedError(DeployError):
@@ -53,7 +73,35 @@ class RejectRedirects(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def validate_target_url(base_url: str, local_test: bool) -> urllib.parse.ParseResult:
+def parse_allowed_deploy_hosts(value: str) -> set[str]:
+    configured: set[str] = set()
+    for item in re.split(r"[\s,]+", value.strip()):
+        if not item:
+            continue
+        host = item.lower()
+        if (
+            "*" in host
+            or "://" in host
+            or "/" in host
+            or ":" in host
+            or not re.fullmatch(
+                r"(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?",
+                host,
+            )
+        ):
+            raise DeployError("WP_ALLOWED_DEPLOY_HOSTS must contain exact DNS hostnames only")
+        configured.add(host)
+    unsupported = configured - ALLOWED_PRODUCTION_HOSTS - SUPPORTED_TRANSITIONAL_HOSTS
+    if unsupported:
+        raise DeployError("WP_ALLOWED_DEPLOY_HOSTS contains an unapproved deployment hostname")
+    return configured
+
+
+def validate_target_url(
+    base_url: str,
+    local_test: bool,
+    allowed_deploy_hosts: str = "",
+) -> urllib.parse.ParseResult:
     if base_url != base_url.strip():
         raise DeployError("WP_BASE_URL may not contain surrounding whitespace")
     parsed = urllib.parse.urlparse(base_url)
@@ -79,7 +127,8 @@ def validate_target_url(base_url: str, local_test: bool) -> urllib.parse.ParseRe
             raise DeployError("--local-test accepts only a clean HTTP loopback WordPress origin")
     elif (
         parsed.scheme != "https"
-        or hostname not in ALLOWED_PRODUCTION_HOSTS
+        or hostname
+        not in (ALLOWED_PRODUCTION_HOSTS | parse_allowed_deploy_hosts(allowed_deploy_hosts))
         or port not in {None, 443}
         or not clean_root
     ):
@@ -96,10 +145,15 @@ class Client:
     username: str
     app_password: str
     allow_local_http: bool = False
+    allowed_deploy_hosts: str = ""
     timeout: int = 180
 
     def __post_init__(self) -> None:
-        validate_target_url(self.base_url, self.allow_local_http)
+        validate_target_url(
+            self.base_url,
+            self.allow_local_http,
+            self.allowed_deploy_hosts,
+        )
         self.base_url = self.base_url.rstrip("/")
         credential = f"{self.username}:{self.app_password}".encode()
         self.authorization = "Basic " + base64.b64encode(credential).decode("ascii")
@@ -147,9 +201,35 @@ class Client:
         except (UnicodeDecodeError, json.JSONDecodeError):
             parsed = {"non_json_response": True, "length": len(raw)}
         if status not in expected:
-            code = parsed.get("code", "http_error") if isinstance(parsed, dict) else "http_error"
-            message = parsed.get("message", "") if isinstance(parsed, dict) else ""
-            raise DeployError(f"{method} {path} failed with HTTP {status} ({code}): {message}")
+            raw_code = (
+                str(parsed.get("code", "http_error"))
+                if isinstance(parsed, dict)
+                else "http_error"
+            )
+            code = (
+                raw_code
+                if re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", raw_code)
+                else "http_error"
+            )
+            safe_data: dict[str, Any] = {}
+            raw_data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
+            if isinstance(raw_data, dict):
+                for key in (
+                    "deployment_id",
+                    "lock_age_seconds",
+                    "phase",
+                    "recovery_lease_seconds",
+                    "status",
+                ):
+                    value = raw_data.get(key)
+                    if isinstance(value, (bool, int, float, str)) or value is None:
+                        safe_data[key] = value
+            raise HTTPDeployError(
+                f"{method} {path} failed with HTTP {status} ({code})",
+                status=status,
+                code=str(code),
+                data=safe_data,
+            )
         return status, parsed
 
     def request_anonymous_html(self, path: str, expected: tuple[int, ...] = (200,)) -> tuple[int, str]:
@@ -234,13 +314,50 @@ def load_artifact(dist: Path) -> tuple[dict[str, Any], Path, bytes]:
     return metadata, artifact, raw
 
 
+def verify_rest_identity(client: Client) -> dict[str, str]:
+    _, root = client.request_public_json("/wp-json/")
+    target = validate_target_url(
+        client.base_url,
+        client.allow_local_http,
+        client.allowed_deploy_hosts,
+    )
+    target_port = target.port or (80 if target.scheme == "http" else 443)
+    identity: dict[str, str] = {}
+    for field in ("home", "url"):
+        value = root.get(field) if isinstance(root, dict) else None
+        if not isinstance(value, str) or not value:
+            raise DeployError(f"WordPress REST identity did not expose {field}")
+        parsed = urllib.parse.urlparse(value)
+        try:
+            port = parsed.port or (80 if parsed.scheme == "http" else 443)
+        except ValueError as error:
+            raise DeployError("WordPress REST identity contains an invalid port") from error
+        if (
+            parsed.scheme != target.scheme
+            or (parsed.hostname or "").lower() != (target.hostname or "").lower()
+            or port != target_port
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.path not in {"", "/"}
+            or parsed.params
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise DeployError(
+                "WordPress home, site URL and REST origin must match WP_BASE_URL exactly"
+            )
+        identity[field] = value.rstrip("/")
+    return identity
+
+
 def authenticate(client: Client) -> dict[str, Any]:
+    site_identity = verify_rest_identity(client)
     _, user = client.request("GET", "/wp-json/wp/v2/users/me?context=edit&_fields=id,roles,capabilities")
     roles = user.get("roles", []) if isinstance(user, dict) else []
     capabilities = user.get("capabilities", {}) if isinstance(user, dict) else {}
     if "administrator" not in roles and not capabilities.get("update_plugins"):
         raise DeployError("The deployment identity lacks the update_plugins capability")
-    return {"id": user.get("id"), "roles": roles}
+    return {"id": user.get("id"), "roles": roles, "site_identity": site_identity}
 
 
 def ensure_code_snippets(client: Client, bootstrap: bool) -> None:
@@ -272,6 +389,8 @@ def render_bridge(
     max_bytes: int,
     local_test: bool,
     test_fault: str = "",
+    target_host: str = "",
+    allowed_hosts: set[str] | None = None,
 ) -> str:
     if not re.fullmatch(r"[A-Za-z0-9._-]{8,96}", deployment_id):
         raise DeployError("Deployment ID must contain 8-96 safe characters")
@@ -285,6 +404,17 @@ def render_bridge(
     }
     if test_fault not in allowed_faults or (test_fault and not local_test):
         raise DeployError("Temporary bridge fault mode is invalid")
+    if not target_host:
+        target_host = "localhost" if local_test else "complete99.co.il"
+    target_host = target_host.lower()
+    exact_hosts = set(allowed_hosts or {target_host})
+    approved_hosts = (
+        ALLOWED_LOCAL_TEST_HOSTS
+        if local_test
+        else ALLOWED_PRODUCTION_HOSTS | SUPPORTED_TRANSITIONAL_HOSTS
+    )
+    if target_host not in exact_hosts or not exact_hosts <= approved_hosts:
+        raise DeployError("Temporary bridge target host is not exactly allowlisted")
     code = BRIDGE_TEMPLATE.read_text(encoding="utf-8")
     if code.startswith("<?php"):
         code = code.split("\n", 1)[1]
@@ -295,6 +425,12 @@ def render_bridge(
         "__C99_MIN_FREE_BYTES__": str(max(64 * 1024 * 1024, max_bytes * 8)),
         "__C99_LOCAL_TEST__": "true" if local_test else "false",
         "__C99_TEST_FAULT__": test_fault,
+        "__C99_TARGET_HOST__": target_host,
+        "__C99_ALLOWED_HOSTS__": json.dumps(
+            sorted(exact_hosts),
+            ensure_ascii=True,
+            separators=(",", ":"),
+        ),
     }
     for marker, value in replacements.items():
         if code.count(marker) != 1:
@@ -310,24 +446,88 @@ def snippet_name(deployment_id: str) -> str:
 
 
 def active_snippets(client: Client) -> list[dict[str, Any]]:
+    """Return every site snippet, including inactive rows.
+
+    The historical function name is retained for compatibility. Cleanup must
+    inspect inactive rows too: deactivation proves that a route stopped
+    executing, but it does not prove that the temporary code was deleted.
+    """
+
+    page_size = 100
+    snippets_by_id: dict[int, dict[str, Any]] = {}
+    for page in range(1, 101):
+        cache_buster = secrets.token_hex(8)
+        try:
+            _, response = client.request(
+                "GET",
+                "/wp-json/code-snippets/v1/snippets"
+                f"?status=all&per_page={page_size}&page={page}&c99cb={cache_buster}",
+            )
+        except HTTPDeployError as error:
+            if (
+                page > 1
+                and error.status == 400
+                and error.code in {"rest_post_invalid_page_number", "rest_invalid_param"}
+            ):
+                break
+            raise
+        items: Any = response
+        if isinstance(response, dict) and isinstance(response.get("data"), list):
+            items = response["data"]
+        if not isinstance(items, list):
+            raise DeployError("Code Snippets list returned an invalid response")
+        if not items:
+            break
+
+        new_ids = 0
+        for item in items:
+            if not isinstance(item, dict):
+                raise DeployError("Code Snippets list contained an invalid row")
+            value = item.get("id")
+            if not (isinstance(value, int) or str(value).isdigit()):
+                raise DeployError("Code Snippets list contained a row without an ID")
+            snippet_id = int(value)
+            if snippet_id not in snippets_by_id:
+                new_ids += 1
+            snippets_by_id[snippet_id] = {
+                "id": snippet_id,
+                "name": str(item.get("name", "")),
+                "active": bool(item.get("active")),
+            }
+        if len(items) < page_size or new_ids == 0:
+            break
+    else:
+        raise DeployError("Code Snippets collection exceeded the cleanup page ceiling")
+
+    return [snippets_by_id[key] for key in sorted(snippets_by_id)]
+
+
+def get_snippet_by_id(client: Client, snippet_id: int) -> dict[str, Any] | None:
+    """Independently read one snippet, including inactive or trashed rows."""
+
     cache_buster = secrets.token_hex(8)
-    _, response = client.request(
+    status, response = client.request(
         "GET",
-        f"/wp-json/code-snippets/v1/snippets?c99cb={cache_buster}",
+        f"/wp-json/code-snippets/v1/snippets/{snippet_id}?c99cb={cache_buster}",
+        expected=(200, 404, 500),
     )
-    items: Any = response
-    if isinstance(response, dict) and isinstance(response.get("data"), list):
-        items = response["data"]
-    if not isinstance(items, list):
-        raise DeployError("Code Snippets list returned an invalid response")
-    active: list[dict[str, Any]] = []
-    for item in items:
-        if not isinstance(item, dict) or not bool(item.get("active")):
-            continue
-        value = item.get("id")
-        if isinstance(value, int) or str(value).isdigit():
-            active.append({"id": int(value), "name": str(item.get("name", ""))})
-    return active
+    if status in {404, 500}:
+        code = response.get("code", "") if isinstance(response, dict) else ""
+        if code != "rest_cannot_get":
+            raise DeployError(
+                "Code Snippets exact-row deletion proof returned an untrusted error"
+            )
+        return None
+
+    item: Any = response
+    if isinstance(response, dict) and isinstance(response.get("data"), dict):
+        item = response["data"]
+    value = item.get("id") if isinstance(item, dict) else None
+    if not (isinstance(value, int) or str(value).isdigit()):
+        raise DeployError("Code Snippets exact-row read returned an invalid response")
+    if int(value) != snippet_id:
+        raise DeployError("Code Snippets exact-row read returned the wrong snippet")
+    return item
 
 
 def find_active_snippet_ids(client: Client, name: str) -> list[int]:
@@ -350,45 +550,82 @@ def find_active_snippet_ids_by_prefix(client: Client, prefix: str) -> list[int]:
     )
 
 
-def deactivate_and_delete_snippet(client: Client, snippet_id: int) -> None:
-    try:
-        client.request(
-            "POST",
-            f"/wp-json/code-snippets/v1/snippets/{snippet_id}/deactivate",
-            expected=(200, 404),
-        )
-    except DeployError:
-        # DELETE plus the independent collection/route checks below are authoritative.
-        pass
-    try:
-        client.request(
-            "DELETE",
-            f"/wp-json/code-snippets/v1/snippets/{snippet_id}",
-            expected=(200, 204, 404),
-        )
-    except DeployError:
-        # Some managed proxies return a misleading response after committing a write.
-        pass
+def retire_snippet_ids(
+    client: Client,
+    token: str,
+    deployment_id: str,
+    snippet_ids: set[int],
+) -> list[int]:
+    """Permanently delete allowlisted snippet rows through the live bridge."""
 
-
-def remove_named_snippets(client: Client, name: str) -> list[int]:
-    removed: list[int] = []
+    targets = sorted({int(value) for value in snippet_ids if int(value) > 0})
+    if not targets:
+        return []
+    first_error: DeployError | None = None
     for _ in range(2):
-        matches = find_active_snippet_ids(client, name)
-        if not matches:
-            return removed
-        for snippet_id in matches:
-            deactivate_and_delete_snippet(client, snippet_id)
-            removed.append(snippet_id)
+        try:
+            bridge_call(
+                client,
+                "retire",
+                token,
+                deployment_id,
+                snippet_ids=targets,
+            )
+        except DeployError as error:
+            if first_error is None:
+                first_error = error
+        remaining = [
+            snippet_id
+            for snippet_id in targets
+            if get_snippet_by_id(client, snippet_id) is not None
+        ]
+        if not remaining:
+            return targets
+
+    # If permanent deletion could not be proven, stop execution of every
+    # remaining bridge before failing closed. The row must still be recovered.
+    for snippet_id in remaining:
+        try:
+            client.request(
+                "POST",
+                f"/wp-json/code-snippets/v1/snippets/{snippet_id}/deactivate",
+                expected=(200, 404),
+            )
+        except DeployError:
+            pass
+    if first_error is not None:
+        raise first_error
+    raise DeployError("Temporary Code Snippets bridge row remains after deletion")
+
+
+def deactivate_and_delete_snippet(
+    client: Client,
+    snippet_id: int,
+    token: str,
+    deployment_id: str,
+) -> None:
+    retire_snippet_ids(client, token, deployment_id, {snippet_id})
+
+
+def remove_named_snippets(
+    client: Client,
+    name: str,
+    token: str,
+    deployment_id: str,
+) -> list[int]:
+    matches = find_active_snippet_ids(client, name)
+    removed = retire_snippet_ids(client, token, deployment_id, set(matches))
     remaining = find_active_snippet_ids(client, name)
     if remaining:
-        raise DeployError("Temporary Code Snippets bridge remains active after cleanup")
-    return removed
+        raise DeployError("Temporary Code Snippets bridge row remains after cleanup")
+    return sorted(set(removed))
 
 
 def remove_prefixed_snippets(
     client: Client,
     prefix: str,
+    token: str,
+    deployment_id: str,
     exclude_ids: set[int] | None = None,
 ) -> list[int]:
     excluded = exclude_ids or set()
@@ -401,9 +638,9 @@ def remove_prefixed_snippets(
         ]
         if not matches:
             return sorted(set(removed))
-        for snippet_id in matches:
-            deactivate_and_delete_snippet(client, snippet_id)
-            removed.append(snippet_id)
+        removed.extend(
+            retire_snippet_ids(client, token, deployment_id, set(matches))
+        )
     remaining = [
         snippet_id
         for snippet_id in find_active_snippet_ids_by_prefix(client, prefix)
@@ -414,9 +651,50 @@ def remove_prefixed_snippets(
     return sorted(set(removed))
 
 
+def remove_bootstrap_snippet(
+    client: Client,
+    token: str,
+    deployment_id: str,
+) -> dict[str, Any]:
+    """Remove the one-time live bootstrap without trusting its historical ID alone."""
+
+    matches = set(find_active_snippet_ids(client, BOOTSTRAP_SNIPPET_NAME))
+    known = get_snippet_by_id(client, BOOTSTRAP_SNIPPET_KNOWN_ID)
+    known_name = str(known.get("name", "")) if known else ""
+    if known_name == BOOTSTRAP_SNIPPET_NAME:
+        matches.add(BOOTSTRAP_SNIPPET_KNOWN_ID)
+
+    retire_snippet_ids(client, token, deployment_id, matches)
+    for snippet_id in sorted(matches):
+        if get_snippet_by_id(client, snippet_id) is not None:
+            raise DeployError("The one-time deployment bootstrap row remains present")
+    if find_active_snippet_ids(client, BOOTSTRAP_SNIPPET_NAME):
+        raise DeployError("The one-time deployment bootstrap name remains present")
+
+    known_after = get_snippet_by_id(client, BOOTSTRAP_SNIPPET_KNOWN_ID)
+    if known_name == BOOTSTRAP_SNIPPET_NAME and known_after is not None:
+        raise DeployError("The known one-time deployment bootstrap row remains present")
+    return {
+        "exact_name": BOOTSTRAP_SNIPPET_NAME,
+        "known_id": BOOTSTRAP_SNIPPET_KNOWN_ID,
+        "known_id_matched": known_name == BOOTSTRAP_SNIPPET_NAME,
+        "removed_ids": sorted(matches),
+        "row_absence_verified": True,
+    }
+
+
 def create_snippet(client: Client, code: str, deployment_id: str) -> int:
     name = snippet_name(deployment_id)
-    remove_named_snippets(client, name)
+    existing = set(find_active_snippet_ids(client, name))
+    for snippet_id in sorted(existing):
+        try:
+            client.request(
+                "POST",
+                f"/wp-json/code-snippets/v1/snippets/{snippet_id}/deactivate",
+                expected=(200, 404),
+            )
+        except DeployError:
+            pass
     response: Any = {}
     create_error: DeployError | None = None
     try:
@@ -436,14 +714,23 @@ def create_snippet(client: Client, code: str, deployment_id: str) -> int:
     if not snippet_id and isinstance(response, dict) and isinstance(response.get("data"), dict):
         snippet_id = response["data"].get("id")
     matches = find_active_snippet_ids(client, name)
+    new_matches = sorted(set(matches) - existing)
     if isinstance(snippet_id, int) or str(snippet_id).isdigit():
         recovered = int(snippet_id)
-        if recovered in matches and len(matches) == 1:
+        if recovered in new_matches:
             return recovered
-    if len(matches) == 1:
-        return matches[0]
-    if matches:
-        remove_named_snippets(client, name)
+    if len(new_matches) == 1:
+        return new_matches[0]
+    if new_matches:
+        for candidate in new_matches:
+            try:
+                client.request(
+                    "POST",
+                    f"/wp-json/code-snippets/v1/snippets/{candidate}/deactivate",
+                    expected=(200, 404),
+                )
+            except DeployError:
+                pass
         raise DeployError("Code Snippets create produced ambiguous duplicate bridges")
     if create_error is not None:
         raise create_error
@@ -462,6 +749,21 @@ def bridge_call(client: Client, action: str, token: str, deployment_id: str, **f
     if not isinstance(response, dict):
         raise DeployError(f"Bridge action {action} returned an invalid response")
     return response
+
+
+def verify_bridge_site_identity(response: dict[str, Any], target_host: str) -> dict[str, str]:
+    identity = response.get("site_identity")
+    if not isinstance(identity, dict):
+        raise DeployError("Temporary bridge did not prove the WordPress site identity")
+    expected = {
+        "home_host": target_host,
+        "siteurl_host": target_host,
+        "rest_host": target_host,
+    }
+    for key, value in expected.items():
+        if identity.get(key) != value:
+            raise DeployError(f"Temporary bridge site identity failed for {key}")
+    return expected
 
 
 def poll_deployment_status(
@@ -534,6 +836,12 @@ def install_with_recovery(
         if (
             status.get("phase") == "installed"
             and status.get("expected_sha256") == run_fields["expected_sha256"]
+            and re.fullmatch(
+                r"[a-f0-9]{64}",
+                str(status.get("installed_plugin_sha256", "")),
+            )
+            and status.get("current_plugin_sha256")
+            == status.get("installed_plugin_sha256")
             and status.get("current_version") == run_fields["version"]
             and status.get("current_deployment") == deployment_id
             and status.get("current_active")
@@ -551,6 +859,9 @@ def install_with_recovery(
                 "prior_deployment": status.get("prior_deployment", ""),
                 "prior_plugin_sha256": status.get("prior_plugin_sha256", ""),
                 "prior_version": status.get("prior_version", ""),
+                "installed_plugin_sha256": status.get(
+                    "installed_plugin_sha256", ""
+                ),
                 "sha256": run_fields["expected_sha256"],
                 "temp_removed": True,
                 "version": run_fields["version"],
@@ -778,11 +1089,13 @@ def delete_snippet_and_prove_404(
     targets = set(find_active_snippet_ids(client, name))
     if snippet_id is not None:
         targets.add(snippet_id)
+    retire_snippet_ids(client, token, deployment_id, targets)
     for target in sorted(targets):
-        deactivate_and_delete_snippet(client, target)
+        if get_snippet_by_id(client, target) is not None:
+            raise DeployError("Temporary bridge row deletion could not be proven")
     remaining = find_active_snippet_ids(client, name)
     if remaining:
-        remove_named_snippets(client, name)
+        remove_named_snippets(client, name, token, deployment_id)
     if find_active_snippet_ids(client, name):
         raise DeployError("Temporary bridge snippet deactivation could not be independently proven")
     status, response = client.request(
@@ -797,6 +1110,7 @@ def delete_snippet_and_prove_404(
     return {
         "snippet_deleted": True,
         "snippet_active": False,
+        "row_absence_verified": True,
         "removed_ids": sorted(targets),
         "route_404": True,
     }
@@ -818,6 +1132,10 @@ def main() -> int:
     parser.add_argument("--dist", type=Path, default=ROOT / "plugin-dist")
     parser.add_argument("--base-url", default=os.environ.get("WP_BASE_URL", ""))
     parser.add_argument("--user", default=os.environ.get("WP_DEPLOY_USER", os.environ.get("WP_USER", "")))
+    parser.add_argument(
+        "--allowed-deploy-hosts",
+        default=os.environ.get("WP_ALLOWED_DEPLOY_HOSTS", ""),
+    )
     parser.add_argument("--deployment-id", default="")
     parser.add_argument("--bootstrap-code-snippets", action="store_true")
     parser.add_argument(
@@ -841,7 +1159,18 @@ def main() -> int:
         raise DeployError("WP_BASE_URL, WP_DEPLOY_USER and WP_APP_PASSWORD are required")
     if args.fault_injection and not args.local_test:
         raise DeployError("Fault injection is restricted to isolated loopback tests")
-    validate_target_url(args.base_url, args.local_test)
+    target = validate_target_url(
+        args.base_url,
+        args.local_test,
+        args.allowed_deploy_hosts,
+    )
+    target_host = (target.hostname or "").lower()
+    allowed_hosts = (
+        {target_host}
+        if args.local_test
+        else ALLOWED_PRODUCTION_HOSTS
+        | parse_allowed_deploy_hosts(args.allowed_deploy_hosts)
+    )
     metadata, artifact, raw = load_artifact(args.dist.resolve())
     deployment_id = args.deployment_id or f"c99-{metadata['version']}-{int(time.time())}-{secrets.token_hex(4)}"
     token = secrets.token_urlsafe(36)
@@ -851,6 +1180,7 @@ def main() -> int:
         args.user,
         app_password,
         allow_local_http=args.local_test,
+        allowed_deploy_hosts=args.allowed_deploy_hosts,
     )
     snippet_id: int | None = None
     snippet_creation_attempted = False
@@ -886,17 +1216,31 @@ def main() -> int:
             max_bytes,
             args.local_test,
             args.fault_injection,
+            target_host=target_host,
+            allowed_hosts=allowed_hosts,
         )
         snippet_creation_attempted = True
         snippet_id = create_snippet(client, code, deployment_id)
+        gate = "bootstrap-cleanup"
+        audit["bootstrap_cleanup"] = remove_bootstrap_snippet(
+            client,
+            token,
+            deployment_id,
+        )
         gate = "preflight"
         preflight = preflight_with_recovery(client, token, deployment_id)
         reservation_acquired = bool(preflight.get("lock_reserved"))
         if not preflight.get("ready") or preflight.get("allowed_slug") != SLUG:
             raise DeployError("Temporary bridge preflight did not pass")
+        audit["bridge_site_identity"] = verify_bridge_site_identity(
+            preflight,
+            target_host,
+        )
         audit["stale_bridges_recovered"] = remove_prefixed_snippets(
             client,
             SNIPPET_PREFIX,
+            token,
+            deployment_id,
             exclude_ids={snippet_id},
         )
         audit["preflight"] = {
@@ -954,6 +1298,10 @@ def main() -> int:
             if (
                 result.get("sha256") != metadata["sha256"]
                 or result.get("version") != metadata["version"]
+                or not re.fullmatch(
+                    r"[a-f0-9]{64}",
+                    str(result.get("installed_plugin_sha256", "")),
+                )
                 or not result.get("temp_removed")
             ):
                 raise DeployError("Bridge install response failed integrity verification")
@@ -967,6 +1315,9 @@ def main() -> int:
                 "prior_deployment": result.get("prior_deployment", ""),
                 "prior_plugin_sha256": result.get("prior_plugin_sha256", ""),
                 "prior_version": result.get("prior_version", ""),
+                "installed_plugin_sha256": result.get(
+                    "installed_plugin_sha256", ""
+                ),
                 "temp_removed": True,
             }
             gate = "health"
@@ -1010,9 +1361,20 @@ def main() -> int:
                 reservation_acquired = bool(reservation.get("lock_reserved"))
                 if not reservation.get("ready") or not reservation_acquired:
                     raise DeployError("Post-rollback deployment reservation did not pass")
+                audit["bridge_site_identity_after_exercise"] = verify_bridge_site_identity(
+                    reservation,
+                    target_host,
+                )
                 mutation_pending = True
                 result = install_with_recovery(client, token, deployment_id, run_fields)
-                if result.get("sha256") != metadata["sha256"] or not result.get("temp_removed"):
+                if (
+                    result.get("sha256") != metadata["sha256"]
+                    or not re.fullmatch(
+                        r"[a-f0-9]{64}",
+                        str(result.get("installed_plugin_sha256", "")),
+                    )
+                    or not result.get("temp_removed")
+                ):
                     raise DeployError("Post-rollback redeploy digest verification failed")
                 audit["install_after_exercise"] = {
                     "baseline_database_fingerprint": result.get(
@@ -1024,6 +1386,9 @@ def main() -> int:
                     "prior_deployment": result.get("prior_deployment", ""),
                     "prior_plugin_sha256": result.get("prior_plugin_sha256", ""),
                     "prior_version": result.get("prior_version", ""),
+                    "installed_plugin_sha256": result.get(
+                        "installed_plugin_sha256", ""
+                    ),
                     "temp_removed": True,
                 }
                 gate = "health"

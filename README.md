@@ -13,7 +13,7 @@ existing Sites runtime:
 
 ## What is ready
 
-- Plugin `complete99-platform` version `1.0.2`.
+- Plugin `complete99-platform` version `1.0.3`.
 - Nine governed content types, seven taxonomies and four scoped editor roles.
 - Twenty-two bilingual launch concepts (40 public records and four private
   sector records held back from launch).
@@ -46,14 +46,16 @@ python scripts/build-plugin-zip.py --verify-reproducible
 python scripts/validate-package.py
 ```
 
-The release artifact is `plugin-dist/complete99-platform-1.0.2.zip`. The public
+The release artifact is `plugin-dist/complete99-platform-1.0.3.zip`. The public
 WordPress update manifest is `plugin-dist/complete99-platform.json`; immutable
 artifact digest, size and deployment metadata live separately in
 `plugin-dist/complete99-platform-integrity.json`.
 
 The deployment driver has an explicit `--local-test` mode for a disposable,
-loopback-only WordPress proof. It never accepts an UPress temporary/staging hostname;
-production remains locked to HTTPS on the final Complete99 domain.
+loopback-only WordPress proof. Production accepts the final Complete99 domains and,
+only when explicitly configured in `WP_ALLOWED_DEPLOY_HOSTS`, the exact transitional
+live-site alias `a235232-tmp.s1242.upress.link`. It never accepts a wildcard, another
+UPress hostname, or a separate staging site.
 
 ## Required production configuration
 
@@ -66,18 +68,23 @@ an enabled UPress REST API and the GitHub `production` environment secrets:
 - `WP_DEPLOY_USER`
 - `WP_APP_PASSWORD`
 
-The repository variable `WP_PRODUCTION_READY` must be exactly `true` before the
-manual production workflow can start. Keep it `false` until the final domain,
-TLS, REST access and dedicated deployment identity have all been independently
-verified. The workflow also refuses to deploy unless this exact `main` commit has
-a successful WordPress CI run.
+During the live-alias transition, set the repository variable
+`WP_ALLOWED_DEPLOY_HOSTS` to exactly `a235232-tmp.s1242.upress.link`; remove it when
+`complete99.co.il` becomes the selected `WP_BASE_URL`.
 
-Deployment waits for the purchased final `complete99.co.il` domain; no UPress staging
-or temporary public site is created. After activation, configure
-**Settings -> Complete99 Platform**. The default app and
-owned-asset origin is the existing Sites deployment
-`https://complete99-os.benben777.chatgpt.site`; verify it in the live account before
-publishing.
+The repository variable `WP_PRODUCTION_READY` must be exactly `true` before the
+manual production workflow can start. Keep it `false` until the selected live
+origin, TLS, REST access and dedicated deployment identity have all been
+independently verified. The workflow also refuses to deploy unless this exact
+`main` commit has a successful WordPress CI run.
+
+Deployment can begin on the final live UPress installation through its exact
+transitional alias; no UPress staging or duplicate test site is created. After
+activation, configure
+**Settings -> Complete99 Platform**. The public platform overview defaults to
+`https://complete99-public.benben777.chatgpt.site/platform` (and
+`/en/platform` in English); owned image assets use the separate public asset root
+`https://complete99-public.benben777.chatgpt.site`.
 
 ## Evidence boundaries
 
