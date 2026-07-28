@@ -40,6 +40,97 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertIn("Safari/", DEPLOY.USER_AGENT)
         self.assertNotIn("Complete99WordPressDeploy", DEPLOY.USER_AGENT)
 
+    def test_html_403_uses_standard_rest_route_transport_and_json_403_does_not(
+        self,
+    ) -> None:
+        class WafHandler(BaseHTTPRequestHandler):
+            paths: list[str] = []
+
+            def do_GET(self) -> None:
+                type(self).paths.append(self.path)
+                if self.path.startswith("/wp-json/wp/v2/users/me"):
+                    body = b"<html><body>forbidden by nginx</body></html>"
+                    self.send_response(403)
+                    self.send_header("Content-Type", "text/html")
+                elif self.path.startswith("/?rest_route=/wp/v2/users/me"):
+                    body = json.dumps(
+                        {"id": 1, "roles": ["administrator"]}
+                    ).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                elif self.path.startswith(
+                    "/?rest_route=/code-snippets/v1/snippets"
+                ):
+                    body = b"[]"
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                elif self.path.startswith("/wp-json/json-forbidden"):
+                    body = json.dumps(
+                        {"code": "rest_forbidden", "data": {"status": 403}}
+                    ).encode()
+                    self.send_response(403)
+                    self.send_header("Content-Type", "application/json")
+                else:
+                    body = b"not found"
+                    self.send_response(404)
+                    self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, _format: str, *_args: object) -> None:
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), WafHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        base_url = f"http://127.0.0.1:{server.server_port}"
+        try:
+            client = DEPLOY.Client(
+                base_url,
+                "local-admin",
+                "local-test-only",
+                allow_local_http=True,
+            )
+            status, user = client.request(
+                "GET",
+                "/wp-json/wp/v2/users/me?context=edit",
+            )
+            self.assertEqual(200, status)
+            self.assertEqual(["administrator"], user["roles"])
+            self.assertTrue(client.use_query_rest_transport)
+            _, snippets = client.request(
+                "GET",
+                "/wp-json/code-snippets/v1/snippets?per_page=1",
+            )
+            self.assertEqual([], snippets)
+            self.assertEqual(
+                [
+                    "/wp-json/wp/v2/users/me?context=edit",
+                    "/?rest_route=/wp/v2/users/me&context=edit",
+                    "/?rest_route=/code-snippets/v1/snippets&per_page=1",
+                ],
+                WafHandler.paths,
+            )
+
+            strict_client = DEPLOY.Client(
+                base_url,
+                "local-admin",
+                "local-test-only",
+                allow_local_http=True,
+            )
+            with self.assertRaises(DEPLOY.HTTPDeployError):
+                strict_client.request("GET", "/wp-json/json-forbidden")
+            self.assertFalse(strict_client.use_query_rest_transport)
+            self.assertEqual(
+                "/wp-json/json-forbidden",
+                WafHandler.paths[-1],
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
     def test_one_time_bootstrap_cleanup_uses_exact_name_and_proves_each_row_absent(
         self,
     ) -> None:

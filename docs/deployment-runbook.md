@@ -66,6 +66,15 @@ job runtime; they are not stored in the runner directory.
 
 Keep that narrowly scoped runner online and allow its automatic runner updates.
 If it is offline, the deploy job remains queued and no WordPress mutation occurs.
+The Windows runner uses the already-installed Python 3.11 runtime. Do not add
+`actions/setup-python` to this non-elevated job: first-time Windows tool-cache
+installation requires administrator privileges.
+
+Some UPress policies also reject an authenticated pretty REST path such as
+`/wp-json/wp/v2/users/me` with an HTML nginx 403 while permitting WordPress's
+standard `/?rest_route=/wp/v2/users/me` transport. The client retries only that
+exact non-JSON 403 signature, then keeps using query transport for the run. A JSON
+403 from WordPress is never bypassed and remains a hard failure.
 
 ## Release ritual
 
