@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.1.2.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.1.3.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-28 18:05:00",
+  "last_updated": "2026-07-28 18:20:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.1.2</h4><ul><li>Raised compact editorial and footer links to a full 44 by 44 CSS-pixel interaction target without changing the visual hierarchy.</li><li>Completed real-Chrome target-size acceptance for the live bilingual shell.</li></ul>"
+    "changelog": "<h4>1.1.3</h4><ul><li>Raised desktop mega-menu disclosure controls to a full 44 by 44 CSS-pixel interaction target.</li><li>Added an exact regression contract from post-deploy Chrome acceptance.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.1.2"
+  "version": "1.1.3"
 }
