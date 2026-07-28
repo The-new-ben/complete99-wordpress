@@ -406,6 +406,11 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertIn("recover-wordpress.py", workflow)
         self.assertIn("--discover", workflow)
         self.assertIn("WP_ALLOWED_DEPLOY_HOSTS", workflow)
+        self.assertIn(
+            "runs-on: [self-hosted, Windows, X64, complete99-deploy]",
+            workflow,
+        )
+        self.assertGreaterEqual(workflow.count("shell: powershell"), 2)
 
 
 if __name__ == "__main__":

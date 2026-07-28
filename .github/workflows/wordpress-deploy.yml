@@ -76,7 +76,7 @@ jobs:
       - require-main
       - require-production-ready
       - require-green-ci
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64, complete99-deploy]
     environment: production
     steps:
       - name: Check out approved production source
@@ -105,38 +105,46 @@ jobs:
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
           WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
-        shell: bash
+        shell: powershell
         run: |
-          bootstrap_args=()
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.bootstrap_code_snippets }}" == "true" ]]; then
-            bootstrap_args+=(--bootstrap-code-snippets)
-          fi
-          python scripts/recover-wordpress.py \
-            --discover \
-            --probe-id "c99-recovery-probe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            "${bootstrap_args[@]}"
-          dry_id="c99-dry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          python scripts/deploy-wordpress.py \
-            --dry-run \
-            --deployment-id "$dry_id" \
-            "${bootstrap_args[@]}"
-          python - "$dry_id" <<'PY'
+          $bootstrapArgs = @()
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.bootstrap_code_snippets }}" -eq "true") {
+            $bootstrapArgs += "--bootstrap-code-snippets"
+          }
+          & python scripts/recover-wordpress.py `
+            --discover `
+            --probe-id "c99-recovery-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
+            @bootstrapArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $dryId = "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          & python scripts/deploy-wordpress.py `
+            --dry-run `
+            --deployment-id $dryId `
+            @bootstrapArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $auditVerification = @'
           import json
           import pathlib
           import sys
           record = json.loads((pathlib.Path("deploy-audit") / f"{sys.argv[1]}.json").read_text())
           assert record["result"] == "dry-run-passed"
           assert record["cleanup"]["snippet_active"] is False
+          assert record["cleanup"]["row_absence_verified"] is True
           assert record["cleanup"]["route_404"] is True
-          PY
+          '@
+          $auditVerification | python - $dryId
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          deploy_args=("${bootstrap_args[@]}")
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.rollback_exercise }}" == "true" ]]; then
-            deploy_args+=(--rollback-exercise)
-          fi
-          python scripts/deploy-wordpress.py \
-            --deployment-id "c99-prod-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            "${deploy_args[@]}"
+          $deployArgs = @($bootstrapArgs)
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.rollback_exercise }}" -eq "true") {
+            $deployArgs += "--rollback-exercise"
+          }
+          & python scripts/deploy-wordpress.py `
+            --deployment-id "c99-prod-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
+            @deployArgs
+          exit $LASTEXITCODE
 
       - name: Recover any interrupted mutation with a recreated temporary bridge
         if: failure()
@@ -145,22 +153,23 @@ jobs:
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
           WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
-        shell: bash
+        shell: powershell
         run: |
-          recovery_failed=0
-          bootstrap_args=()
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.bootstrap_code_snippets }}" == "true" ]]; then
-            bootstrap_args+=(--bootstrap-code-snippets)
-          fi
-          for deployment_id in \
-            "c99-dry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
-            "c99-prod-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          do
-            python scripts/recover-wordpress.py \
-              --deployment-id "$deployment_id" \
-              "${bootstrap_args[@]}" || recovery_failed=1
-          done
-          exit "$recovery_failed"
+          $recoveryFailed = 0
+          $bootstrapArgs = @()
+          if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.bootstrap_code_snippets }}" -eq "true") {
+            $bootstrapArgs += "--bootstrap-code-snippets"
+          }
+          foreach ($deploymentId in @(
+            "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT",
+            "c99-prod-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          )) {
+            & python scripts/recover-wordpress.py `
+              --deployment-id $deploymentId `
+              @bootstrapArgs
+            if ($LASTEXITCODE -ne 0) { $recoveryFailed = 1 }
+          }
+          exit $recoveryFailed
 
       - name: Upload non-secret deployment audit
         if: always()

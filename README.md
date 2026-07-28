@@ -78,6 +78,11 @@ origin, TLS, REST access and dedicated deployment identity have all been
 independently verified. The workflow also refuses to deploy unless this exact
 `main` commit has a successful WordPress CI run.
 
+The production mutation job additionally requires the narrowly scoped
+`complete99-deploy` self-hosted runner because UPress rejects authenticated
+traffic from GitHub's changing hosted-runner IP addresses. CI and all admission
+gates remain GitHub-hosted.
+
 Deployment can begin on the final live UPress installation through its exact
 transitional alias; no UPress staging or duplicate test site is created. After
 activation, configure
