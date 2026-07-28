@@ -462,6 +462,124 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertLess(compensate_call, baseline_readback)
         self.assertLess(baseline_readback, displaced_delete)
 
+    def test_post_migration_stabilization_precedes_health_and_can_recover_forward(
+        self,
+    ) -> None:
+        bridge = (ROOT / "deploy" / "temporary-bridge.php").read_text(
+            encoding="utf-8"
+        )
+        deployer = (ROOT / "scripts" / "deploy-wordpress.py").read_text(
+            encoding="utf-8"
+        )
+        recovery = (ROOT / "scripts" / "recover-wordpress.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("$route_prefix . '/stabilize'", bridge)
+        self.assertIn("'current_database_version'", bridge)
+        stabilize = bridge.split("$route_prefix . '/stabilize'", 1)[1].split(
+            "$route_prefix . '/rollback'", 1
+        )[0]
+        self.assertIn(
+            "array( 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup' )",
+            stabilize,
+        )
+        self.assertNotIn(
+            "array( 'installed', 'failed', 'rollback_failed' )",
+            stabilize,
+        )
+        self.assertIn("'c99_stabilize_forward_mismatch'", stabilize)
+        self.assertIn("Complete99_Platform::migration_failed()", stabilize)
+        self.assertIn("'c99_stabilize_idempotency_conflict'", stabilize)
+        self.assertIn("'c99_stabilize_swap_artifacts'", stabilize)
+        self.assertIn(
+            "update_option( 'complete99_last_deployment_id', $deployment_id, false )",
+            stabilize,
+        )
+        self.assertIn("'post_install_database_fingerprint'", stabilize)
+        self.assertLess(
+            stabilize.index(
+                "update_option( 'complete99_last_deployment_id', $deployment_id, false )"
+            ),
+            stabilize.index("$post_install_snapshot = $capture_database_state()"),
+        )
+
+        install_flow = deployer.split(
+            'audit["install"] = {', 1
+        )[1].split("if args.rollback_exercise", 1)[0]
+        self.assertLess(
+            install_flow.index('gate = "stabilize"'),
+            install_flow.index('gate = "health"'),
+        )
+        self.assertIn(
+            'audit["stabilize"] = stabilize_deployment(',
+            install_flow,
+        )
+        self.assertIn(
+            'status.get("forward_stabilization_candidate")',
+            recovery,
+        )
+        self.assertIn(
+            'audit["decision"] = "stabilize_completed_forward_migration"',
+            recovery,
+        )
+
+        class StabilizeClient:
+            def request(
+                self,
+                method: str,
+                path: str,
+                payload: dict[str, object] | None = None,
+                expected: tuple[int, ...] = (200, 201),
+            ) -> tuple[int, object]:
+                if method != "POST":
+                    raise AssertionError((method, path, expected))
+                if payload != {
+                    "token": "temporary-token",
+                    "deployment_id": "c99-prod-stabilize-1234",
+                }:
+                    raise AssertionError(payload)
+                if path.endswith("/c99-prod-stabilize-1234/stabilize"):
+                    return 200, {
+                        "cache_purge": {"object_cache_flushed": True},
+                        "database_version": "1.1.1",
+                        "deployment_id": "c99-prod-stabilize-1234",
+                        "installed_plugin_sha256": "a" * 64,
+                        "post_install_database_fingerprint": "b" * 64,
+                        "stabilized": True,
+                        "stabilized_from_phase": "installed_pending_stabilization",
+                        "version": "1.1.1",
+                    }
+                if path.endswith("/c99-prod-stabilize-1234/status"):
+                    return 200, {
+                        "current_active": True,
+                        "current_database_version": "1.1.1",
+                        "current_deployment": "c99-prod-stabilize-1234",
+                        "current_plugin_sha256": "a" * 64,
+                        "current_version": "1.1.1",
+                        "database_fingerprint": "b" * 64,
+                        "installed_plugin_sha256": "a" * 64,
+                        "phase": "installed",
+                        "post_install_database_fingerprint": "b" * 64,
+                        "stabilized": True,
+                    }
+                raise AssertionError((method, path, expected))
+
+        result = DEPLOY.stabilize_deployment(
+            StabilizeClient(),
+            "temporary-token",
+            "c99-prod-stabilize-1234",
+            "1.1.1",
+            "a" * 64,
+        )
+        self.assertTrue(result["stabilized"])
+        self.assertEqual("b" * 64, result["post_install_database_fingerprint"])
+        self.assertEqual(
+            "installed_pending_stabilization",
+            result["stabilized_from_phase"],
+        )
+        self.assertIn("'c99_finalize_unstabilized'", bridge)
+
     def test_committed_cleanup_uses_the_installed_directory_digest(self) -> None:
         bridge = (ROOT / "deploy" / "temporary-bridge.php").read_text(
             encoding="utf-8"

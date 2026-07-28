@@ -135,6 +135,31 @@ Keep live changes narrow, backward compatible, and deterministic. Do not combine
 an infrastructure migration, large content rewrite, and visual redesign in one
 unrecoverable release.
 
+## Post-install migration checkpoint incident
+
+On 2026-07-28 a protected-main UPress release installed the exact reviewed ZIP,
+but its first independent health request loaded the new plugin and ran the
+content migration. The installer-request database fingerprint was therefore
+stale, and the migration temporarily replaced the dynamic production deployment
+marker with the plugin build marker. Health correctly failed on deployment
+identity; rollback correctly refused the now-unknown database fingerprint.
+
+The durable fix is a fresh-request stabilization checkpoint:
+
+- migration preserves any existing runtime deployment marker;
+- the installer ends in a clean forward-pending state;
+- a separate privileged request proves runtime constant, header version,
+  directory digest, active state, migration invariants, durable database version,
+  temp cleanup, and absence of rollback artifacts;
+- only that request writes the production marker and post-migration database
+  fingerprint;
+- status independently proves the fingerprint and `stabilized=true`;
+- finalization rejects an unstabilized install;
+- retries compare the recorded checkpoint and cannot absorb later drift.
+
+Acceptance includes an injected interruption after the forward install and
+before temp cleanup, followed by a full rollback and identical-artifact redeploy.
+
 ## Rollback proof
 
 For a first launch or pipeline change, exercise rollback rather than simulating

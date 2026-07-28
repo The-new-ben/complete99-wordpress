@@ -59,6 +59,121 @@ class MigrationRuntimeContractTests(unittest.TestCase):
         self.assertIn("'driver'          => 'mysql'", bridge)
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for the runtime contract")
+    def test_migration_preserves_runtime_deployment_identity_and_repairs_absence(
+        self,
+    ) -> None:
+        platform_path = json.dumps(PLATFORM.as_posix())
+        with tempfile.TemporaryDirectory(prefix="complete99-deployment-id-") as tmp:
+            content_dir = json.dumps(Path(tmp).as_posix())
+            script = f"""
+define('ABSPATH', __DIR__);
+define('WP_CONTENT_DIR', {content_dir});
+define('DB_ENGINE', 'sqlite');
+define('COMPLETE99_PLATFORM_VERSION', '9.9.9');
+define('COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-9.9.9');
+
+class WP_Error {{}}
+function is_wp_error($value) {{ return $value instanceof WP_Error; }}
+function trailingslashit($value) {{ return rtrim($value, '/\\\\') . '/'; }}
+function get_current_blog_id() {{ return 1; }}
+function home_url($path = '/') {{ return 'http://localhost' . $path; }}
+function maybe_unserialize($value) {{ return $value; }}
+function wp_cache_flush() {{ return true; }}
+function flush_rewrite_rules($hard = true) {{ return true; }}
+function update_option($name, $value, $autoload = null) {{
+    global $wpdb;
+    $wpdb->values[$name] = $value;
+    return true;
+}}
+
+class Complete99_Content {{
+    public static function register() {{}}
+    public static function register_rewrites() {{}}
+    public static function install_roles() {{}}
+    public static function seed_launch_content() {{}}
+    public static function assert_migration_invariants() {{}}
+}}
+class Complete99_Leads {{
+    public static function register_post_type() {{}}
+}}
+class Complete99_Settings {{
+    public static function install_defaults() {{}}
+    public static function assert_defaults() {{}}
+}}
+
+class MigrationWpdbIdentityStub {{
+    public $prefix = 'wp_';
+    public $options = 'wp_options';
+    public $last_error = '';
+    public $is_mysql = false;
+    public $values = array();
+    public function prepare($query, ...$args) {{
+        return array('query' => $query, 'args' => $args);
+    }}
+    public function get_var($prepared) {{
+        $name = (string) ($prepared['args'][0] ?? '');
+        return array_key_exists($name, $this->values)
+            ? $this->values[$name]
+            : null;
+    }}
+    public function query($query) {{ return 1; }}
+}}
+$wpdb = new MigrationWpdbIdentityStub();
+require {platform_path};
+$run = new ReflectionMethod('Complete99_Platform', 'run_migration');
+$run->setAccessible(true);
+
+$cases = array(
+    'dynamic' => 'c99-prod-runtime-123',
+    'missing' => null,
+    'empty' => '',
+);
+$results = array();
+foreach ($cases as $label => $deployment) {{
+    $wpdb->values = array('complete99_platform_version' => '1.0.4');
+    if (null !== $deployment) {{
+        $wpdb->values['complete99_last_deployment_id'] = $deployment;
+    }}
+    $result = $run->invoke(null, false);
+    $results[$label] = array(
+        'ok' => true === $result,
+        'version' => $wpdb->values['complete99_platform_version'] ?? '',
+        'deployment' => $wpdb->values['complete99_last_deployment_id'] ?? '',
+    );
+}}
+echo json_encode($results, JSON_THROW_ON_ERROR);
+"""
+            completed = subprocess.run(
+                ["php", "-r", script],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+                check=False,
+            )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual(
+            {
+                "ok": True,
+                "version": "9.9.9",
+                "deployment": "c99-prod-runtime-123",
+            },
+            result["dynamic"],
+        )
+        for label in ("missing", "empty"):
+            self.assertEqual(
+                {
+                    "ok": True,
+                    "version": "9.9.9",
+                    "deployment": "c99-wp-9.9.9",
+                },
+                result[label],
+            )
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for the runtime contract")
     def test_recipe_provenance_preserves_chef_edits(self) -> None:
         content_path = json.dumps(CONTENT.as_posix())
         script = f"""

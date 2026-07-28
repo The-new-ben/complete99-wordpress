@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.1.0.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.1.1.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-28 16:45:00",
+  "last_updated": "2026-07-28 17:35:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.1.0</h4><ul><li>Introduced a premium bilingual public shell with crawlable mega navigation, deep breadcrumbs, accessible mobile controls and a structured six-cluster footer.</li><li>Added eight substantive Hebrew and English topic hubs, truthful legal foundations and governed sitemap, robots and translation behavior.</li><li>Replaced remote presentation imagery with optimized local archive assets and an original Complete99 editorial illustration.</li><li>Added a deliberately non-transactional, noindex commerce foundation that cannot imply products, prices or checkout before merchant configuration is complete.</li></ul>"
+    "changelog": "<h4>1.1.1</h4><ul><li>Added a fresh-request migration checkpoint so the deploy bridge verifies the exact plugin, database, runtime and deployment identity before health checks or finalization.</li><li>Preserved the bridge-owned runtime deployment marker during content migrations while repairing a genuinely missing marker on first activation.</li><li>Made interrupted clean forward installs recover idempotently without blessing failed or partially rolled-back states.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.1.0"
+  "version": "1.1.1"
 }
