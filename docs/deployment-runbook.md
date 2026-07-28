@@ -38,8 +38,8 @@ Create environment `production`, add any desired reviewer gate, and add:
 - `WP_APP_PASSWORD` — site-specific WordPress Application Password.
 
 Set the repository variable `WP_PRODUCTION_READY` to `false` during setup. Change
-it to exactly `true` only after the final-domain checks above pass. Protect `main`
-and require the **WordPress CI / validate** check. The production workflow also
+it to exactly `true` only after the selected live origin checks above pass. Protect
+`main` and require the **WordPress CI / validate** check. The production workflow also
 queries GitHub and refuses any commit that does not have its own successful CI run.
 Repository Actions permission remains read-only; the deploy workflow adds only
 `actions: read`. Both workflows pin referenced third-party actions to full SHAs.
@@ -48,6 +48,24 @@ Leave the repository variable `WP_ALLOWED_DEPLOY_HOSTS` empty after the final do
 is connected. During the live-alias transition, set it to exactly
 `a235232-tmp.s1242.upress.link` and set `WP_BASE_URL` to the matching clean HTTPS
 origin.
+
+## WAF-safe deployment runner
+
+UPress accepts the public REST root from standard GitHub-hosted runners but rejects
+authenticated traffic from their changing Azure egress addresses. GitHub itself
+recommends a self-hosted runner or a larger runner with static egress when a target
+is protected by an IP/WAF boundary.
+
+Only the production `deploy` job uses the repository-scoped Windows runner with
+the exact labels `self-hosted`, `Windows`, `X64` and `complete99-deploy`. CI,
+branch/readiness gates and pull-request checks remain on GitHub-hosted runners.
+The self-hosted job is reachable only from the manual, `main`-restricted workflow
+after exact-commit CI and the `production` environment gate pass. No pull-request
+workflow targets the self-hosted label. GitHub injects the environment secrets at
+job runtime; they are not stored in the runner directory.
+
+Keep that narrowly scoped runner online and allow its automatic runner updates.
+If it is offline, the deploy job remains queued and no WordPress mutation occurs.
 
 ## Release ritual
 
