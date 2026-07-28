@@ -23,7 +23,11 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = "complete99-platform"
 BRIDGE_TEMPLATE = ROOT / "deploy" / "temporary-bridge.php"
-USER_AGENT = "Complete99WordPressDeploy/1.0"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/150.0.0.0 Safari/537.36"
+)
 ALLOWED_PRODUCTION_HOSTS = {"complete99.co.il", "www.complete99.co.il"}
 SUPPORTED_TRANSITIONAL_HOSTS = {"a235232-tmp.s1242.upress.link"}
 ALLOWED_LOCAL_TEST_HOSTS = {"127.0.0.1", "localhost", "::1"}
