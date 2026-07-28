@@ -147,6 +147,7 @@ html[dir="rtl"] body.complete99-public {
 
 .c99-brand {
 	display: inline-flex;
+	min-height: 44px;
 	flex: 0 0 auto;
 	align-items: center;
 	gap: 12px;
@@ -1883,8 +1884,9 @@ html[dir="rtl"] body.complete99-public {
 	}
 
 	.c99-language-switch {
-		width: 42px;
-		flex-basis: 42px;
+		width: 44px;
+		min-width: 44px;
+		flex-basis: 44px;
 	}
 
 	.c99-primary-nav a {
