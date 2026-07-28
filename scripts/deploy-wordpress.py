@@ -166,6 +166,50 @@ class Client:
             urllib.request.HTTPSHandler(context=self.ssl_context),
             RejectRedirects(),
         )
+        self.use_query_rest_transport = False
+
+    @staticmethod
+    def query_rest_path(path: str) -> str | None:
+        """Return WordPress's standard query transport for a pretty REST path."""
+        parsed = urllib.parse.urlsplit(path)
+        if (
+            parsed.fragment
+            or not parsed.path.startswith("/wp-json/")
+            or parsed.path.startswith("//")
+        ):
+            return None
+        route = parsed.path[len("/wp-json") :]
+        query = "rest_route=" + urllib.parse.quote(route, safe="/")
+        if parsed.query:
+            query += "&" + parsed.query
+        return "/?" + query
+
+    def _request_once(
+        self,
+        method: str,
+        path: str,
+        body: bytes | None,
+        headers: dict[str, str],
+    ) -> tuple[int, bytes]:
+        url = self.base_url + path
+        request = urllib.request.Request(url, data=body, headers=headers, method=method)
+        try:
+            with self.opener.open(request, timeout=self.timeout) as response:
+                if response.geturl() != url:
+                    raise DeployError("Deployment requests may not follow redirects")
+                return response.status, response.read()
+        except urllib.error.HTTPError as error:
+            return error.code, error.read()
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            reason = getattr(error, "reason", type(error).__name__)
+            raise DeployError(f"Network request failed: {reason}") from error
+
+    @staticmethod
+    def _parse_json_response(raw: bytes) -> Any:
+        try:
+            return json.loads(raw.decode("utf-8")) if raw else {}
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return {"non_json_response": True, "length": len(raw)}
 
     def request(
         self,
@@ -176,7 +220,6 @@ class Client:
     ) -> tuple[int, Any]:
         if not path.startswith("/") or path.startswith("//"):
             raise DeployError("Deployment request path must be site-relative")
-        url = self.base_url + path
         body = None
         headers = {
             "Accept": "application/json",
@@ -186,24 +229,33 @@ class Client:
         if payload is not None:
             body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
             headers["Content-Type"] = "application/json"
-        request = urllib.request.Request(url, data=body, headers=headers, method=method)
-        try:
-            with self.opener.open(request, timeout=self.timeout) as response:
-                if response.geturl() != url:
-                    raise DeployError("Deployment requests may not follow redirects")
-                status = response.status
-                raw = response.read()
-        except urllib.error.HTTPError as error:
-            status = error.code
-            raw = error.read()
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
-            reason = getattr(error, "reason", type(error).__name__)
-            raise DeployError(f"Network request failed: {reason}") from error
-        parsed: Any
-        try:
-            parsed = json.loads(raw.decode("utf-8")) if raw else {}
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            parsed = {"non_json_response": True, "length": len(raw)}
+        alternate_path = self.query_rest_path(path)
+        effective_path = (
+            alternate_path
+            if self.use_query_rest_transport and alternate_path is not None
+            else path
+        )
+        status, raw = self._request_once(method, effective_path, body, headers)
+        parsed = self._parse_json_response(raw)
+
+        # UPress can reject pretty wp-json paths in nginx before WordPress runs.
+        # Retry only the exact HTML-403 signature through WordPress's standard
+        # rest_route transport. A JSON 403 remains a real WordPress refusal.
+        if (
+            effective_path == path
+            and alternate_path is not None
+            and status == 403
+            and isinstance(parsed, dict)
+            and parsed.get("non_json_response") is True
+        ):
+            status, raw = self._request_once(method, alternate_path, body, headers)
+            parsed = self._parse_json_response(raw)
+            if not (
+                status == 403
+                and isinstance(parsed, dict)
+                and parsed.get("non_json_response") is True
+            ):
+                self.use_query_rest_transport = True
         if status not in expected:
             raw_code = (
                 str(parsed.get("code", "http_error"))
@@ -273,7 +325,13 @@ class Client:
     ) -> tuple[int, Any]:
         if not path.startswith("/") or path.startswith("//") or "#" in path:
             raise DeployError("Public verification path must be site-relative")
-        url = self.base_url + path
+        alternate_path = self.query_rest_path(path)
+        effective_path = (
+            alternate_path
+            if self.use_query_rest_transport and alternate_path is not None
+            else path
+        )
+        url = self.base_url + effective_path
         request = urllib.request.Request(
             url,
             headers={
