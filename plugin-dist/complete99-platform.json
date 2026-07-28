@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.1.4.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.1.5.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-28 18:32:00",
+  "last_updated": "2026-07-28 18:48:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.1.4</h4><ul><li>Raised the mobile home brand and language switch to full 44 CSS-pixel interaction targets.</li><li>Completed closed- and open-menu mobile target-size acceptance without horizontal overflow.</li></ul>"
+    "changelog": "<h4>1.1.5</h4><ul><li>Expanded the desktop header canvas for long English navigation labels while preserving Hebrew and responsive behavior.</li><li>Verified non-overlapping header geometry at 1181, 1200, 1366 and 1440 CSS pixels.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.1.4"
+  "version": "1.1.5"
 }
