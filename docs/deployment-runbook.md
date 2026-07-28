@@ -105,6 +105,11 @@ backup, releases the lock, permanently deletes the temporary Code Snippets datab
 row through the protected bridge, independently proves that exact row is absent,
 and then proves the route returns 404.
 
+Managed-host requests use a normal browser request signature with only standard
+`Accept`, `Authorization`, `Content-Type` and `User-Agent` headers. Do not add an
+`X-*` deployment header or send HTML/multipart bodies: UPress can reject those at
+nginx before WordPress receives the request.
+
 ## Mandatory live canary/rollback exercise
 
 After the first release is healthy, run:

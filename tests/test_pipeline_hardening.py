@@ -34,6 +34,12 @@ RECOVER = load_module(
 
 
 class PipelineHardeningTests(unittest.TestCase):
+    def test_upress_requests_use_a_normal_browser_signature(self) -> None:
+        self.assertTrue(DEPLOY.USER_AGENT.startswith("Mozilla/5.0 "))
+        self.assertIn("Chrome/", DEPLOY.USER_AGENT)
+        self.assertIn("Safari/", DEPLOY.USER_AGENT)
+        self.assertNotIn("Complete99WordPressDeploy", DEPLOY.USER_AGENT)
+
     def test_one_time_bootstrap_cleanup_uses_exact_name_and_proves_each_row_absent(
         self,
     ) -> None:

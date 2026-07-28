@@ -57,7 +57,7 @@ commit cleanup, concurrent lock exclusion and canonical cross-platform ZIP proof
 
 ## Static and public release gates
 
-- all 60 contract tests pass; the network-gated public-host test was also run
+- all 61 contract tests pass; the network-gated public-host test was also run
   separately and passed;
 - seven public platform/asset URL groups return anonymous HTTP 200;
 - PHP lint passes for every plugin and bridge PHP file;
