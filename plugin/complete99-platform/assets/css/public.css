@@ -257,7 +257,8 @@ html[dir="rtl"] body.complete99-public {
 
 .c99-mega-toggle {
 	display: inline-grid;
-	width: 32px;
+	width: 44px;
+	min-width: 44px;
 	padding: 0;
 	place-items: center;
 	cursor: pointer;

@@ -80,6 +80,10 @@ class PremiumChromeContracts(unittest.TestCase):
             self.css,
             r"(?s)\.c99-footer-cluster a\s*\{[^}]*min-width:\s*44px",
         )
+        self.assertRegex(
+            self.css,
+            r"(?s)\.c99-mega-toggle\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px",
+        )
 
     def test_hubs_have_rich_cards_and_store_language_is_non_transactional(self) -> None:
         self.assertIn("private static function render_hub_experience", self.frontend)
