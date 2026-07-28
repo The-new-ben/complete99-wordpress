@@ -1,6 +1,8 @@
 (function () {
 	'use strict';
 
+	document.documentElement.classList.add('c99-js');
+
 	var toggle = document.querySelector('.c99-menu-toggle');
 	var nav = document.getElementById('c99-primary-nav');
 	if (!toggle || !nav) {

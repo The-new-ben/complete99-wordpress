@@ -13,7 +13,14 @@ final class Complete99_Frontend {
 		add_filter( 'wp_robots', array( __CLASS__, 'robots' ) );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 		add_action( 'wp_head', array( __CLASS__, 'head_metadata' ), 4 );
+		add_action( 'template_redirect', array( __CLASS__, 'remove_core_canonical' ), 0 );
 		add_action( 'template_redirect', array( __CLASS__, 'protect_unready_dishes' ), 1 );
+	}
+
+	public static function remove_core_canonical() {
+		if ( is_singular() && Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
+			remove_action( 'wp_head', 'rel_canonical' );
+		}
 	}
 
 	public static function protect_unready_dishes() {
@@ -45,8 +52,12 @@ final class Complete99_Frontend {
 	public static function body_classes( $classes ) {
 		if ( is_singular() && Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
 			$lang      = Complete99_Content::language_for_post( get_queried_object_id() );
+			if ( 'en' === $lang ) {
+				$classes = array_values( array_diff( $classes, array( 'rtl' ) ) );
+			}
 			$classes[] = 'complete99-public';
 			$classes[] = 'complete99-lang-' . $lang;
+			$classes[] = 'en' === $lang ? 'complete99-ltr' : 'complete99-rtl';
 		}
 		return $classes;
 	}
@@ -107,11 +118,16 @@ final class Complete99_Frontend {
 		echo '<meta name="description" content="' . esc_attr( wp_strip_all_tags( $post->post_excerpt ) ) . '" />' . "\n";
 		echo '<meta property="og:type" content="website" />' . "\n";
 		echo '<meta property="og:locale" content="' . esc_attr( 'he' === $lang ? 'he_IL' : 'en_US' ) . '" />' . "\n";
+		echo '<meta property="og:locale:alternate" content="' . esc_attr( 'he' === $lang ? 'en_US' : 'he_IL' ) . '" />' . "\n";
 		echo '<meta property="og:title" content="' . esc_attr( wp_strip_all_tags( $post->post_title ) ) . '" />' . "\n";
 		echo '<meta property="og:description" content="' . esc_attr( wp_strip_all_tags( $post->post_excerpt ) ) . '" />' . "\n";
 		echo '<meta property="og:url" content="' . esc_url( $canonical ) . '" />' . "\n";
+		echo '<meta name="twitter:card" content="' . esc_attr( $image ? 'summary_large_image' : 'summary' ) . '" />' . "\n";
+		echo '<meta name="twitter:title" content="' . esc_attr( wp_strip_all_tags( $post->post_title ) ) . '" />' . "\n";
+		echo '<meta name="twitter:description" content="' . esc_attr( wp_strip_all_tags( $post->post_excerpt ) ) . '" />' . "\n";
 		if ( $image ) {
 			echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
+			echo '<meta name="twitter:image" content="' . esc_url( $image ) . '" />' . "\n";
 		}
 
 		$schema = self::schema_graph( $post, $lang, $alternate );
@@ -123,6 +139,7 @@ final class Complete99_Frontend {
 		$org_id  = home_url( '/#organization' );
 		$page_id = $url . '#webpage';
 		$image   = self::post_image_url( $post->ID );
+		$key     = (string) get_post_meta( $post->ID, '_complete99_translation_key', true );
 		$graph   = array(
 			array(
 				'@type' => 'Organization',
@@ -138,9 +155,12 @@ final class Complete99_Frontend {
 				'description' => wp_strip_all_tags( $post->post_excerpt ),
 				'inLanguage'  => $lang,
 				'isPartOf'     => array( '@id' => home_url( '/#website' ) ),
-				'breadcrumb'   => array( '@id' => $url . '#breadcrumb' ),
 			),
-			array(
+		);
+
+		if ( 'home' !== $key ) {
+			$graph[1]['breadcrumb'] = array( '@id' => $url . '#breadcrumb' );
+			$graph[]                = array(
 				'@type'           => 'BreadcrumbList',
 				'@id'             => $url . '#breadcrumb',
 				'itemListElement' => array(
@@ -157,9 +177,10 @@ final class Complete99_Frontend {
 						'item'     => $url,
 					),
 				),
-			),
-		);
-		$graph[0]['logo'] = Complete99_Settings::owned_asset_url( 'c99-identity-legacy-logo-square-small-2021-wp-v01.png' );
+			);
+		}
+
+		$graph[0]['logo'] = Complete99_Settings::owned_asset_url( 'c99-identity-legacy-logo-square-2021-wp-v01.png' );
 		$graph[]          = array(
 			'@type'       => 'WebSite',
 			'@id'         => home_url( '/#website' ),
@@ -180,13 +201,12 @@ final class Complete99_Frontend {
 			);
 		}
 
-		$key = (string) get_post_meta( $post->ID, '_complete99_translation_key', true );
-		if ( 'app' === $key && Complete99_Settings::app_url() ) {
+		if ( 'app' === $key && Complete99_Settings::app_url( $lang ) ) {
 			$graph[] = array(
 				'@type'               => 'WebApplication',
 				'@id'                 => $url . '#application',
 				'name'                => 'Complete99 OS',
-				'url'                 => Complete99_Settings::app_url(),
+				'url'                 => Complete99_Settings::app_url( $lang ),
 				'applicationCategory' => 'BusinessApplication',
 				'operatingSystem'     => 'Web',
 				'description'         => wp_strip_all_tags( $post->post_excerpt ),
@@ -290,11 +310,11 @@ final class Complete99_Frontend {
 		$is_he = 'he' === $lang;
 		$image = self::post_image_url( $post->ID );
 
-		self::render_breadcrumb( $post, $lang );
 		if ( 'home' === $key ) {
 			self::render_home( $post, $lang, $image );
 			return;
 		}
+		self::render_breadcrumb( $post, $lang );
 		?>
 		<section class="c99-page-hero">
 			<div class="c99-container c99-page-hero-grid">
@@ -455,12 +475,12 @@ final class Complete99_Frontend {
 
 	private static function render_app_tour( $lang ) {
 		$is_he = 'he' === $lang;
-		$url   = Complete99_Settings::app_url();
+		$url   = Complete99_Settings::app_url( $lang );
 		?>
 		<section class="c99-app-launch">
 			<div class="c99-container c99-app-launch-inner">
 				<div><p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מערכת תפעול מחוברת' : 'Connected operating system' ); ?></p><h2><?php echo esc_html( $is_he ? 'פתחו את מרכז השליטה של Complete99' : 'Open the Complete99 command centre' ); ?></h2><p><?php echo esc_html( $is_he ? 'מרכז השליטה מלווה את עבודת השירות והתפעול ואינו מוצע כמוצר תוכנה עצמאי.' : 'The command centre supports the foodservice and operating engagement; it is not offered as standalone software.' ); ?></p></div>
-				<?php if ( $url ) : ?><a class="c99-button c99-button-primary c99-button-large" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'פתיחת האפליקציה' : 'Launch the application' ); ?></a><?php endif; ?>
+				<?php if ( $url ) : ?><a class="c99-button c99-button-primary c99-button-large" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'סקירת יכולות המערכת' : 'Explore the platform' ); ?></a><?php endif; ?>
 			</div>
 		</section>
 		<?php

@@ -27,6 +27,14 @@ body.complete99-public {
 	-webkit-font-smoothing: antialiased;
 }
 
+html[dir="ltr"] body.complete99-public {
+	direction: ltr;
+}
+
+html[dir="rtl"] body.complete99-public {
+	direction: rtl;
+}
+
 .complete99-public *,
 .complete99-public *::before,
 .complete99-public *::after {
@@ -1060,12 +1068,12 @@ body.complete99-public {
 		margin-inline-end: auto;
 	}
 
-	.c99-menu-toggle {
+	html.c99-js .c99-menu-toggle {
 		display: inline-flex;
 	}
 
 	.c99-primary-nav {
-		display: none;
+		display: flex;
 		width: 100%;
 		flex: 1 0 100%;
 		padding: 10px;
@@ -1077,7 +1085,11 @@ body.complete99-public {
 		justify-content: flex-start;
 	}
 
-	.c99-primary-nav.is-open {
+	html.c99-js .c99-primary-nav {
+		display: none;
+	}
+
+	html.c99-js .c99-primary-nav.is-open {
 		display: flex;
 	}
 

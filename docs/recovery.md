@@ -4,7 +4,7 @@
 
 The deployer calls rollback before deleting the temporary bridge, verifies the exact
 database fingerprint and prior plugin-directory digest, checks the restored public
-surface, then removes the bridge and proves 404. Preserve the non-secret audit
+surface, then permanently removes the bridge row and proves 404. Preserve the non-secret audit
 artifact and stop promotion.
 
 If the process disappeared during a transitional phase, wait for the recovery lease.
@@ -12,8 +12,12 @@ The normal workflow does this automatically. To recover the same deployment from
 new agent process, use:
 
 ```powershell
-python scripts/recover-wordpress.py --deployment-id <original-deployment-id>
+python scripts/recover-wordpress.py --discover
 ```
+
+Use `--deployment-id <original-deployment-id>` when that exact ID is already known.
+Discovery creates an authenticated probe, reads only the lock owner returned by
+WordPress, removes the probe, and recovers that exact owner.
 
 This recreates a temporary route with a new random token. The encrypted journal key
 is recoverable only inside the same WordPress installation because it is derived from
@@ -52,6 +56,7 @@ user/activity logs. Do not reuse the owner’s personal password.
 
 If commit cleanup fails, keep the release decision: do not roll back a committed
 version. Run `recover-wordpress.py` with the original ID until backup removal and
-lock release are proven. The recovery command deletes its own snippet and proves the
-route is 404. A release is failed until both `state_removed` and `lock_released` are
-true, even when the new public version appears healthy.
+lock release are proven. The recovery command proves its own snippet row is absent
+and its route is 404. A release is failed until `state_removed`, `lock_released`,
+`row_absence_verified` and `route_404` are true, even when the new public version
+appears healthy.

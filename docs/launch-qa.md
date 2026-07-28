@@ -52,24 +52,28 @@ content.
 
 ## Live operational checks
 
-- `complete99.co.il` is the final HTTPS production origin; no UPress staging site is used.
-- UPress REST is enabled on that final site.
+- The selected HTTPS production origin is either `complete99.co.il` or the one
+  explicitly allowlisted transitional alias of that same live installation; no
+  UPress staging site is used.
+- UPress REST is enabled on that selected live origin.
 - Public health returns expected component, version and deployment ID.
 - Public health `database_version` matches the plugin version; incomplete migrations
   return 503.
-- Temporary deployment route returns 404 after every run.
+- The temporary Code Snippets row is permanently absent and its deployment route
+  returns 404 after every run.
 - Cache is purged and a cache-busting GET renders the new body.
 - Owned asset URLs resolve; no reference image is used.
 - Sites app URL opens, but demo state is not presented as authenticated production.
 
 ## Native pipeline acceptance
 
-The release pipeline was exercised on WordPress 6.9.4 with PHP 8.3.31 through real
+The release pipeline was exercised on WordPress 7.0.2 with PHP 8.3.31 through real
 Application Password and Code Snippets REST requests. Acceptance included:
 
-- dry preflight and cleanup;
 - normal first installation;
 - update, rollback, exact database/plugin verification and redeploy;
+- authenticated discovery and recovery of an orphaned reservation;
+- permanent deletion of active, inactive and trashed temporary snippet rows;
 - first-install failure after activation with complete database/file removal;
 - forced database-capture failure;
 - interruptions after preparation, after installation and halfway through rollback;

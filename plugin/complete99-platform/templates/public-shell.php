@@ -17,6 +17,7 @@ $complete99_deployment = (string) get_option( 'complete99_last_deployment_id', C
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<script>document.documentElement.classList.add('c99-js');</script>
 	<?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>

@@ -284,6 +284,23 @@ final class Complete99_Content {
 	}
 
 	public static function install_roles() {
+		$requirements = self::role_requirements();
+		foreach ( $requirements['roles'] as $slug => $spec ) {
+			self::upsert_role( $slug, $spec['label'], $spec['caps'] );
+		}
+
+		$administrator = get_role( 'administrator' );
+		if ( ! $administrator ) {
+			throw new \RuntimeException( 'The administrator role is unavailable.' );
+		}
+		foreach ( $requirements['administrator_caps'] as $cap ) {
+			$administrator->add_cap( $cap );
+		}
+
+		self::assert_roles_persisted( $requirements );
+	}
+
+	private static function role_requirements() {
 		$all_caps       = array();
 		$food_caps      = array();
 		$marketing_caps = array();
@@ -304,17 +321,27 @@ final class Complete99_Content {
 		}
 
 		$page_caps = array( 'edit_pages', 'edit_others_pages', 'edit_published_pages', 'publish_pages', 'read_private_pages', 'delete_pages', 'delete_published_pages' );
-		self::upsert_role( 'complete99_content_editor', 'Complete99 Content Editor', array_merge( $all_caps, $page_caps, array( 'read', 'upload_files' ) ) );
-		self::upsert_role( 'complete99_food_editor', 'Complete99 Food Editor', array_merge( $food_caps, array( 'read', 'upload_files' ) ) );
-		self::upsert_role( 'complete99_marketing_editor', 'Complete99 Marketing Editor', array_merge( $marketing_caps, $page_caps, array( 'read', 'upload_files' ) ) );
-		self::upsert_role( 'complete99_location_manager', 'Complete99 Location Manager', array_merge( $location_caps, array( 'read', 'upload_files' ) ) );
-
-		$administrator = get_role( 'administrator' );
-		if ( $administrator ) {
-			foreach ( array_unique( array_merge( $all_caps, array( 'read_c99_lead', 'read_private_c99_leads', 'edit_c99_lead', 'edit_c99_leads', 'edit_others_c99_leads', 'delete_c99_lead', 'delete_c99_leads', 'delete_others_c99_leads' ) ) ) as $cap ) {
-				$administrator->add_cap( $cap );
-			}
-		}
+		return array(
+			'roles'              => array(
+				'complete99_content_editor'   => array(
+					'label' => 'Complete99 Content Editor',
+					'caps'  => array_values( array_unique( array_merge( $all_caps, $page_caps, array( 'read', 'upload_files' ) ) ) ),
+				),
+				'complete99_food_editor'      => array(
+					'label' => 'Complete99 Food Editor',
+					'caps'  => array_values( array_unique( array_merge( $food_caps, array( 'read', 'upload_files' ) ) ) ),
+				),
+				'complete99_marketing_editor' => array(
+					'label' => 'Complete99 Marketing Editor',
+					'caps'  => array_values( array_unique( array_merge( $marketing_caps, $page_caps, array( 'read', 'upload_files' ) ) ) ),
+				),
+				'complete99_location_manager' => array(
+					'label' => 'Complete99 Location Manager',
+					'caps'  => array_values( array_unique( array_merge( $location_caps, array( 'read', 'upload_files' ) ) ) ),
+				),
+			),
+			'administrator_caps' => array_values( self::administrator_caps( $all_caps ) ),
+		);
 	}
 
 	private static function upsert_role( $slug, $label, $caps ) {
@@ -323,10 +350,78 @@ final class Complete99_Content {
 			$role = add_role( $slug, $label, array( 'read' => true ) );
 		}
 		if ( ! $role ) {
-			return;
+			throw new \RuntimeException( 'A required Complete99 role could not be stored.' );
 		}
 		foreach ( array_unique( $caps ) as $cap ) {
 			$role->add_cap( $cap );
+		}
+	}
+
+	private static function administrator_caps( $all_caps ) {
+		return array_unique(
+			array_merge(
+				$all_caps,
+				array(
+					'read_c99_lead',
+					'read_private_c99_leads',
+					'edit_c99_lead',
+					'edit_c99_leads',
+					'edit_others_c99_leads',
+					'delete_c99_lead',
+					'delete_c99_leads',
+					'delete_others_c99_leads',
+				)
+			)
+		);
+	}
+
+	/**
+	 * Read the serialized roles option from the current transaction.
+	 *
+	 * WP_Role mutates its in-memory object before WP_Roles attempts the option
+	 * write, and WP_Roles discards update_option() failures. Only the database
+	 * row proves that a capability will survive the next request.
+	 *
+	 * @param array|null $requirements Optional precomputed capability contract.
+	 */
+	private static function assert_roles_persisted( $requirements = null ) {
+		global $wpdb;
+
+		$requirements = is_array( $requirements ) ? $requirements : self::role_requirements();
+		$role_key     = $wpdb->get_blog_prefix( get_current_blog_id() ) . 'user_roles';
+		$wpdb->last_error = '';
+		$raw = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+				$role_key
+			)
+		);
+		if ( '' !== (string) $wpdb->last_error || null === $raw ) {
+			throw new \RuntimeException( 'The durable WordPress roles option is unavailable.' );
+		}
+		$stored = maybe_unserialize( $raw );
+		if ( ! is_array( $stored ) ) {
+			throw new \RuntimeException( 'The durable WordPress roles option is invalid.' );
+		}
+
+		foreach ( $requirements['roles'] as $slug => $spec ) {
+			if ( ! isset( $stored[ $slug ]['capabilities'] ) || ! is_array( $stored[ $slug ]['capabilities'] ) ) {
+				throw new \RuntimeException( 'A required Complete99 role is missing from durable storage.' );
+			}
+			foreach ( $spec['caps'] as $cap ) {
+				if ( true !== ( $stored[ $slug ]['capabilities'][ $cap ] ?? null ) ) {
+					throw new \RuntimeException( 'A required Complete99 role capability is missing from durable storage.' );
+				}
+			}
+		}
+
+		if ( ! isset( $stored['administrator']['capabilities'] ) || ! is_array( $stored['administrator']['capabilities'] ) ) {
+			throw new \RuntimeException( 'The administrator role is missing from durable storage.' );
+		}
+		foreach ( $requirements['administrator_caps'] as $cap ) {
+			if ( true !== ( $stored['administrator']['capabilities'][ $cap ] ?? null ) ) {
+				throw new \RuntimeException( 'A required administrator capability is missing from durable storage.' );
+			}
 		}
 	}
 
@@ -385,6 +480,9 @@ final class Complete99_Content {
 				} elseif ( $id && ( ! get_option( 'page_on_front' ) || get_post_meta( (int) get_option( 'page_on_front' ), '_complete99_seed_key', true ) ) ) {
 					update_option( 'show_on_front', 'page' );
 					update_option( 'page_on_front', $id );
+					if ( 'page' !== get_option( 'show_on_front' ) || $id !== (int) get_option( 'page_on_front' ) ) {
+						throw new \RuntimeException( 'Complete99 front-page options failed readback.' );
+					}
 				}
 			}
 		}
@@ -411,14 +509,15 @@ final class Complete99_Content {
 	}
 
 	private static function upsert_seed( $blueprint, $language, $parent ) {
-		$seed_key = $blueprint['key'] . ':' . $language;
-		$existing = self::find_seed_post_id( $seed_key );
-		$title    = $blueprint['title'][ $language ];
-		$excerpt  = $blueprint['excerpt'][ $language ];
-		$content  = $blueprint['content'][ $language ];
-		$slug     = $blueprint['slug'][ $language ];
-		$status   = isset( $blueprint['status'] ) ? $blueprint['status'] : 'publish';
-		$post     = array(
+		$seed_key        = $blueprint['key'] . ':' . $language;
+		$existing_record = self::unique_seed_record( $seed_key, true );
+		$existing        = $existing_record ? (int) $existing_record['ID'] : 0;
+		$title           = $blueprint['title'][ $language ];
+		$excerpt         = $blueprint['excerpt'][ $language ];
+		$content         = $blueprint['content'][ $language ];
+		$slug            = $blueprint['slug'][ $language ];
+		$status          = self::expected_seed_status( $blueprint );
+		$post            = array(
 			'post_type'    => $blueprint['type'],
 			'post_title'   => $title,
 			'post_name'    => $slug,
@@ -430,25 +529,49 @@ final class Complete99_Content {
 		$new_hash = self::content_hash( $post );
 
 		if ( $existing ) {
-			$current = get_post( $existing );
-			if ( ! $current ) {
-				return 0;
-			}
-			$stored_hash  = (string) get_post_meta( $existing, '_complete99_seed_hash', true );
+			$hash_state   = self::direct_single_meta_state( $existing, '_complete99_seed_hash' );
 			$current_hash = self::content_hash(
 				array(
-					'post_title'   => $current->post_title,
-					'post_excerpt' => $current->post_excerpt,
-					'post_content' => $current->post_content,
+					'post_title'   => $existing_record['post_title'],
+					'post_excerpt' => $existing_record['post_excerpt'],
+					'post_content' => $existing_record['post_content'],
 				)
 			);
-			if ( '' !== $stored_hash && hash_equals( $stored_hash, $current_hash ) ) {
+			$current_status  = (string) $existing_record['post_status'];
+			$required_status = self::required_seed_status( $blueprint, $current_status );
+			$post['post_status']  = $required_status;
+
+			if ( ! $hash_state['exists'] ) {
+				if ( ! hash_equals( $new_hash, $current_hash ) ) {
+					throw new \RuntimeException( 'A Complete99 seed is missing provenance for editor-owned content.' );
+				}
+				self::store_seed_meta( $existing, '_complete99_seed_hash', $new_hash );
+			} else {
+				$stored_hash = (string) $hash_state['value'];
+				if ( ! self::is_sha256( $stored_hash ) ) {
+					throw new \RuntimeException( 'A Complete99 seed provenance hash is invalid.' );
+				}
+			}
+
+			$stored_hash = $hash_state['exists'] ? (string) $hash_state['value'] : $new_hash;
+			if ( hash_equals( $stored_hash, $current_hash ) ) {
 				$post['ID'] = $existing;
 				$result     = wp_update_post( wp_slash( $post ), true );
-				if ( is_wp_error( $result ) ) {
+				if ( is_wp_error( $result ) || $existing !== (int) $result ) {
 					return 0;
 				}
-				update_post_meta( $existing, '_complete99_seed_hash', $new_hash );
+				self::store_seed_meta( $existing, '_complete99_seed_hash', $new_hash );
+			} elseif ( $required_status !== $current_status ) {
+				$result = wp_update_post(
+					array(
+						'ID'          => $existing,
+						'post_status' => $required_status,
+					),
+					true
+				);
+				if ( is_wp_error( $result ) || $existing !== (int) $result ) {
+					return 0;
+				}
 			}
 			$id = $existing;
 		} else {
@@ -456,21 +579,280 @@ final class Complete99_Content {
 			if ( is_wp_error( $id ) ) {
 				return 0;
 			}
-			update_post_meta( $id, '_complete99_seed_hash', $new_hash );
+			self::store_seed_meta( $id, '_complete99_seed_hash', $new_hash );
 		}
 
-		update_post_meta( $id, '_complete99_seed_key', $seed_key );
-		update_post_meta( $id, '_complete99_translation_key', $blueprint['key'] );
-		update_post_meta( $id, '_complete99_language', $language );
-		update_post_meta( $id, '_complete99_seed_version', self::SEED_VERSION );
-		update_post_meta( $id, '_complete99_verification_state', isset( $blueprint['verification'] ) ? $blueprint['verification'] : 'editorial_review' );
+		self::store_seed_meta( $id, '_complete99_seed_key', $seed_key );
+		self::store_seed_meta( $id, '_complete99_translation_key', $blueprint['key'] );
+		self::store_seed_meta( $id, '_complete99_language', $language );
+		self::store_seed_meta( $id, '_complete99_seed_version', self::SEED_VERSION );
+		self::store_seed_meta( $id, '_complete99_verification_state', isset( $blueprint['verification'] ) ? $blueprint['verification'] : 'editorial_review' );
 		if ( ! empty( $blueprint['image'] ) ) {
-			update_post_meta( $id, '_complete99_image_asset', sanitize_file_name( $blueprint['image'] ) );
+			self::store_seed_meta( $id, '_complete99_image_asset', sanitize_file_name( $blueprint['image'] ) );
 		}
 		if ( ! empty( $blueprint['recipe'] ) ) {
-			update_post_meta( $id, '_complete99_recipe', $blueprint['recipe'] );
+			self::sync_seed_recipe( $id, $blueprint['recipe'] );
 		}
 		return (int) $id;
+	}
+
+	private static function store_seed_meta( $post_id, $key, $value ) {
+		$post_type = get_post_type( $post_id );
+		$canonical = sanitize_meta( $key, $value, 'post', $post_type ? $post_type : '' );
+		update_post_meta( $post_id, $key, wp_slash( $value ) );
+		$stored = self::direct_single_meta_state( $post_id, $key );
+		if ( ! $stored['exists'] || maybe_serialize( $stored['value'] ) !== maybe_serialize( $canonical ) ) {
+			throw new \RuntimeException( 'Complete99 seed metadata failed readback.' );
+		}
+	}
+
+	private static function sync_seed_recipe( $post_id, $blueprint_recipe ) {
+		$seed_recipe       = self::sanitize_recipe( $blueprint_recipe );
+		$recipe            = self::direct_single_meta_state( $post_id, '_complete99_recipe' );
+		$provenance        = self::direct_single_meta_state( $post_id, '_complete99_recipe_seed_hash' );
+		$stored_provenance = $provenance['exists'] ? (string) $provenance['value'] : '';
+		$seed_hash         = self::recipe_hash( $seed_recipe );
+		$refresh           = self::should_refresh_seed_recipe( $seed_recipe, $recipe['value'], $stored_provenance, $recipe['exists'] );
+
+		if ( $refresh ) {
+			self::store_seed_meta( $post_id, '_complete99_recipe', $seed_recipe );
+		}
+		$next_provenance = self::recipe_provenance_after_sync( $seed_hash, $stored_provenance, $provenance['exists'], $refresh );
+		if ( ! $provenance['exists'] || ! hash_equals( $stored_provenance, $next_provenance ) ) {
+			self::store_seed_meta( $post_id, '_complete99_recipe_seed_hash', $next_provenance );
+		}
+	}
+
+	/**
+	 * Seed recipes update only while the durable recipe still matches its prior
+	 * seed provenance. Missing provenance adopts an identical seed recipe but
+	 * treats any differing recipe as chef-owned, records a non-owning baseline,
+	 * and preserves both later edits and the last valid provenance.
+	 */
+	private static function should_refresh_seed_recipe( $seed_recipe, $stored_recipe, $stored_provenance, $recipe_exists ) {
+		if ( ! $recipe_exists ) {
+			return true;
+		}
+
+		$current_hash = self::recipe_hash( $stored_recipe );
+		$seed_hash    = self::recipe_hash( $seed_recipe );
+		if ( self::is_sha256( (string) $stored_provenance ) ) {
+			return hash_equals( (string) $stored_provenance, $current_hash );
+		}
+		return hash_equals( $seed_hash, $current_hash );
+	}
+
+	private static function recipe_provenance_after_sync( $seed_hash, $stored_provenance, $provenance_exists, $refresh ) {
+		if ( $provenance_exists && ! self::is_sha256( (string) $stored_provenance ) ) {
+			throw new \RuntimeException( 'A Complete99 seed recipe provenance hash is invalid.' );
+		}
+		if ( $refresh || ! $provenance_exists ) {
+			return (string) $seed_hash;
+		}
+		return (string) $stored_provenance;
+	}
+
+	private static function recipe_hash( $recipe ) {
+		return hash( 'sha256', maybe_serialize( self::sanitize_recipe( $recipe ) ) );
+	}
+
+	private static function is_sha256( $value ) {
+		return is_string( $value ) && 1 === preg_match( '/\A[a-f0-9]{64}\z/', $value );
+	}
+
+	private static function expected_seed_status( $blueprint ) {
+		$status = isset( $blueprint['status'] ) ? (string) $blueprint['status'] : 'publish';
+		if ( ! in_array( $status, array( 'publish', 'draft', 'pending', 'private', 'future' ), true ) ) {
+			throw new \RuntimeException( 'A Complete99 seed blueprint has an invalid status.' );
+		}
+		return $status;
+	}
+
+	private static function required_seed_status( $blueprint, $current_status ) {
+		$expected = self::expected_seed_status( $blueprint );
+		if ( 'private' === $current_status ) {
+			return 'private';
+		}
+		if ( 'draft' === $expected && 'publish' === $current_status ) {
+			return 'publish';
+		}
+		return $expected;
+	}
+
+	private static function allowed_seed_statuses( $blueprint ) {
+		$expected = self::expected_seed_status( $blueprint );
+		if ( 'private' === $expected ) {
+			return array( 'private' );
+		}
+		if ( 'draft' === $expected ) {
+			return array( 'draft', 'private', 'publish' );
+		}
+		return array( $expected, 'private' );
+	}
+
+	private static function direct_single_meta_state( $post_id, $key ) {
+		global $wpdb;
+
+		$wpdb->last_error = '';
+		$rows = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT meta_value FROM {$wpdb->postmeta} WHERE post_id = %d AND meta_key = %s ORDER BY meta_id",
+				(int) $post_id,
+				(string) $key
+			)
+		);
+		if ( '' !== (string) $wpdb->last_error || ! is_array( $rows ) ) {
+			throw new \RuntimeException( 'Complete99 seed metadata could not be read from durable storage.' );
+		}
+		if ( 1 < count( $rows ) ) {
+			throw new \RuntimeException( 'Complete99 seed metadata is duplicated.' );
+		}
+		return array(
+			'exists' => 1 === count( $rows ),
+			'value'  => 1 === count( $rows ) ? maybe_unserialize( $rows[0] ) : null,
+		);
+	}
+
+	private static function direct_seed_records( $seed_key ) {
+		global $wpdb;
+
+		$wpdb->last_error = '';
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT p.ID, p.post_type, p.post_status, p.post_password, p.post_name, p.post_parent, p.post_title, p.post_excerpt, p.post_content, pm.meta_id
+				FROM {$wpdb->posts} p
+				INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+				WHERE pm.meta_key = %s AND pm.meta_value = %s
+				ORDER BY p.ID, pm.meta_id",
+				'_complete99_seed_key',
+				sanitize_text_field( $seed_key )
+			),
+			ARRAY_A
+		);
+		if ( '' !== (string) $wpdb->last_error || ! is_array( $rows ) ) {
+			throw new \RuntimeException( 'Complete99 seed identity could not be read from durable storage.' );
+		}
+		return $rows;
+	}
+
+	private static function unique_seed_record( $seed_key, $allow_missing = false ) {
+		$rows = self::direct_seed_records( $seed_key );
+		if ( empty( $rows ) && $allow_missing ) {
+			return null;
+		}
+		if ( 1 !== count( $rows ) ) {
+			throw new \RuntimeException( 'A Complete99 seed identity must have exactly one post and one key row.' );
+		}
+		return $rows[0];
+	}
+
+	private static function direct_option_value( $name ) {
+		global $wpdb;
+
+		$wpdb->last_error = '';
+		$raw = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+				(string) $name
+			)
+		);
+		if ( '' !== (string) $wpdb->last_error || null === $raw ) {
+			throw new \RuntimeException( 'A required Complete99 option is unavailable in durable storage.' );
+		}
+		return maybe_unserialize( $raw );
+	}
+
+	/**
+	 * Prove the complete data model before the migration version is committed.
+	 */
+	public static function assert_migration_invariants() {
+		self::assert_roles_persisted();
+
+		$launch = require COMPLETE99_PLATFORM_DIR . 'data/launch-content.php';
+		$dishes = require COMPLETE99_PLATFORM_DIR . 'data/dish-seeds.php';
+		$english_home = self::unique_seed_record( 'home:en' );
+		foreach ( array_merge( $launch, $dishes ) as $blueprint ) {
+			foreach ( array( 'he', 'en' ) as $language ) {
+				$seed_key = $blueprint['key'] . ':' . $language;
+				$post     = self::unique_seed_record( $seed_key );
+				$post_id  = (int) $post['ID'];
+				if ( $blueprint['type'] !== $post['post_type'] ) {
+					throw new \RuntimeException( 'A required Complete99 seed post is missing.' );
+				}
+				if ( ! in_array( (string) $post['post_status'], self::allowed_seed_statuses( $blueprint ), true ) ) {
+					throw new \RuntimeException( 'A required Complete99 seed post has an invalid status.' );
+				}
+
+				$seed_hash = self::direct_single_meta_state( $post_id, '_complete99_seed_hash' );
+				if ( ! $seed_hash['exists'] || ! self::is_sha256( (string) $seed_hash['value'] ) ) {
+					throw new \RuntimeException( 'A required Complete99 seed provenance hash is missing.' );
+				}
+				$expected_content_hash = self::content_hash(
+					array(
+						'post_title'   => $blueprint['title'][ $language ],
+						'post_excerpt' => $blueprint['excerpt'][ $language ],
+						'post_content' => $blueprint['content'][ $language ],
+					)
+				);
+				$current_content_hash = self::content_hash( $post );
+				if ( hash_equals( (string) $seed_hash['value'], $current_content_hash ) ) {
+					$expected_parent = ( 'en' === $language && 'page' === $blueprint['type'] && 'home' !== $blueprint['key'] )
+						? (int) $english_home['ID']
+						: 0;
+					if ( ! hash_equals( $expected_content_hash, $current_content_hash )
+						|| (string) $blueprint['slug'][ $language ] !== (string) $post['post_name']
+						|| $expected_parent !== (int) $post['post_parent'] ) {
+						throw new \RuntimeException( 'An unedited Complete99 seed post does not match its durable provenance.' );
+					}
+				}
+
+				$expected_meta = array(
+					'_complete99_seed_key'          => $seed_key,
+					'_complete99_translation_key'   => $blueprint['key'],
+					'_complete99_language'          => $language,
+					'_complete99_seed_version'      => self::SEED_VERSION,
+					'_complete99_verification_state'=> isset( $blueprint['verification'] ) ? $blueprint['verification'] : 'editorial_review',
+				);
+				foreach ( $expected_meta as $key => $value ) {
+					$stored = self::direct_single_meta_state( $post_id, $key );
+					if ( ! $stored['exists'] || maybe_serialize( $value ) !== maybe_serialize( $stored['value'] ) ) {
+						throw new \RuntimeException( 'Required Complete99 seed metadata is missing.' );
+					}
+				}
+				if ( ! empty( $blueprint['image'] ) ) {
+					$image = self::direct_single_meta_state( $post_id, '_complete99_image_asset' );
+					if ( ! $image['exists'] || sanitize_file_name( $blueprint['image'] ) !== (string) $image['value'] ) {
+						throw new \RuntimeException( 'A Complete99 seed image reference is missing.' );
+					}
+				}
+				if ( ! empty( $blueprint['recipe'] ) ) {
+					$recipe              = self::direct_single_meta_state( $post_id, '_complete99_recipe' );
+					$provenance          = self::direct_single_meta_state( $post_id, '_complete99_recipe_seed_hash' );
+					$recipe_hash         = $recipe['exists'] ? self::recipe_hash( $recipe['value'] ) : '';
+					$expected_recipe_hash = self::recipe_hash( $blueprint['recipe'] );
+					if ( ! $recipe['exists']
+						|| ! is_array( $recipe['value'] )
+						|| maybe_serialize( self::sanitize_recipe( $recipe['value'] ) ) !== maybe_serialize( $recipe['value'] )
+						|| ! $provenance['exists']
+						|| ! self::is_sha256( (string) $provenance['value'] )
+						|| ( hash_equals( (string) $provenance['value'], $recipe_hash )
+							&& ! hash_equals( $expected_recipe_hash, $recipe_hash ) ) ) {
+						throw new \RuntimeException( 'A Complete99 seed recipe or its provenance is incomplete.' );
+					}
+				}
+			}
+		}
+
+		$front_page = (int) self::direct_option_value( 'page_on_front' );
+		$home       = self::unique_seed_record( 'home:he' );
+		if ( 'page' !== self::direct_option_value( 'show_on_front' )
+			|| ! $front_page
+			|| $front_page !== (int) $home['ID']
+			|| 'page' !== (string) $home['post_type']
+			|| 'publish' !== (string) $home['post_status']
+			|| '' !== (string) $home['post_password'] ) {
+			throw new \RuntimeException( 'The Complete99 front page is not configured.' );
+		}
 	}
 
 	private static function content_hash( $post ) {

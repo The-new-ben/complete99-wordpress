@@ -5,6 +5,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Complete99_Platform {
+	const MIGRATION_LOCK_TIMEOUT = 10;
+
 	/**
 	 * Retain the update checker instance for the request lifetime.
 	 *
@@ -100,6 +102,128 @@ final class Complete99_Platform {
 		}
 	}
 
+	private static function migration_lock_name() {
+		global $wpdb;
+
+		$identity = get_current_blog_id() . '|' . $wpdb->prefix . '|' . home_url( '/' );
+		return 'complete99-migration-' . substr( hash( 'sha256', $identity ), 0, 40 );
+	}
+
+	private static function is_sqlite_database() {
+		global $wpdb;
+
+		$database_type = defined( 'DB_ENGINE' ) ? strtolower( (string) DB_ENGINE ) : '';
+		if ( 'sqlite' === $database_type ) {
+			return true;
+		}
+		$database_type = defined( 'DATABASE_TYPE' ) ? strtolower( (string) DATABASE_TYPE ) : '';
+		return 'sqlite' === $database_type || false !== strpos( strtolower( get_class( $wpdb ) ), 'sqlite' );
+	}
+
+	/**
+	 * Serialize production migrations across PHP requests.
+	 *
+	 * MySQL named locks are connection-scoped and release automatically if PHP
+	 * exits unexpectedly. The SQLite integration used by local acceptance runs
+	 * receives an equivalent bounded filesystem lock.
+	 *
+	 * @return array|\WP_Error
+	 */
+	private static function acquire_migration_lock() {
+		global $wpdb;
+
+		if ( self::is_sqlite_database() ) {
+			$path   = trailingslashit( WP_CONTENT_DIR ) . '.complete99-platform-migration.lock';
+			$handle = @fopen( $path, 'c+' );
+			if ( false === $handle ) {
+				return new WP_Error( 'complete99_migration_lock_open', 'The Complete99 migration lock is unavailable.' );
+			}
+			$deadline = microtime( true ) + self::MIGRATION_LOCK_TIMEOUT;
+			do {
+				if ( @flock( $handle, LOCK_EX | LOCK_NB ) ) {
+					return array(
+						'driver' => 'file',
+						'handle' => $handle,
+					);
+				}
+				usleep( 100000 );
+			} while ( microtime( true ) < $deadline );
+
+			@fclose( $handle );
+			return new WP_Error( 'complete99_migration_locked', 'Another Complete99 migration is still running.' );
+		}
+
+		if ( true !== $wpdb->is_mysql ) {
+			return new WP_Error( 'complete99_migration_lock_driver', 'The production database does not support the required Complete99 advisory lock.' );
+		}
+
+		$name             = self::migration_lock_name();
+		$previous_suppress = $wpdb->suppress_errors( true );
+		$wpdb->last_error = '';
+		$acquired = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT GET_LOCK(%s, %d)',
+				$name,
+				self::MIGRATION_LOCK_TIMEOUT
+			)
+		);
+		$error = (string) $wpdb->last_error;
+		$wpdb->suppress_errors( $previous_suppress );
+		if ( '' !== $error || 1 !== (int) $acquired ) {
+			return new WP_Error( 'complete99_migration_locked', 'The Complete99 migration advisory lock could not be acquired.' );
+		}
+
+		return array(
+			'driver' => 'mysql',
+			'name'   => $name,
+		);
+	}
+
+	private static function release_migration_lock( $lock ) {
+		global $wpdb;
+
+		if ( ! is_array( $lock ) ) {
+			return false;
+		}
+		if ( 'file' === ( $lock['driver'] ?? '' ) ) {
+			$handle = $lock['handle'] ?? null;
+			if ( is_resource( $handle ) ) {
+				@flock( $handle, LOCK_UN );
+				@fclose( $handle );
+			}
+			return true;
+		}
+		if ( 'mysql' !== ( $lock['driver'] ?? '' ) || empty( $lock['name'] ) ) {
+			return false;
+		}
+
+		$previous_suppress = $wpdb->suppress_errors( true );
+		$released = $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT RELEASE_LOCK(%s)',
+				(string) $lock['name']
+			)
+		);
+		$wpdb->suppress_errors( $previous_suppress );
+		return 1 === (int) $released;
+	}
+
+	private static function persisted_option( $name ) {
+		global $wpdb;
+
+		$wpdb->last_error = '';
+		$raw = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+				(string) $name
+			)
+		);
+		if ( '' !== (string) $wpdb->last_error ) {
+			throw new \RuntimeException( 'option-readback' );
+		}
+		return null === $raw ? null : maybe_unserialize( $raw );
+	}
+
 	/**
 	 * Run every plugin-owned database mutation in one transaction.
 	 *
@@ -112,28 +236,51 @@ final class Complete99_Platform {
 	 */
 	private static function run_migration( $hard_flush ) {
 		global $wpdb;
-		if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
-			return new WP_Error( 'complete99_migration_transaction', 'The Complete99 database migration could not start.' );
+
+		$lock = self::acquire_migration_lock();
+		if ( is_wp_error( $lock ) ) {
+			return $lock;
 		}
+		$transaction_started = false;
 		try {
+			$current = self::persisted_option( 'complete99_platform_version' );
+			if ( ! $hard_flush && COMPLETE99_PLATFORM_VERSION === (string) $current ) {
+				return true;
+			}
+			if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
+				throw new \RuntimeException( 'transaction' );
+			}
+			$transaction_started = true;
+
 			Complete99_Content::register();
 			Complete99_Content::register_rewrites();
 			Complete99_Leads::register_post_type();
 			Complete99_Content::install_roles();
 			Complete99_Settings::install_defaults();
 			Complete99_Content::seed_launch_content();
+			Complete99_Content::assert_migration_invariants();
+			Complete99_Settings::assert_defaults();
 			update_option( 'complete99_platform_version', COMPLETE99_PLATFORM_VERSION, false );
 			update_option( 'complete99_last_deployment_id', COMPLETE99_PLATFORM_DEPLOYMENT_ID, false );
+			if ( COMPLETE99_PLATFORM_VERSION !== (string) self::persisted_option( 'complete99_platform_version' )
+				|| COMPLETE99_PLATFORM_DEPLOYMENT_ID !== (string) self::persisted_option( 'complete99_last_deployment_id' ) ) {
+				throw new \RuntimeException( 'version-readback' );
+			}
 			flush_rewrite_rules( (bool) $hard_flush );
 			if ( false === $wpdb->query( 'COMMIT' ) ) {
 				throw new \RuntimeException( 'commit' );
 			}
+			$transaction_started = false;
 			wp_cache_flush();
 			return true;
 		} catch ( \Throwable $error ) {
-			$wpdb->query( 'ROLLBACK' );
+			if ( $transaction_started ) {
+				$wpdb->query( 'ROLLBACK' );
+			}
 			wp_cache_flush();
 			return new WP_Error( 'complete99_migration_failed', 'The Complete99 database migration could not be committed.' );
+		} finally {
+			self::release_migration_lock( $lock );
 		}
 	}
 

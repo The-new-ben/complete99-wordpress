@@ -30,7 +30,7 @@ $c99_dish_content = static function ( $language, $dish_name ) {
 $dishes = array(
 	array( 'kubeh-beet-soup', 'מרק קובה סלק', 'Beet kubeh soup', 'c99-food-kubeh-beet-soup-gallery-2021-wp-v01.jpg' ),
 	array( 'couscous-beef', 'קוסקוס עם בקר וירקות', 'Couscous with beef and vegetables', 'c99-food-couscous-beef-gallery-2021-wp-v01.jpg' ),
-	array( 'sabich-plate', 'צלחת סביח', 'Sabich plate', 'c99-food-sabich-plate-gallery-2021-wp-v01.jpg' ),
+	array( 'sabich-plate', 'צלחת סביח', 'Sabich plate', 'c99-food-sabich-pita-gallery-2021-wp-v01.jpg' ),
 	array( 'shakshuka', 'שקשוקה', 'Shakshuka', 'c99-food-shakshuka-plate-gallery-2021-wp-v01.jpg' ),
 	array( 'yemenite-beef-soup', 'מרק בקר תימני', 'Yemenite beef soup', 'c99-food-yemenite-beef-soup-menu-2021-mishloha-v01.jpg' ),
 	array( 'beef-meatballs-gravy', 'קציצות בקר ברוטב', 'Beef meatballs in sauce', 'c99-food-beef-meatballs-gravy-gallery-2021-wp-v01.jpg' ),
