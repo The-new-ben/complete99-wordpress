@@ -1,0 +1,15 @@
+{
+  "author": "Complete99",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.0.2.zip",
+  "homepage": "https://complete99.co.il/",
+  "last_updated": "2026-07-28 00:00:00",
+  "name": "Complete99 Platform",
+  "requires": "6.4",
+  "requires_php": "8.0",
+  "sections": {
+    "changelog": "<h4>1.0.2</h4><ul><li>Added anonymous rendered-body release verification for cache-safe deployments.</li><li>Hardened transactional install, rollback, cleanup and UPress cache handling.</li></ul>"
+  },
+  "slug": "complete99-platform",
+  "tested": "6.9",
+  "version": "1.0.2"
+}

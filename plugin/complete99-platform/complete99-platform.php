@@ -1,0 +1,38 @@
+<?php
+/**
+ * Plugin Name: Complete99 Platform
+ * Plugin URI:  https://complete99.co.il/
+ * Description: Bilingual public content, institutional foodservice, menu knowledge and a secure bridge to Complete99 OS.
+ * Version:     1.0.2
+ * Requires at least: 6.4
+ * Requires PHP: 8.0
+ * Author:      Complete99
+ * Text Domain: complete99-platform
+ */
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+define( 'COMPLETE99_PLATFORM_VERSION', '1.0.2' );
+define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.0.2' );
+define( 'COMPLETE99_PLATFORM_FILE', __FILE__ );
+define( 'COMPLETE99_PLATFORM_DIR', plugin_dir_path( __FILE__ ) );
+define( 'COMPLETE99_PLATFORM_URL', plugin_dir_url( __FILE__ ) );
+define(
+	'COMPLETE99_PLATFORM_UPDATE_MANIFEST_URL',
+	'https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform.json'
+);
+
+require_once COMPLETE99_PLATFORM_DIR . 'includes/class-complete99-content.php';
+require_once COMPLETE99_PLATFORM_DIR . 'includes/class-complete99-settings.php';
+require_once COMPLETE99_PLATFORM_DIR . 'includes/class-complete99-leads.php';
+require_once COMPLETE99_PLATFORM_DIR . 'includes/class-complete99-rest.php';
+require_once COMPLETE99_PLATFORM_DIR . 'includes/class-complete99-frontend.php';
+require_once COMPLETE99_PLATFORM_DIR . 'includes/class-complete99-seo-registry.php';
+require_once COMPLETE99_PLATFORM_DIR . 'includes/class-complete99-platform.php';
+
+register_activation_hook( __FILE__, array( 'Complete99_Platform', 'activate' ) );
+register_deactivation_hook( __FILE__, array( 'Complete99_Platform', 'deactivate' ) );
+
+Complete99_Platform::boot();

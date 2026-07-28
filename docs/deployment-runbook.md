@@ -1,0 +1,155 @@
+# UPress and GitHub deployment runbook
+
+## Final-domain production preparation
+
+Do not create or publish an UPress staging/temporary site for Complete99. Installation
+starts only after `complete99.co.il` has been purchased, attached to the final UPress
+site and serves HTTPS. All pre-installation validation is local and in GitHub CI; the
+first WordPress mutation targets the final production domain.
+
+1. Attach `complete99.co.il` to the final UPress site, complete DNS/SSL, and install
+   WordPress on that final domain.
+2. In UPress security, enable the WordPress REST API for the production site.
+3. In WordPress set **Settings → Permalinks → Post name**.
+4. Install and activate the approved free **Code Snippets** plugin from
+   WordPress.org. The deployer can bootstrap it only when
+   `--bootstrap-code-snippets` is explicitly supplied and the core plugin REST
+   controller is available.
+5. Create a dedicated WordPress deployment administrator. Do not use the owner’s
+   daily personal account.
+6. Create one site-specific Application Password for that identity. Store it only
+   in the GitHub `production` environment; never in this repository.
+7. Confirm automatic updates are disabled for
+   `complete99-platform/complete99-platform.php`. Deliberate releases are verified
+   by this pipeline; Plugin Update Checker remains a human fallback.
+
+Credential creation is a persistent security action. At the final creation control,
+confirm that it grants plugin-update authority on this one WordPress site.
+
+## GitHub production environment
+
+Create environment `production`, add any desired reviewer gate, and add:
+
+- `WP_BASE_URL` — exact HTTPS origin, with no trailing WordPress admin path.
+- `WP_DEPLOY_USER` — dedicated deployment username.
+- `WP_APP_PASSWORD` — site-specific WordPress Application Password.
+
+Set the repository variable `WP_PRODUCTION_READY` to `false` during setup. Change
+it to exactly `true` only after the final-domain checks above pass. Protect `main`
+and require the **WordPress CI / validate** check. The production workflow also
+queries GitHub and refuses any commit that does not have its own successful CI run.
+Repository Actions permission remains read-only; the deploy workflow adds only
+`actions: read`. Both workflows pin referenced third-party actions to full SHAs.
+
+## Release ritual
+
+1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
+   `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
+2. Run PHP lint, contract tests and the secret scan.
+3. Build twice and require identical bytes:
+
+   `python scripts/build-plugin-zip.py --verify-reproducible`
+
+4. Inspect and validate the artifact:
+
+   `python scripts/validate-package.py`
+
+5. Confirm `plugin-dist/complete99-platform.json` is the public PUC update
+   manifest and `plugin-dist/complete99-platform-integrity.json` contains the
+   independently checked artifact digest and size.
+6. Review source and metadata, then merge to `main`.
+
+The deliberate deploy path remains the authenticated temporary bridge. Vendored
+Plugin Update Checker 5.6 reads the public manifest on `main` only as the normal
+wp-admin/human fallback.
+
+## Isolated local pipeline proof
+
+Before the final domain exists, use a disposable native or containerized WordPress
+site on the loopback interface to exercise Application Password authentication,
+Code Snippets bootstrap, bridge creation, package integrity, activation, health,
+rollback, finalization and cleanup. Pass
+`--local-test` explicitly. That flag accepts only `http://127.0.0.1`,
+`http://localhost` or `http://[::1]`; it cannot authorize a remote, UPress
+temporary or staging host.
+
+Production runs must omit `--local-test`. They remain locked to HTTPS on
+`complete99.co.il` or `www.complete99.co.il`.
+
+## First installation
+
+The first installation has no prior plugin to restore, so it cannot prove a
+healthy-version rollback. Run a normal deployment first:
+
+```powershell
+python scripts/deploy-wordpress.py
+```
+
+The deployer authenticates, creates a unique temporary route and reserves a site-wide
+mutation lock. Preflight requires direct filesystem access, sufficient free space,
+transactional WordPress tables and target auto-update disabled. The server verifies
+the package SHA-256, encrypts and read-backs the database rollback journal, copies and
+hashes the prior plugin, installs only the allowlisted slug, and verifies public
+health plus exact release markers in the anonymous homepage body. Commit removes the
+backup, releases the lock, deletes the snippet and proves the route returns 404.
+
+## Mandatory live canary/rollback exercise
+
+After the first release is healthy, run:
+
+```powershell
+python scripts/deploy-wordpress.py --rollback-exercise
+```
+
+This uses the encrypted transaction journal on the final live site; it does not create
+an UPress staging site. It deploys the reviewed package, verifies health, restores the
+exact prior database fingerprint and plugin-directory digest through an atomic
+directory swap, independently verifies the prior public surface, redeploys the target
+package, verifies it again, finalizes and proves route cleanup.
+
+## Dry preflight
+
+```powershell
+python scripts/deploy-wordpress.py --dry-run
+```
+
+Dry-run still creates and deletes the temporary bridge, so it verifies authentication,
+Code Snippets, direct filesystem mode, allowlist and cleanup without installing the
+plugin.
+
+## Interrupted-request recovery
+
+Every lock carries a recovery lease. If PHP or the network disappears during
+preparation, install, rollback or commit cleanup, the driver waits until the lease is
+safe, then restores from the validated journal. Rollback stages the prior plugin in a
+sibling directory and swaps it atomically.
+
+If the original process is gone and its temporary route has already been deleted,
+recreate an admin-gated bridge for the same deployment ID:
+
+```powershell
+python scripts/recover-wordpress.py --deployment-id <original-deployment-id>
+```
+
+The recovery command derives the journal key from the site’s WordPress auth salt and
+the deployment ID, so it never needs the discarded route token. It independently
+chooses only between finishing an already committed cleanup and rolling back an
+uncommitted mutation. It then deletes its own route and proves 404. The production
+workflow runs this command automatically after a failed deployment step.
+
+## Completion evidence
+
+A production release is complete only when the non-secret audit JSON shows:
+
+- artifact digest and version;
+- authenticated deployment role;
+- direct-filesystem preflight;
+- transactional-storage preflight and run-time database baseline;
+- expected public health version and deployment ID;
+- matching health `database_version`;
+- anonymous homepage body markers for version and deployment;
+- successful finalize;
+- snippet deletion and `route_404: true`;
+- exact database/plugin rollback and rollback-health evidence for the canary exercise.
+
+An installer response alone is never treated as proof.

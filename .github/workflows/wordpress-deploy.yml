@@ -1,0 +1,163 @@
+name: Deploy Complete99 WordPress
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_exercise:
+        description: Exercise rollback and redeploy (requires an existing healthy release)
+        required: true
+        default: true
+        type: boolean
+      bootstrap_code_snippets:
+        description: Install the approved WordPress.org Code Snippets plugin if absent
+        required: true
+        default: false
+        type: boolean
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: complete99-wordpress-production
+  cancel-in-progress: false
+
+jobs:
+  require-main:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse a production deployment from any non-main ref
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "Production deploys are restricted to refs/heads/main." >&2
+            exit 1
+          fi
+
+  require-production-ready:
+    needs: require-main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require the explicit production readiness switch
+        env:
+          WP_PRODUCTION_READY: ${{ vars.WP_PRODUCTION_READY }}
+        shell: bash
+        run: |
+          if [[ "$WP_PRODUCTION_READY" != "true" ]]; then
+            echo "WP_PRODUCTION_READY must be exactly true before production deployment." >&2
+            exit 1
+          fi
+
+  require-green-ci:
+    needs:
+      - require-main
+      - require-production-ready
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful WordPress CI for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          response="$(gh api \
+            --method GET \
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/wordpress-ci.yml/runs?head_sha=${GITHUB_SHA}&status=success&per_page=1")"
+          RUNS_JSON="$response" python - <<'PY'
+          import json
+          import os
+          runs = json.loads(os.environ["RUNS_JSON"]).get("workflow_runs", [])
+          if not runs or runs[0].get("head_sha") != os.environ["GITHUB_SHA"]:
+              raise SystemExit("No successful WordPress CI run exists for this exact commit.")
+          if runs[0].get("conclusion") != "success":
+              raise SystemExit("The exact-commit WordPress CI run is not successful.")
+          PY
+
+  deploy:
+    needs:
+      - require-main
+      - require-production-ready
+      - require-green-ci
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out approved production source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Configure Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.11"
+
+      - name: Validate source and package
+        run: |
+          php --version
+          python scripts/lint-php.py
+          python -m unittest discover -s tests -v
+          python scripts/secret-scan.py
+          python scripts/build-plugin-zip.py --verify-reproducible
+          python scripts/validate-package.py
+          git diff --exit-code -- plugin-dist
+
+      - name: Deploy with independent health and cleanup verification
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+        shell: bash
+        run: |
+          bootstrap_args=()
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.bootstrap_code_snippets }}" == "true" ]]; then
+            bootstrap_args+=(--bootstrap-code-snippets)
+          fi
+          dry_id="c99-dry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          python scripts/deploy-wordpress.py \
+            --dry-run \
+            --deployment-id "$dry_id" \
+            "${bootstrap_args[@]}"
+          python - "$dry_id" <<'PY'
+          import json
+          import pathlib
+          import sys
+          record = json.loads((pathlib.Path("deploy-audit") / f"{sys.argv[1]}.json").read_text())
+          assert record["result"] == "dry-run-passed"
+          assert record["cleanup"]["snippet_active"] is False
+          assert record["cleanup"]["route_404"] is True
+          PY
+
+          deploy_args=("${bootstrap_args[@]}")
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.rollback_exercise }}" == "true" ]]; then
+            deploy_args+=(--rollback-exercise)
+          fi
+          python scripts/deploy-wordpress.py \
+            --deployment-id "c99-prod-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            "${deploy_args[@]}"
+
+      - name: Recover any interrupted mutation with a recreated temporary bridge
+        if: failure()
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+        shell: bash
+        run: |
+          recovery_failed=0
+          for deployment_id in \
+            "c99-dry-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" \
+            "c99-prod-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          do
+            python scripts/recover-wordpress.py \
+              --deployment-id "$deployment_id" || recovery_failed=1
+          done
+          exit "$recovery_failed"
+
+      - name: Upload non-secret deployment audit
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: complete99-wordpress-deploy-audit
+          path: |
+            deploy-audit/*.json
+            recovery-audit/*.json
+          if-no-files-found: warn
+          retention-days: 30

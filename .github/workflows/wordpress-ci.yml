@@ -1,0 +1,67 @@
+name: WordPress CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: complete99-wordpress-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - name: Configure Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.11"
+
+      - name: Confirm PHP runtime
+        run: php --version
+
+      - name: PHP syntax
+        run: python scripts/lint-php.py
+
+      - name: Contract tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Secret scan
+        run: python scripts/secret-scan.py
+
+      - name: Require a version advance when plugin source changes
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+        run: python scripts/verify-release-discipline.py --base-ref "$BASE_REF"
+
+      - name: Reproducible package
+        run: python scripts/build-plugin-zip.py --verify-reproducible
+
+      - name: Package validation
+        run: python scripts/validate-package.py
+
+      - name: Prove checked-in release artifacts are current
+        run: git diff --exit-code -- plugin-dist
+
+      - name: Upload verified package and digest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: complete99-wordpress-package
+          path: |
+            plugin-dist/complete99-platform-*.zip
+            plugin-dist/complete99-platform.json
+            plugin-dist/complete99-platform-integrity.json
+            plugin-dist/complete99-platform-*.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
