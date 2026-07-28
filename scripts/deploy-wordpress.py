@@ -905,7 +905,6 @@ def install_with_recovery(
             and status.get("current_plugin_sha256")
             == status.get("installed_plugin_sha256")
             and status.get("current_version") == run_fields["version"]
-            and status.get("current_deployment") == deployment_id
             and status.get("current_active")
             and status.get("temp_removed")
         ):
@@ -930,6 +929,71 @@ def install_with_recovery(
                 "write_response_recovered": True,
             }
         raise original_error
+
+
+def stabilize_deployment(
+    client: Client,
+    token: str,
+    deployment_id: str,
+    version: str,
+    installed_plugin_sha256: str,
+) -> dict[str, Any]:
+    try:
+        response = bridge_call(client, "stabilize", token, deployment_id)
+    except DeployError as original_error:
+        status = poll_deployment_status(client, token, deployment_id)
+        if (
+            status.get("phase") == "installed"
+            and status.get("current_active")
+            and status.get("current_version") == version
+            and status.get("current_database_version") == version
+            and status.get("current_deployment") == deployment_id
+            and status.get("current_plugin_sha256") == installed_plugin_sha256
+            and status.get("installed_plugin_sha256") == installed_plugin_sha256
+            and status.get("database_fingerprint")
+            == status.get("post_install_database_fingerprint")
+        ):
+            response = {
+                "cache_purge": {"response_recovered": True},
+                "database_version": version,
+                "deployment_id": deployment_id,
+                "installed_plugin_sha256": installed_plugin_sha256,
+                "post_install_database_fingerprint": status.get(
+                    "post_install_database_fingerprint", ""
+                ),
+                "stabilized": True,
+                "stabilized_from_phase": "installed",
+                "version": version,
+            }
+        else:
+            raise original_error
+    if (
+        not response.get("stabilized")
+        or response.get("version") != version
+        or response.get("database_version") != version
+        or response.get("deployment_id") != deployment_id
+        or response.get("installed_plugin_sha256") != installed_plugin_sha256
+        or not re.fullmatch(
+            r"[a-f0-9]{64}",
+            str(response.get("post_install_database_fingerprint", "")),
+        )
+    ):
+        raise DeployError("Post-migration stabilization failed exact release verification")
+    return {
+        "cache_purge": response.get("cache_purge", {}),
+        "database_version": version,
+        "deployment_id": deployment_id,
+        "installed_plugin_sha256": installed_plugin_sha256,
+        "post_install_database_fingerprint": response.get(
+            "post_install_database_fingerprint", ""
+        ),
+        "response_recovered": bool(
+            response.get("cache_purge", {}).get("response_recovered")
+        ),
+        "stabilized": True,
+        "stabilized_from_phase": response.get("stabilized_from_phase", ""),
+        "version": version,
+    }
 
 
 def rollback_with_recovery(
@@ -1382,6 +1446,14 @@ def main() -> int:
                 ),
                 "temp_removed": True,
             }
+            gate = "stabilize"
+            audit["stabilize"] = stabilize_deployment(
+                client,
+                token,
+                deployment_id,
+                metadata["version"],
+                str(result.get("installed_plugin_sha256", "")),
+            )
             gate = "health"
             audit["health"] = verify_health(client, metadata["version"], deployment_id)
             audit["rendered_home"] = verify_rendered_home(
@@ -1453,6 +1525,14 @@ def main() -> int:
                     ),
                     "temp_removed": True,
                 }
+                gate = "stabilize"
+                audit["stabilize_after_exercise"] = stabilize_deployment(
+                    client,
+                    token,
+                    deployment_id,
+                    metadata["version"],
+                    str(result.get("installed_plugin_sha256", "")),
+                )
                 gate = "health"
                 audit["health_after_exercise"] = verify_health(client, metadata["version"], deployment_id)
                 audit["rendered_home_after_exercise"] = verify_rendered_home(

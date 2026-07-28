@@ -307,6 +307,7 @@ class Complete99ContractTests(unittest.TestCase):
         )[0]
         self.assertNotIn("'complete99_sync_secret',", capture_block)
         self.assertIn("copy_dir( $target_dir, $backup_dir )", text)
+        self.assertIn("'/stabilize'", text)
         self.assertIn("'/rollback'", text)
         self.assertIn("'/finalize'", text)
         privileged = text.split("add_action(", 1)[0]
@@ -318,6 +319,7 @@ class Complete99ContractTests(unittest.TestCase):
             "verify_health",
             "verify_prior_health",
             "verify_plugin_absent",
+            "stabilize_deployment",
             "finalize_deployment",
             "RejectRedirects",
             "find_active_snippet_ids",

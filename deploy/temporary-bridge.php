@@ -963,6 +963,7 @@ add_action(
 					if ( '' === $current_deployment && $current_active && defined( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID' ) ) {
 						$current_deployment = (string) COMPLETE99_PLATFORM_DEPLOYMENT_ID;
 					}
+					$current_database_version = (string) get_option( 'complete99_platform_version', '' );
 					$database_snapshot = $capture_database_state();
 					$database_json = is_wp_error( $database_snapshot ) ? false : wp_json_encode( $database_snapshot );
 					$phase = (string) ( $state['phase'] ?? ( $lock_owned ? ( $lock['phase'] ?? 'locked' ) : 'finalized' ) );
@@ -1008,6 +1009,7 @@ add_action(
 						'current_plugin_sha256'=> $current_plugin_sha256,
 						'current_active'   => $current_active,
 						'current_deployment'=> $current_deployment,
+						'current_database_version'=> $current_database_version,
 						'database_restored' => ! empty( $state['database_restored'] ),
 						'baseline_database_fingerprint'=> (string) ( $state['database_fingerprint'] ?? '' ),
 						'post_install_database_fingerprint'=> (string) ( $state['post_install_database_fingerprint'] ?? '' ),
@@ -1015,6 +1017,154 @@ add_action(
 						'database_fingerprint_available'=> false !== $database_json,
 						'site_identity'      => $site_identity,
 					);
+				},
+			)
+		);
+
+		register_rest_route(
+			'complete99-deploy/v1',
+			$route_prefix . '/stabilize',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $permission,
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state ) {
+					global $wp_filesystem;
+					$filesystem = $bootstrap_filesystem();
+					if ( is_wp_error( $filesystem ) ) {
+						return $filesystem;
+					}
+					$site_identity = $verify_site_identity();
+					if ( is_wp_error( $site_identity ) ) {
+						return $site_identity;
+					}
+					$deployment_id = sanitize_text_field( (string) $request->get_param( 'deployment_id' ) );
+					if ( $config['deployment_id'] !== $deployment_id ) {
+						return new WP_Error( 'c99_stabilize_id', 'The stabilization deployment ID is invalid.', array( 'status' => 400 ) );
+					}
+					$process_lock = $acquire_process_lock();
+					if ( is_wp_error( $process_lock ) ) {
+						return $process_lock;
+					}
+					try {
+					$state_dir  = $state_directory( $deployment_id );
+					$state_file = trailingslashit( $state_dir ) . 'state.json';
+					if ( ! $wp_filesystem->exists( $state_file ) ) {
+						return new WP_Error( 'c99_stabilize_state', 'Deployment stabilization state was not found.', array( 'status' => 404 ) );
+					}
+					$state = json_decode( $wp_filesystem->get_contents( $state_file ), true );
+					if ( ! is_array( $state ) ) {
+						return new WP_Error( 'c99_stabilize_state_invalid', 'Deployment stabilization state is invalid.', array( 'status' => 500 ) );
+					}
+					$lock = $read_lock( true );
+					if ( $deployment_id !== (string) ( $lock['deployment_id'] ?? '' ) ) {
+						return new WP_Error( 'c99_stabilize_lock', 'The deployment does not own the mutation lock.', array( 'status' => 409 ) );
+					}
+					$phase = (string) ( $state['phase'] ?? '' );
+					if ( ! in_array( $phase, array( 'installed', 'failed', 'rollback_failed' ), true ) ) {
+						return new WP_Error(
+							'c99_stabilize_not_ready',
+							'Deployment stabilization is allowed only after a complete forward install.',
+							array( 'status' => 409, 'phase' => $phase )
+						);
+					}
+					$lease = $claim_lock(
+						$deployment_id,
+						array( 'installed', 'failed', 'rollback_failed' ),
+						'installed',
+						false,
+						false
+					);
+					if ( is_wp_error( $lease ) ) {
+						return $lease;
+					}
+					$adopted = $adopt_state_lease( $state_dir, $deployment_id, $lease );
+					if ( is_wp_error( $adopted ) ) {
+						return $adopted;
+					}
+					$state = $adopted;
+
+					$expected_version = (string) ( $state['expected_version'] ?? $state['installed_version'] ?? '' );
+					$installed_plugin_sha256 = (string) ( $state['installed_plugin_sha256'] ?? '' );
+					if (
+						! preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+$/', $expected_version )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', $installed_plugin_sha256 )
+					) {
+						return new WP_Error( 'c99_stabilize_identity', 'The recorded forward release identity is incomplete.', array( 'status' => 409 ) );
+					}
+					$target_dir  = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
+					$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . $config['plugin_file'];
+					require_once ABSPATH . 'wp-admin/includes/plugin.php';
+					$current_data = $wp_filesystem->exists( $plugin_path )
+						? get_plugin_data( $plugin_path, false, false )
+						: array();
+					$current_plugin_sha256 = $wp_filesystem->is_dir( $target_dir )
+						? $directory_sha256( $target_dir )
+						: new WP_Error( 'c99_stabilize_plugin_missing', 'The installed plugin directory is missing.', array( 'status' => 409 ) );
+					$current_database_version = (string) get_option( 'complete99_platform_version', '' );
+					$migration_failed = class_exists( 'Complete99_Platform', false )
+						&& method_exists( 'Complete99_Platform', 'migration_failed' )
+						&& Complete99_Platform::migration_failed();
+					if (
+						$migration_failed
+						|| is_wp_error( $current_plugin_sha256 )
+						|| ! hash_equals( $installed_plugin_sha256, (string) $current_plugin_sha256 )
+						|| $expected_version !== (string) ( $current_data['Version'] ?? '' )
+						|| $expected_version !== $current_database_version
+						|| ! is_plugin_active( $config['plugin_file'] )
+						|| empty( $state['installed_active'] )
+					) {
+						return new WP_Error(
+							'c99_stabilize_forward_mismatch',
+							'The forward plugin or its completed database migration does not match the recorded release.',
+							array( 'status' => 409 )
+						);
+					}
+
+					update_option( 'complete99_last_deployment_id', $deployment_id, false );
+					wp_cache_delete( 'complete99_last_deployment_id', 'options' );
+					if ( $deployment_id !== (string) get_option( 'complete99_last_deployment_id', '' ) ) {
+						return new WP_Error( 'c99_stabilize_deployment_readback', 'The deployment identity could not be persisted.', array( 'status' => 500 ) );
+					}
+					$cache_purge = $purge_caches();
+					if ( is_wp_error( $cache_purge ) ) {
+						return $cache_purge;
+					}
+					$post_install_snapshot = $capture_database_state();
+					$post_install_json = is_wp_error( $post_install_snapshot )
+						? false
+						: wp_json_encode( $post_install_snapshot );
+					if ( is_wp_error( $post_install_snapshot ) || false === $post_install_json ) {
+						return new WP_Error( 'c99_stabilize_database_snapshot', 'The stabilized database fingerprint could not be captured.', array( 'status' => 500 ) );
+					}
+					$post_install_fingerprint = hash( 'sha256', $post_install_json );
+					$stabilized = $set_state_phase(
+						$state_dir,
+						$deployment_id,
+						'installed',
+						array(
+							'installed_version'                 => $expected_version,
+							'installed_active'                  => true,
+							'post_install_database_fingerprint' => $post_install_fingerprint,
+							'stabilized'                        => true,
+							'stabilized_from_phase'             => $phase,
+						)
+					);
+					if ( is_wp_error( $stabilized ) ) {
+						return $stabilized;
+					}
+					return array(
+						'stabilized'                       => true,
+						'stabilized_from_phase'            => $phase,
+						'version'                          => $expected_version,
+						'database_version'                 => $current_database_version,
+						'deployment_id'                    => $deployment_id,
+						'installed_plugin_sha256'          => $installed_plugin_sha256,
+						'post_install_database_fingerprint'=> $post_install_fingerprint,
+						'cache_purge'                       => $cache_purge,
+					);
+					} finally {
+						$release_process_lock( $process_lock );
+					}
 				},
 			)
 		);
