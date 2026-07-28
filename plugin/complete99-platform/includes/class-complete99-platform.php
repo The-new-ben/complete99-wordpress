@@ -248,6 +248,11 @@ final class Complete99_Platform {
 			if ( ! $hard_flush && COMPLETE99_PLATFORM_VERSION === (string) $current ) {
 				return true;
 			}
+			$stored_deployment_id = self::persisted_option( 'complete99_last_deployment_id' );
+			$deployment_id = trim( (string) $stored_deployment_id );
+			if ( '' === $deployment_id ) {
+				$deployment_id = COMPLETE99_PLATFORM_DEPLOYMENT_ID;
+			}
 			if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
 				throw new \RuntimeException( 'transaction' );
 			}
@@ -262,9 +267,11 @@ final class Complete99_Platform {
 			Complete99_Content::assert_migration_invariants();
 			Complete99_Settings::assert_defaults();
 			update_option( 'complete99_platform_version', COMPLETE99_PLATFORM_VERSION, false );
-			update_option( 'complete99_last_deployment_id', COMPLETE99_PLATFORM_DEPLOYMENT_ID, false );
+			if ( '' === trim( (string) $stored_deployment_id ) ) {
+				update_option( 'complete99_last_deployment_id', $deployment_id, false );
+			}
 			if ( COMPLETE99_PLATFORM_VERSION !== (string) self::persisted_option( 'complete99_platform_version' )
-				|| COMPLETE99_PLATFORM_DEPLOYMENT_ID !== (string) self::persisted_option( 'complete99_last_deployment_id' ) ) {
+				|| $deployment_id !== (string) self::persisted_option( 'complete99_last_deployment_id' ) ) {
 				throw new \RuntimeException( 'version-readback' );
 			}
 			flush_rewrite_rules( (bool) $hard_flush );

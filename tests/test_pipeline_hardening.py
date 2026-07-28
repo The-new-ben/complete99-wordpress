@@ -481,11 +481,17 @@ class PipelineHardeningTests(unittest.TestCase):
             "$route_prefix . '/rollback'", 1
         )[0]
         self.assertIn(
+            "array( 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup' )",
+            stabilize,
+        )
+        self.assertNotIn(
             "array( 'installed', 'failed', 'rollback_failed' )",
             stabilize,
         )
         self.assertIn("'c99_stabilize_forward_mismatch'", stabilize)
         self.assertIn("Complete99_Platform::migration_failed()", stabilize)
+        self.assertIn("'c99_stabilize_idempotency_conflict'", stabilize)
+        self.assertIn("'c99_stabilize_swap_artifacts'", stabilize)
         self.assertIn(
             "update_option( 'complete99_last_deployment_id', $deployment_id, false )",
             stabilize,
@@ -510,7 +516,7 @@ class PipelineHardeningTests(unittest.TestCase):
             install_flow,
         )
         self.assertIn(
-            'phase in {"installed", "failed", "rollback_failed"}',
+            'status.get("forward_stabilization_candidate")',
             recovery,
         )
         self.assertIn(
@@ -526,34 +532,38 @@ class PipelineHardeningTests(unittest.TestCase):
                 payload: dict[str, object] | None = None,
                 expected: tuple[int, ...] = (200, 201),
             ) -> tuple[int, object]:
-                self.assert_request(method, path, payload, expected)
-                return 200, {
-                    "cache_purge": {"object_cache_flushed": True},
-                    "database_version": "1.1.1",
-                    "deployment_id": "c99-prod-stabilize-1234",
-                    "installed_plugin_sha256": "a" * 64,
-                    "post_install_database_fingerprint": "b" * 64,
-                    "stabilized": True,
-                    "stabilized_from_phase": "rollback_failed",
-                    "version": "1.1.1",
-                }
-
-            @staticmethod
-            def assert_request(
-                method: str,
-                path: str,
-                payload: dict[str, object] | None,
-                expected: tuple[int, ...],
-            ) -> None:
-                if method != "POST" or not path.endswith(
-                    "/c99-prod-stabilize-1234/stabilize"
-                ):
+                if method != "POST":
                     raise AssertionError((method, path, expected))
                 if payload != {
                     "token": "temporary-token",
                     "deployment_id": "c99-prod-stabilize-1234",
                 }:
                     raise AssertionError(payload)
+                if path.endswith("/c99-prod-stabilize-1234/stabilize"):
+                    return 200, {
+                        "cache_purge": {"object_cache_flushed": True},
+                        "database_version": "1.1.1",
+                        "deployment_id": "c99-prod-stabilize-1234",
+                        "installed_plugin_sha256": "a" * 64,
+                        "post_install_database_fingerprint": "b" * 64,
+                        "stabilized": True,
+                        "stabilized_from_phase": "installed_pending_stabilization",
+                        "version": "1.1.1",
+                    }
+                if path.endswith("/c99-prod-stabilize-1234/status"):
+                    return 200, {
+                        "current_active": True,
+                        "current_database_version": "1.1.1",
+                        "current_deployment": "c99-prod-stabilize-1234",
+                        "current_plugin_sha256": "a" * 64,
+                        "current_version": "1.1.1",
+                        "database_fingerprint": "b" * 64,
+                        "installed_plugin_sha256": "a" * 64,
+                        "phase": "installed",
+                        "post_install_database_fingerprint": "b" * 64,
+                        "stabilized": True,
+                    }
+                raise AssertionError((method, path, expected))
 
         result = DEPLOY.stabilize_deployment(
             StabilizeClient(),
@@ -564,7 +574,11 @@ class PipelineHardeningTests(unittest.TestCase):
         )
         self.assertTrue(result["stabilized"])
         self.assertEqual("b" * 64, result["post_install_database_fingerprint"])
-        self.assertEqual("rollback_failed", result["stabilized_from_phase"])
+        self.assertEqual(
+            "installed_pending_stabilization",
+            result["stabilized_from_phase"],
+        )
+        self.assertIn("'c99_finalize_unstabilized'", bridge)
 
     def test_committed_cleanup_uses_the_installed_directory_digest(self) -> None:
         bridge = (ROOT / "deploy" / "temporary-bridge.php").read_text(

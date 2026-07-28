@@ -845,6 +845,8 @@ def poll_deployment_status(
     }
     terminal = {
         "installed",
+        "installed_pending_cleanup",
+        "installed_pending_stabilization",
         "failed",
         "rolled_back",
         "rollback_failed",
@@ -896,7 +898,13 @@ def install_with_recovery(
     except DeployError as original_error:
         status = poll_deployment_status(client, token, deployment_id)
         if (
-            status.get("phase") == "installed"
+            status.get("phase")
+            in {
+                "installed",
+                "installed_pending_cleanup",
+                "installed_pending_stabilization",
+            }
+            and status.get("forward_stabilization_candidate")
             and status.get("expected_sha256") == run_fields["expected_sha256"]
             and re.fullmatch(
                 r"[a-f0-9]{64}",
@@ -905,24 +913,35 @@ def install_with_recovery(
             and status.get("current_plugin_sha256")
             == status.get("installed_plugin_sha256")
             and status.get("current_version") == run_fields["version"]
+            and status.get("current_database_version") == run_fields["version"]
             and status.get("current_active")
-            and status.get("temp_removed")
         ):
+            installed_plugin_sha256 = str(
+                status.get("installed_plugin_sha256", "")
+            )
+            stabilization = stabilize_deployment(
+                client,
+                token,
+                deployment_id,
+                run_fields["version"],
+                installed_plugin_sha256,
+            )
             return {
                 "active": True,
                 "baseline_database_fingerprint": status.get(
                     "baseline_database_fingerprint", ""
                 ),
-                "cache_purge": {"response_recovered": True},
+                "cache_purge": {
+                    "response_recovered": True,
+                    "stabilization": stabilization,
+                },
                 "deployment_id": deployment_id,
                 "had_plugin": bool(status.get("had_plugin")),
                 "prior_active": bool(status.get("prior_active")),
                 "prior_deployment": status.get("prior_deployment", ""),
                 "prior_plugin_sha256": status.get("prior_plugin_sha256", ""),
                 "prior_version": status.get("prior_version", ""),
-                "installed_plugin_sha256": status.get(
-                    "installed_plugin_sha256", ""
-                ),
+                "installed_plugin_sha256": installed_plugin_sha256,
                 "sha256": run_fields["expected_sha256"],
                 "temp_removed": True,
                 "version": run_fields["version"],
@@ -944,6 +963,7 @@ def stabilize_deployment(
         status = poll_deployment_status(client, token, deployment_id)
         if (
             status.get("phase") == "installed"
+            and status.get("stabilized")
             and status.get("current_active")
             and status.get("current_version") == version
             and status.get("current_database_version") == version
@@ -967,6 +987,27 @@ def stabilize_deployment(
             }
         else:
             raise original_error
+    status = bridge_call(client, "status", token, deployment_id)
+    persisted_fingerprint = str(
+        status.get("post_install_database_fingerprint", "")
+    )
+    if (
+        status.get("phase") != "installed"
+        or not status.get("stabilized")
+        or not status.get("current_active")
+        or status.get("current_version") != version
+        or status.get("current_database_version") != version
+        or status.get("current_deployment") != deployment_id
+        or status.get("current_plugin_sha256") != installed_plugin_sha256
+        or status.get("installed_plugin_sha256") != installed_plugin_sha256
+        or not re.fullmatch(r"[a-f0-9]{64}", persisted_fingerprint)
+        or status.get("database_fingerprint") != persisted_fingerprint
+        or response.get("post_install_database_fingerprint")
+        != persisted_fingerprint
+    ):
+        raise DeployError(
+            "Post-migration stabilization did not persist the exact checkpoint"
+        )
     if (
         not response.get("stabilized")
         or response.get("version") != version

@@ -925,7 +925,7 @@ add_action(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
 				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $capture_database_state ) {
-					global $wp_filesystem;
+					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
 						return $filesystem;
@@ -959,11 +959,21 @@ add_action(
 					require_once ABSPATH . 'wp-admin/includes/plugin.php';
 					$current = file_exists( $plugin_path ) ? get_plugin_data( $plugin_path, false, false ) : array();
 					$current_active = is_plugin_active( $config['plugin_file'] );
-					$current_deployment = (string) get_option( 'complete99_last_deployment_id', '' );
+					$current_deployment = (string) $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+							'complete99_last_deployment_id'
+						)
+					);
 					if ( '' === $current_deployment && $current_active && defined( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID' ) ) {
 						$current_deployment = (string) COMPLETE99_PLATFORM_DEPLOYMENT_ID;
 					}
-					$current_database_version = (string) get_option( 'complete99_platform_version', '' );
+					$current_database_version = (string) $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+							'complete99_platform_version'
+						)
+					);
 					$database_snapshot = $capture_database_state();
 					$database_json = is_wp_error( $database_snapshot ) ? false : wp_json_encode( $database_snapshot );
 					$phase = (string) ( $state['phase'] ?? ( $lock_owned ? ( $lock['phase'] ?? 'locked' ) : 'finalized' ) );
@@ -977,6 +987,29 @@ add_action(
 						&& $lock_age >= (int) $config['recovery_lease_seconds']
 						&& $process_available
 						&& in_array( $phase, array( 'reserved', 'locked', 'prepared', 'installing', 'rolling_back', 'committing' ), true );
+					$no_rollback_artifacts = empty( $state['rollback_applied'] )
+						&& empty( $state['database_restored'] )
+						&& empty( $state['rollback_compensated'] )
+						&& empty( $state['rollback_compensation_error'] );
+					$legacy_clean_installed = 'installed' === $phase
+						&& empty( $state['stabilized'] )
+						&& ! empty( $state['temp_removed'] )
+						&& '' === (string) ( $state['temp_path'] ?? '' )
+						&& ! empty( $state['installed_active'] )
+						&& $no_rollback_artifacts;
+					$clean_pending_stabilization = 'installed_pending_stabilization' === $phase
+						&& ! empty( $state['forward_ready'] )
+						&& ! empty( $state['temp_removed'] )
+						&& '' === (string) ( $state['temp_path'] ?? '' )
+						&& ! empty( $state['installed_active'] )
+						&& $no_rollback_artifacts;
+					$clean_pending_cleanup = 'installed_pending_cleanup' === $phase
+						&& ! empty( $state['forward_ready'] )
+						&& ! empty( $state['installed_active'] )
+						&& $no_rollback_artifacts;
+					$forward_stabilization_candidate = $legacy_clean_installed
+						|| $clean_pending_stabilization
+						|| $clean_pending_cleanup;
 					return array(
 						'deployment_id'    => $deployment_id,
 						'phase'            => $phase,
@@ -985,6 +1018,9 @@ add_action(
 						'lock_age_seconds' => $lock_age,
 						'recovery_lease_seconds'=> (int) $config['recovery_lease_seconds'],
 						'recovery_ready'   => $recovery_ready,
+						'forward_stabilization_candidate'=> $forward_stabilization_candidate,
+						'stabilized'      => ! empty( $state['stabilized'] ),
+						'forward_ready'   => ! empty( $state['forward_ready'] ),
 						'process_lock_available'=> $process_available,
 						'expected_sha256'  => (string) ( $state['expected_sha256'] ?? $lock['expected_sha256'] ?? '' ),
 						'expected_version' => (string) ( $state['expected_version'] ?? $state['installed_version'] ?? $lock['expected_version'] ?? '' ),
@@ -1028,7 +1064,7 @@ add_action(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
 				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state ) {
-					global $wp_filesystem;
+					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
 						return $filesystem;
@@ -1060,28 +1096,39 @@ add_action(
 						return new WP_Error( 'c99_stabilize_lock', 'The deployment does not own the mutation lock.', array( 'status' => 409 ) );
 					}
 					$phase = (string) ( $state['phase'] ?? '' );
-					if ( ! in_array( $phase, array( 'installed', 'failed', 'rollback_failed' ), true ) ) {
+					$no_rollback_artifacts = empty( $state['rollback_applied'] )
+						&& empty( $state['database_restored'] )
+						&& empty( $state['rollback_compensated'] )
+						&& empty( $state['rollback_compensation_error'] );
+					$legacy_clean_installed = 'installed' === $phase
+						&& empty( $state['stabilized'] )
+						&& ! empty( $state['temp_removed'] )
+						&& '' === (string) ( $state['temp_path'] ?? '' )
+						&& ! empty( $state['installed_active'] )
+						&& $no_rollback_artifacts;
+					$clean_pending_stabilization = 'installed_pending_stabilization' === $phase
+						&& ! empty( $state['forward_ready'] )
+						&& ! empty( $state['temp_removed'] )
+						&& '' === (string) ( $state['temp_path'] ?? '' )
+						&& ! empty( $state['installed_active'] )
+						&& $no_rollback_artifacts;
+					$clean_pending_cleanup = 'installed_pending_cleanup' === $phase
+						&& ! empty( $state['forward_ready'] )
+						&& ! empty( $state['installed_active'] )
+						&& $no_rollback_artifacts;
+					$already_stabilized = 'installed' === $phase
+						&& ! empty( $state['stabilized'] )
+						&& ! empty( $state['temp_removed'] )
+						&& '' === (string) ( $state['temp_path'] ?? '' )
+						&& ! empty( $state['installed_active'] )
+						&& $no_rollback_artifacts;
+					if ( ! $legacy_clean_installed && ! $clean_pending_stabilization && ! $clean_pending_cleanup && ! $already_stabilized ) {
 						return new WP_Error(
 							'c99_stabilize_not_ready',
-							'Deployment stabilization is allowed only after a complete forward install.',
+							'Deployment stabilization requires a clean forward-pending release.',
 							array( 'status' => 409, 'phase' => $phase )
 						);
 					}
-					$lease = $claim_lock(
-						$deployment_id,
-						array( 'installed', 'failed', 'rollback_failed' ),
-						'installed',
-						false,
-						false
-					);
-					if ( is_wp_error( $lease ) ) {
-						return $lease;
-					}
-					$adopted = $adopt_state_lease( $state_dir, $deployment_id, $lease );
-					if ( is_wp_error( $adopted ) ) {
-						return $adopted;
-					}
-					$state = $adopted;
 
 					$expected_version = (string) ( $state['expected_version'] ?? $state['installed_version'] ?? '' );
 					$installed_plugin_sha256 = (string) ( $state['installed_plugin_sha256'] ?? '' );
@@ -1100,18 +1147,27 @@ add_action(
 					$current_plugin_sha256 = $wp_filesystem->is_dir( $target_dir )
 						? $directory_sha256( $target_dir )
 						: new WP_Error( 'c99_stabilize_plugin_missing', 'The installed plugin directory is missing.', array( 'status' => 409 ) );
-					$current_database_version = (string) get_option( 'complete99_platform_version', '' );
-					$migration_failed = class_exists( 'Complete99_Platform', false )
-						&& method_exists( 'Complete99_Platform', 'migration_failed' )
-						&& Complete99_Platform::migration_failed();
+					$wpdb->last_error = '';
+					$current_database_version = (string) $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+							'complete99_platform_version'
+						)
+					);
+					$database_version_error = (string) $wpdb->last_error;
+					$runtime_loaded = defined( 'COMPLETE99_PLATFORM_VERSION' )
+						&& $expected_version === (string) COMPLETE99_PLATFORM_VERSION
+						&& class_exists( 'Complete99_Platform', false )
+						&& method_exists( 'Complete99_Platform', 'migration_failed' );
 					if (
-						$migration_failed
+						'' !== $database_version_error
+						|| ! $runtime_loaded
+						|| Complete99_Platform::migration_failed()
 						|| is_wp_error( $current_plugin_sha256 )
 						|| ! hash_equals( $installed_plugin_sha256, (string) $current_plugin_sha256 )
 						|| $expected_version !== (string) ( $current_data['Version'] ?? '' )
 						|| $expected_version !== $current_database_version
 						|| ! is_plugin_active( $config['plugin_file'] )
-						|| empty( $state['installed_active'] )
 					) {
 						return new WP_Error(
 							'c99_stabilize_forward_mismatch',
@@ -1119,10 +1175,111 @@ add_action(
 							array( 'status' => 409 )
 						);
 					}
+					try {
+						Complete99_Content::assert_migration_invariants();
+						Complete99_Settings::assert_defaults();
+					} catch ( \Throwable $error ) {
+						return new WP_Error(
+							'c99_stabilize_migration_invariants',
+							'The completed database migration did not satisfy the release invariants.',
+							array( 'status' => 409 )
+						);
+					}
+					$swap_suffix = substr( hash( 'sha256', $deployment_id ), 0, 20 );
+					$restore_stage = trailingslashit( WP_PLUGIN_DIR ) . '.complete99-restore-' . $swap_suffix;
+					$displaced_dir = trailingslashit( WP_PLUGIN_DIR ) . '.complete99-displaced-' . $swap_suffix;
+					if ( $wp_filesystem->exists( $restore_stage ) || $wp_filesystem->exists( $displaced_dir ) ) {
+						return new WP_Error(
+							'c99_stabilize_swap_artifacts',
+							'Deployment stabilization refused rollback swap artifacts.',
+							array( 'status' => 409 )
+						);
+					}
+
+					$current_database_snapshot = $capture_database_state();
+					$current_database_json = is_wp_error( $current_database_snapshot )
+						? false
+						: wp_json_encode( $current_database_snapshot );
+					if ( is_wp_error( $current_database_snapshot ) || false === $current_database_json ) {
+						return new WP_Error( 'c99_stabilize_database_probe', 'The current database fingerprint could not be captured.', array( 'status' => 500 ) );
+					}
+					$current_database_fingerprint = hash( 'sha256', $current_database_json );
+					$recorded_fingerprint = (string) ( $state['post_install_database_fingerprint'] ?? '' );
+					if ( $already_stabilized ) {
+						$wpdb->last_error = '';
+						$current_deployment_id = (string) $wpdb->get_var(
+							$wpdb->prepare(
+								"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+								'complete99_last_deployment_id'
+							)
+						);
+						if (
+							'' !== (string) $wpdb->last_error
+							|| $deployment_id !== $current_deployment_id
+							|| ! preg_match( '/^[a-f0-9]{64}$/', $recorded_fingerprint )
+							|| ! hash_equals( $recorded_fingerprint, $current_database_fingerprint )
+						) {
+							return new WP_Error(
+								'c99_stabilize_idempotency_conflict',
+								'The stabilized release changed after its durable checkpoint.',
+								array( 'status' => 409 )
+							);
+						}
+						return array(
+							'stabilized'                       => true,
+							'idempotent'                       => true,
+							'stabilized_from_phase'            => (string) ( $state['stabilized_from_phase'] ?? 'installed' ),
+							'version'                          => $expected_version,
+							'database_version'                 => $current_database_version,
+							'deployment_id'                    => $deployment_id,
+							'installed_plugin_sha256'          => $installed_plugin_sha256,
+							'post_install_database_fingerprint'=> $recorded_fingerprint,
+							'cache_purge'                       => array( 'not_required' => true ),
+						);
+					}
+
+					if ( $clean_pending_cleanup ) {
+						$temp_path = (string) ( $state['temp_path'] ?? '' );
+						$temp_root = strtolower( trailingslashit( wp_normalize_path( get_temp_dir() ) ) );
+						$normalized_temp = strtolower( wp_normalize_path( $temp_path ) );
+						if (
+							'' === $temp_path
+							|| ! str_starts_with( $normalized_temp, $temp_root )
+							|| ! str_ends_with( $normalized_temp, '.zip' )
+						) {
+							return new WP_Error( 'c99_stabilize_temp_path', 'The pending package path is invalid.', array( 'status' => 409 ) );
+						}
+						if ( $wp_filesystem->exists( $temp_path ) && ! $wp_filesystem->delete( $temp_path ) ) {
+							return new WP_Error( 'c99_stabilize_temp_cleanup', 'The pending package could not be removed.', array( 'status' => 500 ) );
+						}
+					}
+
+					$lease = $claim_lock(
+						$deployment_id,
+						array( 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup' ),
+						$phase,
+						false,
+						false
+					);
+					if ( is_wp_error( $lease ) ) {
+						return $lease;
+					}
+					$adopted = $adopt_state_lease( $state_dir, $deployment_id, $lease );
+					if ( is_wp_error( $adopted ) ) {
+						return $adopted;
+					}
+					$state = $adopted;
 
 					update_option( 'complete99_last_deployment_id', $deployment_id, false );
 					wp_cache_delete( 'complete99_last_deployment_id', 'options' );
-					if ( $deployment_id !== (string) get_option( 'complete99_last_deployment_id', '' ) ) {
+					$wpdb->last_error = '';
+					$persisted_deployment_id = (string) $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+							'complete99_last_deployment_id'
+						)
+					);
+					if ( '' !== (string) $wpdb->last_error || $deployment_id !== $persisted_deployment_id ) {
 						return new WP_Error( 'c99_stabilize_deployment_readback', 'The deployment identity could not be persisted.', array( 'status' => 500 ) );
 					}
 					$cache_purge = $purge_caches();
@@ -1144,6 +1301,10 @@ add_action(
 						array(
 							'installed_version'                 => $expected_version,
 							'installed_active'                  => true,
+							'temp_removed'                      => true,
+							'temp_path'                         => '',
+							'forward_ready'                     => true,
+							'pre_migration_database_fingerprint'=> $recorded_fingerprint,
 							'post_install_database_fingerprint' => $post_install_fingerprint,
 							'stabilized'                        => true,
 							'stabilized_from_phase'             => $phase,
@@ -1154,6 +1315,7 @@ add_action(
 					}
 					return array(
 						'stabilized'                       => true,
+						'idempotent'                       => false,
 						'stabilized_from_phase'            => $phase,
 						'version'                          => $expected_version,
 						'database_version'                 => $current_database_version,
@@ -1572,6 +1734,9 @@ add_action(
 							array(
 								'post_install_database_fingerprint' => $post_install_fingerprint,
 								'installed_plugin_sha256'           => $installed_plugin_sha256,
+								'installed_version'                 => $version,
+								'installed_active'                  => is_plugin_active( $config['plugin_file'] ),
+								'forward_ready'                     => true,
 							)
 						);
 						if ( is_wp_error( $post_install_recorded ) ) {
@@ -1593,13 +1758,31 @@ add_action(
 					} catch ( \Throwable $error ) {
 						$install_response = new WP_Error( 'c99_deploy_exception', 'The plugin installation raised an exception.', array( 'status' => 500 ) );
 					}
+					if ( is_array( $install_response ) ) {
+						$pending_cleanup = $set_state_phase(
+							$state_dir,
+							$deployment_id,
+							'installed_pending_cleanup',
+							array(
+								'forward_ready'     => true,
+								'installed_version' => $version,
+								'installed_active'  => ! empty( $install_response['active'] ),
+								'temp_removed'      => false,
+								'temp_path'         => $temp,
+							)
+						);
+						if ( is_wp_error( $pending_cleanup ) ) {
+							return $pending_cleanup;
+						}
+					}
 					if ( $config['local_test'] && 'after_install' === $config['test_fault'] && is_array( $install_response ) ) {
 						$make_test_lock_stale( $deployment_id );
 						return new WP_Error( 'c99_test_interrupt_install', 'Injected local interruption after plugin installation.', array( 'status' => 500 ) );
 					}
 					$temp_removed = ! $wp_filesystem->exists( $temp ) || ( $wp_filesystem->delete( $temp ) && ! $wp_filesystem->exists( $temp ) );
 					if ( ! $temp_removed ) {
-						$set_state_phase( $state_dir, $deployment_id, 'failed', array( 'temp_removed' => false, 'temp_path' => $temp ) );
+						$failure_phase = is_array( $install_response ) ? 'installed_pending_cleanup' : 'failed';
+						$set_state_phase( $state_dir, $deployment_id, $failure_phase, array( 'temp_removed' => false, 'temp_path' => $temp ) );
 						return new WP_Error(
 							'c99_deploy_temp_cleanup',
 							'The verified temporary package could not be removed.',
@@ -1617,12 +1800,13 @@ add_action(
 						$installed_state = $set_state_phase(
 							$state_dir,
 							$deployment_id,
-							'installed',
+							'installed_pending_stabilization',
 							array(
 								'temp_removed'      => true,
 								'temp_path'         => '',
 								'installed_version' => $version,
 								'installed_active'  => ! empty( $install_response['active'] ),
+								'forward_ready'     => true,
 							)
 						);
 						if ( is_wp_error( $installed_state ) ) {
@@ -2280,6 +2464,13 @@ add_action(
 					if ( $state_exists ) {
 						if ( in_array( $phase, array( 'installed', 'rolled_back', 'commit_failed', 'committing' ), true ) ) {
 							if ( 'installed' === $phase ) {
+								if ( empty( $state['stabilized'] ) ) {
+									return new WP_Error(
+										'c99_finalize_unstabilized',
+										'Forward deployment finalization requires a durable post-migration checkpoint.',
+										array( 'status' => 409 )
+									);
+								}
 								$commit_identity = array(
 									'committed_outcome'                 => 'installed',
 									'committed_expected_active'         => ! empty( $state['installed_active'] ),

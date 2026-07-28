@@ -353,7 +353,41 @@ def main() -> int:
                     f"Recovery found no rollback state for phase={phase or 'missing'}"
                 )
         elif (
-            phase in {"installed", "failed", "rollback_failed"}
+            phase == "installed"
+            and status.get("stabilized")
+            and status.get("current_active")
+            and status.get("current_version") == status.get("expected_version")
+            and status.get("current_database_version")
+            == status.get("expected_version")
+            and status.get("current_deployment") == args.deployment_id
+            and status.get("current_plugin_sha256")
+            == status.get("installed_plugin_sha256")
+            and status.get("database_fingerprint")
+            == status.get("post_install_database_fingerprint")
+        ):
+            expected_version = str(status.get("expected_version", ""))
+            audit["health"] = deployer.verify_health(
+                client,
+                expected_version,
+                args.deployment_id,
+            )
+            audit["rendered_home"] = deployer.verify_rendered_home(
+                client,
+                expected_version,
+                args.deployment_id,
+            )
+            audit["finalize"] = deployer.finalize_deployment(
+                client, token, args.deployment_id
+            )
+            audit["decision"] = "finish_stabilized_forward_cleanup"
+        elif (
+            phase
+            in {
+                "installed",
+                "installed_pending_cleanup",
+                "installed_pending_stabilization",
+            }
+            and status.get("forward_stabilization_candidate")
             and status.get("current_active")
             and status.get("current_version") == status.get("expected_version")
             and status.get("current_database_version")

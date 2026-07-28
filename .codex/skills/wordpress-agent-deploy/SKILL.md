@@ -134,6 +134,33 @@ method, Basic auth, JSON body, and normal headers. Never fall back after a JSON
 WordPress 401/403 or any WordPress REST authorization error. That is an auth or
 capability failure and must remain closed.
 
+## Fresh-request migration stabilization
+
+An active-plugin overwrite can finish in one PHP request while the new plugin's
+`init` migration cannot run until the next request. Never snapshot the
+installer-request database state and immediately treat it as the final forward
+state.
+
+1. End the installer request in a dedicated clean
+   `installed_pending_stabilization` state after its package temp file is gone.
+2. Call a separate admin-gated stabilization route. That fresh request loads the
+   new plugin and runs its migration before the callback.
+3. Require the exact recorded directory SHA-256, plugin header version, loaded
+   runtime version constant, active state, durable database version, successful
+   migration invariants, empty temp path, and absence of rollback swap artifacts.
+4. Persist the runtime deployment ID, read it back directly from `wp_options`,
+   purge caches, capture the post-migration database fingerprint, and atomically
+   record `stabilized=true`.
+5. Re-read status independently. The current fingerprint must equal the recorded
+   post-migration fingerprint before health, body verification, or finalization.
+6. Finalization must refuse an installed release without `stabilized=true`.
+
+An idempotent retry compares the current fingerprint with the recorded one and
+returns it without recapturing or mutating state. Never forward-stabilize a
+generic `failed` or `rollback_failed` state. A migration preserves an existing
+bridge-owned runtime deployment ID; use the plugin build ID only when the option
+is genuinely absent on first activation.
+
 ## Verification and evidence contract
 
 A deploy is not complete until an independent audit proves all of these:
@@ -212,6 +239,10 @@ Do not attempt transaction semantics across non-transactional tables.
 12. **Deploy only protected-main bytes.** Artifact/source mismatch, missing
     required CI, failed recovery probe, missing backup, or failed lock stops the
     release before a live write.
+13. **Checkpoint after the new-code request.** Plugin/database version changes
+    can occur on the request after `Plugin_Upgrader` returns. Require the
+    fresh-request stabilization contract above; otherwise health can fail and a
+    correct rollback can refuse unknown database drift.
 
 ## Emergency recovery (memorize before you need it)
 - Site 500 and REST dead: host File Manager -> `wp-content/plugins/` -> rename the
