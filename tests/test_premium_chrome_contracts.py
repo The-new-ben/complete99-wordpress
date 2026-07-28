@@ -72,6 +72,14 @@ class PremiumChromeContracts(unittest.TestCase):
         )
         self.assertIn("font-size: 17px;", self.css)
         self.assertGreaterEqual(self.css.count("min-height: 44px"), 4)
+        self.assertRegex(
+            self.css,
+            r"(?s)\.c99-text-link\s*\{[^}]*min-height:\s*44px",
+        )
+        self.assertRegex(
+            self.css,
+            r"(?s)\.c99-footer-cluster a\s*\{[^}]*min-width:\s*44px",
+        )
 
     def test_hubs_have_rich_cards_and_store_language_is_non_transactional(self) -> None:
         self.assertIn("private static function render_hub_experience", self.frontend)

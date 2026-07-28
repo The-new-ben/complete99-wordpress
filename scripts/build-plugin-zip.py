@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-28 17:35:00"
+RELEASE_LAST_UPDATED = "2026-07-28 18:05:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -211,9 +211,8 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Added a fresh-request migration checkpoint so the deploy bridge verifies the exact plugin, database, runtime and deployment identity before health checks or finalization.</li>"
-                "<li>Preserved the bridge-owned runtime deployment marker during content migrations while repairing a genuinely missing marker on first activation.</li>"
-                "<li>Made interrupted clean forward installs recover idempotently without blessing failed or partially rolled-back states.</li>"
+                "<li>Raised compact editorial and footer links to a full 44 by 44 CSS-pixel interaction target without changing the visual hierarchy.</li>"
+                "<li>Completed real-Chrome target-size acceptance for the live bilingual shell.</li>"
                 "</ul>"
             )
         },
