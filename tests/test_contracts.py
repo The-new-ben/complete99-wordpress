@@ -613,6 +613,10 @@ class Complete99ContractTests(unittest.TestCase):
                     path = PurePosixPath(name)
                     self.assertEqual("complete99-platform", path.parts[0])
                     self.assertNotIn("\\", name)
+                main = archive.read(
+                    "complete99-platform/complete99-platform.php"
+                )
+                self.assertNotIn(b"\r\n", main)
 
     def test_public_package_secret_filename_policy_is_fail_closed(self) -> None:
         forbidden = (

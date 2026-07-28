@@ -4,9 +4,9 @@ Date: 2026-07-28
 
 Release: `complete99-platform` 1.0.2
 
-Artifact SHA-256: `cd09318ebcc62d31684d241fbec10358b739eeb7da23075cd2ce68a3164b1817`
+Artifact SHA-256: `612d9d5fb23a52fa4e96f86c31cbe5359931782e4e72f59fe9ccb350f0f0ecc9`
 
-Source SHA-256: `de5b95b1bef80d8b8442230fc248dfd844ce65ec7f65c2541b0ed4b3f75ecefa`
+Source SHA-256: `7a470eff16f59147d3843777000aea5b98475dd2c6d4b44ff52cc961c0157bd0`
 
 ## Test environment
 
@@ -22,6 +22,7 @@ Source SHA-256: `de5b95b1bef80d8b8442230fc248dfd844ce65ec7f65c2541b0ed4b3f75ecef
 
 | Deployment ID | Scenario | Observed result |
 |---|---|---|
+| `c99-canonical-release-1` | Canonical cross-platform ZIP → rollback → redeploy | Artifact/source digests exact; database/plugin restored; health and database version OK; route 404 |
 | `c99-dry-native-txn-1` | Authenticated dry preflight | Passed; lock released, snippet inactive, route 404 |
 | `c99-native-rollback-txn-1` | Install → health/body → rollback → redeploy | Deployed; identical database fingerprint, exact plugin digest, health OK |
 | `c99-fault-db-capture-1` | Forced database capture failure | Failed closed before lock/mutation; route 404 |
@@ -54,6 +55,7 @@ After all exercises, both native WordPress installations reported:
 - Python compilation passes for deploy, recovery, build and release scripts.
 - secret scan passes.
 - two package builds are byte-for-byte identical.
+- Windows and Linux text inputs canonicalize to the same LF package bytes.
 - independent archive validation passes with 130 entries.
 - checked manifest targets WordPress 6.9 and requires PHP 8.0 / WordPress 6.4.
 

@@ -77,6 +77,18 @@ def credential_signature_label(contents: bytes) -> str | None:
     return None
 
 
+def canonical_contents(path: Path) -> bytes:
+    """Normalize text line endings so Windows and Linux produce identical ZIP bytes."""
+    raw = path.read_bytes()
+    if b"\0" in raw:
+        return raw
+    try:
+        raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw
+    return raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
 def version_contract() -> tuple[str, str]:
     text = MAIN.read_text(encoding="utf-8")
     header = re.search(r"^\s*\*\s*Version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$", text, re.MULTILINE)
@@ -130,14 +142,19 @@ def build_bytes(target: Path) -> None:
             info.external_attr = (0o100644 & 0xFFFF) << 16
             info.compress_type = zipfile.ZIP_DEFLATED
             info.flag_bits |= 0x800
-            archive.writestr(info, path.read_bytes(), compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+            archive.writestr(
+                info,
+                canonical_contents(path),
+                compress_type=zipfile.ZIP_DEFLATED,
+                compresslevel=9,
+            )
 
 
 def source_digest() -> str:
     digest = hashlib.sha256()
     for path in source_files():
         relative = path.relative_to(SOURCE).as_posix().encode("utf-8")
-        raw = path.read_bytes()
+        raw = canonical_contents(path)
         digest.update(len(relative).to_bytes(8, "big"))
         digest.update(relative)
         digest.update(len(raw).to_bytes(8, "big"))
