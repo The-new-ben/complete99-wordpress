@@ -51,6 +51,9 @@ jobs:
       - name: Package validation
         run: python scripts/validate-package.py
 
+      - name: Exact release ZIP PHP syntax
+        run: python scripts/lint-plugin-zip.py
+
       - name: Prove checked-in release artifacts are current
         shell: bash
         run: |
