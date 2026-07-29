@@ -1,21 +1,159 @@
 # Pipeline acceptance evidence
 
-## Version 1.2.0 local source candidate
+## Version 1.2.1 production acceptance
 
 Date: 2026-07-29
 
-This section records the current local candidate only. It is not production,
-protected-main CI, or live-browser evidence.
+Release: `complete99-platform` 1.2.1
 
-- Candidate artifact: `complete99-platform-1.2.0.zip`
+Production source commit:
+`20f455fd0c9505d925efb82aacc69bace9308172`
+
+- Release PR:
+  <https://github.com/The-new-ben/complete99-wordpress/pull/14>
+- Release artifact: `complete99-platform-1.2.1.zip`
+- Artifact SHA-256:
+  `cd1eabced6e29383cd20ec760649feda07d5a78c58f0b3d93ee6a2e9742b46be`
+- Packaged-source SHA-256:
+  `33a4aca82ef95c6298391d735bde706960d3501579ea1434ead07c33bac6c5b8`
+- Installed-plugin SHA-256:
+  `0b46aaa86882c3722b5f1aa2151e3931437bd49de9683a059ee589029aa2f995`
+- Artifact size: 2,719,567 bytes
+- Independent archive validation: 162 entries
+
+### Source and admission gates
+
+Acceptance completed against the exact release source:
+
+- 97 contract tests passed; the one anonymous public-host test remained
+  intentionally skipped because `COMPLETE99_VERIFY_PUBLIC_URLS=1` was not set;
+- source PHP lint passed;
+- PHP lint passed for all 56 PHP files extracted from the exact release ZIP;
+- source and package secret scans passed;
+- two clean package builds were byte-for-byte identical;
+- package shape, update metadata, integrity metadata, version and deployment ID
+  agreed;
+- working-tree whitespace validation passed.
+
+The release adds a Complete99-owned bilingual 404 for unknown live-dish URLs.
+The Hebrew response renders `he`/`rtl`; the English response renders `en`/`ltr`.
+Both keep HTTP 404, declare `noindex`, omit canonical, and provide real
+continuation links to the dish library and home. CI now also lints every PHP
+file inside the exact checked-in release ZIP before admitting it.
+
+Protected-main validation admitted the exact source commit before production
+deployment:
+<https://github.com/The-new-ben/complete99-wordpress/actions/runs/30417568767>
+
+### Production deployment
+
+- Current live base: <https://a235232-tmp.s1242.upress.link>
+- Deployment ID: `c99-prod-30417601615-1`
+- Deployment run:
+  <https://github.com/The-new-ben/complete99-wordpress/actions/runs/30417601615>
+- Production deployment completed at `2026-07-29T02:44:49Z`.
+- Final health reported component `complete99-platform`, status `ok`, version
+  `1.2.1`, database version `1.2.1`, sync configured, and the exact deployment
+  ID.
+- The deployed plugin tree matched installed-plugin SHA-256
+  `0b46aaa86882c3722b5f1aa2151e3931437bd49de9683a059ee589029aa2f995`.
+- The final rendered-home probe reported version `1.2.1` and the exact
+  deployment ID.
+- The final `robots.txt` probe returned HTTP 200 with SHA-256
+  `e8b68b16cc0b5d15bf5f626b3881c20db37f566057c321c0ef0c610eb1b21040`.
+- The temporary deployment snippet was inactive and permanently deleted; its
+  row was absent and its temporary route returned 404.
+- Finalization released the deployment lock and removed deployment state.
+
+This patch did not repeat the rollback exercise. The immediately preceding
+1.2.0 production release exercised restoration and redeployment successfully;
+1.2.1 used the same fail-closed pipeline and independently passed recovery
+probe, dry-run acceptance, install verification, cleanup and readback.
+
+### Application-to-WordPress readback
+
+After the 1.2.1 deployment, the private Complete99 OS connector independently
+verified health and then performed a new signed sync with exact public
+readback:
+
+- read-model version: `complete99-os-v10`;
+- read-model updated at: `2026-07-29T02:50:05+00:00`;
+- freshness: `true`;
+- public item count: `0`;
+- public branch count: one, exact branch ID `store-99`, published;
+- public campaign count: `0`;
+- model digest:
+  `c5dc6c34b9090382c4b99e343ca2ef50d5b1c699dcde1cef1ef9f61b4671d681`;
+- exact public-catalog body/readback SHA-256:
+  `de0bf7c9368fa655c3de1719a492f4f3e80ce8ca7f13691f5718f0843e981691`.
+
+The connector did not change availability. Zero public dishes is the
+authoritative current state because no dish has yet received the required
+kitchen availability approval. The site therefore shows a truthful empty
+state and the sitemap correctly contains no live-dish provider or `/menu/`
+locations. No stale or estimated menu was restored.
+
+### Live HTTP, SEO and Chrome acceptance
+
+Read-only live acceptance after deployment and final sync proved:
+
+- all 30 bilingual public-discovery routes returned HTTP 200 with no redirect,
+  the exact 1.2.1/deployment markers, one H1, correct language/direction, exact
+  canonical, reciprocal `he`/`en`/`x-default`, indexability and parseable
+  `WebPage` JSON-LD;
+- all 62 surfaced internal links returned HTTP 200 with no redirect;
+- all 13 referenced image assets returned HTTP 200 as images with no redirect;
+- the REST root, health endpoint, public catalog, robots file and sitemap
+  returned their expected public contracts;
+- both future store-architecture pages returned HTTP 200 with `noindex`, were
+  absent from the sitemap and exposed no checkout;
+- six public forms retained POST, five required fields, consent, nonce and
+  honeypot; no form was submitted during acceptance;
+- unknown Hebrew and English live-dish URLs returned HTTP 404, localized
+  language/direction/title/H1, explicit `noindex`, no canonical, and two
+  working recovery links.
+
+Chrome acceptance covered the Hebrew and English home surfaces, the bilingual
+dish empty state, mobile navigation and the changed bilingual 404 surface at
+1440×1000 and 390×844 CSS viewports. The checked views had no horizontal
+overflow, no visible interactive target below 44 pixels, correct version and
+deployment markers, and no console errors. Mobile navigation opened, locked
+body scrolling, closed with Escape and returned focus to its trigger.
+
+### Evidence boundary
+
+This evidence proves the reviewed 1.2.1 artifact is installed on the current
+UPress production alias, the private OS can push and read back the exact public
+model, and the public site truthfully represents that model.
+
+It does not claim that a dish is currently available. Publishing the first live
+dish remains intentionally blocked on real kitchen availability approval; no
+availability, campaign publication or social publication was fabricated. The
+future canonical domain `complete99.co.il` remains unconnected, so the current
+canonical base remains the UPress alias.
+
+## Version 1.2.0 production acceptance
+
+Date: 2026-07-29
+
+Release: `complete99-platform` 1.2.0
+
+Production source commit:
+`586668a409a3a40f134c93942a3a6998b508acab`
+
+- Release artifact: `complete99-platform-1.2.0.zip`
 - Artifact SHA-256:
   `089e8de17a2837235afdf1cfead7840df436d642156d67676a1f2f32b7271d12`
 - Packaged-source SHA-256:
   `5cceade3263e33e879e2be0a90cef21efd5f8391a6c01783e20487cdc8e285dc`
+- Installed-plugin SHA-256:
+  `0b202e52e1ed4999008413c82daa1d7f7060ba9a2e789726a8594ba06d0cf54e`
 - Artifact size: 2,718,441 bytes
 - Independent archive validation: 161 entries
 
-Local acceptance completed against the exact working-tree source:
+### Source and admission gates
+
+Acceptance completed against the exact release source:
 
 - all 95 contract tests passed; the one anonymous public-host test remained
   intentionally skipped because `COMPLETE99_VERIFY_PUBLIC_URLS=1` was not set;
@@ -26,18 +164,53 @@ Local acceptance completed against the exact working-tree source:
 - the checked update manifest, integrity metadata, version and deployment ID agree;
 - working-tree whitespace validation passed.
 
-The candidate includes strict boolean normalization, durable readback before a
+The release includes strict boolean normalization, durable readback before a
 successful sync response, supported UPress/LiteSpeed/object-cache invalidation
 with explicit reporting, canonical slug collision protection, a seven-day
 freshness gate, exact bilingual live-dish SEO ownership and the
 `completedishes` WordPress sitemap provider.
 
-This candidate has not been staged, committed, pushed, admitted by protected-main
-CI, deployed to UPress or accepted in live Chrome. No claim is made that version
-1.2.0 is live; the last verified production release remains 1.1.5. Physical
-`robots.txt` management and sync-secret initialization are deliberate deployment
-pipeline capabilities and were contract-tested locally, but they were not run
-against production for this candidate.
+Protected-main validation admitted the exact source commit before production
+deployment:
+<https://github.com/The-new-ben/complete99-wordpress/actions/runs/30414689530>
+
+### Production deployment
+
+- Current live base: <https://a235232-tmp.s1242.upress.link>
+- Deployment ID: `c99-prod-30414737617-1`
+- Deployment run:
+  <https://github.com/The-new-ben/complete99-wordpress/actions/runs/30414737617>
+- Production deployment completed at `2026-07-29T01:41:58Z`.
+- Final health reported component `complete99-platform`, status `ok`, version
+  `1.2.0`, database version `1.2.0`, and the exact deployment ID.
+- The deployed plugin tree matched installed-plugin SHA-256
+  `0b202e52e1ed4999008413c82daa1d7f7060ba9a2e789726a8594ba06d0cf54e`.
+- The final rendered-home probe reported version `1.2.0` and the exact
+  deployment ID.
+- The final `robots.txt` probe returned HTTP 200 with SHA-256
+  `e8b68b16cc0b5d15bf5f626b3881c20db37f566057c321c0ef0c610eb1b21040`.
+- The temporary deployment snippet was inactive and permanently deleted; its
+  row was absent and its temporary route returned 404.
+- Finalization released the deployment lock and removed deployment state.
+
+### Exercised rollback
+
+The production run exercised rollback after the first 1.2.0 installation. The
+audit verified restoration of the prior database and plugin files, then
+redeployed the same exact 1.2.0 release. Final health, rendered-home, installed
+plugin integrity, cleanup and route-404 checks passed after that exercise.
+
+### Evidence boundary
+
+This evidence proves the reviewed 1.2.0 artifact was installed on the current
+UPress production alias, recovered through the exercised rollback path, and
+left healthy with the temporary deployment bridge removed.
+
+The first application-to-WordPress catalog sync, exact public readback,
+post-sync bilingual dish sitemap membership, and final live-Chrome acceptance
+are not recorded as complete in this document. Add those claims only after
+independent verification. The future canonical domain `complete99.co.il`
+remains unconnected; the current live base remains the UPress alias.
 
 ## Archived version 1.0.3 native acceptance
 

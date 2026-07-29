@@ -1,0 +1,122 @@
+{
+  "released_at": "2026-07-29T02:44:49Z",
+  "live_url": "https://a235232-tmp.s1242.upress.link",
+  "plugin": {
+    "slug": "complete99-platform",
+    "version": "1.2.1"
+  },
+  "source": {
+    "commit": "20f455fd0c9505d925efb82aacc69bace9308172",
+    "pull_request": "https://github.com/The-new-ben/complete99-wordpress/pull/14",
+    "main_ci_run": "https://github.com/The-new-ben/complete99-wordpress/actions/runs/30417568767"
+  },
+  "deployment": {
+    "id": "c99-prod-30417601615-1",
+    "run_url": "https://github.com/The-new-ben/complete99-wordpress/actions/runs/30417601615",
+    "rollback_exercised": false,
+    "prior_release_rollback_evidence": "docs/releases/complete99-1.2.0.json"
+  },
+  "hashes": {
+    "artifact_sha256": "cd1eabced6e29383cd20ec760649feda07d5a78c58f0b3d93ee6a2e9742b46be",
+    "packaged_source_sha256": "33a4aca82ef95c6298391d735bde706960d3501579ea1434ead07c33bac6c5b8",
+    "installed_plugin_sha256": "0b46aaa86882c3722b5f1aa2151e3931437bd49de9683a059ee589029aa2f995",
+    "robots_sha256": "e8b68b16cc0b5d15bf5f626b3881c20db37f566057c321c0ef0c610eb1b21040",
+    "health_body_sha256": "ebb1a082567d22c7a85b43d68709bde52ca748e408902b61f3f9ac70d983ff84",
+    "public_catalog_body_sha256": "de0bf7c9368fa655c3de1719a492f4f3e80ce8ca7f13691f5718f0843e981691",
+    "discovery_route_aggregate_sha256": "a360aed51b809014cb47c0e482b703ac2ac82f11933dbefcfc07e08520879ccb",
+    "surfaced_link_aggregate_sha256": "5ee3c46bea689752e8e838572532d6bb459b259b2b428554045fc19d96667683",
+    "image_asset_aggregate_sha256": "a59cec094f45e8b481fd2c6bdc5153d4ac495c5d3710ac671c3d06ad57c49705",
+    "sitemap_index_sha256": "f36ef0585a46f15074d481434daec2b21c19f134739eece93056e7e67acb8ef7",
+    "sitemap_url_set_sha256": "da1c729d3aea6c6480ad749fde373d91ffa3810b04e92267fc4a1b25e8a78880"
+  },
+  "health": {
+    "status": "ok",
+    "component": "complete99-platform",
+    "version": "1.2.1",
+    "database_version": "1.2.1",
+    "deployment_id": "c99-prod-30417601615-1",
+    "sync_configured": true
+  },
+  "catalog_sync": {
+    "version": "complete99-os-v10",
+    "updated_at": "2026-07-29T02:50:05+00:00",
+    "fresh": true,
+    "digest": "c5dc6c34b9090382c4b99e343ca2ef50d5b1c699dcde1cef1ef9f61b4671d681",
+    "raw_bytes": 746,
+    "item_count": 0,
+    "branch_ids": [
+      "store-99"
+    ],
+    "campaign_count": 0,
+    "availability_changed": false
+  },
+  "public_acceptance": {
+    "discovery_routes": {
+      "checked": 30,
+      "passed": 30,
+      "redirects": 0,
+      "indexable": 28,
+      "noindex": 2
+    },
+    "surfaced_internal_links": {
+      "checked": 62,
+      "passed": 62,
+      "redirects": 0,
+      "indexable_and_in_sitemap": 44,
+      "noindex_and_not_in_sitemap": 18
+    },
+    "image_assets": {
+      "checked": 13,
+      "passed": 13,
+      "redirects": 0
+    },
+    "forms": {
+      "checked": 6,
+      "submitted": 0
+    },
+    "store_architecture": {
+      "routes": 2,
+      "noindex": true,
+      "in_sitemap": false,
+      "checkout_present": false
+    },
+    "sitemap": {
+      "provider_count": 2,
+      "page_urls": 32,
+      "platform_feature_urls": 12,
+      "unique_urls": 44,
+      "live_dish_provider_present": false,
+      "live_dish_locations": 0
+    },
+    "unknown_dish_404": {
+      "hebrew": {
+        "status": 404,
+        "lang": "he",
+        "dir": "rtl",
+        "noindex": true,
+        "canonical_present": false,
+        "body_sha256": "6945fd648246133396db56eb69cea270789a43176d6d3b1e5a4cf4585c992b55"
+      },
+      "english": {
+        "status": 404,
+        "lang": "en",
+        "dir": "ltr",
+        "noindex": true,
+        "canonical_present": false,
+        "body_sha256": "3ab1cabcd62d383eb3eb9f22286cf9256a732177b22a1947b65eb149087ba8c1"
+      }
+    },
+    "chrome": {
+      "css_viewports": [
+        "1440x1000",
+        "390x844"
+      ],
+      "horizontal_overflow_detected": false,
+      "changed_surface_targets_under_44px": 0,
+      "console_errors": 0
+    }
+  },
+  "temporary_bridge_removed": true,
+  "temporary_route_returns_404": true,
+  "first_live_dish_blocker": "Real kitchen availability approval is still required."
+}
