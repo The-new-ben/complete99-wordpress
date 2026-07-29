@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugin" / "complete99-platform"
 SETTINGS = PLUGIN / "includes" / "class-complete99-settings.php"
 FRONTEND = PLUGIN / "includes" / "class-complete99-frontend.php"
+NOT_FOUND_TEMPLATE = PLUGIN / "templates" / "not-found.php"
 DISH_SEEDS = PLUGIN / "data" / "dish-seeds.php"
 LAUNCH_CONTENT = PLUGIN / "data" / "launch-content.php"
 PRIVATE_OS_HOST = "complete99-os.benben777.chatgpt.site"
@@ -119,6 +120,84 @@ echo json_encode($results);
             self.assertIn(marker, frontend)
         self.assertNotIn("twitter:site", frontend)
         self.assertNotIn("twitter:creator", frontend)
+
+    def test_unknown_live_dishes_use_bilingual_plugin_owned_404s(self) -> None:
+        frontend_path = FRONTEND.as_posix().replace("'", "\\'")
+        plugin_path = (PLUGIN.as_posix() + "/").replace("'", "\\'")
+        php = f"""
+define('ABSPATH', __DIR__);
+define('COMPLETE99_PLATFORM_DIR', '{plugin_path}');
+$GLOBALS['complete99_query'] = array();
+function get_query_var($key, $default = '') {{
+    return array_key_exists($key, $GLOBALS['complete99_query'])
+        ? $GLOBALS['complete99_query'][$key]
+        : $default;
+}}
+function sanitize_title($value) {{
+    return strtolower(trim((string) $value));
+}}
+function sanitize_key($value) {{
+    return preg_replace('/[^a-z0-9_\\-]/', '', strtolower((string) $value));
+}}
+function is_404() {{ return true; }}
+function is_singular($post_type = '') {{ return false; }}
+function get_queried_object_id() {{ return 0; }}
+class Complete99_REST {{
+    public static function public_indexable_items() {{ return array(); }}
+}}
+class Complete99_Content {{
+    public static function is_complete99_post($post_id) {{ return false; }}
+}}
+require '{frontend_path}';
+$results = array();
+foreach (array('he', 'en') as $language) {{
+    $GLOBALS['complete99_query'] = array(
+        'complete99_live_dish' => 'missing-dish',
+        'complete99_live_lang' => $language,
+    );
+    $results[$language] = array(
+        'body' => Complete99_Frontend::body_classes(array('rtl')),
+        'title' => Complete99_Frontend::document_title('Theme fallback'),
+        'robots' => Complete99_Frontend::robots(array('index' => true)),
+        'template' => basename(Complete99_Frontend::template_include('theme-404.php')),
+    );
+}}
+echo json_encode($results, JSON_UNESCAPED_UNICODE);
+"""
+        result = subprocess.run(
+            ["php", "-r", php],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        outcomes = json.loads(result.stdout)
+
+        self.assertEqual("not-found.php", outcomes["he"]["template"])
+        self.assertEqual("not-found.php", outcomes["en"]["template"])
+        self.assertEqual("המנה לא נמצאה | קומפלט 99", outcomes["he"]["title"])
+        self.assertEqual("Dish not found | Complete99", outcomes["en"]["title"])
+        self.assertIn("complete99-rtl", outcomes["he"]["body"])
+        self.assertIn("complete99-ltr", outcomes["en"]["body"])
+        self.assertIn("complete99-not-found", outcomes["he"]["body"])
+        self.assertIn("complete99-not-found", outcomes["en"]["body"])
+        self.assertIn("rtl", outcomes["he"]["body"])
+        self.assertNotIn("rtl", outcomes["en"]["body"])
+        for language in ("he", "en"):
+            self.assertTrue(outcomes[language]["robots"]["noindex"])
+            self.assertFalse(outcomes[language]["robots"]["nofollow"])
+            self.assertNotIn("index", outcomes[language]["robots"])
+
+        template = NOT_FOUND_TEMPLATE.read_text(encoding="utf-8")
+        self.assertIn(
+            '<html lang="<?php echo esc_attr( $complete99_not_found_lang ); ?>" '
+            'dir="<?php echo esc_attr( $complete99_not_found_dir ); ?>">',
+            template,
+        )
+        self.assertIn("render_live_dish_not_found_page", template)
+        self.assertIn("wp_head();", template)
+        self.assertIn("wp_footer();", template)
+        self.assertNotIn('rel="canonical"', template)
 
     def test_homepage_has_no_visible_or_schema_breadcrumb_duplication(self) -> None:
         frontend = FRONTEND.read_text(encoding="utf-8")

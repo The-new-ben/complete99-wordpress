@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.2.0.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.2.1.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-29 01:20:00",
+  "last_updated": "2026-07-29 05:35:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.2.0</h4><ul><li>Added canonical bilingual live-menu and dish pages with exact per-entity SEO ownership, structured data and a fresh-only WordPress sitemap provider.</li><li>Hardened signed Complete99 OS synchronization with strict booleans, stable slug identity, expiry fail-closed, persisted readback and truthful cache-invalidation reporting.</li><li>Refocused the public home experience on food, dishes and ordering while keeping the operations platform secondary.</li></ul>"
+    "changelog": "<h4>1.2.1</h4><ul><li>Added a Complete99-owned bilingual not-found experience for unknown live-dish URLs with correct document language and direction.</li><li>Kept missing dishes on HTTP 404 with explicit noindex, no canonical claim and useful recovery links to the dish library and home page.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.2.0"
+  "version": "1.2.1"
 }

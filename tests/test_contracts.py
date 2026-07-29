@@ -676,6 +676,28 @@ class Complete99ContractTests(unittest.TestCase):
                 )
                 self.assertNotIn(b"\r\n", main)
 
+    def test_ci_lints_the_exact_release_zip(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "wordpress-ci.yml").read_text(
+            encoding="utf-8"
+        )
+        validation = workflow.index("python scripts/validate-package.py")
+        shipped_zip_lint = workflow.index("python scripts/lint-plugin-zip.py")
+        provenance = workflow.index(
+            "Prove checked-in release artifacts are current"
+        )
+        self.assertLess(validation, shipped_zip_lint)
+        self.assertLess(shipped_zip_lint, provenance)
+
+        result = subprocess.run(
+            ["python", str(ROOT / "scripts" / "lint-plugin-zip.py")],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        self.assertIn("linted ", result.stdout)
+        self.assertIn("complete99-platform-", result.stdout)
+
     def test_public_package_secret_filename_policy_is_fail_closed(self) -> None:
         forbidden = (
             ".env",
