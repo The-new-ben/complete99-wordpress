@@ -20,6 +20,10 @@ final class Complete99_SEO_Registry {
 	}
 
 	public static function records() {
+		return array_merge( self::checked_in_records(), self::live_dish_records() );
+	}
+
+	private static function checked_in_records() {
 		$path = COMPLETE99_PLATFORM_DIR . 'data/keyword-ownership.csv';
 		if ( ! is_readable( $path ) ) {
 			return array();
@@ -37,6 +41,58 @@ final class Complete99_SEO_Registry {
 			$records[] = array_combine( $header, $row );
 		}
 		fclose( $handle );
+		return $records;
+	}
+
+	/**
+	 * Build exact ownership rows for the currently indexable read-model entities.
+	 *
+	 * These records deliberately use the persisted entity ID and canonical slug;
+	 * no wildcard path is inserted into the checked-in registry.
+	 */
+	public static function live_dish_records() {
+		if ( ! class_exists( 'Complete99_REST' ) || ! method_exists( 'Complete99_REST', 'public_indexable_items' ) ) {
+			return array();
+		}
+
+		$records = array();
+		foreach ( Complete99_REST::public_indexable_items() as $item ) {
+			$id   = trim( isset( $item['id'] ) ? (string) $item['id'] : '' );
+			$slug = sanitize_title( isset( $item['slug'] ) ? (string) $item['slug'] : '' );
+			if ( '' === $id || '' === $slug ) {
+				continue;
+			}
+			$translation_key = 'live-dish-' . substr( hash( 'sha256', $id ), 0, 16 );
+			foreach ( array( 'he', 'en' ) as $language ) {
+				$is_he       = 'he' === $language;
+				$name_key    = $is_he ? 'name_he' : 'name_en';
+				$category_key = $is_he ? 'category_he' : 'category_en';
+				$tag_key     = $is_he ? 'tag_he' : 'tag_en';
+				$name        = trim( isset( $item[ $name_key ] ) ? (string) $item[ $name_key ] : '' );
+				$secondary   = array_filter(
+					array(
+						isset( $item[ $category_key ] ) ? trim( (string) $item[ $category_key ] ) : '',
+						isset( $item[ $tag_key ] ) ? trim( (string) $item[ $tag_key ] ) : '',
+						$name . ( $is_he ? ' קומפלט 99' : ' Complete99' ),
+					)
+				);
+				$records[] = array(
+					'language'                   => $language,
+					'translation_key'            => $translation_key,
+					'primary_intent'             => $name,
+					'canonical_path'             => ( $is_he ? '/menu/' : '/en/menu/' ) . $slug . '/',
+					'secondary_queries'          => implode( '; ', array_values( array_unique( $secondary ) ) ),
+					'prohibited_competing_pages' => $is_he
+						? 'דפי מנות או תוכן מערכתי המתחרים על אותה זהות מנה'
+						: 'Dish or platform pages competing for the same dish identity',
+					'evidence_gate'               => $is_he
+						? 'מודל פרסום חתום ורענן; דו־לשוני; verified או launch_ready'
+						: 'Fresh signed publication model; bilingual; verified or launch_ready',
+					'publication_status'          => 'proof-gated',
+				);
+			}
+		}
+
 		return $records;
 	}
 
@@ -59,6 +115,7 @@ final class Complete99_SEO_Registry {
 			<?php else : ?>
 				<div class="notice notice-success inline"><p><?php echo esc_html( sprintf( '%d ownership rows loaded; intents, canonical paths and bilingual translation groups are unique and complete.', count( $records ) ) ); ?></p></div>
 			<?php endif; ?>
+			<p><?php echo esc_html__( 'The checked-in registry is extended at runtime with exact fresh live-dish entities; wildcard canonicals are not accepted.', 'complete99-platform' ); ?></p>
 			<p><code><?php echo esc_html( COMPLETE99_PLATFORM_DIR . 'data/keyword-ownership.csv' ); ?></code></p>
 			<div style="overflow:auto">
 				<table class="widefat striped">

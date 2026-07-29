@@ -1,5 +1,46 @@
 # Pipeline acceptance evidence
 
+## Version 1.2.0 local source candidate
+
+Date: 2026-07-29
+
+This section records the current local candidate only. It is not production,
+protected-main CI, or live-browser evidence.
+
+- Candidate artifact: `complete99-platform-1.2.0.zip`
+- Artifact SHA-256:
+  `089e8de17a2837235afdf1cfead7840df436d642156d67676a1f2f32b7271d12`
+- Packaged-source SHA-256:
+  `5cceade3263e33e879e2be0a90cef21efd5f8391a6c01783e20487cdc8e285dc`
+- Artifact size: 2,718,441 bytes
+- Independent archive validation: 161 entries
+
+Local acceptance completed against the exact working-tree source:
+
+- all 95 contract tests passed; the one anonymous public-host test remained
+  intentionally skipped because `COMPLETE99_VERIFY_PUBLIC_URLS=1` was not set;
+- PHP lint passed for all 56 production/bridge source files and all 55 PHP files
+  extracted independently from the candidate ZIP;
+- source and package secret scans passed;
+- two clean package builds were byte-for-byte identical;
+- the checked update manifest, integrity metadata, version and deployment ID agree;
+- working-tree whitespace validation passed.
+
+The candidate includes strict boolean normalization, durable readback before a
+successful sync response, supported UPress/LiteSpeed/object-cache invalidation
+with explicit reporting, canonical slug collision protection, a seven-day
+freshness gate, exact bilingual live-dish SEO ownership and the
+`completedishes` WordPress sitemap provider.
+
+This candidate has not been staged, committed, pushed, admitted by protected-main
+CI, deployed to UPress or accepted in live Chrome. No claim is made that version
+1.2.0 is live; the last verified production release remains 1.1.5. Physical
+`robots.txt` management and sync-secret initialization are deliberate deployment
+pipeline capabilities and were contract-tested locally, but they were not run
+against production for this candidate.
+
+## Archived version 1.0.3 native acceptance
+
 Date: 2026-07-28
 
 Release: `complete99-platform` 1.0.3
@@ -8,7 +49,7 @@ Artifact SHA-256: `6fcc197035ec3f1759ea4c62e0b797e952870e6502b53d462b8143409383c
 
 Source SHA-256: `11bf717e9ea3fb5a6d4df8ab145be0e01ad3f8d5aac5cbb9e0cc42501b30c0b0`
 
-## Current native acceptance environment
+### Native acceptance environment
 
 - WordPress 7.0.2 from the official WordPress release archive
 - PHP 8.3.31
@@ -18,7 +59,7 @@ Source SHA-256: `11bf717e9ea3fb5a6d4df8ab145be0e01ad3f8d5aac5cbb9e0cc42501b30c0b
 - real Code Snippets REST create/deactivate/permanent-delete lifecycle
 - loopback-only native WordPress; no UPress staging or duplicate UPress site
 
-## WordPress 7.0.2 executed proofs
+### WordPress 7.0.2 executed proofs
 
 | Deployment ID | Scenario | Observed result |
 |---|---|---|
@@ -47,7 +88,7 @@ After the WordPress 7.0.2 exercises:
 - zero Complete99 temporary Code Snippets rows remained;
 - every audited temporary route returned 404.
 
-## Prior regression corpus retained
+### Prior regression corpus retained
 
 The earlier WordPress 6.9.4 acceptance corpus remains part of the recovery
 regression suite: encrypted database capture failure, interruption after prepare,
@@ -55,7 +96,7 @@ interruption after install, interruption during rollback, interruption after
 commit, first-install failure rollback, recreated-route rollback, recreated-route
 commit cleanup, concurrent lock exclusion and canonical cross-platform ZIP proof.
 
-## Static and public release gates
+### Static and public release gates
 
 - all 61 contract tests pass; the network-gated public-host test was also run
   separately and passed;
@@ -68,7 +109,7 @@ commit cleanup, concurrent lock exclusion and canonical cross-platform ZIP proof
 - independent archive validation passes with 130 entries;
 - the checked manifest targets WordPress 7.0 and requires PHP 8.0 / WordPress 6.4.
 
-## Evidence boundary
+### Evidence boundary
 
 This document proves the 1.0.3 package and deployment machinery on native
 WordPress 7.0.2. Production acceptance still requires the live UPress alias dry

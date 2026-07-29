@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import re
 import sys
+import tempfile
 import threading
 import types
 import unittest
@@ -462,6 +464,212 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertLess(compensate_call, baseline_readback)
         self.assertLess(baseline_readback, displaced_delete)
 
+    def test_robots_bridge_is_journaled_atomic_and_rollback_safe(self) -> None:
+        bridge = (ROOT / "deploy" / "temporary-bridge.php").read_text(
+            encoding="utf-8"
+        )
+        capture = bridge.split("$capture_robots_snapshot", 1)[1].split(
+            "$apply_managed_robots",
+            1,
+        )[0]
+        apply = bridge.split("$apply_managed_robots", 1)[1].split(
+            "$restore_managed_robots",
+            1,
+        )[0]
+        restore = bridge.split("$restore_managed_robots", 1)[1].split(
+            "$reapply_managed_robots",
+            1,
+        )[0]
+        status = bridge.split("$route_prefix . '/status'", 1)[1].split(
+            "$route_prefix . '/stabilize'",
+            1,
+        )[0]
+        stabilize = bridge.split("$route_prefix . '/stabilize'", 1)[1].split(
+            "$route_prefix . '/rollback'",
+            1,
+        )[0]
+        rollback = bridge.split("$route_prefix . '/rollback'", 1)[1].split(
+            "$route_prefix . '/finalize'",
+            1,
+        )[0]
+        finalize = bridge.split("$route_prefix . '/finalize'", 1)[1]
+
+        self.assertIn("realpath( ABSPATH )", bridge)
+        self.assertIn("DIRECTORY_SEPARATOR . 'robots.txt'", bridge)
+        self.assertIn("is_link( $path ) || is_dir( $path )", capture)
+        self.assertIn("$size > 65536", capture)
+        self.assertIn("hash( 'sha256', $contents )", capture)
+        self.assertIn("base64_encode( $contents )", capture)
+        self.assertIn("'c99_robots_journal_readback'", bridge)
+        self.assertIn("base64_decode( $persisted_robots_base64, true )", bridge)
+        self.assertIn("strlen( $persisted_robots_bytes ) <= 65536", bridge)
+        self.assertLess(
+            bridge.index("'c99_robots_journal_readback'"),
+            bridge.index("$upgrader->install("),
+        )
+        self.assertNotIn("'robots_prior_base64'", status)
+
+        self.assertIn("'c99_robots_conflict'", apply)
+        self.assertIn("file_put_contents( $temp, $managed, LOCK_EX )", apply)
+        self.assertIn("@rename( $path, $prior_live )", apply)
+        self.assertIn("@rename( $temp, $path )", apply)
+        self.assertIn("@hash_file( 'sha256', $path )", apply)
+        self.assertLess(
+            apply.index("'c99_robots_conflict'"),
+            apply.index("'already_applied' => true"),
+        )
+        self.assertLess(
+            apply.index("@rename( $temp, $path )"),
+            apply.rindex("@hash_file( 'sha256', $path )"),
+        )
+
+        self.assertIn("base64_decode(", restore)
+        self.assertIn("hash( 'sha256', $prior )", restore)
+        self.assertIn("@rename( $path, $forward )", restore)
+        self.assertIn("@rename( $temp, $path )", restore)
+        self.assertIn("$restore_managed_robots( $state_dir, $state )", rollback)
+        self.assertIn("$reapply_managed_robots( $state_dir, $state )", rollback)
+        self.assertLess(
+            rollback.index("$restore_managed_robots( $state_dir, $state )"),
+            rollback.index("$restore_database_state( $database_snapshot )"),
+        )
+        self.assertGreaterEqual(status.count("$robots_forward_ready"), 1)
+        self.assertGreaterEqual(stabilize.count("$robots_forward_ready"), 1)
+        self.assertIn("hash_equals( $managed_robots_sha256, $current_robots_sha256 )", stabilize)
+        self.assertIn("'committed_expected_robots_sha256'", finalize)
+        self.assertIn("'c99_finalize_robots_forward'", finalize)
+        self.assertIn("'c99_finalize_robots_rollback'", finalize)
+        self.assertIn(
+            "hash_equals( $commit_identity['committed_expected_robots_sha256'], $current_robots_sha256 )",
+            finalize,
+        )
+
+    def test_public_robots_verification_is_exact_anonymous_and_bounded(self) -> None:
+        class RobotsHandler(BaseHTTPRequestHandler):
+            status = 200
+            body = b""
+            authorization_headers: list[str | None] = []
+
+            def do_GET(self) -> None:
+                type(self).authorization_headers.append(
+                    self.headers.get("Authorization")
+                )
+                if self.path != "/robots.txt":
+                    self.send_response(404)
+                    self.end_headers()
+                    return
+                self.send_response(type(self).status)
+                self.send_header("Content-Type", "text/plain")
+                self.send_header("Content-Length", str(len(type(self).body)))
+                self.end_headers()
+                self.wfile.write(type(self).body)
+
+            def log_message(self, _format: str, *_args: object) -> None:
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), RobotsHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = DEPLOY.Client(
+                f"http://127.0.0.1:{server.server_port}",
+                "local-admin",
+                "local-test-only",
+                allow_local_http=True,
+            )
+            managed = DEPLOY.expected_managed_robots(client)
+            managed_sha256 = hashlib.sha256(managed).hexdigest()
+            RobotsHandler.status = 200
+            RobotsHandler.body = managed
+            evidence = DEPLOY.verify_managed_robots(client, managed_sha256)
+            self.assertEqual(
+                {
+                    "sha256": managed_sha256,
+                    "status": 200,
+                },
+                evidence,
+            )
+
+            prior = b"User-agent: *\nDisallow: /private/\n"
+            prior_sha256 = hashlib.sha256(prior).hexdigest()
+            RobotsHandler.body = prior
+            restored = DEPLOY.verify_prior_robots(client, True, prior_sha256)
+            self.assertEqual(prior_sha256, restored["sha256"])
+
+            RobotsHandler.status = 404
+            RobotsHandler.body = b"not found"
+            absent = DEPLOY.verify_prior_robots(client, False, "")
+            self.assertEqual(
+                {"sha256": "", "status": 404},
+                absent,
+            )
+
+            RobotsHandler.status = 200
+            RobotsHandler.body = managed + b" "
+            with self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "exactly match",
+            ):
+                DEPLOY.verify_managed_robots(client, managed_sha256)
+            self.assertEqual(
+                {
+                    "already_restored": False,
+                    "not_managed": False,
+                    "response_recovered": False,
+                    "restored": True,
+                },
+                DEPLOY.robots_restore_audit(
+                    {"restored": True, "robots_prior_base64": "must-not-leak"}
+                ),
+            )
+            self.assertTrue(RobotsHandler.authorization_headers)
+            self.assertEqual(
+                {None},
+                set(RobotsHandler.authorization_headers),
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+
+    def test_deployer_verifies_robots_across_install_rollback_and_redeploy(self) -> None:
+        deployer = (ROOT / "scripts" / "deploy-wordpress.py").read_text(
+            encoding="utf-8"
+        )
+        install_flow = deployer.split('audit["install"] = {', 1)[1].split(
+            "if args.rollback_exercise",
+            1,
+        )[0]
+        rollback_flow = deployer.split("if args.rollback_exercise:", 1)[1].split(
+            'gate = "finalize"',
+            1,
+        )[0]
+        redeploy_flow = deployer.split('audit["install_after_exercise"] = {', 1)[
+            1
+        ].split('audit["finalize"]', 1)[0]
+        failure_flow = deployer.split('audit["failure_rollback"] = {', 1)[1]
+
+        self.assertLess(
+            install_flow.index('audit["robots"] = verify_managed_robots('),
+            install_flow.index('audit["health"] = verify_health('),
+        )
+        self.assertIn('audit["rollback_robots"] = verify_prior_robots(', rollback_flow)
+        self.assertIn(
+            'audit["robots_after_exercise"] = verify_managed_robots(',
+            redeploy_flow,
+        )
+        self.assertIn(
+            'audit["failure_rollback_robots"] = verify_prior_robots(',
+            failure_flow,
+        )
+        self.assertIn('request_anonymous_bytes("/robots.txt", expected=(200,))', deployer)
+        self.assertIn('request_anonymous_bytes("/robots.txt", expected=(404,))', deployer)
+        self.assertIn('"robots_restore": robots_restore_audit(', deployer)
+        self.assertNotIn('"Authorization": self.authorization', deployer.split(
+            "def request_anonymous_bytes",
+            1,
+        )[1].split("def request_public_json", 1)[0])
+
     def test_post_migration_stabilization_precedes_health_and_can_recover_forward(
         self,
     ) -> None:
@@ -597,6 +805,253 @@ class PipelineHardeningTests(unittest.TestCase):
             'status.get("current_plugin_sha256") != expected_sha256',
             recovery,
         )
+
+    def test_sync_bootstrap_is_secret_store_only_checkpointed_and_rollback_safe(
+        self,
+    ) -> None:
+        workflow = (
+            ROOT / ".github" / "workflows" / "wordpress-deploy.yml"
+        ).read_text(encoding="utf-8")
+        deployer = (ROOT / "scripts" / "deploy-wordpress.py").read_text(
+            encoding="utf-8"
+        )
+        recovery = (ROOT / "scripts" / "recover-wordpress.py").read_text(
+            encoding="utf-8"
+        )
+        bridge = (ROOT / "deploy" / "temporary-bridge.php").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            "COMPLETE99_WORDPRESS_SYNC_SECRET: "
+            "${{ secrets.COMPLETE99_WORDPRESS_SYNC_SECRET }}",
+            workflow,
+        )
+        self.assertIn(
+            "[string]::IsNullOrEmpty($env:COMPLETE99_WORDPRESS_SYNC_SECRET)",
+            workflow,
+        )
+        self.assertIn(
+            'os.environ.get("COMPLETE99_WORDPRESS_SYNC_SECRET", "")',
+            deployer,
+        )
+        self.assertNotIn('--sync-secret', deployer)
+        self.assertNotIn('"sync_value":', deployer)
+        self.assertIn('gate = "configure-sync"', deployer)
+        self.assertIn("require_sync_configured=bool(sync_value)", deployer)
+        self.assertIn(
+            'and not status.get("sync_configuration_pending")',
+            recovery,
+        )
+
+        configure_route = bridge.split(
+            "$route_prefix . '/configure-sync'", 1
+        )[1].split("$route_prefix . '/retire'", 1)[0]
+        rollback_route = bridge.split("$route_prefix . '/rollback'", 1)[
+            1
+        ].split("$route_prefix . '/finalize'", 1)[0]
+        capture = bridge.split("$capture_database_state", 1)[1].split(
+            "$encrypt_database_state", 1
+        )[0]
+        restore = bridge.split("$restore_database_state", 1)[1].split(
+            "$auto_update_enabled", 1
+        )[0]
+
+        self.assertIn("hash_equals( $current_value, $provided_secret )", configure_route)
+        self.assertIn("'c99_sync_rotation_refused'", configure_route)
+        self.assertIn("'sync_configuration_pending'", configure_route)
+        self.assertLess(
+            configure_route.index("'sync_configuration_pending'"),
+            configure_route.index("$write_result ="),
+        )
+        self.assertIn("'sync_secret_existed'", capture)
+        self.assertIn("'sync_secret_configured'", capture)
+        self.assertNotIn(
+            "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s",
+            capture,
+        )
+        self.assertIn("$snapshot['sync_secret_configured']", restore)
+        self.assertIn("'sync_secret_empty_restore'", restore)
+        self.assertIn("'sync_secret_empty_insert'", restore)
+        self.assertIn("'sync_secret_delete'", restore)
+        self.assertIn("$pending_sync_fingerprint", rollback_route)
+
+        initial_flow = deployer.split(
+            'audit["stabilize"] = stabilize_deployment(', 1
+        )[1].split("if args.rollback_exercise:", 1)[0]
+        final_redeploy_flow = deployer.split(
+            'audit["stabilize_after_exercise"] = stabilize_deployment(', 1
+        )[1].split('audit["finalize"]', 1)[0]
+        self.assertIn("if sync_value and not args.rollback_exercise:", initial_flow)
+        self.assertIn(
+            'audit["sync_configuration_after_exercise"] = configure_sync(',
+            final_redeploy_flow,
+        )
+
+    def test_production_consumes_exact_ci_artifact_and_recovery_is_mutation_gated(
+        self,
+    ) -> None:
+        workflow = (
+            ROOT / ".github" / "workflows" / "wordpress-deploy.yml"
+        ).read_text(encoding="utf-8")
+        ci = (ROOT / ".github" / "workflows" / "wordpress-ci.yml").read_text(
+            encoding="utf-8"
+        )
+        deployer = (ROOT / "scripts" / "deploy-wordpress.py").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("actions/download-artifact@", workflow)
+        self.assertIn(
+            "run-id: ${{ needs.require-green-ci.outputs.ci_run_id }}",
+            workflow,
+        )
+        self.assertIn(
+            "head_sha=${GITHUB_SHA}&branch=main&status=success",
+            workflow,
+        )
+        self.assertIn('run.get("event") == "push"', workflow)
+        self.assertNotIn("build-plugin-zip.py", workflow)
+        self.assertIn("Prepare the exact validated release bundle", ci)
+        self.assertIn(
+            "test -z \"$(git ls-files --others --exclude-standard -- plugin-dist)\"",
+            ci,
+        )
+
+        immutable_validation = workflow.split(
+            "- name: Validate the downloaded immutable release", 1
+        )[1].split(
+            "- name: Require the secure sync bootstrap before any live request",
+            1,
+        )[0]
+        self.assertGreaterEqual(
+            immutable_validation.count(
+                "if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+            ),
+            4,
+        )
+        self.assertIn("validate-package.py --dist $releaseDir", immutable_validation)
+
+        preflight = workflow.split(
+            "- name: Run live recovery probe and dry-run acceptance", 1
+        )[1].split(
+            "- name: Deploy the exact CI artifact with independent verification",
+            1,
+        )[0]
+        self.assertNotIn("--mutation-marker", preflight)
+        self.assertIn("--dry-run", preflight)
+        self.assertIn("--dist $releaseDir", preflight)
+
+        production = workflow.split(
+            "- name: Deploy the exact CI artifact with independent verification",
+            1,
+        )[1].split(
+            "- name: Detect whether the production mutation edge was crossed",
+            1,
+        )[0]
+        self.assertIn("--mutation-marker $mutationMarker", production)
+        self.assertIn("--rollback-exercise", production)
+        self.assertIn(
+            "COMPLETE99_WORDPRESS_SYNC_SECRET: "
+            "${{ secrets.COMPLETE99_WORDPRESS_SYNC_SECRET }}",
+            production,
+        )
+
+        recovery = workflow.split(
+            "- name: Recover any interrupted mutation with a recreated temporary bridge",
+            1,
+        )[1].split(
+            "- name: Remove the runner-local mutation marker",
+            1,
+        )[0]
+        self.assertIn(
+            "if: failure() && steps.mutation_state.outputs.started == 'true'",
+            recovery,
+        )
+        self.assertNotIn("c99-dry-", recovery)
+        self.assertIn("c99-prod-", recovery)
+
+        main_flow = deployer.split("def main() -> int:", 1)[1]
+        ensure = main_flow.index(
+            "ensure_code_snippets(client, args.bootstrap_code_snippets)"
+        )
+        arm = main_flow.index(
+            "arm_live_mutation_recovery(args.mutation_marker, deployment_id)"
+        )
+        create = main_flow.index("snippet_creation_attempted = True")
+        self.assertLess(ensure, arm)
+        self.assertLess(arm, create)
+
+        with tempfile.TemporaryDirectory() as temp:
+            marker = Path(temp) / "mutation.marker"
+            DEPLOY.arm_live_mutation_recovery(marker, "c99-prod-test-1234")
+            self.assertEqual("c99-prod-test-1234\n", marker.read_text(encoding="ascii"))
+            with self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "could not be armed safely",
+            ):
+                DEPLOY.arm_live_mutation_recovery(marker, "c99-prod-test-1234")
+
+    def test_sync_bootstrap_driver_never_returns_the_credential(self) -> None:
+        sync_value = "S" * 48
+
+        class SyncClient:
+            def request(
+                self,
+                method: str,
+                path: str,
+                payload: dict[str, object] | None = None,
+                expected: tuple[int, ...] = (200, 201),
+            ) -> tuple[int, object]:
+                if method != "POST" or payload is None:
+                    raise AssertionError((method, path, expected))
+                if payload.get("token") != "temporary-token":
+                    raise AssertionError(payload)
+                if payload.get("deployment_id") != "c99-prod-sync-1234":
+                    raise AssertionError(payload)
+                if path.endswith("/c99-prod-sync-1234/configure-sync"):
+                    if payload.get("sync_secret") != sync_value:
+                        raise AssertionError("credential was not delivered exactly")
+                    return 200, {
+                        "configured": True,
+                        "changed": True,
+                        "idempotent": False,
+                        "database_fingerprint": "c" * 64,
+                    }
+                if path.endswith("/c99-prod-sync-1234/status"):
+                    self.assert_no_credential(payload)
+                    return 200, {
+                        "phase": "installed",
+                        "stabilized": True,
+                        "current_sync_configured": True,
+                        "sync_configuration_checkpointed": True,
+                        "sync_configuration_pending": False,
+                        "database_fingerprint": "c" * 64,
+                        "post_install_database_fingerprint": "c" * 64,
+                    }
+                raise AssertionError((method, path, expected))
+
+            @staticmethod
+            def assert_no_credential(payload: dict[str, object]) -> None:
+                if "sync_secret" in payload:
+                    raise AssertionError("credential escaped into status request")
+
+        result = DEPLOY.configure_sync(
+            SyncClient(),
+            "temporary-token",
+            "c99-prod-sync-1234",
+            sync_value,
+        )
+        self.assertTrue(result["configured"])
+        self.assertTrue(result["changed"])
+        self.assertNotIn(sync_value, json.dumps(result))
+        with self.assertRaises(DEPLOY.DeployError):
+            DEPLOY.configure_sync(
+                SyncClient(),
+                "temporary-token",
+                "c99-prod-sync-1234",
+                "too-short",
+            )
 
     def test_workflow_is_manual_and_safe_first_install_is_the_default(self) -> None:
         workflow = (

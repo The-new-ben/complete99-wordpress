@@ -361,6 +361,218 @@ add_action(
 			return $state;
 		};
 
+		$managed_robots_contents = static function () {
+			return "User-agent: *\n"
+				. "Disallow: /wp-admin/\n"
+				. "Allow: /wp-admin/admin-ajax.php\n"
+				. 'Sitemap: ' . home_url( '/wp-sitemap.xml' ) . "\n";
+		};
+
+		$managed_robots_path = static function () {
+			$root = realpath( ABSPATH );
+			if ( false === $root || ! is_dir( $root ) ) {
+				return new WP_Error( 'c99_robots_root', 'The WordPress document root is unavailable.', array( 'status' => 500 ) );
+			}
+			$path = rtrim( $root, DIRECTORY_SEPARATOR ) . DIRECTORY_SEPARATOR . 'robots.txt';
+			if ( dirname( $path ) !== rtrim( $root, DIRECTORY_SEPARATOR ) ) {
+				return new WP_Error( 'c99_robots_path', 'The managed robots path is unsafe.', array( 'status' => 500 ) );
+			}
+			return $path;
+		};
+
+		$capture_robots_snapshot = static function () use ( $managed_robots_path ) {
+			$path = $managed_robots_path();
+			if ( is_wp_error( $path ) ) {
+				return $path;
+			}
+			if ( is_link( $path ) || is_dir( $path ) ) {
+				return new WP_Error( 'c99_robots_unsafe', 'The existing robots target is not a regular file.', array( 'status' => 409 ) );
+			}
+			if ( ! file_exists( $path ) ) {
+				return array(
+					'robots_prior_exists' => false,
+					'robots_prior_sha256'=> '',
+					'robots_prior_base64'=> '',
+				);
+			}
+			$size = @filesize( $path );
+			if ( false === $size || $size > 65536 ) {
+				return new WP_Error( 'c99_robots_size', 'The existing robots file cannot be journaled safely.', array( 'status' => 409 ) );
+			}
+			$contents = @file_get_contents( $path );
+			if ( false === $contents ) {
+				return new WP_Error( 'c99_robots_read', 'The existing robots file cannot be read.', array( 'status' => 500 ) );
+			}
+			return array(
+				'robots_prior_exists' => true,
+				'robots_prior_sha256'=> hash( 'sha256', $contents ),
+				'robots_prior_base64'=> base64_encode( $contents ),
+			);
+		};
+
+		$apply_managed_robots = static function ( $state_dir, $state ) use ( $managed_robots_contents, $managed_robots_path ) {
+			$path = $managed_robots_path();
+			if ( is_wp_error( $path ) ) {
+				return $path;
+			}
+			if ( is_link( $path ) || is_dir( $path ) ) {
+				return new WP_Error( 'c99_robots_unsafe', 'The robots target became unsafe during deployment.', array( 'status' => 409 ) );
+			}
+			$managed        = $managed_robots_contents();
+			$managed_digest = hash( 'sha256', $managed );
+			$current_exists = file_exists( $path );
+			$current_digest = $current_exists ? @hash_file( 'sha256', $path ) : '';
+			$prior_exists = ! empty( $state['robots_prior_exists'] );
+			$prior_digest = (string) ( $state['robots_prior_sha256'] ?? '' );
+			if (
+				$prior_exists !== $current_exists
+				|| ( ! $prior_exists && '' !== $prior_digest )
+				|| ( $prior_exists && ( ! preg_match( '/^[a-f0-9]{64}$/', $prior_digest ) || ! hash_equals( $prior_digest, (string) $current_digest ) ) )
+			) {
+				return new WP_Error( 'c99_robots_conflict', 'The robots file changed after the rollback journal was captured.', array( 'status' => 409 ) );
+			}
+			if ( $current_exists && hash_equals( $managed_digest, (string) $current_digest ) ) {
+				return array( 'sha256' => $managed_digest, 'already_applied' => true );
+			}
+			try {
+				$suffix = bin2hex( random_bytes( 8 ) );
+			} catch ( \Throwable $error ) {
+				return new WP_Error( 'c99_robots_random', 'The managed robots file could not be staged safely.', array( 'status' => 500 ) );
+			}
+			$temp = dirname( $path ) . DIRECTORY_SEPARATOR . '.complete99-robots-' . $suffix . '.tmp';
+			$written = @file_put_contents( $temp, $managed, LOCK_EX );
+			if ( strlen( $managed ) !== $written || ! @chmod( $temp, FS_CHMOD_FILE ) ) {
+				@unlink( $temp );
+				return new WP_Error( 'c99_robots_stage', 'The managed robots file could not be staged.', array( 'status' => 500 ) );
+			}
+			$prior_live = trailingslashit( $state_dir ) . 'robots.prior-live';
+			if ( $prior_exists && ! @rename( $path, $prior_live ) ) {
+				@unlink( $temp );
+				return new WP_Error( 'c99_robots_preserve', 'The prior robots file could not be preserved.', array( 'status' => 500 ) );
+			}
+			if ( ! @rename( $temp, $path ) ) {
+				@unlink( $temp );
+				if ( $prior_exists && file_exists( $prior_live ) && ! file_exists( $path ) ) {
+					@rename( $prior_live, $path );
+				}
+				return new WP_Error( 'c99_robots_commit', 'The managed robots file could not be committed atomically.', array( 'status' => 500 ) );
+			}
+			clearstatcache( true, $path );
+			$readback = @hash_file( 'sha256', $path );
+			if ( false === $readback || ! hash_equals( $managed_digest, $readback ) ) {
+				@unlink( $path );
+				if ( $prior_exists && file_exists( $prior_live ) ) {
+					@rename( $prior_live, $path );
+				}
+				return new WP_Error( 'c99_robots_readback', 'The managed robots file failed integrity validation.', array( 'status' => 500 ) );
+			}
+			return array( 'sha256' => $managed_digest, 'already_applied' => false );
+		};
+
+		$restore_managed_robots = static function ( $state_dir, $state ) use ( $managed_robots_path ) {
+			$path = $managed_robots_path();
+			if ( is_wp_error( $path ) ) {
+				return $path;
+			}
+			$prior_exists  = ! empty( $state['robots_prior_exists'] );
+			$prior_digest  = (string) ( $state['robots_prior_sha256'] ?? '' );
+			$managed_digest= (string) ( $state['robots_managed_sha256'] ?? '' );
+			$current_exists= file_exists( $path );
+			$current_digest= $current_exists ? @hash_file( 'sha256', $path ) : '';
+			if (
+				! preg_match( '/^[a-f0-9]{64}$/', $managed_digest )
+				|| ( $prior_exists && ! preg_match( '/^[a-f0-9]{64}$/', $prior_digest ) )
+				|| ( ! $prior_exists && '' !== $prior_digest )
+			) {
+				return new WP_Error( 'c99_robots_rollback_journal', 'The robots rollback journal is invalid.', array( 'status' => 500 ) );
+			}
+			if (
+				( $prior_exists && $current_exists && hash_equals( $prior_digest, (string) $current_digest ) )
+				|| ( ! $prior_exists && ! $current_exists )
+			) {
+				return array( 'restored' => true, 'already_restored' => true );
+			}
+			if (
+				! $current_exists
+				|| ! hash_equals( $managed_digest, (string) $current_digest )
+			) {
+				return new WP_Error( 'c99_robots_rollback_conflict', 'Rollback refused because the managed robots file changed.', array( 'status' => 409 ) );
+			}
+			$forward = trailingslashit( $state_dir ) . 'robots.forward';
+			if ( file_exists( $forward ) ) {
+				$forward_digest = @hash_file( 'sha256', $forward );
+				if ( false === $forward_digest || ! hash_equals( $managed_digest, $forward_digest ) || ! @unlink( $path ) ) {
+					return new WP_Error( 'c99_robots_forward_invalid', 'The forward robots file could not be preserved.', array( 'status' => 500 ) );
+				}
+			} elseif ( ! @rename( $path, $forward ) ) {
+				return new WP_Error( 'c99_robots_forward_preserve', 'The forward robots file could not be preserved.', array( 'status' => 500 ) );
+			}
+			if ( ! $prior_exists ) {
+				return array( 'restored' => true, 'already_restored' => false );
+			}
+			$prior = base64_decode( (string) ( $state['robots_prior_base64'] ?? '' ), true );
+			if ( false === $prior || ! hash_equals( $prior_digest, hash( 'sha256', $prior ) ) ) {
+				@rename( $forward, $path );
+				return new WP_Error( 'c99_robots_prior_invalid', 'The prior robots journal failed integrity validation.', array( 'status' => 500 ) );
+			}
+			try {
+				$suffix = bin2hex( random_bytes( 8 ) );
+			} catch ( \Throwable $error ) {
+				@rename( $forward, $path );
+				return new WP_Error( 'c99_robots_restore_random', 'The prior robots file could not be staged safely.', array( 'status' => 500 ) );
+			}
+			$temp = dirname( $path ) . DIRECTORY_SEPARATOR . '.complete99-robots-restore-' . $suffix . '.tmp';
+			$written = @file_put_contents( $temp, $prior, LOCK_EX );
+			if ( strlen( $prior ) !== $written || ! @chmod( $temp, FS_CHMOD_FILE ) || ! @rename( $temp, $path ) ) {
+				@unlink( $temp );
+				@rename( $forward, $path );
+				return new WP_Error( 'c99_robots_restore', 'The prior robots file could not be restored atomically.', array( 'status' => 500 ) );
+			}
+			$readback = @hash_file( 'sha256', $path );
+			if ( false === $readback || ! hash_equals( $prior_digest, $readback ) ) {
+				@unlink( $path );
+				@rename( $forward, $path );
+				return new WP_Error( 'c99_robots_restore_readback', 'The restored robots file failed integrity validation.', array( 'status' => 500 ) );
+			}
+			return array( 'restored' => true, 'already_restored' => false );
+		};
+
+		$reapply_managed_robots = static function ( $state_dir, $state ) use ( $managed_robots_path ) {
+			$path = $managed_robots_path();
+			if ( is_wp_error( $path ) ) {
+				return $path;
+			}
+			$managed_digest = (string) ( $state['robots_managed_sha256'] ?? '' );
+			if ( ! preg_match( '/^[a-f0-9]{64}$/', $managed_digest ) ) {
+				return new WP_Error( 'c99_robots_compensation_journal', 'The forward robots journal is invalid.', array( 'status' => 500 ) );
+			}
+			$current_digest = file_exists( $path ) ? @hash_file( 'sha256', $path ) : '';
+			if ( $current_digest && hash_equals( $managed_digest, (string) $current_digest ) ) {
+				return true;
+			}
+			$forward = trailingslashit( $state_dir ) . 'robots.forward';
+			if ( ! file_exists( $forward ) || ! hash_equals( $managed_digest, (string) @hash_file( 'sha256', $forward ) ) ) {
+				return new WP_Error( 'c99_robots_compensation_source', 'The forward robots file is unavailable for compensation.', array( 'status' => 500 ) );
+			}
+			if ( file_exists( $path ) ) {
+				$rollback_prior = trailingslashit( $state_dir ) . 'robots.rollback-prior';
+				if ( file_exists( $rollback_prior ) ) {
+					if ( ! @unlink( $path ) ) {
+						return new WP_Error( 'c99_robots_compensation_displace', 'The prior robots file could not be displaced.', array( 'status' => 500 ) );
+					}
+				} elseif ( ! @rename( $path, $rollback_prior ) ) {
+					return new WP_Error( 'c99_robots_compensation_displace', 'The prior robots file could not be displaced.', array( 'status' => 500 ) );
+				}
+			}
+			if ( ! @rename( $forward, $path ) ) {
+				return new WP_Error( 'c99_robots_compensation_restore', 'The forward robots file could not be restored.', array( 'status' => 500 ) );
+			}
+			$readback = @hash_file( 'sha256', $path );
+			return $readback && hash_equals( $managed_digest, $readback )
+				? true
+				: new WP_Error( 'c99_robots_compensation_readback', 'The compensated robots file failed integrity validation.', array( 'status' => 500 ) );
+		};
+
 		$make_test_lock_stale = static function ( $deployment_id ) use ( $config, $read_lock, $cas_lock ) {
 			if ( ! $config['local_test'] || '' === $config['test_fault'] ) {
 				return false;
@@ -555,16 +767,24 @@ add_action(
 				$options[ $option_name ] = is_array( $row ) ? $row : null;
 			}
 			$wpdb->last_error = '';
-			$sync_secret_count = $wpdb->get_var(
+			$sync_secret_state = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
+					"SELECT COUNT(*) AS row_count, COALESCE(MAX(CASE WHEN option_value <> '' THEN 1 ELSE 0 END), 0) AS configured FROM {$wpdb->options} WHERE option_name = %s",
 					'complete99_sync_secret'
-				)
+				),
+				ARRAY_A
 			);
-			if ( '' !== (string) $wpdb->last_error || null === $sync_secret_count || ! is_numeric( $sync_secret_count ) ) {
+			if (
+				'' !== (string) $wpdb->last_error
+				|| ! is_array( $sync_secret_state )
+				|| ! isset( $sync_secret_state['row_count'], $sync_secret_state['configured'] )
+				|| ! is_numeric( $sync_secret_state['row_count'] )
+				|| ! is_numeric( $sync_secret_state['configured'] )
+			) {
 				return $query_error( 'sync_secret' );
 			}
-			$sync_secret_existed = 0 < (int) $sync_secret_count;
+			$sync_secret_existed    = 0 < (int) $sync_secret_state['row_count'];
+			$sync_secret_configured = 0 < (int) $sync_secret_state['configured'];
 
 			$wpdb->last_error = '';
 			$seed_rows = $wpdb->get_col(
@@ -613,6 +833,7 @@ add_action(
 				'posts'     => $posts,
 				'seed_ids'  => $seed_ids,
 				'sync_secret_existed'=> $sync_secret_existed,
+				'sync_secret_configured'=> $sync_secret_configured,
 			);
 		};
 
@@ -682,7 +903,13 @@ add_action(
 
 		$restore_database_state = static function ( $snapshot ) {
 			global $wpdb;
-			if ( ! is_array( $snapshot ) || ! isset( $snapshot['options'], $snapshot['posts'], $snapshot['postmeta'], $snapshot['seed_ids'], $snapshot['sync_secret_existed'] ) ) {
+			if (
+				! is_array( $snapshot )
+				|| ! isset( $snapshot['options'], $snapshot['posts'], $snapshot['postmeta'], $snapshot['seed_ids'], $snapshot['sync_secret_existed'], $snapshot['sync_secret_configured'] )
+				|| ! is_bool( $snapshot['sync_secret_existed'] )
+				|| ! is_bool( $snapshot['sync_secret_configured'] )
+				|| ( $snapshot['sync_secret_configured'] && ! $snapshot['sync_secret_existed'] )
+			) {
 				return new WP_Error( 'c99_db_snapshot_invalid', 'The database rollback journal is invalid.', array( 'status' => 500 ) );
 			}
 			$started = false !== $wpdb->query( 'START TRANSACTION' );
@@ -698,10 +925,68 @@ add_action(
 						throw new \RuntimeException( 'option_restore' );
 					}
 				}
-				if ( ! $snapshot['sync_secret_existed'] ) {
+				if ( $snapshot['sync_secret_configured'] ) {
+					// A configured baseline is never mutated by this bridge, so no value is journaled or restored.
+				} elseif ( $snapshot['sync_secret_existed'] ) {
+					if (
+						false === $wpdb->query(
+							$wpdb->prepare(
+								"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s",
+								'',
+								'complete99_sync_secret'
+							)
+						)
+					) {
+						throw new \RuntimeException( 'sync_secret_empty_restore' );
+					}
+					$sync_empty_count = $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT COUNT(*) FROM {$wpdb->options} WHERE option_name = %s",
+							'complete99_sync_secret'
+						)
+					);
+					if ( null === $sync_empty_count || ! is_numeric( $sync_empty_count ) ) {
+						throw new \RuntimeException( 'sync_secret_empty_probe' );
+					}
+					if (
+						0 === (int) $sync_empty_count
+						&& false === $wpdb->insert(
+							$wpdb->options,
+							array(
+								'option_name'  => 'complete99_sync_secret',
+								'option_value' => '',
+								'autoload'     => 'no',
+							),
+							array( '%s', '%s', '%s' )
+						)
+					) {
+						throw new \RuntimeException( 'sync_secret_empty_insert' );
+					}
+				} else {
 					if ( false === $wpdb->delete( $wpdb->options, array( 'option_name' => 'complete99_sync_secret' ), array( '%s' ) ) ) {
 						throw new \RuntimeException( 'sync_secret_delete' );
 					}
+				}
+				$wpdb->last_error = '';
+				$restored_sync_state = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT COUNT(*) AS row_count, COALESCE(MAX(CASE WHEN option_value <> '' THEN 1 ELSE 0 END), 0) AS configured FROM {$wpdb->options} WHERE option_name = %s",
+						'complete99_sync_secret'
+					),
+					ARRAY_A
+				);
+				$restored_sync_exists = is_array( $restored_sync_state )
+					&& isset( $restored_sync_state['row_count'] )
+					&& 0 < (int) $restored_sync_state['row_count'];
+				$restored_sync_configured = is_array( $restored_sync_state )
+					&& isset( $restored_sync_state['configured'] )
+					&& 0 < (int) $restored_sync_state['configured'];
+				if (
+					'' !== (string) $wpdb->last_error
+					|| $restored_sync_exists !== $snapshot['sync_secret_existed']
+					|| $restored_sync_configured !== $snapshot['sync_secret_configured']
+				) {
+					throw new \RuntimeException( 'sync_secret_readback' );
 				}
 
 				$wpdb->last_error = '';
@@ -770,6 +1055,7 @@ add_action(
 				'options_restored' => count( $snapshot['options'] ),
 				'posts_restored'   => count( $snapshot['posts'] ),
 				'meta_restored'    => count( $snapshot['postmeta'] ),
+				'sync_configuration_restored'=> true,
 			);
 		};
 
@@ -808,7 +1094,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function () use ( $config, $bootstrap_filesystem, $verify_site_identity, $auto_update_enabled, $acquire_lock, $release_lock, $process_lock_available, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state ) {
+				'callback'            => static function () use ( $config, $bootstrap_filesystem, $verify_site_identity, $auto_update_enabled, $acquire_lock, $release_lock, $process_lock_available, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $capture_robots_snapshot ) {
 					global $wp_filesystem;
 					$site_identity = $verify_site_identity();
 					if ( is_wp_error( $site_identity ) ) {
@@ -882,6 +1168,10 @@ add_action(
 					if ( false === $database_json ) {
 						return new WP_Error( 'c99_db_snapshot_encode', 'The database rollback journal could not be encoded.', array( 'status' => 500 ) );
 					}
+					$robots_snapshot = $capture_robots_snapshot();
+					if ( is_wp_error( $robots_snapshot ) ) {
+						return $robots_snapshot;
+					}
 					$reservation = $acquire_lock( $config['deployment_id'], 'reserved' );
 					if ( is_wp_error( $reservation ) ) {
 						return $reservation;
@@ -912,6 +1202,8 @@ add_action(
 						'transactional_storage'=> $transactional_storage,
 						'migration_lock'       => $migration_lock,
 						'database_fingerprint'=> hash( 'sha256', $database_json ),
+						'robots_prior_exists'=> ! empty( $robots_snapshot['robots_prior_exists'] ),
+						'robots_prior_sha256'=> (string) $robots_snapshot['robots_prior_sha256'],
 						'site_identity'      => $site_identity,
 					);
 				},
@@ -924,7 +1216,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $capture_database_state ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $capture_database_state, $managed_robots_path ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -976,6 +1268,11 @@ add_action(
 					);
 					$database_snapshot = $capture_database_state();
 					$database_json = is_wp_error( $database_snapshot ) ? false : wp_json_encode( $database_snapshot );
+					$robots_path = $managed_robots_path();
+					if ( is_wp_error( $robots_path ) ) {
+						return $robots_path;
+					}
+					$current_robots_sha256 = file_exists( $robots_path ) ? (string) @hash_file( 'sha256', $robots_path ) : '';
 					$phase = (string) ( $state['phase'] ?? ( $lock_owned ? ( $lock['phase'] ?? 'locked' ) : 'finalized' ) );
 					$lock_updated_at = (int) ( $lock['updated_at'] ?? $lock['started_at'] ?? 0 );
 					$lock_age = $lock_owned && 0 < $lock_updated_at ? max( 0, time() - $lock_updated_at ) : 0;
@@ -991,21 +1288,27 @@ add_action(
 						&& empty( $state['database_restored'] )
 						&& empty( $state['rollback_compensated'] )
 						&& empty( $state['rollback_compensation_error'] );
+					$robots_forward_ready = ! empty( $state['robots_applied'] )
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $state['robots_managed_sha256'] ?? '' ) )
+						&& hash_equals( (string) $state['robots_managed_sha256'], $current_robots_sha256 );
 					$legacy_clean_installed = 'installed' === $phase
 						&& empty( $state['stabilized'] )
 						&& ! empty( $state['temp_removed'] )
 						&& '' === (string) ( $state['temp_path'] ?? '' )
 						&& ! empty( $state['installed_active'] )
+						&& $robots_forward_ready
 						&& $no_rollback_artifacts;
 					$clean_pending_stabilization = 'installed_pending_stabilization' === $phase
 						&& ! empty( $state['forward_ready'] )
 						&& ! empty( $state['temp_removed'] )
 						&& '' === (string) ( $state['temp_path'] ?? '' )
 						&& ! empty( $state['installed_active'] )
+						&& $robots_forward_ready
 						&& $no_rollback_artifacts;
 					$clean_pending_cleanup = 'installed_pending_cleanup' === $phase
 						&& ! empty( $state['forward_ready'] )
 						&& ! empty( $state['installed_active'] )
+						&& $robots_forward_ready
 						&& $no_rollback_artifacts;
 					$forward_stabilization_candidate = $legacy_clean_installed
 						|| $clean_pending_stabilization
@@ -1031,6 +1334,8 @@ add_action(
 						'committed_expected_version'=> (string) ( $state['committed_expected_version'] ?? $lock['committed_expected_version'] ?? '' ),
 						'committed_expected_deployment'=> (string) ( $state['committed_expected_deployment'] ?? $lock['committed_expected_deployment'] ?? '' ),
 						'committed_expected_plugin_sha256'=> (string) ( $state['committed_expected_plugin_sha256'] ?? $lock['committed_expected_plugin_sha256'] ?? '' ),
+						'committed_expected_robots_exists'=> (bool) ( $state['committed_expected_robots_exists'] ?? $lock['committed_expected_robots_exists'] ?? false ),
+						'committed_expected_robots_sha256'=> (string) ( $state['committed_expected_robots_sha256'] ?? $lock['committed_expected_robots_sha256'] ?? '' ),
 						'temp_removed'     => ! empty( $state['temp_removed'] ),
 						'had_plugin'       => ! empty( $state['had_plugin'] ),
 						'prior_target_dir_exists' => ! empty( $state['prior_target_dir_exists'] ),
@@ -1051,6 +1356,15 @@ add_action(
 						'post_install_database_fingerprint'=> (string) ( $state['post_install_database_fingerprint'] ?? '' ),
 						'database_fingerprint'=> false === $database_json ? '' : hash( 'sha256', $database_json ),
 						'database_fingerprint_available'=> false !== $database_json,
+						'current_sync_configured'=> is_array( $database_snapshot ) && ! empty( $database_snapshot['sync_secret_configured'] ),
+						'sync_configuration_pending'=> ! empty( $state['sync_configuration_pending'] ),
+						'sync_configuration_checkpointed'=> ! empty( $state['sync_configuration_checkpointed'] ),
+						'robots_applied'    => ! empty( $state['robots_applied'] ),
+						'robots_restored'   => ! empty( $state['robots_restored'] ),
+						'robots_prior_exists'=> ! empty( $state['robots_prior_exists'] ),
+						'robots_prior_sha256'=> (string) ( $state['robots_prior_sha256'] ?? '' ),
+						'robots_managed_sha256'=> (string) ( $state['robots_managed_sha256'] ?? '' ),
+						'current_robots_sha256'=> $current_robots_sha256,
 						'site_identity'      => $site_identity,
 					);
 				},
@@ -1063,7 +1377,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state, $managed_robots_path ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -1100,27 +1414,40 @@ add_action(
 						&& empty( $state['database_restored'] )
 						&& empty( $state['rollback_compensated'] )
 						&& empty( $state['rollback_compensation_error'] );
+					$robots_path = $managed_robots_path();
+					if ( is_wp_error( $robots_path ) ) {
+						return $robots_path;
+					}
+					$managed_robots_sha256 = (string) ( $state['robots_managed_sha256'] ?? '' );
+					$current_robots_sha256 = file_exists( $robots_path ) ? (string) @hash_file( 'sha256', $robots_path ) : '';
+					$robots_forward_ready = ! empty( $state['robots_applied'] )
+						&& preg_match( '/^[a-f0-9]{64}$/', $managed_robots_sha256 )
+						&& hash_equals( $managed_robots_sha256, $current_robots_sha256 );
 					$legacy_clean_installed = 'installed' === $phase
 						&& empty( $state['stabilized'] )
 						&& ! empty( $state['temp_removed'] )
 						&& '' === (string) ( $state['temp_path'] ?? '' )
 						&& ! empty( $state['installed_active'] )
+						&& $robots_forward_ready
 						&& $no_rollback_artifacts;
 					$clean_pending_stabilization = 'installed_pending_stabilization' === $phase
 						&& ! empty( $state['forward_ready'] )
 						&& ! empty( $state['temp_removed'] )
 						&& '' === (string) ( $state['temp_path'] ?? '' )
 						&& ! empty( $state['installed_active'] )
+						&& $robots_forward_ready
 						&& $no_rollback_artifacts;
 					$clean_pending_cleanup = 'installed_pending_cleanup' === $phase
 						&& ! empty( $state['forward_ready'] )
 						&& ! empty( $state['installed_active'] )
+						&& $robots_forward_ready
 						&& $no_rollback_artifacts;
 					$already_stabilized = 'installed' === $phase
 						&& ! empty( $state['stabilized'] )
 						&& ! empty( $state['temp_removed'] )
 						&& '' === (string) ( $state['temp_path'] ?? '' )
 						&& ! empty( $state['installed_active'] )
+						&& $robots_forward_ready
 						&& $no_rollback_artifacts;
 					if ( ! $legacy_clean_installed && ! $clean_pending_stabilization && ! $clean_pending_cleanup && ! $already_stabilized ) {
 						return new WP_Error(
@@ -1333,6 +1660,299 @@ add_action(
 
 		register_rest_route(
 			'complete99-deploy/v1',
+			$route_prefix . '/configure-sync',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $permission,
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $capture_database_state, $decrypt_database_state ) {
+					global $wpdb, $wp_filesystem;
+					$filesystem = $bootstrap_filesystem();
+					if ( is_wp_error( $filesystem ) ) {
+						return $filesystem;
+					}
+					$site_identity = $verify_site_identity();
+					if ( is_wp_error( $site_identity ) ) {
+						return $site_identity;
+					}
+					$deployment_id = sanitize_text_field( (string) $request->get_param( 'deployment_id' ) );
+					if ( $config['deployment_id'] !== $deployment_id ) {
+						return new WP_Error( 'c99_sync_configure_id', 'The sync configuration deployment ID is invalid.', array( 'status' => 400 ) );
+					}
+					$json_parameters = $request->get_json_params();
+					if ( ! is_array( $json_parameters ) || ! array_key_exists( 'sync_secret', $json_parameters ) ) {
+						return new WP_Error( 'c99_sync_configure_transport', 'The sync configuration requires a JSON request body.', array( 'status' => 400 ) );
+					}
+					$provided_secret = (string) $json_parameters['sync_secret'];
+					if ( strlen( $provided_secret ) < 32 || strlen( $provided_secret ) > 4096 ) {
+						return new WP_Error( 'c99_sync_configure_value', 'The sync configuration value is invalid.', array( 'status' => 400 ) );
+					}
+					$process_lock = $acquire_process_lock();
+					if ( is_wp_error( $process_lock ) ) {
+						return $process_lock;
+					}
+					try {
+						$state_dir  = $state_directory( $deployment_id );
+						$state_file = trailingslashit( $state_dir ) . 'state.json';
+						if ( ! $wp_filesystem->exists( $state_file ) ) {
+							return new WP_Error( 'c99_sync_configure_state', 'The deployment state was not found.', array( 'status' => 404 ) );
+						}
+						$state = json_decode( $wp_filesystem->get_contents( $state_file ), true );
+						if ( ! is_array( $state ) ) {
+							return new WP_Error( 'c99_sync_configure_state_invalid', 'The deployment state is invalid.', array( 'status' => 500 ) );
+						}
+						$lock = $read_lock( true );
+						if ( $deployment_id !== (string) ( $lock['deployment_id'] ?? '' ) ) {
+							return new WP_Error( 'c99_sync_configure_lock', 'The deployment does not own the mutation lock.', array( 'status' => 409 ) );
+						}
+						if (
+							'installed' !== (string) ( $state['phase'] ?? '' )
+							|| empty( $state['stabilized'] )
+							|| ! empty( $state['rollback_applied'] )
+							|| ! empty( $state['database_restored'] )
+							|| ! empty( $state['rollback_compensated'] )
+						) {
+							return new WP_Error(
+								'c99_sync_configure_not_ready',
+								'Sync configuration requires the final stabilized forward release.',
+								array( 'status' => 409, 'phase' => (string) ( $state['phase'] ?? '' ) )
+							);
+						}
+						$lease = $claim_lock(
+							$deployment_id,
+							array( 'installed' ),
+							'installed',
+							false,
+							false
+						);
+						if ( is_wp_error( $lease ) ) {
+							return $lease;
+						}
+						$adopted = $adopt_state_lease( $state_dir, $deployment_id, $lease );
+						if ( is_wp_error( $adopted ) ) {
+							return $adopted;
+						}
+						$state = $adopted;
+
+						$baseline = $decrypt_database_state( $state['database_journal'] ?? array() );
+						if (
+							is_wp_error( $baseline )
+							|| ! isset( $baseline['sync_secret_existed'], $baseline['sync_secret_configured'] )
+							|| ! is_bool( $baseline['sync_secret_existed'] )
+							|| ! is_bool( $baseline['sync_secret_configured'] )
+							|| ( $baseline['sync_secret_configured'] && ! $baseline['sync_secret_existed'] )
+						) {
+							return new WP_Error( 'c99_sync_configure_journal', 'The sync configuration rollback journal is invalid.', array( 'status' => 500 ) );
+						}
+
+						$wpdb->last_error = '';
+						$current_row = $wpdb->get_row(
+							$wpdb->prepare(
+								"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+								'complete99_sync_secret'
+							),
+							ARRAY_A
+						);
+						if ( '' !== (string) $wpdb->last_error || ( null !== $current_row && ! is_array( $current_row ) ) ) {
+							return new WP_Error( 'c99_sync_configure_probe', 'The current sync configuration could not be verified.', array( 'status' => 500 ) );
+						}
+						$current_exists = is_array( $current_row ) && array_key_exists( 'option_value', $current_row );
+						$current_value = $current_exists ? maybe_unserialize( $current_row['option_value'] ) : '';
+						if ( ! is_string( $current_value ) ) {
+							return new WP_Error( 'c99_sync_configure_type', 'The current sync configuration has an unsupported type.', array( 'status' => 409 ) );
+						}
+						$current_configured = $current_exists && '' !== $current_value;
+						if ( $current_configured && ! hash_equals( $current_value, $provided_secret ) ) {
+							return new WP_Error(
+								'c99_sync_rotation_refused',
+								'An existing sync configuration cannot be rotated by the deployment bridge.',
+								array( 'status' => 409 )
+							);
+						}
+						if ( $baseline['sync_secret_configured'] && ! $current_configured ) {
+							return new WP_Error(
+								'c99_sync_baseline_changed',
+								'The configured sync baseline changed before finalization.',
+								array( 'status' => 409 )
+							);
+						}
+
+						$current_snapshot = $capture_database_state();
+						$current_json = is_wp_error( $current_snapshot ) ? false : wp_json_encode( $current_snapshot );
+						if ( is_wp_error( $current_snapshot ) || false === $current_json ) {
+							return new WP_Error( 'c99_sync_configure_database_probe', 'The current database checkpoint could not be captured.', array( 'status' => 500 ) );
+						}
+						$current_fingerprint = hash( 'sha256', $current_json );
+						$recorded_fingerprint = (string) ( $state['post_install_database_fingerprint'] ?? '' );
+						$pending_fingerprint = (string) ( $state['sync_configured_database_fingerprint'] ?? '' );
+						$pre_sync_fingerprint = (string) ( $state['pre_sync_database_fingerprint'] ?? '' );
+						$checkpoint_matches = preg_match( '/^[a-f0-9]{64}$/', $recorded_fingerprint )
+							&& hash_equals( $recorded_fingerprint, $current_fingerprint );
+						$unconfigured_projection_fingerprint = '';
+						if ( ! $baseline['sync_secret_configured'] && $current_configured ) {
+							$unconfigured_projection = $current_snapshot;
+							$unconfigured_projection['sync_secret_configured'] = false;
+							$unconfigured_projection_json = wp_json_encode( $unconfigured_projection );
+							$unconfigured_projection_fingerprint = false === $unconfigured_projection_json
+								? ''
+								: hash( 'sha256', $unconfigured_projection_json );
+							$checkpoint_matches = $checkpoint_matches || (
+								preg_match( '/^[a-f0-9]{64}$/', $recorded_fingerprint )
+								&& hash_equals( $recorded_fingerprint, $unconfigured_projection_fingerprint )
+							);
+						}
+						if ( ! $checkpoint_matches && ! empty( $state['sync_configuration_pending'] ) ) {
+							$checkpoint_matches = (
+								preg_match( '/^[a-f0-9]{64}$/', $pending_fingerprint )
+								&& hash_equals( $pending_fingerprint, $current_fingerprint )
+							) || (
+								preg_match( '/^[a-f0-9]{64}$/', $pre_sync_fingerprint )
+								&& hash_equals( $pre_sync_fingerprint, $current_fingerprint )
+							);
+						}
+						if ( ! $checkpoint_matches ) {
+							return new WP_Error(
+								'c99_sync_configure_database_conflict',
+								'Plugin-owned data changed after stabilization.',
+								array( 'status' => 409 )
+							);
+						}
+
+						$configured_snapshot = $current_snapshot;
+						$configured_snapshot['sync_secret_existed']    = true;
+						$configured_snapshot['sync_secret_configured'] = true;
+						$configured_json = wp_json_encode( $configured_snapshot );
+						if ( false === $configured_json ) {
+							return new WP_Error( 'c99_sync_configure_checkpoint', 'The sync configuration checkpoint could not be encoded.', array( 'status' => 500 ) );
+						}
+						$configured_fingerprint = hash( 'sha256', $configured_json );
+						$pre_write_fingerprint = ! empty( $state['sync_configuration_pending'] )
+							? $pre_sync_fingerprint
+							: (
+								'' !== $unconfigured_projection_fingerprint
+									? $unconfigured_projection_fingerprint
+									: $current_fingerprint
+							);
+						if (
+							! preg_match( '/^[a-f0-9]{64}$/', $pre_write_fingerprint )
+							|| (
+								! empty( $state['sync_configuration_pending'] )
+								&& (
+									! preg_match( '/^[a-f0-9]{64}$/', $pending_fingerprint )
+									|| ! hash_equals( $pending_fingerprint, $configured_fingerprint )
+								)
+							)
+						) {
+							return new WP_Error( 'c99_sync_configure_pending_conflict', 'The pending sync configuration checkpoint is invalid.', array( 'status' => 409 ) );
+						}
+
+						$changed = false;
+						if ( ! $baseline['sync_secret_configured'] && ! $current_configured ) {
+							$pending = $set_state_phase(
+								$state_dir,
+								$deployment_id,
+								'installed',
+								array(
+									'pre_sync_database_fingerprint'       => $pre_write_fingerprint,
+									'sync_configured_database_fingerprint'=> $configured_fingerprint,
+									'sync_configuration_pending'          => true,
+									'sync_configuration_checkpointed'     => false,
+								)
+							);
+							if ( is_wp_error( $pending ) ) {
+								return $pending;
+							}
+							$state = $pending;
+							$wpdb->last_error = '';
+							$stored_secret = maybe_serialize( $provided_secret );
+							if ( $current_exists ) {
+								$write_result = $wpdb->query(
+									$wpdb->prepare(
+										"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s",
+										$stored_secret,
+										'complete99_sync_secret'
+									)
+								);
+							} else {
+								$write_result = $wpdb->insert(
+									$wpdb->options,
+									array(
+										'option_name'  => 'complete99_sync_secret',
+										'option_value' => $stored_secret,
+										'autoload'     => 'no',
+									),
+									array( '%s', '%s', '%s' )
+								);
+							}
+							if ( false === $write_result || '' !== (string) $wpdb->last_error ) {
+								return new WP_Error( 'c99_sync_configure_write', 'The sync configuration could not be stored.', array( 'status' => 500 ) );
+							}
+							wp_cache_delete( 'complete99_sync_secret', 'options' );
+							$changed = true;
+						}
+
+						$wpdb->last_error = '';
+						$readback_row = $wpdb->get_row(
+							$wpdb->prepare(
+								"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+								'complete99_sync_secret'
+							),
+							ARRAY_A
+						);
+						$readback_value = is_array( $readback_row ) && array_key_exists( 'option_value', $readback_row )
+							? maybe_unserialize( $readback_row['option_value'] )
+							: null;
+						if (
+							'' !== (string) $wpdb->last_error
+							|| ! is_string( $readback_value )
+							|| ! hash_equals( $provided_secret, $readback_value )
+						) {
+							return new WP_Error( 'c99_sync_configure_readback', 'The sync configuration readback did not match.', array( 'status' => 500 ) );
+						}
+						$final_snapshot = $capture_database_state();
+						$final_json = is_wp_error( $final_snapshot ) ? false : wp_json_encode( $final_snapshot );
+						$final_fingerprint = false === $final_json ? '' : hash( 'sha256', $final_json );
+						if (
+							is_wp_error( $final_snapshot )
+							|| empty( $final_snapshot['sync_secret_configured'] )
+							|| ! hash_equals( $configured_fingerprint, $final_fingerprint )
+						) {
+							return new WP_Error( 'c99_sync_configure_fingerprint', 'The sync configuration checkpoint did not match.', array( 'status' => 500 ) );
+						}
+						$cache_purge = $purge_caches();
+						if ( is_wp_error( $cache_purge ) ) {
+							return $cache_purge;
+						}
+						$checkpoint = $set_state_phase(
+							$state_dir,
+							$deployment_id,
+							'installed',
+							array(
+								'pre_sync_database_fingerprint'       => $pre_write_fingerprint,
+								'sync_configured_database_fingerprint'=> $final_fingerprint,
+								'post_install_database_fingerprint'   => $final_fingerprint,
+								'sync_configuration_pending'          => false,
+								'sync_configuration_checkpointed'     => true,
+							)
+						);
+						if ( is_wp_error( $checkpoint ) ) {
+							return $checkpoint;
+						}
+						return array(
+							'configured'          => true,
+							'changed'             => $changed,
+							'idempotent'          => ! $changed,
+							'database_fingerprint'=> $final_fingerprint,
+							'cache_purge'         => $cache_purge,
+						);
+					} finally {
+						$release_process_lock( $process_lock );
+					}
+				},
+			)
+		);
+
+		register_rest_route(
+			'complete99-deploy/v1',
 			$route_prefix . '/retire',
 			array(
 				'methods'             => 'POST',
@@ -1397,7 +2017,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $auto_update_enabled, $purge_caches, $claim_lock, $release_lock, $acquire_process_lock, $release_process_lock, $write_state_file, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $encrypt_database_state, $decrypt_database_state ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $auto_update_enabled, $purge_caches, $claim_lock, $release_lock, $acquire_process_lock, $release_process_lock, $write_state_file, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $encrypt_database_state, $decrypt_database_state, $capture_robots_snapshot, $apply_managed_robots, $restore_managed_robots ) {
 					global $wp_filesystem;
 
 					$filesystem = $bootstrap_filesystem();
@@ -1533,6 +2153,11 @@ add_action(
 						$release_lock( $deployment_id, $lock );
 						return $database_journal;
 					}
+					$robots_snapshot = $capture_robots_snapshot();
+					if ( is_wp_error( $robots_snapshot ) ) {
+						$release_lock( $deployment_id, $lock );
+						return $robots_snapshot;
+					}
 
 					if ( ! $wp_filesystem->is_dir( $state_root ) && ! $wp_filesystem->mkdir( $state_root, FS_CHMOD_DIR ) ) {
 						$release_lock( $deployment_id, $lock );
@@ -1589,6 +2214,11 @@ add_action(
 						'expected_version'=> $version,
 						'database_journal' => $database_journal,
 						'database_fingerprint'=> $database_fingerprint,
+						'robots_prior_exists'=> ! empty( $robots_snapshot['robots_prior_exists'] ),
+						'robots_prior_sha256'=> (string) $robots_snapshot['robots_prior_sha256'],
+						'robots_prior_base64'=> (string) $robots_snapshot['robots_prior_base64'],
+						'robots_applied'    => false,
+						'robots_restored'   => false,
 						'phase'           => 'prepared',
 						'temp_removed'    => false,
 						'updated_at'      => time(),
@@ -1623,6 +2253,23 @@ add_action(
 						$wp_filesystem->delete( $state_dir, true );
 						$release_lock( $deployment_id, $lock );
 						return new WP_Error( 'c99_deploy_journal_readback', 'The persisted rollback journal failed integrity validation.', array( 'status' => 500 ) );
+					}
+					$persisted_robots_exists = ! empty( $persisted_state['robots_prior_exists'] );
+					$persisted_robots_sha256 = (string) ( $persisted_state['robots_prior_sha256'] ?? '' );
+					$persisted_robots_base64 = (string) ( $persisted_state['robots_prior_base64'] ?? '' );
+					$persisted_robots_bytes  = base64_decode( $persisted_robots_base64, true );
+					$persisted_robots_valid  = $persisted_robots_exists
+						? (
+							false !== $persisted_robots_bytes
+							&& strlen( $persisted_robots_bytes ) <= 65536
+							&& preg_match( '/^[a-f0-9]{64}$/', $persisted_robots_sha256 )
+							&& hash_equals( $persisted_robots_sha256, hash( 'sha256', $persisted_robots_bytes ) )
+						)
+						: ( '' === $persisted_robots_sha256 && '' === $persisted_robots_base64 );
+					if ( ! $persisted_robots_valid ) {
+						$wp_filesystem->delete( $state_dir, true );
+						$release_lock( $deployment_id, $lock );
+						return new WP_Error( 'c99_robots_journal_readback', 'The persisted robots.txt rollback journal failed integrity validation.', array( 'status' => 500 ) );
 					}
 					if ( $config['local_test'] && 'after_prepare' === $config['test_fault'] ) {
 						$make_test_lock_stale( $deployment_id );
@@ -1662,7 +2309,7 @@ add_action(
 					}
 
 					try {
-						$install_response = ( static function () use ( $temp, $plugin_path, $target_dir, $version, $was_active, $activate, $config, $deployment_id, $actual, $slug, $purge_caches, $capture_database_state, $set_state_phase, $heartbeat_state, $directory_sha256, $state_dir ) {
+						$install_response = ( static function () use ( $temp, $plugin_path, $target_dir, $version, $was_active, $activate, $config, $deployment_id, $actual, $slug, $purge_caches, $capture_database_state, $set_state_phase, $heartbeat_state, $directory_sha256, $state_dir, $apply_managed_robots, $restore_managed_robots ) {
 						require_once ABSPATH . 'wp-admin/includes/misc.php';
 						require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 						$owned = $heartbeat_state( $state_dir, $deployment_id, 'installing' );
@@ -1711,6 +2358,32 @@ add_action(
 						if ( is_wp_error( $owned ) ) {
 							return $owned;
 						}
+						$state = json_decode( file_get_contents( trailingslashit( $state_dir ) . 'state.json' ), true );
+						if ( ! is_array( $state ) ) {
+							return new WP_Error( 'c99_robots_state', 'The robots rollback journal is unavailable.', array( 'status' => 500 ) );
+						}
+						$robots = $apply_managed_robots( $state_dir, $state );
+						if ( is_wp_error( $robots ) ) {
+							return $robots;
+						}
+						$robots_recorded = $set_state_phase(
+							$state_dir,
+							$deployment_id,
+							'installing',
+							array(
+								'robots_applied'       => true,
+								'robots_managed_sha256'=> (string) $robots['sha256'],
+							)
+						);
+						if ( is_wp_error( $robots_recorded ) ) {
+							$state['robots_applied']        = true;
+							$state['robots_managed_sha256'] = (string) $robots['sha256'];
+							$restored = $restore_managed_robots( $state_dir, $state );
+							if ( is_wp_error( $restored ) ) {
+								return $restored;
+							}
+							return $robots_recorded;
+						}
 						$cache_purge = $purge_caches();
 						if ( is_wp_error( $cache_purge ) ) {
 							return $cache_purge;
@@ -1753,6 +2426,7 @@ add_action(
 							'cache_purge'   => $cache_purge,
 							'post_install_database_fingerprint'=> $post_install_fingerprint,
 							'installed_plugin_sha256'=> $installed_plugin_sha256,
+							'robots_sha256'=> (string) $robots['sha256'],
 						);
 						} )();
 					} catch ( \Throwable $error ) {
@@ -1797,6 +2471,8 @@ add_action(
 						$install_response['prior_deployment'] = $prior_deployment;
 						$install_response['prior_version']    = $prior_version;
 						$install_response['prior_plugin_sha256'] = $prior_plugin_sha256;
+						$install_response['robots_prior_exists'] = ! empty( $robots_snapshot['robots_prior_exists'] );
+						$install_response['robots_prior_sha256'] = (string) $robots_snapshot['robots_prior_sha256'];
 						$installed_state = $set_state_phase(
 							$state_dir,
 							$deployment_id,
@@ -1833,7 +2509,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $capture_database_state, $restore_database_state, $decrypt_database_state ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $capture_database_state, $restore_database_state, $decrypt_database_state, $restore_managed_robots, $reapply_managed_robots ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -1876,6 +2552,11 @@ add_action(
 							'prior_active'    => ! empty( $state['was_active'] ),
 							'prior_deployment'=> isset( $state['prior_deployment'] ) ? (string) $state['prior_deployment'] : '',
 							'database_restore'=> ! empty( $state['database_restored'] ) ? array( 'already_restored' => true ) : array(),
+							'robots_prior_exists'=> ! empty( $state['robots_prior_exists'] ),
+							'robots_prior_sha256'=> (string) ( $state['robots_prior_sha256'] ?? '' ),
+							'robots_restore'  => ! empty( $state['robots_restored'] )
+								? array( 'restored' => true, 'already_restored' => true )
+								: array( 'restored' => false, 'not_managed' => true ),
 							'idempotent'      => true,
 						);
 					}
@@ -1930,11 +2611,14 @@ add_action(
 						return $database_snapshot;
 					}
 					if (
-						! isset( $database_snapshot['options'], $database_snapshot['posts'], $database_snapshot['postmeta'], $database_snapshot['seed_ids'], $database_snapshot['sync_secret_existed'] )
+						! isset( $database_snapshot['options'], $database_snapshot['posts'], $database_snapshot['postmeta'], $database_snapshot['seed_ids'], $database_snapshot['sync_secret_existed'], $database_snapshot['sync_secret_configured'] )
 						|| ! is_array( $database_snapshot['options'] )
 						|| ! is_array( $database_snapshot['posts'] )
 						|| ! is_array( $database_snapshot['postmeta'] )
 						|| ! is_array( $database_snapshot['seed_ids'] )
+						|| ! is_bool( $database_snapshot['sync_secret_existed'] )
+						|| ! is_bool( $database_snapshot['sync_secret_configured'] )
+						|| ( $database_snapshot['sync_secret_configured'] && ! $database_snapshot['sync_secret_existed'] )
 					) {
 						return new WP_Error( 'c99_db_snapshot_invalid', 'The database rollback journal is invalid.', array( 'status' => 500 ) );
 					}
@@ -1956,11 +2640,18 @@ add_action(
 					}
 					$current_database_fingerprint = hash( 'sha256', $current_database_json );
 					$post_install_fingerprint = (string) ( $state['post_install_database_fingerprint'] ?? '' );
+					$pending_sync_fingerprint = (string) ( $state['sync_configured_database_fingerprint'] ?? '' );
 					if ( hash_equals( $baseline_fingerprint, $current_database_fingerprint ) ) {
 						$database_restore_required = false;
 					} elseif (
 						preg_match( '/^[a-f0-9]{64}$/', $post_install_fingerprint )
 						&& hash_equals( $post_install_fingerprint, $current_database_fingerprint )
+					) {
+						$database_restore_required = true;
+					} elseif (
+						! empty( $state['sync_configuration_pending'] )
+						&& preg_match( '/^[a-f0-9]{64}$/', $pending_sync_fingerprint )
+						&& hash_equals( $pending_sync_fingerprint, $current_database_fingerprint )
 					) {
 						$database_restore_required = true;
 					} else {
@@ -2205,7 +2896,7 @@ add_action(
 						}
 					}
 					}
-					$compensate_forward = static function ( $error_code, $message, $status, $expected_database_fingerprint = '' ) use ( $config, $wp_filesystem, $target_dir, $restore_stage, $displaced_dir, $plugin_path, $forward_plugin_sha256, $forward_was_active, $directory_sha256, $capture_database_state, $set_state_phase, $state_dir, $deployment_id ) {
+					$compensate_forward = static function ( $error_code, $message, $status, $expected_database_fingerprint = '' ) use ( $config, $wp_filesystem, $target_dir, $restore_stage, $displaced_dir, $plugin_path, $forward_plugin_sha256, $forward_was_active, $directory_sha256, $capture_database_state, $set_state_phase, $state_dir, $deployment_id, $state, $reapply_managed_robots ) {
 						$compensation_error = '';
 						if ( $wp_filesystem->exists( $target_dir ) ) {
 							if ( $wp_filesystem->exists( $restore_stage ) || ! @rename( $target_dir, $restore_stage ) ) {
@@ -2247,6 +2938,12 @@ add_action(
 						if ( '' === $compensation_error && (bool) is_plugin_active( $config['plugin_file'] ) !== $forward_was_active ) {
 							$compensation_error = 'forward_activation_state';
 						}
+						if ( '' === $compensation_error && ! empty( $state['robots_applied'] ) ) {
+							$robots_compensation = $reapply_managed_robots( $state_dir, $state );
+							if ( is_wp_error( $robots_compensation ) ) {
+								$compensation_error = 'robots_restore_forward';
+							}
+						}
 						if ( '' === $compensation_error && '' !== $expected_database_fingerprint ) {
 							$compensated_snapshot = $capture_database_state();
 							$compensated_json = is_wp_error( $compensated_snapshot )
@@ -2279,6 +2976,30 @@ add_action(
 							array( 'status' => (int) $status, 'forward_compensated' => true )
 						);
 					};
+					$robots_restore = array( 'restored' => false, 'not_managed' => true );
+					if ( ! empty( $state['robots_applied'] ) ) {
+						$robots_restore = $restore_managed_robots( $state_dir, $state );
+						if ( is_wp_error( $robots_restore ) ) {
+							return $compensate_forward(
+								'c99_robots_rollback_failed',
+								'The plugin rollback was compensated because robots.txt could not be restored.',
+								500
+							);
+						}
+						$robots_checkpoint = $set_state_phase(
+							$state_dir,
+							$deployment_id,
+							'rolling_back',
+							array( 'robots_restored' => true )
+						);
+						if ( is_wp_error( $robots_checkpoint ) ) {
+							return $compensate_forward(
+								'c99_robots_rollback_checkpoint',
+								'The plugin rollback was compensated because the robots.txt checkpoint could not be recorded.',
+								500
+							);
+						}
+					}
 					$owned = $heartbeat_state( $state_dir, $deployment_id, 'rolling_back' );
 					if ( is_wp_error( $owned ) ) {
 						return $owned;
@@ -2386,6 +3107,9 @@ add_action(
 						'prior_active'    => ! empty( $state['was_active'] ),
 						'prior_deployment'=> isset( $state['prior_deployment'] ) ? (string) $state['prior_deployment'] : '',
 						'database_restore'=> $database_restore,
+						'robots_prior_exists'=> ! empty( $state['robots_prior_exists'] ),
+						'robots_prior_sha256'=> (string) ( $state['robots_prior_sha256'] ?? '' ),
+						'robots_restore'  => $robots_restore,
 						'cache_purge'     => $cache_purge,
 					);
 					} finally {
@@ -2401,7 +3125,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -2463,11 +3187,61 @@ add_action(
 					$cache_purge = array( 'already_purged' => false );
 					if ( $state_exists ) {
 						if ( in_array( $phase, array( 'installed', 'rolled_back', 'commit_failed', 'committing' ), true ) ) {
+							$robots_path = $managed_robots_path();
+							if ( is_wp_error( $robots_path ) ) {
+								return $robots_path;
+							}
+							if ( is_link( $robots_path ) || is_dir( $robots_path ) ) {
+								return new WP_Error( 'c99_finalize_robots_unsafe', 'Finalization found an unsafe robots.txt target.', array( 'status' => 409 ) );
+							}
+							$current_robots_exists = file_exists( $robots_path );
+							$current_robots_sha256 = $current_robots_exists ? (string) @hash_file( 'sha256', $robots_path ) : '';
 							if ( 'installed' === $phase ) {
 								if ( empty( $state['stabilized'] ) ) {
 									return new WP_Error(
 										'c99_finalize_unstabilized',
 										'Forward deployment finalization requires a durable post-migration checkpoint.',
+										array( 'status' => 409 )
+									);
+								}
+								if ( ! empty( $state['sync_configuration_pending'] ) ) {
+									return new WP_Error(
+										'c99_finalize_sync_pending',
+										'Forward finalization is refused while sync configuration is pending.',
+										array( 'status' => 409 )
+									);
+								}
+								$current_database_snapshot = $capture_database_state();
+								$current_database_json = is_wp_error( $current_database_snapshot )
+									? false
+									: wp_json_encode( $current_database_snapshot );
+								$current_database_fingerprint = false === $current_database_json
+									? ''
+									: hash( 'sha256', $current_database_json );
+								$recorded_database_fingerprint = (string) ( $state['post_install_database_fingerprint'] ?? '' );
+								if (
+									is_wp_error( $current_database_snapshot )
+									|| ! preg_match( '/^[a-f0-9]{64}$/', $recorded_database_fingerprint )
+									|| ! hash_equals( $recorded_database_fingerprint, $current_database_fingerprint )
+									|| (
+										! empty( $state['sync_configuration_checkpointed'] )
+										&& empty( $current_database_snapshot['sync_secret_configured'] )
+									)
+								) {
+									return new WP_Error(
+										'c99_finalize_database_checkpoint',
+										'Forward finalization requires the exact post-configuration database checkpoint.',
+										array( 'status' => 409 )
+									);
+								}
+								if (
+									empty( $state['robots_applied'] )
+									|| ! empty( $state['robots_restored'] )
+									|| ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $state['robots_managed_sha256'] ?? '' ) )
+								) {
+									return new WP_Error(
+										'c99_finalize_robots_forward',
+										'Forward finalization requires the exact managed robots.txt checkpoint.',
 										array( 'status' => 409 )
 									);
 								}
@@ -2478,9 +3252,18 @@ add_action(
 									'committed_expected_version'        => (string) ( $state['expected_version'] ?? '' ),
 									'committed_expected_deployment'     => $deployment_id,
 									'committed_expected_plugin_sha256'  => (string) ( $state['installed_plugin_sha256'] ?? '' ),
+									'committed_expected_robots_exists'  => true,
+									'committed_expected_robots_sha256'  => (string) ( $state['robots_managed_sha256'] ?? '' ),
 								);
 							} elseif ( 'rolled_back' === $phase ) {
 								$rollback_had_plugin = ! empty( $state['had_plugin'] );
+								if ( ! empty( $state['robots_applied'] ) && empty( $state['robots_restored'] ) ) {
+									return new WP_Error(
+										'c99_finalize_robots_rollback',
+										'Rollback finalization requires the exact prior robots.txt checkpoint.',
+										array( 'status' => 409 )
+									);
+								}
 								$commit_identity = array(
 									'committed_outcome'                 => 'rolled_back',
 									'committed_expected_active'         => $rollback_had_plugin && ! empty( $state['was_active'] ),
@@ -2488,6 +3271,8 @@ add_action(
 									'committed_expected_version'        => $rollback_had_plugin ? (string) ( $state['prior_version'] ?? '' ) : '',
 									'committed_expected_deployment'     => (string) ( $state['prior_deployment'] ?? '' ),
 									'committed_expected_plugin_sha256'  => $rollback_had_plugin ? (string) ( $state['prior_plugin_sha256'] ?? '' ) : '',
+									'committed_expected_robots_exists'  => ! empty( $state['robots_prior_exists'] ),
+									'committed_expected_robots_sha256'  => (string) ( $state['robots_prior_sha256'] ?? '' ),
 								);
 							} else {
 								$commit_identity = array(
@@ -2497,6 +3282,8 @@ add_action(
 									'committed_expected_version'        => (string) ( $state['committed_expected_version'] ?? '' ),
 									'committed_expected_deployment'     => (string) ( $state['committed_expected_deployment'] ?? '' ),
 									'committed_expected_plugin_sha256'  => (string) ( $state['committed_expected_plugin_sha256'] ?? '' ),
+									'committed_expected_robots_exists'  => ! empty( $state['committed_expected_robots_exists'] ),
+									'committed_expected_robots_sha256'  => (string) ( $state['committed_expected_robots_sha256'] ?? '' ),
 								);
 							}
 							$identity_valid = in_array( $commit_identity['committed_outcome'], array( 'installed', 'rolled_back' ), true );
@@ -2509,6 +3296,19 @@ add_action(
 								$identity_valid = $identity_valid
 									&& '' !== $commit_identity['committed_expected_version']
 									&& preg_match( '/^[a-f0-9]{64}$/', $commit_identity['committed_expected_plugin_sha256'] );
+							}
+							if ( $commit_identity['committed_expected_robots_exists'] ) {
+								$identity_valid = $identity_valid
+									&& preg_match( '/^[a-f0-9]{64}$/', $commit_identity['committed_expected_robots_sha256'] )
+									&& $current_robots_exists
+									&& hash_equals( $commit_identity['committed_expected_robots_sha256'], $current_robots_sha256 );
+							} else {
+								$identity_valid = $identity_valid
+									&& '' === $commit_identity['committed_expected_robots_sha256']
+									&& ! $current_robots_exists;
+							}
+							if ( 'installed' === $commit_identity['committed_outcome'] && ! $commit_identity['committed_expected_robots_exists'] ) {
+								$identity_valid = false;
 							}
 							if ( ! $identity_valid ) {
 								return new WP_Error( 'c99_finalize_identity', 'Finalization requires an exact committed release identity.', array( 'status' => 409 ) );

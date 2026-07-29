@@ -13,7 +13,7 @@ existing Sites runtime:
 
 ## What is ready
 
-- Plugin `complete99-platform` version `1.1.5`.
+- Plugin `complete99-platform` version `1.2.0`.
 - Nine governed content types, seven taxonomies and four scoped editor roles.
 - A governed bilingual launch graph with eight substantive topic hubs, legal
   foundations, service pages and proof-gated sector records.
@@ -27,6 +27,8 @@ existing Sites runtime:
 - Local private enquiry storage; no automatic email or marketing send.
 - Admin-only Sites URL, owned-asset URL and sync-secret settings.
 - Signed public read-model sync plus public filtered catalog endpoint.
+- Freshness-gated live menu and bilingual dish canonicals with exact runtime SEO
+  ownership and a dedicated WordPress sitemap provider.
 - Machine-readable keyword ownership CSV and an administrator report under
   **Tools -> Complete99 SEO ownership**.
 - Vendored Plugin Update Checker 5.6 (`v5p6`) supplies a guarded wp-admin
@@ -46,7 +48,7 @@ python scripts/build-plugin-zip.py --verify-reproducible
 python scripts/validate-package.py
 ```
 
-The release artifact is `plugin-dist/complete99-platform-1.1.5.zip`. The public
+The release artifact is `plugin-dist/complete99-platform-1.2.0.zip`. The public
 WordPress update manifest is `plugin-dist/complete99-platform.json`; immutable
 artifact digest, size and deployment metadata live separately in
 `plugin-dist/complete99-platform-integrity.json`.
@@ -67,8 +69,10 @@ an enabled UPress REST API and the GitHub `production` environment secrets:
 - `WP_BASE_URL`
 - `WP_DEPLOY_USER`
 - `WP_APP_PASSWORD`
+- `COMPLETE99_WORDPRESS_SYNC_SECRET` — 32–4096 random characters; store the
+  identical value in the Complete99 OS server-side secret store.
 
-During the live-alias transition, set the repository variable
+During the live-alias transition, set the GitHub `production` environment variable
 `WP_ALLOWED_DEPLOY_HOSTS` to exactly `a235232-tmp.s1242.upress.link`; remove it when
 `complete99.co.il` becomes the selected `WP_BASE_URL`.
 
@@ -82,6 +86,13 @@ The production mutation job additionally requires the narrowly scoped
 `complete99-deploy` self-hosted runner because UPress rejects authenticated
 traffic from GitHub's changing hosted-runner IP addresses. CI and all admission
 gates remain GitHub-hosted.
+
+The deliberate production pipeline initializes an empty WordPress sync secret,
+verifies its exact durable checkpoint, and manages the physical `robots.txt`
+file with rollback evidence. The public Plugin Update Checker manifest is only a
+human package-update fallback: installing the ZIP through wp-admin does not run
+the deployment bridge, initialize the sync secret, or manage physical
+`robots.txt`.
 
 Deployment can begin on the final live UPress installation through its exact
 transitional alias; no UPress staging or duplicate test site is created. After

@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-28 18:48:00"
+RELEASE_LAST_UPDATED = "2026-07-29 01:20:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -211,8 +211,9 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Expanded the desktop header canvas for long English navigation labels while preserving Hebrew and responsive behavior.</li>"
-                "<li>Verified non-overlapping header geometry at 1181, 1200, 1366 and 1440 CSS pixels.</li>"
+                "<li>Added canonical bilingual live-menu and dish pages with exact per-entity SEO ownership, structured data and a fresh-only WordPress sitemap provider.</li>"
+                "<li>Hardened signed Complete99 OS synchronization with strict booleans, stable slug identity, expiry fail-closed, persisted readback and truthful cache-invalidation reporting.</li>"
+                "<li>Refocused the public home experience on food, dishes and ordering while keeping the operations platform secondary.</li>"
                 "</ul>"
             )
         },

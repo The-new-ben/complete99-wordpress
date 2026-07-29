@@ -25,14 +25,29 @@ Canonical message:
 <timestamp>\n<nonce>\n<sha256-of-exact-request-body>
 ```
 
-The shared secret is 32+ random characters entered in WordPress administration and
-the Sites secret store. It is never rendered by WordPress. Requests expire after
-five minutes and a used nonce is rejected for ten minutes.
+The shared secret is 32–4096 random characters stored in the GitHub `production`
+environment and the Complete99 OS server-side secret store. The deliberate
+deployment bridge initializes WordPress only when the option is absent or empty,
+accepts an existing exact match, and refuses rotation or mismatch. It is never
+rendered by WordPress. Requests expire after five minutes and a used nonce is
+rejected for ten minutes.
 
 Only public branches, menu sections/items and public campaigns are accepted. Unknown
 fields are dropped, record counts and bytes are capped, image names must use the
 owned `c99-` asset namespace, and only records explicitly marked `published` appear
 at `/wp-json/complete99/v1/public-catalog`.
+
+Boolean fields accept only JSON booleans or the exact strings `true` and `false`;
+other values fail with HTTP 400. Menu-item identifiers permanently own their
+sanitized canonical slugs, so a sync cannot silently rename an existing canonical
+or reassign it to another identifier.
+
+An accepted read model remains public for seven days from its verified WordPress
+storage timestamp. This keeps the public menu available through a short OS outage
+without pretending indefinitely that old availability is current. After expiry,
+the catalog fails with HTTP 503 and the live menu, dish routes, dynamic SEO
+ownership rows and dish sitemap entries all fail closed until a fresh signed sync
+is stored.
 
 ## Cameras, devices and robots
 

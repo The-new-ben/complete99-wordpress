@@ -52,23 +52,38 @@ jobs:
       - require-main
       - require-production-ready
     runs-on: ubuntu-latest
+    outputs:
+      ci_run_id: ${{ steps.exact_ci.outputs.run_id }}
     steps:
       - name: Require successful WordPress CI for this exact commit
+        id: exact_ci
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          set -euo pipefail
           response="$(gh api \
             --method GET \
-            "/repos/${GITHUB_REPOSITORY}/actions/workflows/wordpress-ci.yml/runs?head_sha=${GITHUB_SHA}&status=success&per_page=1")"
+            "/repos/${GITHUB_REPOSITORY}/actions/workflows/wordpress-ci.yml/runs?head_sha=${GITHUB_SHA}&branch=main&status=success&per_page=10")"
           RUNS_JSON="$response" python - <<'PY'
           import json
           import os
           runs = json.loads(os.environ["RUNS_JSON"]).get("workflow_runs", [])
-          if not runs or runs[0].get("head_sha") != os.environ["GITHUB_SHA"]:
+          trusted = [
+              run
+              for run in runs
+              if run.get("head_sha") == os.environ["GITHUB_SHA"]
+              and run.get("head_branch") == "main"
+              and run.get("event") == "push"
+              and run.get("conclusion") == "success"
+          ]
+          if not trusted:
               raise SystemExit("No successful WordPress CI run exists for this exact commit.")
-          if runs[0].get("conclusion") != "success":
-              raise SystemExit("The exact-commit WordPress CI run is not successful.")
+          run_id = trusted[0].get("id")
+          if not isinstance(run_id, int) or run_id <= 0:
+              raise SystemExit("The exact-commit WordPress CI run ID is invalid.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"run_id={run_id}\n")
           PY
 
   deploy:
@@ -84,19 +99,50 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate source and package
-        run: |
-          php --version
-          python --version
-          python -c "import sys; assert sys.version_info >= (3, 11), sys.version"
-          python scripts/lint-php.py
-          python -m unittest discover -s tests -v
-          python scripts/secret-scan.py
-          python scripts/build-plugin-zip.py --verify-reproducible
-          python scripts/validate-package.py
-          git diff --exit-code -- plugin-dist
+      - name: Download the immutable exact-commit CI artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: complete99-wordpress-package
+          path: ${{ runner.temp }}/complete99-verified-release-${{ github.run_id }}-${{ github.run_attempt }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ needs.require-green-ci.outputs.ci_run_id }}
 
-      - name: Deploy with independent health and cleanup verification
+      - name: Validate the downloaded immutable release
+        shell: powershell
+        run: |
+          $releaseDir = Join-Path $env:RUNNER_TEMP "complete99-verified-release-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          & python --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & python -c "import sys; assert sys.version_info >= (3, 11), sys.version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & python scripts/validate-package.py --dist $releaseDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $bundleFiles = @(Get-ChildItem -LiteralPath $releaseDir -File)
+          if ($bundleFiles.Count -ne 4) {
+            Write-Error "The immutable release bundle must contain exactly four verified files."
+            exit 1
+          }
+          $approvedCommit = (& git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($approvedCommit -ne $env:GITHUB_SHA) {
+            Write-Error "The checked-out production source does not match GITHUB_SHA."
+            exit 1
+          }
+
+      - name: Require the secure sync bootstrap before any live request
+        env:
+          COMPLETE99_WORDPRESS_SYNC_SECRET: ${{ secrets.COMPLETE99_WORDPRESS_SYNC_SECRET }}
+        shell: powershell
+        run: |
+          if ([string]::IsNullOrEmpty($env:COMPLETE99_WORDPRESS_SYNC_SECRET) -or
+              $env:COMPLETE99_WORDPRESS_SYNC_SECRET.Length -lt 32 -or
+              $env:COMPLETE99_WORDPRESS_SYNC_SECRET.Length -gt 4096) {
+            Write-Error "The production sync secret must be configured with 32 to 4096 characters."
+            exit 1
+          }
+
+      - name: Run live recovery probe and dry-run acceptance
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
@@ -104,6 +150,7 @@ jobs:
           WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
         shell: powershell
         run: |
+          $releaseDir = Join-Path $env:RUNNER_TEMP "complete99-verified-release-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           $bootstrapArgs = @()
           if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.bootstrap_code_snippets }}" -eq "true") {
             $bootstrapArgs += "--bootstrap-code-snippets"
@@ -116,6 +163,7 @@ jobs:
 
           $dryId = "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           & python scripts/deploy-wordpress.py `
+            --dist $releaseDir `
             --dry-run `
             --deployment-id $dryId `
             @bootstrapArgs
@@ -134,17 +182,42 @@ jobs:
           $auditVerification | python - $dryId
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-          $deployArgs = @($bootstrapArgs)
+      - name: Deploy the exact CI artifact with independent verification
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          COMPLETE99_WORDPRESS_SYNC_SECRET: ${{ secrets.COMPLETE99_WORDPRESS_SYNC_SECRET }}
+          WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
+        shell: powershell
+        run: |
+          $releaseDir = Join-Path $env:RUNNER_TEMP "complete99-verified-release-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $mutationMarker = Join-Path $env:RUNNER_TEMP "complete99-live-mutation-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.marker"
+          $deployArgs = @()
           if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.rollback_exercise }}" -eq "true") {
             $deployArgs += "--rollback-exercise"
           }
           & python scripts/deploy-wordpress.py `
+            --dist $releaseDir `
             --deployment-id "c99-prod-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
+            --mutation-marker $mutationMarker `
             @deployArgs
           exit $LASTEXITCODE
 
-      - name: Recover any interrupted mutation with a recreated temporary bridge
+      - name: Detect whether the production mutation edge was crossed
+        id: mutation_state
         if: failure()
+        shell: powershell
+        run: |
+          $mutationMarker = Join-Path $env:RUNNER_TEMP "complete99-live-mutation-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.marker"
+          if (Test-Path -LiteralPath $mutationMarker -PathType Leaf) {
+            "started=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "started=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Recover any interrupted mutation with a recreated temporary bridge
+        if: failure() && steps.mutation_state.outputs.started == 'true'
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
@@ -152,21 +225,23 @@ jobs:
           WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
         shell: powershell
         run: |
-          $recoveryFailed = 0
           $bootstrapArgs = @()
           if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.bootstrap_code_snippets }}" -eq "true") {
             $bootstrapArgs += "--bootstrap-code-snippets"
           }
-          foreach ($deploymentId in @(
-            "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT",
-            "c99-prod-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-          )) {
-            & python scripts/recover-wordpress.py `
-              --deployment-id $deploymentId `
-              @bootstrapArgs
-            if ($LASTEXITCODE -ne 0) { $recoveryFailed = 1 }
+          & python scripts/recover-wordpress.py `
+            --deployment-id "c99-prod-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
+            @bootstrapArgs
+          exit $LASTEXITCODE
+
+      - name: Remove the runner-local mutation marker
+        if: always()
+        shell: powershell
+        run: |
+          $mutationMarker = Join-Path $env:RUNNER_TEMP "complete99-live-mutation-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.marker"
+          if (Test-Path -LiteralPath $mutationMarker -PathType Leaf) {
+            Remove-Item -LiteralPath $mutationMarker -Force
           }
-          exit $recoveryFailed
 
       - name: Upload non-secret deployment audit
         if: always()

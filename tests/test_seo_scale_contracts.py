@@ -17,6 +17,8 @@ CONTENT = PLUGIN / "includes" / "class-complete99-content.php"
 REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 PLATFORM = PLUGIN / "includes" / "class-complete99-platform.php"
 FRONTEND = PLUGIN / "includes" / "class-complete99-frontend.php"
+SITEMAP = PLUGIN / "includes" / "class-complete99-live-dish-sitemap-provider.php"
+MAIN = PLUGIN / "complete99-platform.php"
 HUBS = {
     "services": "/services/",
     "industries": "/industries/",
@@ -107,6 +109,10 @@ echo json_encode($selected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             rows = list(csv.DictReader(handle))
         paths = [row["canonical_path"].lower().rstrip("/") or "/" for row in rows]
         self.assertEqual(len(paths), len(set(paths)))
+        self.assertFalse(
+            any(marker in path for path in paths for marker in ("*", "{", "}")),
+            "Canonical ownership must use exact paths rather than wildcard placeholders",
+        )
 
         grouped: dict[str, dict[str, dict[str, str]]] = {}
         for row in rows:
@@ -170,6 +176,165 @@ echo json_encode($selected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         self.assertIn("'compare' => 'IN'", query_gate)
         self.assertIn("$args['post_status']  = 'publish';", query_gate)
         self.assertIn("$args['has_password'] = false;", query_gate)
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for sitemap evaluation")
+    def test_live_dish_sitemap_registers_exact_fresh_bilingual_urls(self) -> None:
+        sitemap_path = json.dumps(SITEMAP.as_posix())
+        script = f"""
+define('ABSPATH', __DIR__);
+abstract class WP_Sitemaps_Provider {{
+    protected $name = '';
+    protected $object_type = '';
+    abstract public function get_url_list($page_num, $object_subtype = '');
+    abstract public function get_max_num_pages($object_subtype = '');
+}}
+class Complete99_REST {{
+    public static function public_indexable_items($model = null) {{
+        return array(array(
+            'id' => 'dish-7',
+            'slug' => 'runtime-sabich',
+            'updated_at' => '2026-07-29T00:30:00+00:00',
+        ));
+    }}
+}}
+class Complete99_Frontend {{
+    public static function live_dish_url($slug, $language) {{
+        return 'https://complete99.example/'
+            . ('en' === $language ? 'en/' : '')
+            . 'menu/' . $slug . '/';
+    }}
+}}
+class RegistryStub {{
+    public $name = '';
+    public $provider = null;
+    public function add_provider($name, $provider) {{
+        $this->name = $name;
+        $this->provider = $provider;
+        return true;
+    }}
+}}
+function sanitize_title($value) {{
+    return trim(preg_replace('/[^a-z0-9-]+/', '-', strtolower((string) $value)), '-');
+}}
+function wp_sitemaps_get_max_urls($object_type) {{ return 100; }}
+require {sitemap_path};
+$provider = new Complete99_Live_Dish_Sitemap_Provider();
+$server = (object) array('registry' => new RegistryStub());
+$registered = Complete99_Live_Dish_Sitemap_Provider::register($server);
+echo json_encode(array(
+    'registered' => $registered,
+    'provider_name' => $server->registry->name,
+    'pages' => $provider->get_max_num_pages(),
+    'urls' => $provider->get_url_list(1),
+    'page_two' => $provider->get_url_list(2),
+), JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+"""
+        completed = subprocess.run(
+            ["php", "-r", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertTrue(result["registered"])
+        self.assertEqual("completedishes", result["provider_name"])
+        self.assertRegex(result["provider_name"], r"^[a-z]+$")
+        self.assertEqual(1, result["pages"])
+        self.assertEqual([], result["page_two"])
+        self.assertEqual(
+            [
+                "https://complete99.example/menu/runtime-sabich/",
+                "https://complete99.example/en/menu/runtime-sabich/",
+            ],
+            [entry["loc"] for entry in result["urls"]],
+        )
+        self.assertEqual(
+            {"2026-07-29T00:30:00+00:00"},
+            {entry["lastmod"] for entry in result["urls"]},
+        )
+
+        main = MAIN.read_text(encoding="utf-8")
+        platform = PLATFORM.read_text(encoding="utf-8")
+        self.assertIn(
+            "class-complete99-live-dish-sitemap-provider.php",
+            main,
+        )
+        self.assertIn(
+            "Complete99_Live_Dish_Sitemap_Provider::boot();",
+            platform,
+        )
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for registry evaluation")
+    def test_live_dish_registry_uses_exact_bilingual_entity_owners(self) -> None:
+        registry_path = json.dumps(REGISTRY.as_posix())
+        plugin_dir = json.dumps(f"{PLUGIN.as_posix()}/")
+        script = f"""
+define('ABSPATH', __DIR__);
+define('COMPLETE99_PLATFORM_DIR', {plugin_dir});
+class Complete99_REST {{
+    public static function public_indexable_items($model = null) {{
+        return array(array(
+            'id' => 'dish-7',
+            'slug' => 'runtime-sabich',
+            'name_he' => 'Sabich Hebrew',
+            'name_en' => 'Sabich English',
+            'category_he' => 'Street food',
+            'category_en' => 'Street food',
+            'tag_he' => 'Vegetarian',
+            'tag_en' => 'Vegetarian',
+        ));
+    }}
+}}
+function sanitize_key($value) {{
+    return preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $value));
+}}
+function sanitize_title($value) {{
+    return trim(preg_replace('/[^a-z0-9-]+/', '-', strtolower((string) $value)), '-');
+}}
+function untrailingslashit($value) {{
+    return rtrim((string) $value, '/\\\\');
+}}
+function trailingslashit($value) {{
+    return untrailingslashit($value) . '/';
+}}
+require {registry_path};
+$rows = Complete99_SEO_Registry::live_dish_records();
+echo json_encode(array(
+    'rows' => $rows,
+    'errors' => Complete99_SEO_Registry::validation_errors($rows),
+), JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+"""
+        completed = subprocess.run(
+            ["php", "-r", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual([], result["errors"])
+        self.assertEqual(2, len(result["rows"]))
+        self.assertEqual(
+            {"/menu/runtime-sabich/", "/en/menu/runtime-sabich/"},
+            {row["canonical_path"] for row in result["rows"]},
+        )
+        self.assertEqual(
+            1,
+            len({row["translation_key"] for row in result["rows"]}),
+        )
+        for row in result["rows"]:
+            self.assertFalse(
+                any(marker in row["canonical_path"] for marker in ("*", "{", "}"))
+            )
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for registry validation")
     def test_registry_runtime_detects_path_collision_and_missing_locale(self) -> None:

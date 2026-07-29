@@ -299,6 +299,7 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("@rename( $target_dir, $displaced_dir )", text)
         self.assertIn("@rename( $restore_stage, $target_dir )", text)
         self.assertIn("'sync_secret_existed'", text)
+        self.assertIn("'sync_secret_configured'", text)
         self.assertIn("'.htaccess'", text)
         self.assertIn("'web.config'", text)
         capture_block = text.split("$capture_database_state", 1)[1].split(
@@ -307,9 +308,37 @@ class Complete99ContractTests(unittest.TestCase):
         )[0]
         self.assertNotIn("'complete99_sync_secret',", capture_block)
         self.assertIn("copy_dir( $target_dir, $backup_dir )", text)
+        self.assertIn("$capture_robots_snapshot", text)
+        self.assertIn("$apply_managed_robots", text)
+        self.assertIn("$restore_managed_robots", text)
+        self.assertIn("$reapply_managed_robots", text)
+        self.assertIn("'robots_managed_sha256'", text)
         self.assertIn("'/stabilize'", text)
+        self.assertIn("'/configure-sync'", text)
         self.assertIn("'/rollback'", text)
         self.assertIn("'/finalize'", text)
+        configure = text.split("$route_prefix . '/configure-sync'", 1)[1].split(
+            "$route_prefix . '/retire'",
+            1,
+        )[0]
+        self.assertIn("'c99_sync_rotation_refused'", configure)
+        self.assertIn("strlen( $provided_secret ) < 32", configure)
+        self.assertIn("$request->get_json_params()", configure)
+        self.assertIn("'c99_sync_configure_transport'", configure)
+        self.assertIn("'sync_configuration_pending'", configure)
+        self.assertIn("'sync_configuration_checkpointed'", configure)
+        self.assertIn("$provided_secret", configure)
+        self.assertNotIn("'provided_secret' =>", configure)
+        self.assertNotIn("'sync_secret' => $provided_secret", configure)
+        rollback = text.split("$route_prefix . '/rollback'", 1)[1].split(
+            "$route_prefix . '/finalize'",
+            1,
+        )[0]
+        self.assertIn("$pending_sync_fingerprint", rollback)
+        self.assertIn("'sync_secret_configured'", rollback)
+        finalize = text.split("$route_prefix . '/finalize'", 1)[1]
+        self.assertIn("'c99_finalize_sync_pending'", finalize)
+        self.assertIn("'c99_finalize_database_checkpoint'", finalize)
         privileged = text.split("add_action(", 1)[0]
         self.assertNotIn("Plugin_Upgrader", privileged)
 
@@ -327,6 +356,9 @@ class Complete99ContractTests(unittest.TestCase):
             "rollback-exercise",
             "delete_snippet_and_prove_404",
             "verify_rollback_integrity",
+            "verify_managed_robots",
+            "verify_prior_robots",
+            "request_anonymous_bytes",
             'expected=(404,)',
             "finally:",
             "ALLOWED_PRODUCTION_HOSTS",
@@ -583,13 +615,21 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("WP_PRODUCTION_READY: ${{ vars.WP_PRODUCTION_READY }}", deploy)
         self.assertIn('if [[ "$WP_PRODUCTION_READY" != "true" ]]', deploy)
         self.assertIn("Require successful WordPress CI for this exact commit", deploy)
-        self.assertIn("head_sha=${GITHUB_SHA}&status=success", deploy)
+        self.assertIn("head_sha=${GITHUB_SHA}&branch=main&status=success", deploy)
+        self.assertIn("ci_run_id: ${{ steps.exact_ci.outputs.run_id }}", deploy)
+        self.assertIn("actions/download-artifact@", deploy)
+        self.assertIn("run-id: ${{ needs.require-green-ci.outputs.ci_run_id }}", deploy)
         self.assertIn("recover-wordpress.py", deploy)
-        self.assertIn("if: failure()", deploy)
-        self.assertIn("git diff --exit-code -- plugin-dist", deploy)
+        self.assertIn(
+            "if: failure() && steps.mutation_state.outputs.started == 'true'",
+            deploy,
+        )
+        self.assertNotIn("build-plugin-zip.py", deploy)
         ci = (ROOT / ".github" / "workflows" / "wordpress-ci.yml").read_text(encoding="utf-8")
         self.assertIn("verify-release-discipline.py", ci)
         self.assertIn("git diff --exit-code -- plugin-dist", ci)
+        self.assertIn("git ls-files --others --exclude-standard -- plugin-dist", ci)
+        self.assertIn("Prepare the exact validated release bundle", ci)
         release = (ROOT / "scripts" / "verify-release-discipline.py").read_text(
             encoding="utf-8"
         )
@@ -608,6 +648,24 @@ class Complete99ContractTests(unittest.TestCase):
             update_manifest = json.loads((dist / "complete99-platform.json").read_text(encoding="utf-8"))
             self.assertEqual(metadata["version"], update_manifest["version"])
             artifact = dist / metadata["artifact"]
+            checksum = (dist / f"{artifact.name}.sha256").read_text(
+                encoding="ascii"
+            )
+            self.assertEqual(
+                f"{metadata['sha256']}  {artifact.name}\n",
+                checksum,
+            )
+            subprocess.run(
+                [
+                    "python",
+                    str(ROOT / "scripts" / "validate-package.py"),
+                    "--dist",
+                    str(dist),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
             with zipfile.ZipFile(artifact) as archive:
                 for name in archive.namelist():
                     path = PurePosixPath(name)
