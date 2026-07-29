@@ -433,6 +433,16 @@ final class Complete99_Content {
 				'top'
 			);
 		}
+		add_rewrite_rule(
+			'^menu/([^/]+)/?$',
+			'index.php?complete99_live_dish=$matches[1]&complete99_live_lang=he',
+			'top'
+		);
+		add_rewrite_rule(
+			'^en/menu/([^/]+)/?$',
+			'index.php?complete99_live_dish=$matches[1]&complete99_live_lang=en',
+			'top'
+		);
 	}
 
 	public static function filter_post_type_link( $url, $post ) {

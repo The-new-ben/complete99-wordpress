@@ -22,7 +22,11 @@ second environment. It is accepted only when explicitly listed in
    daily personal account.
 6. Create one site-specific Application Password for that identity. Store it only
    in the GitHub `production` environment; never in this repository.
-7. Confirm automatic updates are disabled for
+7. Generate a separate 32–4096-character random read-model sync secret. Store the
+   identical value in the GitHub `production` environment as
+   `COMPLETE99_WORDPRESS_SYNC_SECRET` and in the Complete99 OS server-side secret
+   store. Do not pass it on a command line or record it in evidence.
+8. Confirm automatic updates are disabled for
    `complete99-platform/complete99-platform.php`. Deliberate releases are verified
    by this pipeline; Plugin Update Checker remains a human fallback.
 
@@ -36,6 +40,8 @@ Create environment `production`, add any desired reviewer gate, and add:
 - `WP_BASE_URL` — exact HTTPS origin, with no trailing WordPress admin path.
 - `WP_DEPLOY_USER` — dedicated deployment username.
 - `WP_APP_PASSWORD` — site-specific WordPress Application Password.
+- `COMPLETE99_WORDPRESS_SYNC_SECRET` — the exact 32–4096-character value held by
+  the Complete99 OS server-side secret store.
 
 Set the repository variable `WP_PRODUCTION_READY` to `false` during setup. Change
 it to exactly `true` only after the selected live origin checks above pass. Protect
@@ -44,10 +50,16 @@ queries GitHub and refuses any commit that does not have its own successful CI r
 Repository Actions permission remains read-only; the deploy workflow adds only
 `actions: read`. Both workflows pin referenced third-party actions to full SHAs.
 
-Leave the repository variable `WP_ALLOWED_DEPLOY_HOSTS` empty after the final domain
-is connected. During the live-alias transition, set it to exactly
+Leave the `production` environment variable `WP_ALLOWED_DEPLOY_HOSTS` empty after
+the final domain is connected. During the live-alias transition, set it to exactly
 `a235232-tmp.s1242.upress.link` and set `WP_BASE_URL` to the matching clean HTTPS
 origin.
+
+The deployment bridge initializes the WordPress sync option only when it is
+absent or empty. It accepts an already configured value only when it exactly
+matches the environment secret and refuses rotation. Resolve any mismatch
+through a separately reviewed credential-rotation procedure before dispatching
+production; repeated deployment attempts cannot reconcile it.
 
 ## WAF-safe deployment runner
 
@@ -197,9 +209,17 @@ A production release is complete only when the non-secret audit JSON shows:
 - transactional-storage preflight and run-time database baseline;
 - expected public health version and deployment ID;
 - matching health `database_version`;
+- `sync_configured: true` after an exact secret checkpoint, without exposing the
+  value;
+- anonymous `robots.txt` content and SHA-256 matching the managed policy;
 - anonymous homepage body markers for version and deployment;
 - successful finalize;
 - `row_absence_verified: true`, snippet deletion and `route_404: true`;
 - exact database/plugin rollback and rollback-health evidence for the canary exercise.
 
 An installer response alone is never treated as proof.
+
+Physical `robots.txt` management, sync-secret initialization, rollback and the
+closing audit are capabilities of the deliberate production pipeline. A
+Plugin Update Checker/wp-admin ZIP update changes plugin files only and must not
+be described as a complete production release.

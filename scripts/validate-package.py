@@ -98,6 +98,12 @@ def main() -> int:
     actual = hashlib.sha256(raw).hexdigest()
     assert actual == metadata["sha256"], "Artifact digest differs from metadata"
     assert len(raw) == metadata["size"], "Artifact size differs from metadata"
+    checksum_path = args.dist / f"{artifact.name}.sha256"
+    checksum_parts = checksum_path.read_text(encoding="ascii").strip().split()
+    assert checksum_parts == [
+        actual,
+        artifact.name,
+    ], "Artifact checksum sidecar differs from the verified package"
     assert re.fullmatch(r"[a-f0-9]{64}", metadata["source_sha256"]), "Source digest is invalid"
     required_update_fields = {
         "name",

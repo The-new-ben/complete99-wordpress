@@ -36,6 +36,7 @@ final class Complete99_Platform {
 		Complete99_Leads::boot();
 		Complete99_REST::boot();
 		Complete99_Frontend::boot();
+		Complete99_Live_Dish_Sitemap_Provider::boot();
 		Complete99_SEO_Registry::boot();
 	}
 

@@ -318,6 +318,48 @@ class Client:
             raise DeployError(f"Anonymous GET {path} failed with HTTP {status}")
         return status, raw.decode("utf-8", errors="replace")
 
+    def request_anonymous_bytes(
+        self,
+        path: str,
+        expected: tuple[int, ...] = (200,),
+        max_bytes: int = 65536,
+    ) -> tuple[int, bytes]:
+        if (
+            not path.startswith("/")
+            or path.startswith("//")
+            or "?" in path
+            or "#" in path
+            or max_bytes < 1
+            or max_bytes > 65536
+        ):
+            raise DeployError("Anonymous byte verification requires an exact bounded site-relative path")
+        url = self.base_url + path
+        request = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "text/plain",
+                "User-Agent": USER_AGENT,
+            },
+            method="GET",
+        )
+        try:
+            with self.opener.open(request, timeout=self.timeout) as response:
+                if response.geturl() != url:
+                    raise DeployError("Anonymous byte verification may not follow redirects")
+                status = response.status
+                raw = response.read(max_bytes + 1)
+        except urllib.error.HTTPError as error:
+            status = error.code
+            raw = error.read(max_bytes + 1)
+        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            reason = getattr(error, "reason", type(error).__name__)
+            raise DeployError(f"Anonymous byte verification failed: {reason}") from error
+        if len(raw) > max_bytes:
+            raise DeployError("Anonymous byte verification exceeded the size ceiling")
+        if status not in expected:
+            raise DeployError(f"Anonymous GET {path} failed with HTTP {status}")
+        return status, raw
+
     def request_public_json(
         self,
         path: str,
@@ -374,6 +416,19 @@ def load_artifact(dist: Path) -> tuple[dict[str, Any], Path, bytes]:
     if digest != metadata.get("sha256") or len(raw) != metadata.get("size"):
         raise DeployError("Local artifact integrity check failed")
     return metadata, artifact, raw
+
+
+def arm_live_mutation_recovery(marker: Path | None, deployment_id: str) -> None:
+    """Create a local recovery marker at the exact edge before the first live write."""
+    if marker is None:
+        return
+    if not marker.is_absolute() or not marker.parent.is_dir():
+        raise DeployError("The live mutation recovery marker requires an existing absolute parent")
+    try:
+        with marker.open("x", encoding="ascii", newline="\n") as handle:
+            handle.write(f"{deployment_id}\n")
+    except (FileExistsError, OSError) as error:
+        raise DeployError("The live mutation recovery marker could not be armed safely") from error
 
 
 def verify_rest_identity(client: Client) -> dict[str, str]:
@@ -941,6 +996,9 @@ def install_with_recovery(
                 "prior_deployment": status.get("prior_deployment", ""),
                 "prior_plugin_sha256": status.get("prior_plugin_sha256", ""),
                 "prior_version": status.get("prior_version", ""),
+                "robots_prior_exists": bool(status.get("robots_prior_exists")),
+                "robots_prior_sha256": status.get("robots_prior_sha256", ""),
+                "robots_sha256": status.get("robots_managed_sha256", ""),
                 "installed_plugin_sha256": installed_plugin_sha256,
                 "sha256": run_fields["expected_sha256"],
                 "temp_removed": True,
@@ -1037,6 +1095,96 @@ def stabilize_deployment(
     }
 
 
+def configure_sync(
+    client: Client,
+    token: str,
+    deployment_id: str,
+    sync_value: str,
+) -> dict[str, Any]:
+    """Initialize the WordPress sync credential without logging or persisting it locally."""
+    if len(sync_value) < 32 or len(sync_value) > 4096:
+        raise DeployError(
+            "COMPLETE99_WORDPRESS_SYNC_SECRET must contain between 32 and 4096 characters"
+        )
+
+    recovered = False
+    try:
+        response = bridge_call(
+            client,
+            "configure-sync",
+            token,
+            deployment_id,
+            sync_secret=sync_value,
+        )
+    except HTTPDeployError:
+        raise
+    except DeployError as original_error:
+        recovered = True
+        try:
+            response = bridge_call(
+                client,
+                "configure-sync",
+                token,
+                deployment_id,
+                sync_secret=sync_value,
+            )
+        except DeployError:
+            status = bridge_call(client, "status", token, deployment_id)
+            if (
+                status.get("phase") == "installed"
+                and status.get("stabilized")
+                and status.get("current_sync_configured")
+                and status.get("sync_configuration_checkpointed")
+                and not status.get("sync_configuration_pending")
+                and re.fullmatch(
+                    r"[a-f0-9]{64}",
+                    str(status.get("post_install_database_fingerprint", "")),
+                )
+                and status.get("database_fingerprint")
+                == status.get("post_install_database_fingerprint")
+            ):
+                response = {
+                    "configured": True,
+                    "changed": False,
+                    "idempotent": True,
+                    "database_fingerprint": status.get(
+                        "post_install_database_fingerprint", ""
+                    ),
+                }
+            else:
+                raise original_error
+
+    database_fingerprint = str(response.get("database_fingerprint", ""))
+    if (
+        not response.get("configured")
+        or not isinstance(response.get("changed"), bool)
+        or not isinstance(response.get("idempotent"), bool)
+        or response.get("changed") == response.get("idempotent")
+        or not re.fullmatch(r"[a-f0-9]{64}", database_fingerprint)
+    ):
+        raise DeployError("Sync configuration response failed verification")
+
+    status = bridge_call(client, "status", token, deployment_id)
+    if (
+        status.get("phase") != "installed"
+        or not status.get("stabilized")
+        or not status.get("current_sync_configured")
+        or not status.get("sync_configuration_checkpointed")
+        or status.get("sync_configuration_pending")
+        or status.get("database_fingerprint") != database_fingerprint
+        or status.get("post_install_database_fingerprint")
+        != database_fingerprint
+    ):
+        raise DeployError("Sync configuration checkpoint was not durably verified")
+    return {
+        "configured": True,
+        "changed": bool(response.get("changed")),
+        "idempotent": bool(response.get("idempotent")),
+        "database_fingerprint": database_fingerprint,
+        "response_recovered": recovered,
+    }
+
+
 def rollback_with_recovery(
     client: Client,
     token: str,
@@ -1077,6 +1225,13 @@ def rollback_with_recovery(
                 "prior_deployment": status.get("prior_deployment", ""),
                 "prior_plugin_sha256": status.get("prior_plugin_sha256", ""),
                 "prior_version": status.get("prior_version", ""),
+                "robots_prior_exists": bool(status.get("robots_prior_exists")),
+                "robots_prior_sha256": status.get("robots_prior_sha256", ""),
+                "robots_restore": {
+                    "not_managed": not bool(status.get("robots_applied")),
+                    "response_recovered": True,
+                    "restored": bool(status.get("robots_restored")),
+                },
                 "rolled_back": True,
                 "write_response_recovered": True,
             }
@@ -1110,15 +1265,117 @@ def verify_rollback_integrity(
             raise DeployError("Rollback did not restore the exact prior plugin files")
     elif status.get("current_target_dir_exists") or status.get("current_plugin_main_exists"):
         raise DeployError("First-install rollback left plugin files behind")
+    prior_robots_exists = bool(rollback.get("robots_prior_exists"))
+    prior_robots_sha256 = str(rollback.get("robots_prior_sha256", ""))
+    expected_robots_sha256 = prior_robots_sha256 if prior_robots_exists else ""
+    if prior_robots_exists and not re.fullmatch(r"[a-f0-9]{64}", prior_robots_sha256):
+        raise DeployError("Rollback journal did not expose a valid prior robots.txt fingerprint")
+    if not prior_robots_exists and prior_robots_sha256:
+        raise DeployError("Rollback journal reported an impossible absent robots.txt fingerprint")
+    if (
+        status.get("current_robots_sha256") != expected_robots_sha256
+        or (
+            status.get("robots_applied")
+            and not status.get("robots_restored")
+        )
+    ):
+        raise DeployError("Rollback did not restore the exact prior robots.txt filesystem state")
     return {
         "database_fingerprint": actual,
         "database_restored": bool(status.get("database_restored")),
         "plugin_files_restored": had_plugin,
         "plugin_absent": not had_plugin,
+        "robots_prior_exists": prior_robots_exists,
+        "robots_sha256": expected_robots_sha256,
+        "robots_restored": bool(status.get("robots_restored")),
     }
 
 
-def verify_health(client: Client, version: str, deployment_id: str) -> dict[str, Any]:
+def expected_managed_robots(client: Client) -> bytes:
+    return (
+        "User-agent: *\n"
+        "Disallow: /wp-admin/\n"
+        "Allow: /wp-admin/admin-ajax.php\n"
+        f"Sitemap: {client.base_url}/wp-sitemap.xml\n"
+    ).encode("utf-8")
+
+
+def verify_robots_journal_identity(
+    record: dict[str, Any],
+) -> tuple[bool, str]:
+    prior_exists = bool(record.get("robots_prior_exists"))
+    prior_sha256 = str(record.get("robots_prior_sha256", ""))
+    if prior_exists and not re.fullmatch(r"[a-f0-9]{64}", prior_sha256):
+        raise DeployError("Bridge did not expose a valid prior robots.txt fingerprint")
+    if not prior_exists and prior_sha256:
+        raise DeployError("Bridge exposed a fingerprint for an absent prior robots.txt")
+    return prior_exists, prior_sha256
+
+
+def verify_managed_robots(
+    client: Client,
+    expected_sha256: str,
+) -> dict[str, Any]:
+    if not re.fullmatch(r"[a-f0-9]{64}", expected_sha256):
+        raise DeployError("Bridge did not expose a valid managed robots.txt fingerprint")
+    status, raw = client.request_anonymous_bytes("/robots.txt", expected=(200,))
+    expected = expected_managed_robots(client)
+    actual_sha256 = hashlib.sha256(raw).hexdigest()
+    expected_content_sha256 = hashlib.sha256(expected).hexdigest()
+    if (
+        raw != expected
+        or actual_sha256 != expected_content_sha256
+        or actual_sha256 != expected_sha256
+    ):
+        raise DeployError("Public robots.txt did not exactly match the managed crawler policy")
+    return {
+        "sha256": actual_sha256,
+        "status": status,
+    }
+
+
+def verify_prior_robots(
+    client: Client,
+    prior_exists: bool,
+    prior_sha256: str,
+) -> dict[str, Any]:
+    if prior_exists:
+        if not re.fullmatch(r"[a-f0-9]{64}", prior_sha256):
+            raise DeployError("Rollback did not expose a valid prior robots.txt fingerprint")
+        status, raw = client.request_anonymous_bytes("/robots.txt", expected=(200,))
+        actual_sha256 = hashlib.sha256(raw).hexdigest()
+        if actual_sha256 != prior_sha256:
+            raise DeployError("Public robots.txt did not match the exact pre-deployment content")
+        return {
+            "sha256": actual_sha256,
+            "status": status,
+        }
+    if prior_sha256:
+        raise DeployError("Rollback reported a fingerprint for an absent prior robots.txt")
+    status, _ = client.request_anonymous_bytes("/robots.txt", expected=(404,))
+    return {
+        "sha256": "",
+        "status": status,
+    }
+
+
+def robots_restore_audit(value: Any) -> dict[str, bool]:
+    restore = value if isinstance(value, dict) else {}
+    return {
+        "already_restored": bool(restore.get("already_restored")),
+        "not_managed": bool(restore.get("not_managed")),
+        "response_recovered": bool(restore.get("response_recovered")),
+        "restored": bool(restore.get("restored")),
+    }
+
+
+def verify_health(
+    client: Client,
+    version: str,
+    deployment_id: str,
+    *,
+    require_sync_configured: bool = False,
+) -> dict[str, Any]:
     query = urllib.parse.quote(deployment_id, safe="")
     _, health = client.request_public_json(
         f"/wp-json/complete99/v1/health?verify={query}"
@@ -1133,7 +1390,11 @@ def verify_health(client: Client, version: str, deployment_id: str) -> dict[str,
     for key, value in expected.items():
         if health.get(key) != value:
             raise DeployError(f"Independent health verification failed for {key}")
-    return {key: health.get(key) for key in expected}
+    if require_sync_configured and health.get("sync_configured") is not True:
+        raise DeployError("Independent health verification failed for sync configuration")
+    result = {key: health.get(key) for key in expected}
+    result["sync_configured"] = health.get("sync_configured") is True
+    return result
 
 
 def verify_rendered_home(
@@ -1313,6 +1574,12 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--rollback-exercise", action="store_true")
     parser.add_argument(
+        "--mutation-marker",
+        type=Path,
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "--fault-injection",
         choices=("", "db_capture", "after_prepare", "after_install", "during_rollback", "after_commit"),
         default="",
@@ -1321,9 +1588,14 @@ def main() -> int:
     parser.add_argument("--audit-dir", type=Path, default=ROOT / "deploy-audit")
     args = parser.parse_args()
     app_password = os.environ.get("WP_APP_PASSWORD", "")
+    sync_value = os.environ.get("COMPLETE99_WORDPRESS_SYNC_SECRET", "")
 
     if not args.base_url or not args.user or not app_password:
         raise DeployError("WP_BASE_URL, WP_DEPLOY_USER and WP_APP_PASSWORD are required")
+    if sync_value and (len(sync_value) < 32 or len(sync_value) > 4096):
+        raise DeployError(
+            "COMPLETE99_WORDPRESS_SYNC_SECRET must contain between 32 and 4096 characters"
+        )
     if args.fault_injection and not args.local_test:
         raise DeployError("Fault injection is restricted to isolated loopback tests")
     target = validate_target_url(
@@ -1386,6 +1658,7 @@ def main() -> int:
             target_host=target_host,
             allowed_hosts=allowed_hosts,
         )
+        arm_live_mutation_recovery(args.mutation_marker, deployment_id)
         snippet_creation_attempted = True
         snippet_id = create_snippet(client, code, deployment_id)
         gate = "bootstrap-cleanup"
@@ -1423,6 +1696,8 @@ def main() -> int:
             "required_free_bytes": preflight.get("required_free_bytes"),
             "transactional_storage": preflight.get("transactional_storage", {}),
             "database_fingerprint": preflight.get("database_fingerprint", ""),
+            "robots_prior_exists": bool(preflight.get("robots_prior_exists")),
+            "robots_prior_sha256": preflight.get("robots_prior_sha256", ""),
             "lock_reserved": reservation_acquired,
         }
         prior_version = str(audit["preflight"]["current_version"])
@@ -1469,9 +1744,16 @@ def main() -> int:
                     r"[a-f0-9]{64}",
                     str(result.get("installed_plugin_sha256", "")),
                 )
+                or not re.fullmatch(
+                    r"[a-f0-9]{64}",
+                    str(result.get("robots_sha256", "")),
+                )
                 or not result.get("temp_removed")
             ):
                 raise DeployError("Bridge install response failed integrity verification")
+            robots_prior_exists, robots_prior_sha256 = (
+                verify_robots_journal_identity(result)
+            )
             audit["install"] = {
                 "baseline_database_fingerprint": result.get(
                     "baseline_database_fingerprint", ""
@@ -1482,6 +1764,9 @@ def main() -> int:
                 "prior_deployment": result.get("prior_deployment", ""),
                 "prior_plugin_sha256": result.get("prior_plugin_sha256", ""),
                 "prior_version": result.get("prior_version", ""),
+                "robots_prior_exists": robots_prior_exists,
+                "robots_prior_sha256": robots_prior_sha256,
+                "robots_sha256": result.get("robots_sha256", ""),
                 "installed_plugin_sha256": result.get(
                     "installed_plugin_sha256", ""
                 ),
@@ -1495,8 +1780,27 @@ def main() -> int:
                 metadata["version"],
                 str(result.get("installed_plugin_sha256", "")),
             )
+            gate = "robots"
+            audit["robots"] = verify_managed_robots(
+                client,
+                str(result.get("robots_sha256", "")),
+            )
+            if sync_value and not args.rollback_exercise:
+                gate = "configure-sync"
+                audit["sync_configuration"] = configure_sync(
+                    client,
+                    token,
+                    deployment_id,
+                    sync_value,
+                )
             gate = "health"
-            audit["health"] = verify_health(client, metadata["version"], deployment_id)
+            audit["health"] = verify_health(
+                client,
+                metadata["version"],
+                deployment_id,
+                require_sync_configured=bool(sync_value)
+                and not args.rollback_exercise,
+            )
             audit["rendered_home"] = verify_rendered_home(
                 client,
                 metadata["version"],
@@ -1509,14 +1813,36 @@ def main() -> int:
                 rollback = rollback_with_recovery(client, token, deployment_id)
                 if not rollback.get("rolled_back") or not rollback.get("database_restore"):
                     raise DeployError("Rollback exercise was not confirmed")
+                (
+                    rollback_robots_prior_exists,
+                    rollback_robots_prior_sha256,
+                ) = verify_robots_journal_identity(rollback)
+                if (
+                    rollback_robots_prior_exists != robots_prior_exists
+                    or rollback_robots_prior_sha256 != robots_prior_sha256
+                ):
+                    raise DeployError(
+                        "Rollback robots.txt journal identity changed after installation"
+                    )
                 audit["rollback"] = {
                     "rolled_back": bool(rollback.get("rolled_back")),
                     "prior_version": rollback.get("prior_version", ""),
                     "prior_deployment": rollback.get("prior_deployment", ""),
                     "database_restore": rollback.get("database_restore", {}),
+                    "robots_prior_exists": rollback_robots_prior_exists,
+                    "robots_prior_sha256": rollback_robots_prior_sha256,
+                    "robots_restore": robots_restore_audit(
+                        rollback.get("robots_restore")
+                    ),
                 }
                 audit["rollback_integrity"] = verify_rollback_integrity(
                     client, token, deployment_id, rollback
+                )
+                gate = "rollback-robots"
+                audit["rollback_robots"] = verify_prior_robots(
+                    client,
+                    rollback_robots_prior_exists,
+                    rollback_robots_prior_sha256,
                 )
                 audit["rollback_health"] = verify_prior_health(client, rollback)
                 audit["rollback_rendered_home"] = verify_rendered_home(
@@ -1548,9 +1874,24 @@ def main() -> int:
                         r"[a-f0-9]{64}",
                         str(result.get("installed_plugin_sha256", "")),
                     )
+                    or not re.fullmatch(
+                        r"[a-f0-9]{64}",
+                        str(result.get("robots_sha256", "")),
+                    )
                     or not result.get("temp_removed")
                 ):
                     raise DeployError("Post-rollback redeploy digest verification failed")
+                (
+                    redeploy_robots_prior_exists,
+                    redeploy_robots_prior_sha256,
+                ) = verify_robots_journal_identity(result)
+                if (
+                    redeploy_robots_prior_exists != rollback_robots_prior_exists
+                    or redeploy_robots_prior_sha256 != rollback_robots_prior_sha256
+                ):
+                    raise DeployError(
+                        "Redeploy did not capture the exact rolled-back robots.txt state"
+                    )
                 audit["install_after_exercise"] = {
                     "baseline_database_fingerprint": result.get(
                         "baseline_database_fingerprint", ""
@@ -1561,6 +1902,9 @@ def main() -> int:
                     "prior_deployment": result.get("prior_deployment", ""),
                     "prior_plugin_sha256": result.get("prior_plugin_sha256", ""),
                     "prior_version": result.get("prior_version", ""),
+                    "robots_prior_exists": redeploy_robots_prior_exists,
+                    "robots_prior_sha256": redeploy_robots_prior_sha256,
+                    "robots_sha256": result.get("robots_sha256", ""),
                     "installed_plugin_sha256": result.get(
                         "installed_plugin_sha256", ""
                     ),
@@ -1574,8 +1918,26 @@ def main() -> int:
                     metadata["version"],
                     str(result.get("installed_plugin_sha256", "")),
                 )
+                gate = "robots"
+                audit["robots_after_exercise"] = verify_managed_robots(
+                    client,
+                    str(result.get("robots_sha256", "")),
+                )
+                if sync_value:
+                    gate = "configure-sync"
+                    audit["sync_configuration_after_exercise"] = configure_sync(
+                        client,
+                        token,
+                        deployment_id,
+                        sync_value,
+                    )
                 gate = "health"
-                audit["health_after_exercise"] = verify_health(client, metadata["version"], deployment_id)
+                audit["health_after_exercise"] = verify_health(
+                    client,
+                    metadata["version"],
+                    deployment_id,
+                    require_sync_configured=bool(sync_value),
+                )
                 audit["rendered_home_after_exercise"] = verify_rendered_home(
                     client,
                     metadata["version"],
@@ -1646,6 +2008,10 @@ def main() -> int:
                     rollback = rollback_with_recovery(client, token, deployment_id)
                     if not rollback.get("rolled_back") or not rollback.get("database_restore"):
                         raise DeployError("Failure rollback was not confirmed")
+                    (
+                        failure_robots_prior_exists,
+                        failure_robots_prior_sha256,
+                    ) = verify_robots_journal_identity(rollback)
                     audit["failure_rollback"] = {
                         "rolled_back": bool(rollback.get("rolled_back")),
                         "had_plugin": bool(rollback.get("had_plugin")),
@@ -1657,9 +2023,19 @@ def main() -> int:
                             "baseline_database_fingerprint", ""
                         ),
                         "database_restore": rollback.get("database_restore", {}),
+                        "robots_prior_exists": failure_robots_prior_exists,
+                        "robots_prior_sha256": failure_robots_prior_sha256,
+                        "robots_restore": robots_restore_audit(
+                            rollback.get("robots_restore")
+                        ),
                     }
                     audit["failure_rollback_integrity"] = verify_rollback_integrity(
                         client, token, deployment_id, rollback
+                    )
+                    audit["failure_rollback_robots"] = verify_prior_robots(
+                        client,
+                        failure_robots_prior_exists,
+                        failure_robots_prior_sha256,
                     )
                     if rollback.get("prior_active"):
                         audit["failure_rollback_health"] = verify_health(

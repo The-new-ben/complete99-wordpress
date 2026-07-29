@@ -7,9 +7,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Complete99_REST {
 	const NAMESPACE       = 'complete99/v1';
 	const MAX_BODY_BYTES  = 524288;
-	const MAX_CLOCK_SKEW  = 300;
-	const NONCE_TTL       = 600;
-	const MAX_MODEL_ITEMS = 500;
+	const MAX_CLOCK_SKEW   = 300;
+	const NONCE_TTL        = 600;
+	const MAX_MODEL_ITEMS  = 500;
+	const PUBLIC_MODEL_TTL = 604800;
 
 	public static function boot() {
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
@@ -47,6 +48,7 @@ final class Complete99_REST {
 
 	public static function health() {
 		$model = get_option( 'complete99_public_read_model', array() );
+		$freshness = self::model_freshness( $model );
 		$database_version = (string) get_option( 'complete99_platform_version', '' );
 		if ( Complete99_Platform::migration_failed() || COMPLETE99_PLATFORM_VERSION !== $database_version ) {
 			return new WP_Error(
@@ -67,6 +69,9 @@ final class Complete99_REST {
 				'read_model'      => array(
 					'version'    => isset( $model['version'] ) ? (string) $model['version'] : '',
 					'updated_at' => isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '',
+					'fresh'      => $freshness['fresh'],
+					'expires_at' => $freshness['expires_at'],
+					'ttl_seconds' => self::PUBLIC_MODEL_TTL,
 				),
 			)
 		);
@@ -114,15 +119,91 @@ final class Complete99_REST {
 			return new WP_Error( 'complete99_sync_schema', 'Unsupported public read-model schema.', array( 'status' => 400 ) );
 		}
 
+		$generated = isset( $payload['generated_at'] ) && is_string( $payload['generated_at'] )
+			? trim( $payload['generated_at'] )
+			: '';
+		$generated_at = self::parse_rfc3339_timestamp( $generated );
+		if ( false === $generated_at ) {
+			return new WP_Error( 'complete99_sync_generated_at', 'The public read-model generation timestamp is invalid.', array( 'status' => 400 ) );
+		}
+		if ( $generated_at < time() - self::MAX_CLOCK_SKEW || $generated_at > time() + self::MAX_CLOCK_SKEW ) {
+			return new WP_Error( 'complete99_sync_stale_model', 'The public read model was not generated inside the accepted freshness window.', array( 'status' => 409 ) );
+		}
+
+		$branches = self::clean_records(
+			isset( $payload['branches'] ) ? $payload['branches'] : array(),
+			array( 'id', 'name_he', 'name_en', 'slug', 'city_he', 'city_en', 'status', 'published' )
+		);
+		if ( is_wp_error( $branches ) ) {
+			return $branches;
+		}
+		$sections = self::clean_records(
+			isset( $payload['menu_sections'] ) ? $payload['menu_sections'] : array(),
+			array( 'id', 'name_he', 'name_en', 'sort', 'published' )
+		);
+		if ( is_wp_error( $sections ) ) {
+			return $sections;
+		}
+		$items = self::clean_records(
+			isset( $payload['menu_items'] ) ? $payload['menu_items'] : array(),
+			array(
+				'id',
+				'slug',
+				'section_id',
+				'name_he',
+				'name_en',
+				'category_he',
+				'category_en',
+				'description_he',
+				'description_en',
+				'tag_he',
+				'tag_en',
+				'image_asset',
+				'public_price',
+				'currency',
+				'availability',
+				'vegetarian',
+				'verification_state',
+				'published',
+				'sort',
+				'updated_at',
+			)
+		);
+		if ( is_wp_error( $items ) ) {
+			return $items;
+		}
+		$campaigns = self::clean_records(
+			isset( $payload['campaigns'] ) ? $payload['campaigns'] : array(),
+			array( 'id', 'title_he', 'title_en', 'summary_he', 'summary_en', 'cta_label_he', 'cta_label_en', 'cta_url', 'published' )
+		);
+		if ( is_wp_error( $campaigns ) ) {
+			return $campaigns;
+		}
+
+		$stored_model = self::read_persisted_read_model();
+		if ( is_wp_error( $stored_model ) ) {
+			return $stored_model;
+		}
+		if ( null === $stored_model ) {
+			$stored_model = array();
+		}
+		if ( ! is_array( $stored_model ) ) {
+			return new WP_Error( 'complete99_sync_stored_model', 'The stored public read model is invalid.', array( 'status' => 500 ) );
+		}
+		$identity_check = self::validate_item_identities( $items, $stored_model );
+		if ( is_wp_error( $identity_check ) ) {
+			return $identity_check;
+		}
+
 		$clean = array(
 			'schema'     => 'complete99-public-read-model/v1',
 			'version'    => sanitize_text_field( isset( $payload['version'] ) ? (string) $payload['version'] : '' ),
-			'generated'  => sanitize_text_field( isset( $payload['generated_at'] ) ? (string) $payload['generated_at'] : '' ),
+			'generated'  => sanitize_text_field( $generated ),
 			'updated_at' => gmdate( 'c' ),
-			'branches'   => self::clean_records( isset( $payload['branches'] ) ? $payload['branches'] : array(), array( 'id', 'name_he', 'name_en', 'slug', 'city_he', 'city_en', 'status', 'published' ) ),
-			'sections'   => self::clean_records( isset( $payload['menu_sections'] ) ? $payload['menu_sections'] : array(), array( 'id', 'name_he', 'name_en', 'sort', 'published' ) ),
-			'items'      => self::clean_records( isset( $payload['menu_items'] ) ? $payload['menu_items'] : array(), array( 'id', 'section_id', 'name_he', 'name_en', 'description_he', 'description_en', 'image_asset', 'public_price', 'currency', 'verification_state', 'published', 'sort' ) ),
-			'campaigns'  => self::clean_records( isset( $payload['campaigns'] ) ? $payload['campaigns'] : array(), array( 'id', 'title_he', 'title_en', 'summary_he', 'summary_en', 'cta_label_he', 'cta_label_en', 'cta_url', 'published' ) ),
+			'branches'   => $branches,
+			'sections'   => $sections,
+			'items'      => $items,
+			'campaigns'  => $campaigns,
 		);
 
 		$total = count( $clean['branches'] ) + count( $clean['sections'] ) + count( $clean['items'] ) + count( $clean['campaigns'] );
@@ -131,14 +212,30 @@ final class Complete99_REST {
 		}
 
 		$clean['digest'] = hash( 'sha256', wp_json_encode( $clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
-		update_option( 'complete99_public_read_model', $clean, false );
+		$write_changed = update_option( 'complete99_public_read_model', $clean, false );
+		$persisted     = self::read_persisted_read_model();
+		if ( is_wp_error( $persisted ) ) {
+			return $persisted;
+		}
+		if ( ! is_array( $persisted ) || ! hash_equals( hash( 'sha256', serialize( $clean ) ), hash( 'sha256', serialize( $persisted ) ) ) ) {
+			return new WP_Error( 'complete99_sync_readback', 'The public read model could not be verified after storage.', array( 'status' => 500 ) );
+		}
+
+		$cache = self::purge_public_read_model_caches();
+		if ( is_wp_error( $cache ) ) {
+			return $cache;
+		}
+		$freshness = self::model_freshness( $persisted );
 
 		return rest_ensure_response(
 			array(
-				'stored'     => true,
-				'version'    => $clean['version'],
-				'digest'     => $clean['digest'],
-				'item_count' => $total,
+				'stored'        => true,
+				'write_changed' => (bool) $write_changed,
+				'version'       => $clean['version'],
+				'digest'        => $clean['digest'],
+				'item_count'    => $total,
+				'expires_at'    => $freshness['expires_at'],
+				'cache'         => $cache,
 			)
 		);
 	}
@@ -157,10 +254,28 @@ final class Complete99_REST {
 				if ( ! array_key_exists( $key, $record ) ) {
 					continue;
 				}
-				if ( 'published' === $key ) {
-					$item[ $key ] = (bool) $record[ $key ];
+				if ( in_array( $key, array( 'published', 'vegetarian' ), true ) ) {
+					$value = $record[ $key ];
+					if ( is_bool( $value ) ) {
+						$item[ $key ] = $value;
+						continue;
+					}
+					if ( 'true' === $value || 'false' === $value ) {
+						$item[ $key ] = 'true' === $value;
+						continue;
+					}
+					return new WP_Error(
+						'complete99_sync_boolean',
+						'Public read-model boolean fields must use JSON booleans or the strings "true" or "false".',
+						array( 'status' => 400 )
+					);
 				} elseif ( in_array( $key, array( 'sort', 'public_price' ), true ) ) {
 					$item[ $key ] = is_numeric( $record[ $key ] ) ? (float) $record[ $key ] : null;
+				} elseif ( 'slug' === $key ) {
+					$item[ $key ] = sanitize_title( (string) $record[ $key ] );
+				} elseif ( 'availability' === $key ) {
+					$availability = sanitize_key( (string) $record[ $key ] );
+					$item[ $key ] = in_array( $availability, array( 'available', 'low', 'sold_out' ), true ) ? $availability : '';
 				} elseif ( 'cta_url' === $key ) {
 					$item[ $key ] = esc_url_raw( (string) $record[ $key ], array( 'https' ) );
 				} elseif ( 'image_asset' === $key ) {
@@ -177,23 +292,296 @@ final class Complete99_REST {
 		return $clean;
 	}
 
+	private static function parse_rfc3339_timestamp( $value ) {
+		$value = is_string( $value ) ? trim( $value ) : '';
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/', $value ) ) {
+			return false;
+		}
+		$normalised = preg_replace( '/Z$/', '+00:00', $value );
+		$format     = false !== strpos( $normalised, '.' ) ? '!Y-m-d\TH:i:s.uP' : '!Y-m-d\TH:i:sP';
+		$date       = \DateTimeImmutable::createFromFormat( $format, $normalised );
+		$errors     = \DateTimeImmutable::getLastErrors();
+		if ( false === $date || ( is_array( $errors ) && ( 0 < $errors['warning_count'] || 0 < $errors['error_count'] ) ) ) {
+			return false;
+		}
+		return $date->getTimestamp();
+	}
+
+	private static function model_freshness( $model ) {
+		$updated_at = is_array( $model ) && isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '';
+		$timestamp  = self::parse_rfc3339_timestamp( $updated_at );
+		if ( false === $timestamp ) {
+			return array(
+				'fresh'      => false,
+				'expires_at' => '',
+			);
+		}
+		$expires = $timestamp + self::PUBLIC_MODEL_TTL;
+		return array(
+			'fresh'      => $timestamp <= time() + self::MAX_CLOCK_SKEW && time() <= $expires,
+			'expires_at' => gmdate( 'c', $expires ),
+		);
+	}
+
+	public static function is_public_model_fresh( $model = null ) {
+		if ( null === $model ) {
+			$model = get_option( 'complete99_public_read_model', array() );
+		}
+		return self::model_freshness( $model )['fresh'];
+	}
+
+	private static function read_persisted_read_model() {
+		global $wpdb;
+
+		if ( ! is_object( $wpdb ) || ! isset( $wpdb->options ) || ! method_exists( $wpdb, 'prepare' ) || ! method_exists( $wpdb, 'get_var' ) ) {
+			return new WP_Error( 'complete99_sync_readback_driver', 'The public read-model storage is unavailable.', array( 'status' => 500 ) );
+		}
+
+		$can_suppress = method_exists( $wpdb, 'suppress_errors' );
+		$previous     = null;
+		try {
+			if ( $can_suppress ) {
+				$previous = $wpdb->suppress_errors( true );
+			}
+			$wpdb->last_error = '';
+			$raw = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+					'complete99_public_read_model'
+				)
+			);
+			$error = isset( $wpdb->last_error ) ? (string) $wpdb->last_error : '';
+		} catch ( \Throwable $error ) {
+			return new WP_Error( 'complete99_sync_readback_driver', 'The public read-model storage could not be read.', array( 'status' => 500 ) );
+		} finally {
+			if ( $can_suppress ) {
+				$wpdb->suppress_errors( $previous );
+			}
+		}
+		if ( '' !== $error ) {
+			return new WP_Error( 'complete99_sync_readback_driver', 'The public read-model storage could not be read.', array( 'status' => 500 ) );
+		}
+		return null === $raw ? null : maybe_unserialize( $raw );
+	}
+
+	private static function validate_item_identities( $items, $stored_model ) {
+		$candidate_ids   = array();
+		$candidate_slugs = array();
+		foreach ( $items as $item ) {
+			$id   = isset( $item['id'] ) ? trim( (string) $item['id'] ) : '';
+			$slug = isset( $item['slug'] ) ? sanitize_title( (string) $item['slug'] ) : '';
+			if ( '' === $id ) {
+				continue;
+			}
+			$id_key = 'id:' . $id;
+			if ( isset( $candidate_ids[ $id_key ] ) ) {
+				return new WP_Error( 'complete99_sync_duplicate_id', 'The public read model contains duplicate menu-item identities.', array( 'status' => 409 ) );
+			}
+			$candidate_ids[ $id_key ] = $slug;
+			if ( '' === $slug ) {
+				continue;
+			}
+			$slug_key = 'slug:' . $slug;
+			if ( isset( $candidate_slugs[ $slug_key ] ) && ! hash_equals( $candidate_slugs[ $slug_key ], $id ) ) {
+				return new WP_Error( 'complete99_sync_slug_collision', 'The public read model contains colliding menu-item slugs.', array( 'status' => 409 ) );
+			}
+			$candidate_slugs[ $slug_key ] = $id;
+		}
+
+		$stored_ids   = array();
+		$stored_slugs = array();
+		$stored_items = isset( $stored_model['items'] ) && is_array( $stored_model['items'] ) ? $stored_model['items'] : array();
+		foreach ( $stored_items as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$id   = isset( $item['id'] ) ? trim( (string) $item['id'] ) : '';
+			$slug = isset( $item['slug'] ) ? sanitize_title( (string) $item['slug'] ) : '';
+			if ( '' === $id ) {
+				continue;
+			}
+			$id_key = 'id:' . $id;
+			if ( isset( $stored_ids[ $id_key ] ) ) {
+				return new WP_Error( 'complete99_sync_stored_identity', 'The stored public read model contains duplicate menu-item identities.', array( 'status' => 409 ) );
+			}
+			$stored_ids[ $id_key ] = $slug;
+			if ( '' === $slug ) {
+				continue;
+			}
+			$slug_key = 'slug:' . $slug;
+			if ( isset( $stored_slugs[ $slug_key ] ) && ! hash_equals( $stored_slugs[ $slug_key ], $id ) ) {
+				return new WP_Error( 'complete99_sync_stored_identity', 'The stored public read model contains colliding menu-item slugs.', array( 'status' => 409 ) );
+			}
+			$stored_slugs[ $slug_key ] = $id;
+		}
+
+		foreach ( $candidate_ids as $id_key => $slug ) {
+			$id = substr( $id_key, 3 );
+			if ( isset( $stored_ids[ $id_key ] ) && '' !== (string) $stored_ids[ $id_key ] && ! hash_equals( (string) $stored_ids[ $id_key ], (string) $slug ) ) {
+				return new WP_Error( 'complete99_sync_slug_changed', 'An existing menu-item identity cannot change its canonical slug in one sync.', array( 'status' => 409 ) );
+			}
+			if ( '' !== $slug ) {
+				$slug_key = 'slug:' . $slug;
+				if ( isset( $stored_slugs[ $slug_key ] ) && ! hash_equals( (string) $stored_slugs[ $slug_key ], (string) $id ) ) {
+					return new WP_Error( 'complete99_sync_slug_collision', 'A canonical menu-item slug is already owned by another stored identity.', array( 'status' => 409 ) );
+				}
+			}
+		}
+		return true;
+	}
+
+	private static function purge_public_read_model_caches() {
+		$report = array(
+			'object_cache' => array(
+				'method'  => 'wp_cache_flush',
+				'flushed' => false,
+			),
+			'page_cache'   => array(
+				'upress'    => array(
+					'detected'          => false,
+					'request_completed' => false,
+				),
+				'litespeed' => array(
+					'listener_detected' => false,
+					'signal_sent'       => false,
+				),
+			),
+		);
+
+		$report['page_cache']['upress']['detected'] = class_exists( '\\Upress\\EzCache\\Cache' );
+		if ( $report['page_cache']['upress']['detected'] ) {
+			try {
+				if ( ! method_exists( '\\Upress\\EzCache\\Cache', 'instance' ) ) {
+					throw new \RuntimeException( 'instance' );
+				}
+				$cache = \Upress\EzCache\Cache::instance();
+				if ( ! is_object( $cache ) || ! method_exists( $cache, 'clear_cache' ) ) {
+					throw new \RuntimeException( 'clear-cache' );
+				}
+				$result = $cache->clear_cache();
+				if ( false === $result ) {
+					throw new \RuntimeException( 'clear-failed' );
+				}
+				$report['page_cache']['upress']['request_completed'] = true;
+			} catch ( \Throwable $error ) {
+				return new WP_Error(
+					'complete99_sync_upress_cache',
+					'The public read model was stored, but the UPress page-cache purge request failed.',
+					array(
+						'status' => 503,
+						'stored' => true,
+						'cache'  => $report,
+					)
+				);
+			}
+		}
+
+		$listener = has_action( 'litespeed_purge_all' );
+		$report['page_cache']['litespeed']['listener_detected'] = false !== $listener;
+		try {
+			do_action( 'litespeed_purge_all' );
+			$report['page_cache']['litespeed']['signal_sent'] = true;
+		} catch ( \Throwable $error ) {
+			return new WP_Error(
+				'complete99_sync_litespeed_cache',
+				'The public read model was stored, but the LiteSpeed page-cache purge signal failed.',
+				array(
+					'status' => 503,
+					'stored' => true,
+					'cache'  => $report,
+				)
+			);
+		}
+
+		try {
+			$report['object_cache']['flushed'] = true === wp_cache_flush();
+		} catch ( \Throwable $error ) {
+			$report['object_cache']['flushed'] = false;
+		}
+		if ( ! $report['object_cache']['flushed'] ) {
+			return new WP_Error(
+				'complete99_sync_object_cache',
+				'The public read model was stored, but the WordPress object cache could not be flushed.',
+				array(
+					'status' => 503,
+					'stored' => true,
+					'cache'  => $report,
+				)
+			);
+		}
+		return $report;
+	}
+
+	public static function is_public_item( $record, $model = null ) {
+		if ( null === $model ) {
+			$model = get_option( 'complete99_public_read_model', array() );
+		}
+		if ( ! self::is_public_model_fresh( $model ) || ! is_array( $record ) || true !== ( isset( $record['published'] ) ? $record['published'] : null ) ) {
+			return false;
+		}
+		$required = array( 'id', 'slug', 'name_he', 'name_en', 'description_he', 'description_en' );
+		foreach ( $required as $key ) {
+			if ( '' === trim( isset( $record[ $key ] ) ? (string) $record[ $key ] : '' ) ) {
+				return false;
+			}
+		}
+		$verification = sanitize_key( isset( $record['verification_state'] ) ? (string) $record['verification_state'] : '' );
+		$availability = sanitize_key( isset( $record['availability'] ) ? (string) $record['availability'] : '' );
+		return in_array( $verification, array( 'verified', 'launch_ready' ), true )
+			&& in_array( $availability, array( 'available', 'low', 'sold_out' ), true );
+	}
+
+	public static function public_indexable_items( $model = null ) {
+		if ( null === $model ) {
+			$model = get_option( 'complete99_public_read_model', array() );
+		}
+		if ( ! is_array( $model ) || ! self::is_public_model_fresh( $model ) ) {
+			return array();
+		}
+		$records = isset( $model['items'] ) && is_array( $model['items'] ) ? $model['items'] : array();
+		return array_values(
+			array_filter(
+				$records,
+				static function ( $record ) use ( $model ) {
+					return self::is_public_item( $record, $model );
+				}
+			)
+		);
+	}
+
 	public static function public_catalog() {
 		$model = get_option( 'complete99_public_read_model', array() );
 		if ( ! is_array( $model ) ) {
 			$model = array();
 		}
+		$freshness = self::model_freshness( $model );
+		if ( ! $freshness['fresh'] ) {
+			return new WP_Error(
+				'complete99_public_model_stale',
+				'The public catalog is unavailable because its read model is missing or stale.',
+				array(
+					'status'     => 503,
+					'expires_at' => $freshness['expires_at'],
+				)
+			);
+		}
 		foreach ( array( 'branches', 'sections', 'items', 'campaigns' ) as $key ) {
+			if ( 'items' === $key ) {
+				$model[ $key ] = self::public_indexable_items( $model );
+				continue;
+			}
 			$records       = isset( $model[ $key ] ) && is_array( $model[ $key ] ) ? $model[ $key ] : array();
 			$model[ $key ] = array_values(
 				array_filter(
 					$records,
 					static function ( $record ) {
-						return is_array( $record ) && ! empty( $record['published'] );
+						return is_array( $record ) && true === ( isset( $record['published'] ) ? $record['published'] : null );
 					}
 				)
 			);
 		}
 		unset( $model['generated'] );
+		$model['freshness'] = $freshness;
 		return rest_ensure_response( $model );
 	}
 }

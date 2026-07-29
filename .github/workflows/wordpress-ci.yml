@@ -52,16 +52,30 @@ jobs:
         run: python scripts/validate-package.py
 
       - name: Prove checked-in release artifacts are current
-        run: git diff --exit-code -- plugin-dist
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- plugin-dist &&
+          test -z "$(git ls-files --others --exclude-standard -- plugin-dist)"
+
+      - name: Prepare the exact validated release bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact="$(python -c 'import json; print(json.load(open("plugin-dist/complete99-platform-integrity.json", encoding="utf-8"))["artifact"])')" &&
+          bundle="$RUNNER_TEMP/complete99-release-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" &&
+          mkdir "$bundle" &&
+          cp "plugin-dist/$artifact" "$bundle/$artifact" &&
+          cp "plugin-dist/$artifact.sha256" "$bundle/$artifact.sha256" &&
+          cp plugin-dist/complete99-platform.json "$bundle/complete99-platform.json" &&
+          cp plugin-dist/complete99-platform-integrity.json "$bundle/complete99-platform-integrity.json" &&
+          python scripts/validate-package.py --dist "$bundle" &&
+          test "$(find "$bundle" -maxdepth 1 -type f | wc -l)" -eq 4
 
       - name: Upload verified package and digest
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: complete99-wordpress-package
-          path: |
-            plugin-dist/complete99-platform-*.zip
-            plugin-dist/complete99-platform.json
-            plugin-dist/complete99-platform-integrity.json
-            plugin-dist/complete99-platform-*.zip.sha256
+          path: ${{ runner.temp }}/complete99-release-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: error
           retention-days: 14

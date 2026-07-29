@@ -362,6 +362,7 @@ def main() -> int:
             and status.get("current_deployment") == args.deployment_id
             and status.get("current_plugin_sha256")
             == status.get("installed_plugin_sha256")
+            and not status.get("sync_configuration_pending")
             and status.get("database_fingerprint")
             == status.get("post_install_database_fingerprint")
         ):

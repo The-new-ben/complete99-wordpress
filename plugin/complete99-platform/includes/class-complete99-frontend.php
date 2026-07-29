@@ -7,6 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Complete99_Frontend {
 	public static function boot() {
 		add_filter( 'post_type_link', array( 'Complete99_Content', 'filter_post_type_link' ), 10, 2 );
+		add_filter( 'query_vars', array( __CLASS__, 'query_vars' ) );
 		add_filter( 'template_include', array( __CLASS__, 'template_include' ), 99 );
 		add_filter( 'body_class', array( __CLASS__, 'body_classes' ) );
 		add_filter( 'pre_get_document_title', array( __CLASS__, 'document_title' ) );
@@ -15,10 +16,17 @@ final class Complete99_Frontend {
 		add_action( 'wp_head', array( __CLASS__, 'head_metadata' ), 4 );
 		add_action( 'template_redirect', array( __CLASS__, 'remove_core_canonical' ), 0 );
 		add_action( 'template_redirect', array( __CLASS__, 'protect_unready_dishes' ), 1 );
+		add_action( 'template_redirect', array( __CLASS__, 'maybe_render_live_dish' ), 2 );
+	}
+
+	public static function query_vars( $vars ) {
+		$vars[] = 'complete99_live_dish';
+		$vars[] = 'complete99_live_lang';
+		return $vars;
 	}
 
 	public static function remove_core_canonical() {
-		if ( is_singular() && Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
+		if ( self::is_live_dish_request() || ( is_singular() && Complete99_Content::is_complete99_post( get_queried_object_id() ) ) ) {
 			remove_action( 'wp_head', 'rel_canonical' );
 		}
 	}
@@ -50,6 +58,17 @@ final class Complete99_Frontend {
 	}
 
 	public static function body_classes( $classes ) {
+		if ( self::is_live_dish_request() ) {
+			$lang      = self::live_request_language();
+			$classes[] = 'complete99-public';
+			$classes[] = 'complete99-live-dish';
+			$classes[] = 'complete99-lang-' . $lang;
+			$classes[] = 'en' === $lang ? 'complete99-ltr' : 'complete99-rtl';
+			if ( 'en' === $lang ) {
+				$classes = array_values( array_diff( $classes, array( 'rtl' ) ) );
+			}
+			return array_values( array_unique( $classes ) );
+		}
 		if ( is_singular() && Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
 			$lang      = Complete99_Content::language_for_post( get_queried_object_id() );
 			if ( 'en' === $lang ) {
@@ -63,7 +82,7 @@ final class Complete99_Frontend {
 	}
 
 	public static function enqueue() {
-		if ( ! is_singular() || ! Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
+		if ( ! self::is_live_dish_request() && ( ! is_singular() || ! Complete99_Content::is_complete99_post( get_queried_object_id() ) ) ) {
 			return;
 		}
 		wp_enqueue_style(
@@ -82,6 +101,14 @@ final class Complete99_Frontend {
 	}
 
 	public static function document_title( $title ) {
+		if ( self::is_live_dish_request() ) {
+			$dish = self::live_dish_by_slug( self::live_request_slug() );
+			$lang = self::live_request_language();
+			if ( $dish ) {
+				$name = 'en' === $lang ? $dish['name_en'] : $dish['name_he'];
+				return wp_strip_all_tags( $name ) . ' | Complete99';
+			}
+		}
 		if ( ! is_singular() || ! Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
 			return $title;
 		}
@@ -101,6 +128,13 @@ final class Complete99_Frontend {
 	}
 
 	public static function head_metadata() {
+		if ( self::is_live_dish_request() ) {
+			$dish = self::live_dish_by_slug( self::live_request_slug() );
+			if ( $dish ) {
+				self::live_dish_head_metadata( $dish, self::live_request_language() );
+			}
+			return;
+		}
 		if ( ! is_singular() || ! Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
 			return;
 		}
@@ -115,7 +149,7 @@ final class Complete99_Frontend {
 		$brand_mark = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
 
 		echo '<link rel="icon" href="' . esc_url( $brand_mark ) . '" type="image/svg+xml" sizes="any" />' . "\n";
-		echo '<link rel="canonical" href="' . esc_url( $canonical ) . '" />' . "\n";
+		self::render_canonical_link( $canonical );
 		if ( $he_url ) {
 			echo '<link rel="alternate" hreflang="' . esc_attr( 'he' ) . '" href="' . esc_url( $he_url ) . '" />' . "\n";
 			echo '<link rel="alternate" hreflang="x-default" href="' . esc_url( $he_url ) . '" />' . "\n";
@@ -139,6 +173,180 @@ final class Complete99_Frontend {
 		}
 
 		$schema = self::schema_graph( $post, $lang, $alternate );
+		echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>' . "\n";
+	}
+
+	private static function is_live_dish_request() {
+		return '' !== self::live_request_slug();
+	}
+
+	private static function render_canonical_link( $url ) {
+		echo '<link rel="canonical" href="' . esc_url( $url ) . '" />' . "\n";
+	}
+
+	private static function live_request_slug() {
+		return sanitize_title( (string) get_query_var( 'complete99_live_dish', '' ) );
+	}
+
+	private static function live_request_language() {
+		$lang = sanitize_key( (string) get_query_var( 'complete99_live_lang', 'he' ) );
+		return 'en' === $lang ? 'en' : 'he';
+	}
+
+	private static function public_model_items() {
+		$items = Complete99_REST::public_indexable_items();
+		usort(
+			$items,
+			static function ( $left, $right ) {
+				$sort = (float) ( isset( $left['sort'] ) ? $left['sort'] : 0 ) <=> (float) ( isset( $right['sort'] ) ? $right['sort'] : 0 );
+				if ( 0 !== $sort ) {
+					return $sort;
+				}
+				return strcmp( (string) $left['id'], (string) $right['id'] );
+			}
+		);
+		return $items;
+	}
+
+	public static function live_dish_by_slug( $slug ) {
+		$slug = sanitize_title( (string) $slug );
+		if ( '' === $slug ) {
+			return array();
+		}
+		foreach ( self::public_model_items() as $item ) {
+			if ( hash_equals( (string) $item['slug'], $slug ) ) {
+				return $item;
+			}
+		}
+		return array();
+	}
+
+	public static function live_dish_url( $slug, $lang ) {
+		$prefix = 'en' === $lang ? 'en/' : '';
+		return home_url( user_trailingslashit( $prefix . 'menu/' . sanitize_title( (string) $slug ) ) );
+	}
+
+	private static function live_image_url( $item ) {
+		$asset = sanitize_file_name( isset( $item['image_asset'] ) ? (string) $item['image_asset'] : '' );
+		if ( '' === $asset || 0 !== strpos( $asset, 'c99-' ) ) {
+			return '';
+		}
+		$stem       = pathinfo( $asset, PATHINFO_FILENAME );
+		$candidates = array_values( array_unique( array( $asset, $stem . '.webp', $stem . '.avif' ) ) );
+		foreach ( $candidates as $candidate ) {
+			if ( ! preg_match( '/\.(?:jpe?g|png|webp|avif)$/i', $candidate ) ) {
+				continue;
+			}
+			$path = COMPLETE99_PLATFORM_DIR . 'assets/images/original/' . $candidate;
+			if ( is_file( $path ) ) {
+				return COMPLETE99_PLATFORM_URL . 'assets/images/original/' . rawurlencode( $candidate );
+			}
+		}
+		return '';
+	}
+
+	public static function maybe_render_live_dish() {
+		if ( ! self::is_live_dish_request() ) {
+			return;
+		}
+		$dish = self::live_dish_by_slug( self::live_request_slug() );
+		if ( ! $dish ) {
+			global $wp_query;
+			$wp_query->set_404();
+			status_header( 404 );
+			nocache_headers();
+			return;
+		}
+		global $wp_query;
+		$wp_query->is_404 = false;
+		status_header( 200 );
+		$complete99_live_dish = $dish;
+		$complete99_live_lang = self::live_request_language();
+		include COMPLETE99_PLATFORM_DIR . 'templates/live-dish.php';
+		exit;
+	}
+
+	private static function live_dish_head_metadata( $dish, $lang ) {
+		$is_he       = 'he' === $lang;
+		$name        = $is_he ? $dish['name_he'] : $dish['name_en'];
+		$description = $is_he ? $dish['description_he'] : $dish['description_en'];
+		$canonical   = self::live_dish_url( $dish['slug'], $lang );
+		$he_url      = self::live_dish_url( $dish['slug'], 'he' );
+		$en_url      = self::live_dish_url( $dish['slug'], 'en' );
+		$image       = self::live_image_url( $dish );
+		$brand_mark  = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
+
+		echo '<link rel="icon" href="' . esc_url( $brand_mark ) . '" type="image/svg+xml" sizes="any" />' . "\n";
+		self::render_canonical_link( $canonical );
+		echo '<link rel="alternate" hreflang="he" href="' . esc_url( $he_url ) . '" />' . "\n";
+		echo '<link rel="alternate" hreflang="en" href="' . esc_url( $en_url ) . '" />' . "\n";
+		echo '<link rel="alternate" hreflang="x-default" href="' . esc_url( $he_url ) . '" />' . "\n";
+		echo '<meta name="description" content="' . esc_attr( wp_strip_all_tags( $description ) ) . '" />' . "\n";
+		echo '<meta property="og:type" content="website" />' . "\n";
+		echo '<meta property="og:locale" content="' . esc_attr( $is_he ? 'he_IL' : 'en_US' ) . '" />' . "\n";
+		echo '<meta property="og:locale:alternate" content="' . esc_attr( $is_he ? 'en_US' : 'he_IL' ) . '" />' . "\n";
+		echo '<meta property="og:title" content="' . esc_attr( wp_strip_all_tags( $name ) ) . '" />' . "\n";
+		echo '<meta property="og:description" content="' . esc_attr( wp_strip_all_tags( $description ) ) . '" />' . "\n";
+		echo '<meta property="og:url" content="' . esc_url( $canonical ) . '" />' . "\n";
+		echo '<meta name="twitter:card" content="' . esc_attr( $image ? 'summary_large_image' : 'summary' ) . '" />' . "\n";
+		if ( $image ) {
+			echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
+			echo '<meta name="twitter:image" content="' . esc_url( $image ) . '" />' . "\n";
+		}
+
+		$availability = array(
+			'available' => 'https://schema.org/InStock',
+			'low'       => 'https://schema.org/LimitedAvailability',
+			'sold_out'  => 'https://schema.org/OutOfStock',
+		);
+		$menu_item    = array(
+			'@type'       => 'MenuItem',
+			'@id'         => $canonical . '#menu-item',
+			'name'        => wp_strip_all_tags( $name ),
+			'description' => wp_strip_all_tags( $description ),
+			'url'         => $canonical,
+			'inLanguage'  => $lang,
+		);
+		if ( $image ) {
+			$menu_item['image'] = $image;
+		}
+		$price    = isset( $dish['public_price'] ) && is_numeric( $dish['public_price'] ) ? (float) $dish['public_price'] : 0;
+		$currency = strtoupper( isset( $dish['currency'] ) ? (string) $dish['currency'] : '' );
+		if ( 0 < $price && preg_match( '/^[A-Z]{3}$/', $currency ) ) {
+			$menu_item['offers'] = array(
+				'@type'         => 'Offer',
+				'price'         => number_format( $price, 2, '.', '' ),
+				'priceCurrency' => $currency,
+				'availability'  => isset( $availability[ $dish['availability'] ] ) ? $availability[ $dish['availability'] ] : $availability['available'],
+				'url'           => $canonical,
+			);
+		}
+		$updated_at = isset( $dish['updated_at'] ) ? strtotime( (string) $dish['updated_at'] ) : false;
+		$web_page   = array(
+			'@type'       => 'WebPage',
+			'@id'         => $canonical . '#webpage',
+			'url'         => $canonical,
+			'name'        => wp_strip_all_tags( $name ),
+			'description' => wp_strip_all_tags( $description ),
+			'inLanguage'  => $lang,
+			'mainEntity'  => array( '@id' => $canonical . '#menu-item' ),
+		);
+		if ( $updated_at ) {
+			$web_page['dateModified'] = gmdate( 'c', $updated_at );
+		}
+		$schema = array(
+			'@context' => 'https://schema.org',
+			'@graph'   => array(
+				array(
+					'@type' => 'Organization',
+					'@id'   => home_url( '/#organization' ),
+					'name'  => 'Complete99',
+					'url'   => home_url( '/' ),
+				),
+				$web_page,
+				$menu_item,
+			),
+		);
 		echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>' . "\n";
 	}
 
@@ -353,7 +561,7 @@ final class Complete99_Frontend {
 		return false;
 	}
 
-	public static function render_header( $post_id, $lang ) {
+	public static function render_header( $post_id, $lang, $live_slug = '' ) {
 		$is_he       = 'he' === $lang;
 		$brand_home  = self::navigation_url( 'home', $lang );
 		$current_key = Complete99_Content::translation_group_for_post( $post_id );
@@ -401,10 +609,23 @@ final class Complete99_Frontend {
 						<a class="c99-nav-cta" href="<?php echo esc_url( self::navigation_url( 'proposal', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'בדיקת התאמה למוסד' : 'Institutional fit review' ); ?></a>
 					</div>
 				</nav>
-				<?php self::render_language_switch( $post_id, $lang ); ?>
+				<?php
+				if ( $live_slug ) {
+					self::render_live_language_switch( $live_slug, $lang );
+				} else {
+					self::render_language_switch( $post_id, $lang );
+				}
+				?>
 			</div>
 		</header>
 		<?php
+	}
+
+	private static function render_live_language_switch( $slug, $lang ) {
+		$other    = 'he' === $lang ? 'en' : 'he';
+		$label    = 'he' === $lang ? 'EN' : 'עברית';
+		$language = 'he' === $other ? 'עברית' : 'English';
+		echo '<a class="c99-language-switch" href="' . esc_url( self::live_dish_url( $slug, $other ) ) . '" hreflang="' . esc_attr( $other ) . '" lang="' . esc_attr( $other ) . '" aria-label="' . esc_attr( $language ) . '">' . esc_html( $label ) . '</a>';
 	}
 
 	private static function render_language_switch( $post_id, $lang ) {
@@ -481,12 +702,12 @@ final class Complete99_Frontend {
 		<section class="c99-home-hero">
 			<div class="c99-container c99-home-hero-grid">
 				<div class="c99-home-hero-copy">
-					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מערכת לעסק מזון שרוצה לגדול נכון' : 'A system for a food business built to scale responsibly' ); ?></p>
+					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'האוכל בחזית, מערכת אחת מאחוריו' : 'Food at the front, one system behind it' ); ?></p>
 					<h1><?php echo esc_html( $post->post_title ); ?></h1>
 					<p class="c99-hero-summary"><?php echo esc_html( $post->post_excerpt ); ?></p>
 					<div class="c99-hero-actions">
-						<a class="c99-button c99-button-primary" href="<?php echo esc_url( Complete99_Content::route_url( 'proposal', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'בדיקת התאמה למוסד' : 'Institutional fit review' ); ?></a>
-						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( Complete99_Content::route_url( 'app', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'פתיחת סיור במערכת' : 'Open the system tour' ); ?></a>
+						<a class="c99-button c99-button-primary" href="<?php echo esc_url( Complete99_Content::route_url( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'למנות ולאוכל' : 'Explore food and dishes' ); ?></a>
+						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( Complete99_Content::route_url( 'platform', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'איך העסק עובד' : 'How the business works' ); ?></a>
 					</div>
 					<ul class="c99-proof-strip" aria-label="<?php echo esc_attr( $is_he ? 'עקרונות עבודה' : 'Operating principles' ); ?>">
 						<li><?php echo esc_html( $is_he ? 'עברית + English' : 'Hebrew + English' ); ?></li>
@@ -503,6 +724,7 @@ final class Complete99_Frontend {
 				</figure>
 			</div>
 		</section>
+		<?php self::render_live_menu( $lang ); ?>
 		<section class="c99-war-room" aria-labelledby="c99-war-room-title">
 			<div class="c99-container">
 				<div class="c99-section-heading">
@@ -574,6 +796,147 @@ final class Complete99_Frontend {
 			</div>
 		</section>
 		<?php self::render_lead_section( $lang, 'institutional-service' ); ?>
+		<?php
+	}
+
+	private static function live_status_label( $availability, $lang ) {
+		$is_he = 'he' === $lang;
+		$labels = array(
+			'available' => $is_he ? 'זמין' : 'Available',
+			'low'       => $is_he ? 'זמינות מוגבלת' : 'Limited availability',
+			'sold_out'  => $is_he ? 'אזל כרגע' : 'Currently sold out',
+		);
+		return isset( $labels[ $availability ] ) ? $labels[ $availability ] : '';
+	}
+
+	private static function live_price_label( $item ) {
+		$price = isset( $item['public_price'] ) && is_numeric( $item['public_price'] ) ? (float) $item['public_price'] : 0;
+		if ( 0 >= $price ) {
+			return '';
+		}
+		$currency = strtoupper( isset( $item['currency'] ) ? (string) $item['currency'] : '' );
+		$symbol   = 'ILS' === $currency ? '₪' : $currency;
+		return trim( $symbol . number_format_i18n( $price, 2 ) );
+	}
+
+	private static function render_live_menu( $lang ) {
+		$is_he = 'he' === $lang;
+		$items = self::public_model_items();
+		$model = get_option( 'complete99_public_read_model', array() );
+		?>
+		<section class="c99-live-menu" aria-labelledby="c99-live-menu-title">
+			<div class="c99-container">
+				<div class="c99-section-heading">
+					<div>
+						<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מהמערכת אל האתר' : 'From the operating system to the site' ); ?></p>
+						<h2 id="c99-live-menu-title"><?php echo esc_html( $is_he ? 'המנות שפורסמו ממקור התפריט המוסמך' : 'Dishes published from the authoritative menu source' ); ?></h2>
+					</div>
+					<a class="c99-text-link" href="<?php echo esc_url( self::navigation_url( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'לספריית המנות ←' : 'Open the dish library →' ); ?></a>
+				</div>
+				<?php if ( $items ) : ?>
+					<div class="c99-live-menu-grid">
+						<?php foreach ( $items as $item ) : ?>
+							<?php
+							$name         = $is_he ? $item['name_he'] : $item['name_en'];
+							$description  = $is_he ? $item['description_he'] : $item['description_en'];
+							$category_key = $is_he ? 'category_he' : 'category_en';
+							$tag_key      = $is_he ? 'tag_he' : 'tag_en';
+							$image        = self::live_image_url( $item );
+							$price        = self::live_price_label( $item );
+							?>
+							<a class="c99-live-menu-card" href="<?php echo esc_url( self::live_dish_url( $item['slug'], $lang ) ); ?>">
+								<?php if ( $image ) : ?>
+									<figure><img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $name ); ?>" width="720" height="520" loading="lazy" decoding="async" /></figure>
+								<?php else : ?>
+									<div class="c99-live-menu-placeholder" aria-hidden="true"><span>99</span></div>
+								<?php endif; ?>
+								<div class="c99-live-menu-card-copy">
+									<div class="c99-live-menu-meta">
+										<span><?php echo esc_html( isset( $item[ $category_key ] ) ? $item[ $category_key ] : '' ); ?></span>
+										<span class="c99-menu-availability c99-menu-availability-<?php echo esc_attr( $item['availability'] ); ?>"><?php echo esc_html( self::live_status_label( $item['availability'], $lang ) ); ?></span>
+									</div>
+									<h3><?php echo esc_html( $name ); ?></h3>
+									<p><?php echo esc_html( $description ); ?></p>
+									<div class="c99-live-menu-card-footer">
+										<span><?php echo esc_html( isset( $item[ $tag_key ] ) ? $item[ $tag_key ] : '' ); ?></span>
+										<?php if ( $price ) : ?><strong><?php echo esc_html( $price ); ?></strong><?php endif; ?>
+									</div>
+								</div>
+							</a>
+						<?php endforeach; ?>
+					</div>
+					<p class="c99-live-menu-proof">
+						<?php
+						echo esc_html(
+							sprintf(
+								$is_he ? 'מקור: Complete99 OS · גרסת פרסום %s' : 'Source: Complete99 OS · publication version %s',
+								isset( $model['version'] ) && '' !== (string) $model['version'] ? (string) $model['version'] : '—'
+							)
+						);
+						?>
+					</p>
+				<?php else : ?>
+					<div class="c99-live-menu-empty">
+						<strong><?php echo esc_html( $is_he ? 'עדיין לא פורסמו מנות ממקור התפריט המוסמך.' : 'No dishes have yet been published from the authoritative menu source.' ); ?></strong>
+						<p><?php echo esc_html( $is_he ? 'לכן איננו מציגים תפריט משוער או מחזירים תוכן ישן. אפשר להמשיך לספריית האוכל והידע.' : 'We therefore do not show an estimated menu or resurrect stale content. You can continue to the food and knowledge library.' ); ?></p>
+						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( self::navigation_url( 'knowledge', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'למרכז הידע' : 'Open the knowledge centre' ); ?></a>
+					</div>
+				<?php endif; ?>
+			</div>
+		</section>
+		<?php
+	}
+
+	public static function render_live_dish_page( $dish, $lang ) {
+		$is_he       = 'he' === $lang;
+		$name        = $is_he ? $dish['name_he'] : $dish['name_en'];
+		$description = $is_he ? $dish['description_he'] : $dish['description_en'];
+		$category    = $is_he ? ( isset( $dish['category_he'] ) ? $dish['category_he'] : '' ) : ( isset( $dish['category_en'] ) ? $dish['category_en'] : '' );
+		$tag         = $is_he ? ( isset( $dish['tag_he'] ) ? $dish['tag_he'] : '' ) : ( isset( $dish['tag_en'] ) ? $dish['tag_en'] : '' );
+		$image       = self::live_image_url( $dish );
+		$price       = self::live_price_label( $dish );
+		$hub_id      = Complete99_Content::find_translation_post_id( 'dishes', $lang, true );
+		?>
+		<?php self::render_header( $hub_id, $lang, $dish['slug'] ); ?>
+		<main id="c99-main" tabindex="-1">
+			<nav class="c99-breadcrumb c99-container" aria-label="<?php echo esc_attr( $is_he ? 'פירורי לחם' : 'Breadcrumb' ); ?>">
+				<a href="<?php echo esc_url( self::navigation_url( 'home', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'בית' : 'Home' ); ?></a>
+				<span aria-hidden="true">/</span>
+				<a href="<?php echo esc_url( self::navigation_url( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'מנות' : 'Dishes' ); ?></a>
+				<span aria-hidden="true">/</span>
+				<span aria-current="page"><?php echo esc_html( $name ); ?></span>
+			</nav>
+			<article class="c99-live-dish">
+				<div class="c99-container c99-live-dish-grid">
+					<div class="c99-live-dish-copy">
+						<div class="c99-live-menu-meta">
+							<span><?php echo esc_html( $category ); ?></span>
+							<span class="c99-menu-availability c99-menu-availability-<?php echo esc_attr( $dish['availability'] ); ?>"><?php echo esc_html( self::live_status_label( $dish['availability'], $lang ) ); ?></span>
+						</div>
+						<h1><?php echo esc_html( $name ); ?></h1>
+						<p class="c99-hero-summary"><?php echo esc_html( $description ); ?></p>
+						<?php if ( $tag || $price ) : ?>
+							<div class="c99-live-dish-facts">
+								<?php if ( $tag ) : ?><span><?php echo esc_html( $tag ); ?></span><?php endif; ?>
+								<?php if ( $price ) : ?><strong><?php echo esc_html( $price ); ?></strong><?php endif; ?>
+							</div>
+						<?php endif; ?>
+						<div class="c99-hero-actions">
+							<a class="c99-button c99-button-primary" href="<?php echo esc_url( self::navigation_url( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'לכל המנות' : 'View all dishes' ); ?></a>
+							<a class="c99-button c99-button-secondary" href="<?php echo esc_url( self::navigation_url( 'contact', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'שאלה על המנה' : 'Ask about this dish' ); ?></a>
+						</div>
+						<p class="c99-live-menu-proof"><?php echo esc_html( $is_he ? 'העמוד נוצר ממודל הפרסום הנוכחי של Complete99 OS; אין כאן טענת זמינות מעבר לסטטוס המוצג.' : 'This page is generated from the current Complete99 OS publication model; no availability claim is made beyond the status shown.' ); ?></p>
+					</div>
+					<?php if ( $image ) : ?>
+						<figure class="c99-live-dish-image"><img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $name ); ?>" width="1000" height="760" fetchpriority="high" /></figure>
+					<?php else : ?>
+						<div class="c99-live-menu-placeholder c99-live-dish-image" aria-hidden="true"><span>99</span></div>
+					<?php endif; ?>
+				</div>
+			</article>
+			<?php self::render_connected_table( $lang ); ?>
+		</main>
+		<?php self::render_footer( $lang ); ?>
 		<?php
 	}
 
@@ -717,6 +1080,7 @@ final class Complete99_Frontend {
 			self::render_connected_table( $lang );
 		}
 		if ( 'dishes' === $key ) {
+			self::render_live_menu( $lang );
 			self::render_food_archive( $lang );
 		}
 	}
