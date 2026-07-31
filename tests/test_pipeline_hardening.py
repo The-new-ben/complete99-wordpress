@@ -1444,6 +1444,15 @@ class PipelineHardeningTests(unittest.TestCase):
             workflow,
         )
         deploy_job = workflow.split("  deploy:", 1)[1]
+        checkout_block = deploy_job.split(
+            "- name: Check out approved production source",
+            1,
+        )[1].split(
+            "- name: Download the immutable exact-commit CI artifact",
+            1,
+        )[0]
+        self.assertIn("fetch-depth: 1", checkout_block)
+        self.assertNotIn("fetch-depth: 0", checkout_block)
         self.assertNotIn("actions/setup-python@", deploy_job)
         self.assertIn("python --version", deploy_job)
         self.assertIn("sys.version_info >= (3, 11)", deploy_job)
