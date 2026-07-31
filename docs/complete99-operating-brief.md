@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-07-29
-Status: public consumer boundary locked, bilingual culinary release 1.3.0 in progress
+Status: public consumer boundary locked, bilingual culinary release 1.3.1 in progress
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -72,7 +72,7 @@ copy.
 - Draft content, failed checks, evidence workflows, migration and deployment
   terms, signing details and machine-generated drafts.
 
-No Complete99 worker role is installed or assigned by release 1.3.0. Role
+No Complete99 worker role is installed or assigned by release 1.3.1. Role
 definitions remain dormant infrastructure. The commerce outbox has no worker
 assignment.
 
@@ -177,7 +177,7 @@ errors.
 
 ## 7. Infrastructure without imposed roles
 
-Release 1.3.0 creates contracts and checks, not worker assignments.
+Release 1.3.1 creates contracts and checks, not worker assignments.
 
 - WordPress keeps consumer publishing and commerce readiness metadata.
 - WooCommerce remains the future product, cart, checkout, payment and stock

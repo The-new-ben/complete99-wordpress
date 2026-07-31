@@ -914,7 +914,8 @@ echo json_encode(array(
         self,
     ) -> None:
         result = self.run_shared_php(
-            self.shared_order_assertion_php(evaluation_first=True)
+            "$sanitize_registered_index_meta = true;\n"
+            + self.shared_order_assertion_php(evaluation_first=True)
         )
         self.assert_shared_order_result(result, "evaluation_then_graph")
 
@@ -922,7 +923,8 @@ echo json_encode(array(
         self,
     ) -> None:
         result = self.run_shared_php(
-            self.shared_order_assertion_php(evaluation_first=False)
+            "$sanitize_registered_index_meta = true;\n"
+            + self.shared_order_assertion_php(evaluation_first=False)
         )
         self.assert_shared_order_result(result, "graph_then_evaluation")
 
@@ -1249,7 +1251,9 @@ foreach ($posts as $post_id => $post) {
         && 'no' === $meta[$post_id]['_complete99_product_label_reviewed']
         && 'no' === $meta[$post_id]['_complete99_product_rights_reviewed']
         && 'no' === $meta[$post_id]['_complete99_product_tax_reviewed']
-        && 'no' === $meta[$post_id]['_complete99_media_public_safe'];
+        && 'no' === $meta[$post_id]['_complete99_media_public_safe']
+        && array_key_exists('_complete99_index_eligible', $meta[$post_id])
+        && '' === $meta[$post_id]['_complete99_index_eligible'];
 }
 
 $shared_bindings_exact = true;
@@ -1377,10 +1381,20 @@ $meta = array();
 $options = array();
 $products = array();
 $next_id = 1;
+$sanitize_registered_index_meta = false;
 function absint($value) { return abs((int) $value); }
 function wp_slash($value) { return $value; }
 function wp_cache_delete($key, $group = '') { return true; }
 function sanitize_text_field($value) { return trim(strip_tags((string) $value)); }
+function rest_sanitize_boolean($value) {
+    if (is_bool($value)) {
+        return $value;
+    }
+    if ('false' === $value) {
+        return false;
+    }
+    return (bool) $value;
+}
 function post_type_exists($post_type) {
     return in_array(
         $post_type,
@@ -1440,6 +1454,10 @@ function get_posts($args) {
 function update_post_meta($post_id, $key, $value) {
     if (!isset($GLOBALS['meta'][$post_id])) {
         $GLOBALS['meta'][$post_id] = array();
+    }
+    if (!empty($GLOBALS['sanitize_registered_index_meta'])
+        && '_complete99_index_eligible' === $key) {
+        $value = rest_sanitize_boolean($value) ? '1' : '';
     }
     $same = array_key_exists($key, $GLOBALS['meta'][$post_id])
         && $GLOBALS['meta'][$post_id][$key] === $value;

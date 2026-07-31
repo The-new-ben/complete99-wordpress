@@ -1444,6 +1444,7 @@ final class Complete99_Evaluation_Catalog {
 	}
 
 	private static function held_meta( $seed, $registry_digest ) {
+		// WordPress stores registered boolean false metadata as an empty string.
 		return array(
 			self::META_MANAGED           => '1',
 			self::META_PRODUCT_CODE      => $seed['product_code'],
@@ -1461,7 +1462,7 @@ final class Complete99_Evaluation_Catalog {
 			self::META_PUBLIC_SALE       => 'no',
 			self::META_REGISTRY_DIGEST   => $registry_digest,
 			'_complete99_managed'        => '1',
-			'_complete99_index_eligible' => '0',
+			'_complete99_index_eligible' => '',
 			'_complete99_verification_state' => 'evaluation_catalog_held',
 			self::PRODUCT_APPROVED       => 'no',
 			self::STOCK_AUTHORITY        => 'evaluation_only',

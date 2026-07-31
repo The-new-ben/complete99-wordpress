@@ -13,13 +13,13 @@ targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.3.0`. A source version, package or
+The source tree targets Complete99 Platform `1.3.1`. A source version, package or
 successful installer response is not evidence that production is running that
 release. Production truth comes from the public health response, the rendered
 body, the installed plugin digest, the deployment audit and fresh Chrome
 acceptance.
 
-Release 1.3.0 provides:
+Release 1.3.1 provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - a consumer-only header, footer, page hierarchy and SEO ownership registry;
@@ -95,7 +95,7 @@ Production deployment requires:
 - the scoped `complete99-deploy` Windows runner;
 - a successful recovery probe, restorable plugin and database backups, a deploy
   lock and free-space checks;
-- a real rollback and identical-artifact redeploy exercise for release `1.3.0`;
+- a real rollback and identical-artifact redeploy exercise for release `1.3.1`;
 - health, rendered-body, installed-version, source, artifact, cache and cleanup
   evidence;
 - permanent deletion of the temporary deployment helper and proof that its

@@ -1,7 +1,7 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-07-31
-Release target: Complete99 Platform 1.3.0
+Release target: Complete99 Platform 1.3.1
 
 ## Governing boundary
 
@@ -14,7 +14,7 @@ suppliers, costs, campaigns and operating dashboards stay private. Their legacy
 seed records are migrated to private status and removed from public navigation,
 search ownership and sitemaps.
 
-No Complete99 worker role is installed or assigned by release 1.3.0. The private
+No Complete99 worker role is installed or assigned by release 1.3.1. The private
 commerce outbox reports `unassigned_infrastructure` until a later, separately
 approved operating decision.
 
@@ -68,7 +68,7 @@ the signed public read model can display an image only when its provenance and
 public-use rights are approved. Signed menu data and every item expire after 24
 hours.
 
-## Pantry state for 1.3.0
+## Pantry state for 1.3.1
 
 The live pantry remains held unless every launch check passes. A held pantry:
 
@@ -85,7 +85,7 @@ merchant configuration or verified checkout evidence exists.
 
 ## WooCommerce dependency rule
 
-Release 1.3.0 does not install WooCommerce through the Complete99 plugin bridge.
+Release 1.3.1 does not install WooCommerce through the Complete99 plugin bridge.
 That bridge remains restricted to the `complete99-platform` slug and its small,
 digest-verified package.
 
@@ -156,9 +156,9 @@ launch readiness check requires current positive stock. Acceptance preserves
 the exact stock movement caused by each test order, so it does not require the
 post-sale quantity to remain positive.
 
-### Evaluation catalogue for release 1.3.0
+### Evaluation catalogue for release 1.3.1
 
-Release 1.3.0 carries a private evaluation registry of 26 ingredient products.
+Release 1.3.1 carries a private evaluation registry of 26 ingredient products.
 Each record has:
 
 - one canonical product code and ingredient code;
@@ -430,7 +430,7 @@ Confirm:
 
 ### Backup requirements
 
-Before the Complete99 1.3.0 deployment:
+Before the Complete99 1.3.1 deployment:
 
 1. Record the active plugin version, directory digest, activation state,
    database version, deployment marker and rendered consumer marker.
@@ -453,7 +453,7 @@ Before a separate WooCommerce installation or update:
 
 ### Restore and rollback contract
 
-For the Complete99 1.3.0 release, production must perform the real exercise:
+For the Complete99 1.3.1 release, production must perform the real exercise:
 
 1. Deploy the reviewed candidate and verify health, body, plugin digest,
    migration invariants, database state and cache.
@@ -461,7 +461,7 @@ For the Complete99 1.3.0 release, production must perform the real exercise:
    audited rollback operation.
 3. Verify the prior health version, body marker, activation state, database
    marker and held pantry.
-4. Redeploy the exact same 1.3.0 artifact with the same SHA-256.
+4. Redeploy the exact same 1.3.1 artifact with the same SHA-256.
 5. Repeat the full verification and remove temporary recovery material only
    after the final result passes.
 

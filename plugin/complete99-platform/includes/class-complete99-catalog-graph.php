@@ -1484,8 +1484,9 @@ final class Complete99_Catalog_Graph {
 
 		$meta = self::entity_meta( $entity );
 		if ( ! $evaluation_managed ) {
+			// WordPress stores registered boolean false metadata as an empty string.
 			$meta['_complete99_managed']            = '1';
-			$meta['_complete99_index_eligible']     = '0';
+			$meta['_complete99_index_eligible']     = '';
 			$meta['_complete99_verification_state'] = 'catalog_graph_draft';
 		}
 		$stored = self::store_and_verify_meta( $post_id, $meta );

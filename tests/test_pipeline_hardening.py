@@ -329,7 +329,7 @@ class PipelineHardeningTests(unittest.TestCase):
         self,
     ) -> None:
         metadata, _, raw = DEPLOY.load_artifact((ROOT / "plugin-dist").resolve())
-        self.assertEqual("1.3.0", metadata["version"])
+        self.assertEqual("1.3.1", metadata["version"])
 
         ceiling = DEPLOY.package_upload_ceiling(len(raw))
         self.assertEqual(
@@ -893,6 +893,8 @@ class PipelineHardeningTests(unittest.TestCase):
             "a" * 64,
         )
         self.assertTrue(result["stabilized"])
+        self.assertEqual(1, result["stabilization_attempts"])
+        self.assertEqual({}, result["initial_failure_context"])
         self.assertEqual("b" * 64, result["post_install_database_fingerprint"])
         self.assertEqual(
             "installed_pending_stabilization",
@@ -944,6 +946,11 @@ class PipelineHardeningTests(unittest.TestCase):
             )
 
         self.assertTrue(result["stabilized"])
+        self.assertEqual(2, result["stabilization_attempts"])
+        self.assertEqual(
+            {"retryable_forward_mismatch": True},
+            result["initial_failure_context"],
+        )
         self.assertEqual(
             ["stabilize", "stabilize", "status"],
             [call.args[1] for call in bridge_call.call_args_list],
@@ -1396,7 +1403,7 @@ class PipelineHardeningTests(unittest.TestCase):
                 "too-short",
             )
 
-    def test_workflow_is_manual_and_1_3_0_requires_rollback_exercise(self) -> None:
+    def test_workflow_is_manual_and_1_3_1_requires_rollback_exercise(self) -> None:
         workflow = (
             ROOT / ".github" / "workflows" / "wordpress-deploy.yml"
         ).read_text(encoding="utf-8")
@@ -1411,14 +1418,14 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertIn("default: true", rollback_input)
         self.assertIn("default: true", bootstrap_input)
         rollback_guard = workflow.split(
-            "- name: Require the 1.3.0 rollback and identical-artifact redeploy exercise",
+            "- name: Require the 1.3.1 rollback and identical-artifact redeploy exercise",
             1,
         )[1].split(
             "- name: Require the secure sync bootstrap before any live request",
             1,
         )[0]
         self.assertIn(
-            '$releaseMetadata.version -eq "1.3.0"',
+            '$releaseMetadata.version -eq "1.3.1"',
             rollback_guard,
         )
         self.assertIn(

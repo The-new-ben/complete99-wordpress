@@ -130,14 +130,14 @@ jobs:
             exit 1
           }
 
-      - name: Require the 1.3.0 rollback and identical-artifact redeploy exercise
+      - name: Require the 1.3.1 rollback and identical-artifact redeploy exercise
         shell: powershell
         run: |
           $releaseDir = Join-Path $env:RUNNER_TEMP "complete99-verified-release-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           $integrityPath = Join-Path $releaseDir "complete99-platform-integrity.json"
           $releaseMetadata = Get-Content -LiteralPath $integrityPath -Raw | ConvertFrom-Json
-          if ($releaseMetadata.version -eq "1.3.0" -and "${{ inputs.rollback_exercise }}" -ne "true") {
-            Write-Error "Complete99 Platform 1.3.0 requires rollback_exercise=true before any production request."
+          if ($releaseMetadata.version -eq "1.3.1" -and "${{ inputs.rollback_exercise }}" -ne "true") {
+            Write-Error "Complete99 Platform 1.3.1 requires rollback_exercise=true before any production request."
             exit 1
           }
 
