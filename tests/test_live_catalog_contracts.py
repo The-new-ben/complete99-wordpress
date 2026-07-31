@@ -152,12 +152,79 @@ foreach ($bundle['products'] as $code => $record) {{
         ),
     );
 }}
+$normalize_option = new ReflectionMethod('Complete99_Live_Catalog', 'normalize_store_option_value');
+$normalize_option->setAccessible(true);
+$digest_value = new ReflectionMethod('Complete99_Live_Catalog', 'digest');
+$digest_value->setAccessible(true);
+$page_option_names = array(
+    'woocommerce_shop_page_id',
+    'woocommerce_terms_page_id',
+    'wp_page_for_privacy_policy',
+    'woocommerce_cart_page_id',
+    'woocommerce_checkout_page_id',
+    'woocommerce_myaccount_page_id',
+);
+$cached_option_values = array();
+$database_option_values = array();
+foreach ($page_option_names as $position => $option_name) {{
+    $page_id = 700 + $position;
+    $cached_option_values[$option_name] = $normalize_option->invoke(null, $option_name, $page_id);
+    $database_option_values[$option_name] = $normalize_option->invoke(null, $option_name, (string) $page_id);
+}}
+$changed_option_values = $database_option_values;
+$changed_option_values['woocommerce_cart_page_id'] = 999;
+$invalid_page_option = $normalize_option->invoke(null, 'woocommerce_cart_page_id', '12x');
+$missing_page_option = $normalize_option->invoke(null, 'woocommerce_cart_page_id', null);
+$invalid_text_option = $normalize_option->invoke(null, 'woocommerce_currency', 123);
+$strict_failure = new ReflectionMethod('Complete99_Live_Catalog', 'strict_readback_failure_message');
+$strict_failure->setAccessible(true);
+$receipt_matches = new ReflectionMethod('Complete99_Live_Catalog', 'readback_receipt_matches_marker');
+$receipt_matches->setAccessible(true);
+$matching_marker = array('mutation_id' => 'mutation-12345678', 'deployment_id' => 'deployment-12345678');
+$matching_readback = array(
+    'ready' => true,
+    'receipt' => array('mutation_id' => 'mutation-12345678', 'deployment_id' => 'deployment-12345678'),
+);
 echo wp_json_encode(array(
     'products' => $products,
     'policy' => $bundle['policy'],
     'prices' => $bundle['price_registry'],
     'relations' => $bundle['relations'],
     'consumer_menu' => $consumer_menu,
+    'normalization' => array(
+        'page_int' => $normalize_option->invoke(null, 'woocommerce_cart_page_id', 123),
+        'page_string' => $normalize_option->invoke(null, 'woocommerce_cart_page_id', '123'),
+        'text' => $normalize_option->invoke(null, 'woocommerce_currency', 'ILS'),
+        'cached_digest' => $digest_value->invoke(null, $cached_option_values),
+        'database_digest' => $digest_value->invoke(null, $database_option_values),
+        'changed_digest' => $digest_value->invoke(null, $changed_option_values),
+        'invalid_page_code' => is_wp_error($invalid_page_option) ? $invalid_page_option->get_error_code() : '',
+        'missing_page_code' => is_wp_error($missing_page_option) ? $missing_page_option->get_error_code() : '',
+        'invalid_text_code' => is_wp_error($invalid_text_option) ? $invalid_text_option->get_error_code() : '',
+    ),
+    'strict_failures' => array(
+        'configuration' => $strict_failure->invoke(null, array('reason' => 'store_configuration_mismatch')),
+        'product' => $strict_failure->invoke(null, array(
+            'reason' => 'product_readback_mismatch',
+            'product_code' => 'product-tahini-500g',
+        )),
+        'untrusted_product' => $strict_failure->invoke(null, array(
+            'reason' => 'product_readback_mismatch',
+            'product_code' => 'product-secretvalue',
+        )),
+        'receipt_identity' => $strict_failure->invoke(null, array('reason' => 'receipt_identity_mismatch')),
+    ),
+    'receipt_identity' => array(
+        'matching' => $receipt_matches->invoke(null, $matching_readback, $matching_marker),
+        'wrong_mutation' => $receipt_matches->invoke(null, array_replace_recursive(
+            $matching_readback,
+            array('receipt' => array('mutation_id' => 'mutation-87654321'))
+        ), $matching_marker),
+        'wrong_deployment' => $receipt_matches->invoke(null, array_replace_recursive(
+            $matching_readback,
+            array('receipt' => array('deployment_id' => 'deployment-87654321'))
+        ), $matching_marker),
+    ),
 ));
 """
         completed = subprocess.run(
@@ -182,11 +249,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_3_7(self) -> None:
+    def test_release_version_is_exact_1_3_8(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.7$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.7' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.7' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.8$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.8' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.8' );", source)
 
     def test_runtime_bundle_has_exact_allowlist_and_price_map(self) -> None:
         products = self.bundle["products"]
@@ -209,6 +276,53 @@ echo wp_json_encode(array(
         ):
             self.assertIn(required_phrase, selection_rule)
         self.assertEqual(EXPECTED_PRICES, price_registry["prices"])
+
+    def test_store_configuration_snapshot_normalizes_option_types_fail_closed(self) -> None:
+        normalization = self.bundle["normalization"]
+        self.assertEqual(123, normalization["page_int"])
+        self.assertEqual(123, normalization["page_string"])
+        self.assertEqual("ILS", normalization["text"])
+        self.assertEqual(
+            normalization["cached_digest"],
+            normalization["database_digest"],
+        )
+        self.assertNotEqual(
+            normalization["database_digest"],
+            normalization["changed_digest"],
+        )
+        self.assertEqual(
+            "complete99_live_catalog_option_type_invalid",
+            normalization["invalid_page_code"],
+        )
+        self.assertEqual(
+            "complete99_live_catalog_option_type_invalid",
+            normalization["missing_page_code"],
+        )
+        self.assertEqual(
+            "complete99_live_catalog_option_type_invalid",
+            normalization["invalid_text_code"],
+        )
+
+    def test_strict_readback_failure_uses_closed_reason_and_product_codes(self) -> None:
+        failures = self.bundle["strict_failures"]
+        self.assertTrue(
+            failures["configuration"].startswith(
+                "complete99_live_catalog_strict_readback_store_configuration_mismatch:"
+            )
+        )
+        self.assertIn("product-tahini-500g", failures["product"])
+        self.assertNotIn("product-secretvalue", failures["untrusted_product"])
+        self.assertTrue(
+            failures["receipt_identity"].startswith(
+                "complete99_live_catalog_strict_readback_receipt_identity_mismatch:"
+            )
+        )
+
+    def test_strict_readback_receipt_identity_matches_both_marker_ids(self) -> None:
+        identity = self.bundle["receipt_identity"]
+        self.assertTrue(identity["matching"])
+        self.assertFalse(identity["wrong_mutation"])
+        self.assertFalse(identity["wrong_deployment"])
 
     def test_every_price_has_a_bound_https_source_and_dates(self) -> None:
         expected_providers = {"pricez", "chp", "carrefour"}
@@ -520,7 +634,10 @@ echo wp_json_encode(array(
         self.assertIn("get_option( self::OPTION_RECOVERY, false )", recovery_helpers)
         self.assertIn("delete_option( self::OPTION_RECOVERY )", recovery_helpers)
         self.assertIn("wp_cache_flush()", recovery_helpers)
-        self.assertIn("hash_equals( (string) $marker['mutation_id']", recovery_helpers)
+        self.assertEqual(
+            2,
+            recovery_helpers.count("self::readback_receipt_matches_marker("),
+        )
         self.assertIn("'recovery_required'", status)
         self.assertIn("$ignore_recovery_marker", status)
 

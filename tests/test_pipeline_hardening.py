@@ -358,7 +358,7 @@ class PipelineHardeningTests(unittest.TestCase):
         self,
     ) -> None:
         metadata, _, raw = DEPLOY.load_artifact((ROOT / "plugin-dist").resolve())
-        self.assertEqual("1.3.7", metadata["version"])
+        self.assertEqual("1.3.8", metadata["version"])
 
         ceiling = DEPLOY.package_upload_ceiling(len(raw))
         self.assertEqual(
@@ -582,6 +582,15 @@ class PipelineHardeningTests(unittest.TestCase):
                 DEPLOY.CATALOG_RECOVERY_MESSAGE_PREFIX + message,
                 cause,
             )
+        readback_cause = (
+            "complete99_live_catalog_strict_readback_store_configuration_mismatch"
+        )
+        cases["/recovery-readback"] = (
+            DEPLOY.CATALOG_RECOVERY_MESSAGE_PREFIX
+            + readback_cause
+            + ": Strict public catalog readback failed.",
+            readback_cause,
+        )
 
         class RuntimeCatalogFailureHandler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:  # noqa: N802
