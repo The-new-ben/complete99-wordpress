@@ -32,6 +32,7 @@ ALLOWED_PRODUCTION_HOSTS = {"complete99.co.il", "www.complete99.co.il"}
 SUPPORTED_TRANSITIONAL_HOSTS = {"a235232-tmp.s1242.upress.link"}
 ALLOWED_LOCAL_TEST_HOSTS = {"127.0.0.1", "localhost", "::1"}
 PLUGIN_REST_PATH = "/wp-json/wp/v2/plugins/complete99-platform/complete99-platform?context=edit"
+REST_IDENTITY_PATH = "/wp-json/?_fields=home,url"
 SNIPPET_PREFIX = "tmp-complete99-deploy-"
 BOOTSTRAP_SNIPPET_NAME = "c99-deploy-bootstrap"
 BOOTSTRAP_SNIPPET_KNOWN_ID = 5
@@ -462,7 +463,7 @@ def arm_live_mutation_recovery(marker: Path | None, deployment_id: str) -> None:
 
 
 def verify_rest_identity(client: Client) -> dict[str, str]:
-    _, root = client.request_public_json("/wp-json/")
+    _, root = client.request_public_json(REST_IDENTITY_PATH)
     target = validate_target_url(
         client.base_url,
         client.allow_local_http,

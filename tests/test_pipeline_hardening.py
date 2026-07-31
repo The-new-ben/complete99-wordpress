@@ -37,6 +37,35 @@ RECOVER = load_module(
 
 
 class PipelineHardeningTests(unittest.TestCase):
+    def test_rest_identity_uses_a_bounded_field_projection(self) -> None:
+        self.assertEqual(
+            "/wp-json/?_fields=home,url",
+            DEPLOY.REST_IDENTITY_PATH,
+        )
+
+        class IdentityClient:
+            base_url = "http://127.0.0.1"
+            allow_local_http = True
+            allowed_deploy_hosts = ""
+            paths: list[str] = []
+
+            def request_public_json(self, path: str):
+                self.paths.append(path)
+                return 200, {
+                    "home": "http://127.0.0.1",
+                    "url": "http://127.0.0.1",
+                }
+
+        client = IdentityClient()
+        self.assertEqual(
+            {
+                "home": "http://127.0.0.1",
+                "url": "http://127.0.0.1",
+            },
+            DEPLOY.verify_rest_identity(client),
+        )
+        self.assertEqual([DEPLOY.REST_IDENTITY_PATH], client.paths)
+
     def test_upress_requests_use_a_normal_browser_signature(self) -> None:
         self.assertTrue(DEPLOY.USER_AGENT.startswith("Mozilla/5.0 "))
         self.assertIn("Chrome/", DEPLOY.USER_AGENT)

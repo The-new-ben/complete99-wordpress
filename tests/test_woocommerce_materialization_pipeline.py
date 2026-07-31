@@ -200,6 +200,10 @@ def status_response(deployment_id: str = TEST_DEPLOYMENT_ID) -> dict[str, Any]:
 class WooCommerceMaterializationPipelineTests(unittest.TestCase):
     def test_dependency_and_catalog_allowlists_are_exactly_pinned(self) -> None:
         self.assertEqual("woocommerce/woocommerce.php", COMMERCE.WOOCOMMERCE_PLUGIN)
+        self.assertEqual(
+            "woocommerce/woocommerce",
+            COMMERCE.WOOCOMMERCE_PLUGIN_REST_ID,
+        )
         self.assertEqual("10.9.4", COMMERCE.WOOCOMMERCE_VERSION)
         self.assertEqual(
             "https://downloads.wordpress.org/plugin/woocommerce.10.9.4.zip",
@@ -533,7 +537,7 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
                     }
                 if path == COMMERCE.WOOCOMMERCE_PLUGIN_REST_PATH:
                     return 200, {
-                        "plugin": COMMERCE.WOOCOMMERCE_PLUGIN,
+                        "plugin": COMMERCE.WOOCOMMERCE_PLUGIN_REST_ID,
                         "status": "active",
                         "version": COMMERCE.WOOCOMMERCE_VERSION,
                     }
@@ -708,7 +712,7 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
                     }
                 if path == COMMERCE.WOOCOMMERCE_PLUGIN_REST_PATH:
                     return 200, {
-                        "plugin": COMMERCE.WOOCOMMERCE_PLUGIN,
+                        "plugin": COMMERCE.WOOCOMMERCE_PLUGIN_REST_ID,
                         "status": "active",
                         "version": COMMERCE.WOOCOMMERCE_VERSION,
                     }
@@ -730,6 +734,30 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
         self.assertEqual(0, result["gateway_configuration"]["configured_count"])
         gateway_calls = [call for call in client.calls if call[1] == COMMERCE.WOOCOMMERCE_GATEWAYS_PATH]
         self.assertEqual([("GET", COMMERCE.WOOCOMMERCE_GATEWAYS_PATH, None)], gateway_calls)
+
+        class PhpSuffixIdentityClient(RuntimeClient):
+            def request(
+                self,
+                method: str,
+                path: str,
+                payload=None,
+                expected=(200, 201),
+            ):
+                status, response = super().request(method, path, payload, expected)
+                if path == COMMERCE.WOOCOMMERCE_PLUGIN_REST_PATH:
+                    response["plugin"] = COMMERCE.WOOCOMMERCE_PLUGIN
+                return status, response
+
+        with self.assertRaisesRegex(
+            COMMERCE.DeployError,
+            "wrong WooCommerce plugin identity",
+        ):
+            COMMERCE.install_and_verify_woocommerce(
+                PhpSuffixIdentityClient(),
+                token,
+                deployment_id,
+                target_host,
+            )
 
         with self.assertRaises(COMMERCE.DeployError):
             COMMERCE.install_and_verify_woocommerce(
