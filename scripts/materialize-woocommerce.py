@@ -26,6 +26,7 @@ DEPLOY_SCRIPT = ROOT / "scripts" / "deploy-wordpress.py"
 BRIDGE_TEMPLATE = ROOT / "deploy" / "temporary-woocommerce-bridge.php"
 
 WOOCOMMERCE_PLUGIN = "woocommerce/woocommerce.php"
+WOOCOMMERCE_PLUGIN_REST_ID = "woocommerce/woocommerce"
 WOOCOMMERCE_VERSION = "10.9.4"
 WOOCOMMERCE_PACKAGE_URL = (
     "https://downloads.wordpress.org/plugin/woocommerce.10.9.4.zip"
@@ -705,7 +706,7 @@ def install_and_verify_woocommerce(
 
     _, raw_plugin = client.request("GET", WOOCOMMERCE_PLUGIN_REST_PATH)
     plugin = _require_dict(raw_plugin, "The WordPress plugin readback is invalid")
-    if plugin.get("plugin") != WOOCOMMERCE_PLUGIN:
+    if plugin.get("plugin") != WOOCOMMERCE_PLUGIN_REST_ID:
         raise DeployError("WordPress returned the wrong WooCommerce plugin identity")
     if plugin.get("status") != "active":
         raise DeployError("WordPress did not report WooCommerce as active")
