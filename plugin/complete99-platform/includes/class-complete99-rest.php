@@ -316,6 +316,10 @@ final class Complete99_REST {
 			if ( ! $equivalent ) {
 				return new WP_Error( 'complete99_sync_non_monotonic', 'A different public read model must use a later generation timestamp.', array( 'status' => 409 ) );
 			}
+			$cache = self::purge_public_read_model_caches();
+			if ( is_wp_error( $cache ) ) {
+				return $cache;
+			}
 			$freshness = self::model_freshness( $stored_model );
 			return rest_ensure_response(
 				array(
@@ -325,7 +329,7 @@ final class Complete99_REST {
 					'digest'        => (string) ( $stored_model['digest'] ?? '' ),
 					'item_count'    => count( $clean['sections'] ) + count( $clean['items'] ),
 					'expires_at'    => $freshness['expires_at'],
-					'cache'         => array( 'status' => 'unchanged' ),
+					'cache'         => $cache,
 				)
 			);
 		}

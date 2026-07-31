@@ -13,13 +13,13 @@ targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.3.5`. A source version, package or
+The source tree targets Complete99 Platform `1.3.6`. A source version, package or
 successful installer response is not evidence that production is running that
 release. Production truth comes from the public health response, the rendered
 body, the installed plugin digest, the deployment audit and fresh Chrome
 acceptance.
 
-Release 1.3.5 provides:
+Release 1.3.6 provides:
 
 - exactly one non-empty, escaped browser title in every plugin-owned public
   shell, even when active-theme or SEO callbacks emit competing titles;
@@ -43,6 +43,9 @@ Release 1.3.5 provides:
   state and no direct customer contact or address data;
 - a signed and replay-protected public read-model sync with a 24-hour freshness
   limit;
+- deterministic equivalent read-model retries that repeat every public cache
+  purge without rewriting the stored model, and remain fail closed and
+  retriable after cache-purge failure or response loss;
 - deterministic packaging, exact-commit CI admission, rollback recovery and
   independent live verification.
 

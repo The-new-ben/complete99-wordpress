@@ -740,9 +740,19 @@ class LiveReadModelContracts(unittest.TestCase):
         $first_payload['generated_at'] = $generated;
         $first = Complete99_REST::sync_read_model(c99_request($first_payload));
         $updates_after_first = $c99_update_count;
+		$cache_calls_after_first = array(
+			'upress' => $c99_upress_calls,
+			'litespeed' => $c99_litespeed_calls,
+			'object' => $c99_object_cache_calls,
+		);
 
         $retry = Complete99_REST::sync_read_model(c99_request($first_payload));
         $updates_after_retry = $c99_update_count;
+		$cache_calls_after_retry = array(
+			'upress' => $c99_upress_calls,
+			'litespeed' => $c99_litespeed_calls,
+			'object' => $c99_object_cache_calls,
+		);
 
         $older_payload = $first_payload;
         $older_payload['generated_at'] = gmdate('c', strtotime($generated) - 1);
@@ -760,6 +770,8 @@ class LiveReadModelContracts(unittest.TestCase):
             'retry' => $retry instanceof WP_REST_Response ? $retry->data : array(),
             'updates_after_first' => $updates_after_first,
             'updates_after_retry' => $updates_after_retry,
+			'cache_calls_after_first' => $cache_calls_after_first,
+			'cache_calls_after_retry' => $cache_calls_after_retry,
             'older' => c99_error($older),
             'same_time' => c99_error($same_time),
         ));
@@ -767,7 +779,23 @@ class LiveReadModelContracts(unittest.TestCase):
         )
         self.assertTrue(result["first"]["write_changed"])
         self.assertFalse(result["retry"]["write_changed"])
-        self.assertEqual("unchanged", result["retry"]["cache"]["status"])
+        self.assertEqual(
+            {"upress": 1, "litespeed": 1, "object": 1},
+            result["cache_calls_after_first"],
+        )
+        self.assertEqual(
+            {"upress": 2, "litespeed": 2, "object": 2},
+            result["cache_calls_after_retry"],
+        )
+        self.assertTrue(result["retry"]["cache"]["object_cache"]["flushed"])
+        self.assertTrue(
+            result["retry"]["cache"]["page_cache"]["upress"][
+                "request_completed"
+            ]
+        )
+        self.assertTrue(
+            result["retry"]["cache"]["page_cache"]["litespeed"]["signal_sent"]
+        )
         self.assertEqual(
             result["updates_after_first"], result["updates_after_retry"]
         )
@@ -777,6 +805,118 @@ class LiveReadModelContracts(unittest.TestCase):
             "complete99_sync_non_monotonic", result["same_time"]["code"]
         )
         self.assertEqual(409, result["same_time"]["status"])
+
+    def test_cache_failure_is_fail_closed_and_recovers_on_equivalent_fresh_nonce_retry(
+        self,
+    ) -> None:
+        result = self.run_php_runtime(
+            r"""
+        c99_reset_runtime();
+        $secret = str_repeat('s', 32);
+        update_option(Complete99_Settings::OPTION_SECRET, $secret, false);
+
+        $payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
+        $payload['generated_at'] = gmdate('c');
+        $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $timestamp = (string) time();
+        $attempt = static function($nonce) use ($body, $timestamp, $secret) {
+            $canonical = $timestamp . "\n" . $nonce . "\n"
+                . hash('sha256', $body);
+            $request = new WP_REST_Request(
+                $body,
+                array(
+                    'x-complete99-timestamp' => $timestamp,
+                    'x-complete99-nonce' => $nonce,
+                    'x-complete99-signature' => hash_hmac(
+                        'sha256',
+                        $canonical,
+                        $secret
+                    ),
+                )
+            );
+            $permission = Complete99_REST::verify_sync_signature($request);
+            $response = true === $permission
+                ? Complete99_REST::sync_read_model($request)
+                : $permission;
+            return array(
+                'permission' => true === $permission,
+                'response' => $response,
+            );
+        };
+
+        $c99_object_cache_result = false;
+        $first = $attempt('cache_failure_nonce_0001');
+        $updates_after_first = $c99_update_count;
+        $stored_after_first = maybe_unserialize(
+            $c99_persisted_options['complete99_public_read_model'] ?? ''
+        );
+
+        $retry_failure = $attempt('cache_failure_nonce_0002');
+        $updates_after_retry_failure = $c99_update_count;
+        $calls_after_retry_failure = array(
+            'upress' => $c99_upress_calls,
+            'litespeed' => $c99_litespeed_calls,
+            'object' => $c99_object_cache_calls,
+        );
+
+        $c99_object_cache_result = true;
+        $recovered = $attempt('cache_failure_nonce_0003');
+        $updates_after_recovery = $c99_update_count;
+        $calls_after_recovery = array(
+            'upress' => $c99_upress_calls,
+            'litespeed' => $c99_litespeed_calls,
+            'object' => $c99_object_cache_calls,
+        );
+
+        echo json_encode(array(
+            'first_permission' => $first['permission'],
+            'first' => c99_error($first['response']),
+            'stored_digest' => is_array($stored_after_first)
+                ? ($stored_after_first['digest'] ?? '')
+                : '',
+            'retry_permission' => $retry_failure['permission'],
+            'retry_failure' => c99_error($retry_failure['response']),
+            'recovery_permission' => $recovered['permission'],
+            'recovered' => $recovered['response'] instanceof WP_REST_Response
+                ? $recovered['response']->data
+                : array(),
+            'updates_after_first' => $updates_after_first,
+            'updates_after_retry_failure' => $updates_after_retry_failure,
+            'updates_after_recovery' => $updates_after_recovery,
+            'calls_after_retry_failure' => $calls_after_retry_failure,
+            'calls_after_recovery' => $calls_after_recovery,
+        ));
+        """
+        )
+        self.assertTrue(result["first_permission"])
+        self.assertEqual("complete99_sync_object_cache", result["first"]["code"])
+        self.assertEqual(503, result["first"]["status"])
+        self.assertTrue(result["first"]["data"]["stored"])
+        self.assertTrue(result["retry_permission"])
+        self.assertEqual(
+            "complete99_sync_object_cache", result["retry_failure"]["code"]
+        )
+        self.assertEqual(503, result["retry_failure"]["status"])
+        self.assertTrue(result["retry_failure"]["data"]["stored"])
+        self.assertEqual(
+            {"upress": 2, "litespeed": 2, "object": 2},
+            result["calls_after_retry_failure"],
+        )
+        self.assertTrue(result["recovery_permission"])
+        self.assertTrue(result["recovered"]["stored"])
+        self.assertFalse(result["recovered"]["write_changed"])
+        self.assertEqual(result["stored_digest"], result["recovered"]["digest"])
+        self.assertTrue(result["recovered"]["cache"]["object_cache"]["flushed"])
+        self.assertEqual(
+            {"upress": 3, "litespeed": 3, "object": 3},
+            result["calls_after_recovery"],
+        )
+        self.assertEqual(
+            result["updates_after_first"], result["updates_after_retry_failure"]
+        )
+        self.assertEqual(
+            result["updates_after_first"], result["updates_after_recovery"]
+        )
 
     def test_signed_sync_reserves_nonce_only_after_signature_verification(
         self,
