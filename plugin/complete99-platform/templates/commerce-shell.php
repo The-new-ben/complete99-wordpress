@@ -17,6 +17,7 @@ $complete99_store_id   = Complete99_Content::find_translation_post_id( 'store', 
 	<meta charset="<?php bloginfo( 'charset' ); ?>" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<script>document.documentElement.classList.add('c99-js');</script>
+	<?php Complete99_Frontend::render_document_title_tag(); ?>
 	<?php wp_head(); ?>
 </head>
 <body <?php body_class(); ?>>

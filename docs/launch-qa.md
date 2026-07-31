@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.3.1
+Release target: Complete99 Platform 1.3.2
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.3.1
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.3.1 and its versioned package URL.
+- The public update manifest matches version 1.3.2 and its versioned package URL.
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.

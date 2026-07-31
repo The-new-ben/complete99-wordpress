@@ -10,6 +10,11 @@ checkpoint. References to 1.3.0 below preserve the benchmark snapshot; 1.3.1 is
 the deployment candidate and retains the same consumer, catalog, pricing, stock,
 asset, and public-safety scope.
 
+Current correction: production reached 1.3.1 with the migration checkpoint and
+rollback exercise complete. Release candidate 1.3.2 adds deterministic document
+titles to plugin-owned public shells. The state bullets below remain the archived
+benchmark snapshot rather than current production truth.
+
 ## Decision
 
 The live site and the local release candidate must be described separately.

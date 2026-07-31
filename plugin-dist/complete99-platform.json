@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.3.1.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.3.2.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-31 02:25:00",
+  "last_updated": "2026-07-31 03:05:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.3.1</h4><ul><li>Corrected canonical false metadata readback so private evaluation inventory migrations complete on registered WordPress boolean fields.</li><li>Rebuilt the public Hebrew and English experience for culinary consumers with food-first navigation, menu references and clear ordering paths.</li><li>Added a fail-closed pantry shop foundation that remains non-transactional until real products, stock, merchant, payment and fulfilment checks pass.</li><li>Added private WooCommerce order and inventory handoff infrastructure without activating worker assignments.</li></ul>"
+    "changelog": "<h4>1.3.2</h4><ul><li>Ensured every plugin-owned public shell renders one escaped, non-empty document title independent of active-theme title support.</li><li>Rebuilt the public Hebrew and English experience for culinary consumers with food-first navigation, menu references and clear ordering paths.</li><li>Added a fail-closed pantry shop foundation that remains non-transactional until real products, stock, merchant, payment and fulfilment checks pass.</li><li>Added private WooCommerce order and inventory handoff infrastructure without activating worker assignments.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.3.1"
+  "version": "1.3.2"
 }

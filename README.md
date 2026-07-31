@@ -13,14 +13,16 @@ targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.3.1`. A source version, package or
+The source tree targets Complete99 Platform `1.3.2`. A source version, package or
 successful installer response is not evidence that production is running that
 release. Production truth comes from the public health response, the rendered
 body, the installed plugin digest, the deployment audit and fresh Chrome
 acceptance.
 
-Release 1.3.1 provides:
+Release 1.3.2 provides:
 
+- exactly one non-empty, escaped browser title in every plugin-owned public
+  shell, independent of active-theme title support;
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - a consumer-only header, footer, page hierarchy and SEO ownership registry;
 - culinary pages for dishes, ingredients, traditions and practical knowledge;
