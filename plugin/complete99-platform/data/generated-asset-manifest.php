@@ -1,6 +1,6 @@
 <?php
 /**
- * Generated food photography assets held for editorial evaluation.
+ * Generated food photography assets with explicit delivery review states.
  *
  * @package Complete99_Platform
  */
@@ -68,7 +68,7 @@ $c99_generated_asset = static function (
 	);
 };
 
-return array(
+$c99_generated_asset_manifest = array(
 	'schema'      => 'complete99-generated-asset-manifest/v1',
 	'reviewed_at' => '2026-07-31',
 	'assets'      => array(
@@ -974,3 +974,54 @@ return array(
 		),
 	),
 );
+
+/*
+ * The owner explicitly approved these exact 26 generic ingredient visuals for
+ * normal public catalog use on 2026-07-31. They remain illustrations rather
+ * than branded supplier-pack photographs, but no public caveat, archive label
+ * or special presentation is required or permitted.
+ */
+$c99_public_catalog_assets = array(
+	'c99-ingredient-tahini-evaluation-v01.webp',
+	'c99-ingredient-amba-evaluation-v01.webp',
+	'c99-ingredient-hot-sauce-evaluation-v01.webp',
+	'c99-supply-pita-stack-evaluation-v01.webp',
+	'c99-ingredient-aubergine-evaluation-v01.webp',
+	'c99-ingredient-eggs-evaluation-v01.webp',
+	'c99-ingredient-potatoes-evaluation-v01.webp',
+	'c99-ingredient-tomatoes-evaluation-v01.webp',
+	'c99-ingredient-cucumbers-evaluation-v01.webp',
+	'c99-ingredient-onions-evaluation-v01.webp',
+	'c99-ingredient-parsley-evaluation-v01.webp',
+	'c99-ingredient-chickpeas-evaluation-v01.webp',
+	'c99-ingredient-beetroot-evaluation-v01.webp',
+	'c99-ingredient-bulgur-evaluation-v01.webp',
+	'c99-ingredient-couscous-evaluation-v01.webp',
+	'c99-ingredient-chicken-breast-evaluation-v01.webp',
+	'c99-supply-breadcrumbs-evaluation-v01.webp',
+	'c99-ingredient-ground-beef-evaluation-v01.webp',
+	'c99-ingredient-tilapia-evaluation-v01.webp',
+	'c99-supply-tomato-sauce-evaluation-v01.webp',
+	'c99-ingredient-rice-evaluation-v01.webp',
+	'c99-ingredient-beef-shank-evaluation-v01.webp',
+	'c99-ingredient-hawayej-soup-evaluation-v01.webp',
+	'c99-supply-olive-oil-evaluation-v01.webp',
+	'c99-supply-salt-pickles-evaluation-v01.webp',
+	'c99-ingredient-chicken-liver-evaluation-v01.webp',
+);
+
+foreach ( $c99_generated_asset_manifest['assets'] as &$c99_asset_record ) {
+	if ( ! in_array( $c99_asset_record['filename'], $c99_public_catalog_assets, true ) ) {
+		continue;
+	}
+	$c99_asset_record['review_state']          = 'owner_approved';
+	$c99_asset_record['usage_state']           = 'public';
+	$c99_asset_record['presentation_scope']    = 'public_catalog_illustration';
+	$c99_asset_record['owner_authorized_at']   = '2026-07-31';
+	$c99_asset_record['visual_caveat']         = array( 'he' => '', 'en' => '' );
+	$c99_asset_record['visual_caveats']        = array();
+	$c99_asset_record['rights']                = 'OpenAI generated for Complete99; owner-authorized public publication';
+}
+unset( $c99_asset_record );
+
+return $c99_generated_asset_manifest;

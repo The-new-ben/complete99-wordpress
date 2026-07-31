@@ -128,7 +128,7 @@ $c99_catalog_data_path = '{data}';
         self.assertIn("$product->set_manage_stock( true )", source)
         self.assertIn("$product->set_stock_quantity( 1 )", source)
 
-    def test_health_fails_closed_for_corrupt_catalog_and_exposes_no_prices(
+    def test_public_health_omits_private_evaluation_catalog_state(
         self,
     ) -> None:
         rest = REST.as_posix().replace("'", "\\'")
@@ -166,27 +166,8 @@ function get_option($name, $default = false) {{
 }}
 function rest_ensure_response($value) {{ return $value; }}
 require '{rest}';
-$blocked = Complete99_REST::health();
-Complete99_Platform::$status = array(
-    'ready' => true,
-    'receipt' => array(
-        'mode' => 'private_only',
-        'seed_count' => 26,
-        'ingredient_count' => 26,
-        'product_plan_count' => 26,
-        'woo_materialized' => false,
-    ),
-    'materialized' => array(
-        'ingredient_count' => 26,
-        'product_plan_count' => 26,
-    ),
-);
-$ready = Complete99_REST::health();
-echo json_encode(array(
-    'blocked_code' => $blocked->get_error_code(),
-    'blocked_status' => $blocked->get_error_data()['status'],
-    'ready' => $ready,
-), JSON_THROW_ON_ERROR);
+$public = Complete99_REST::health();
+echo json_encode($public, JSON_THROW_ON_ERROR);
 """
         completed = subprocess.run(
             ["php", "-r", script],
@@ -198,23 +179,15 @@ echo json_encode(array(
             timeout=30,
         )
         result = json.loads(completed.stdout)
-        self.assertEqual(
-            "complete99_evaluation_catalog_incomplete",
-            result["blocked_code"],
-        )
-        self.assertEqual(503, result["blocked_status"])
-        self.assertEqual("ok", result["ready"]["status"])
-        self.assertEqual(
-            26,
-            result["ready"]["evaluation_catalog"][
-                "materialized_ingredient_count"
-            ],
-        )
-        self.assertEqual(
-            26,
-            result["ready"]["evaluation_catalog"]["materialized_plan_count"],
-        )
-        self.assertNotIn("price", json.dumps(result["ready"]).lower())
+        self.assertEqual("ok", result["status"])
+        serialized = json.dumps(result).lower()
+        for private_marker in (
+            "evaluation_catalog",
+            "product_plan_count",
+            "woo_materialized",
+            "price",
+        ):
+            self.assertNotIn(private_marker, serialized)
 
     def test_current_registry_has_26_strict_private_evaluation_seeds(self) -> None:
         result = self.run_php(

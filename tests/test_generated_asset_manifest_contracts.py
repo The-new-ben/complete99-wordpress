@@ -22,6 +22,13 @@ GENERATED = (
     / "images"
     / "generated"
 )
+LIVE_CATALOG = (
+    ROOT
+    / "plugin"
+    / "complete99-platform"
+    / "data"
+    / "live-catalog-products.php"
+)
 
 
 def load_manifest():
@@ -45,6 +52,27 @@ def load_manifest():
     return json.loads(completed.stdout)
 
 
+def load_live_product_codes():
+    path = LIVE_CATALOG.as_posix().replace("'", "\\'")
+    completed = subprocess.run(
+        [
+            "php",
+            "-r",
+            (
+                "define('ABSPATH', __DIR__);"
+                f"$data=require '{path}';"
+                "echo json_encode(array_keys($data['products']), JSON_UNESCAPED_SLASHES);"
+            ),
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    return set(json.loads(completed.stdout))
+
+
 def sha256(path):
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -58,6 +86,7 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
     def setUpClass(cls):
         cls.manifest = load_manifest()
         cls.assets = cls.manifest["assets"]
+        cls.live_product_codes = load_live_product_codes()
 
     def test_manifest_covers_exactly_50_source_and_delivery_pairs(self):
         self.assertEqual(
@@ -102,9 +131,10 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
                 self.assertEqual(b"RIFF", delivery.read_bytes()[:4])
                 self.assertEqual(b"WEBP", delivery.read_bytes()[8:12])
 
-    def test_assets_are_bilingual_held_and_not_product_claims(self):
+    def test_assets_are_bilingual_and_catalog_images_have_normal_public_treatment(self):
         slugs = set()
         stable_slugs = set()
+        public_product_codes = set()
         for asset in self.assets:
             with self.subTest(asset=asset["slug"]):
                 self.assertNotIn(asset["slug"], slugs)
@@ -116,16 +146,35 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
                     asset["stable_slug"], r"^[a-z0-9]+(?:-[a-z0-9]+)*$"
                 )
                 self.assertRegex(asset["label"]["he"], r"[\u0590-\u05ff]")
-                self.assertRegex(asset["visual_caveat"]["he"], r"[\u0590-\u05ff]")
                 self.assertTrue(asset["label"]["en"].strip())
-                self.assertTrue(asset["visual_caveat"]["en"].strip())
-                self.assertEqual("evaluation", asset["review_state"])
-                self.assertEqual("held", asset["usage_state"])
-                self.assertEqual(
-                    "illustrative_evaluation_only",
-                    asset["presentation_scope"],
-                )
                 self.assertFalse(asset["actual_product_presentation"])
+
+                if asset["usage_state"] == "public":
+                    self.assertEqual("owner_approved", asset["review_state"])
+                    self.assertEqual(
+                        "public_catalog_illustration",
+                        asset["presentation_scope"],
+                    )
+                    self.assertEqual("2026-07-31", asset["owner_authorized_at"])
+                    self.assertEqual({"he": "", "en": ""}, asset["visual_caveat"])
+                    self.assertEqual([], asset["visual_caveats"])
+                    self.assertNotIn("archive", asset["filename"].lower())
+                    self.assertEqual(1, len(asset["related_product_codes"]))
+                    public_product_codes.add(asset["related_product_codes"][0])
+                else:
+                    self.assertRegex(
+                        asset["visual_caveat"]["he"], r"[\u0590-\u05ff]"
+                    )
+                    self.assertTrue(asset["visual_caveat"]["en"].strip())
+                    self.assertEqual("evaluation", asset["review_state"])
+                    self.assertEqual("held", asset["usage_state"])
+                    self.assertEqual(
+                        "illustrative_evaluation_only",
+                        asset["presentation_scope"],
+                    )
+
+        self.assertEqual(26, len(public_product_codes))
+        self.assertEqual(self.live_product_codes, public_product_codes)
 
     def test_manifest_has_no_local_paths_sessions_or_em_dash(self):
         source = MANIFEST.read_text(encoding="utf-8")

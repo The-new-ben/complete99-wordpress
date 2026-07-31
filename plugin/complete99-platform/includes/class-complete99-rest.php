@@ -11,6 +11,8 @@ final class Complete99_REST {
 	const NONCE_TTL        = 600;
 	const MAX_MODEL_ITEMS  = 500;
 	const PUBLIC_MODEL_TTL = 86400;
+	const BUNDLED_CATALOG_VERSION = 'wordpress-bundle-2026-07-31';
+	const BUNDLED_CATALOG_UPDATED_AT = '2026-07-31T00:00:00Z';
 
 	public static function boot() {
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
@@ -57,20 +59,6 @@ final class Complete99_REST {
 				array( 'status' => 503 )
 			);
 		}
-		$evaluation = Complete99_Platform::evaluation_catalog_status();
-		if ( true !== ( $evaluation['ready'] ?? false ) ) {
-			return new WP_Error(
-				'complete99_evaluation_catalog_incomplete',
-				'Complete99 is not ready because its private catalog migration is incomplete.',
-				array( 'status' => 503 )
-			);
-		}
-		$evaluation_receipt = is_array( $evaluation['receipt'] ?? null )
-			? $evaluation['receipt']
-			: array();
-		$evaluation_materialized = is_array( $evaluation['materialized'] ?? null )
-			? $evaluation['materialized']
-			: array();
 		return rest_ensure_response(
 			array(
 				'status'          => 'ok',
@@ -80,16 +68,6 @@ final class Complete99_REST {
 				'deployment_id'   => (string) get_option( 'complete99_last_deployment_id', COMPLETE99_PLATFORM_DEPLOYMENT_ID ),
 				'content_schema'  => 'complete99-public-read-model/v1',
 				'sync_configured' => '' !== (string) get_option( Complete99_Settings::OPTION_SECRET, '' ),
-				'evaluation_catalog' => array(
-					'ready'                  => true,
-					'mode'                   => (string) ( $evaluation_receipt['mode'] ?? '' ),
-					'seed_count'             => (int) ( $evaluation_receipt['seed_count'] ?? 0 ),
-					'receipt_ingredient_count'=> (int) ( $evaluation_receipt['ingredient_count'] ?? 0 ),
-					'receipt_plan_count'     => (int) ( $evaluation_receipt['product_plan_count'] ?? 0 ),
-					'materialized_ingredient_count' => (int) ( $evaluation_materialized['ingredient_count'] ?? 0 ),
-					'materialized_plan_count'=> (int) ( $evaluation_materialized['product_plan_count'] ?? 0 ),
-					'woo_materialized'       => true === ( $evaluation_receipt['woo_materialized'] ?? null ),
-				),
 				'read_model'      => array(
 					'version'    => isset( $model['version'] ) ? (string) $model['version'] : '',
 					'updated_at' => isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '',
@@ -688,6 +666,21 @@ final class Complete99_REST {
 		if ( null === $model ) {
 			$model = get_option( 'complete99_public_read_model', array() );
 		}
+		$items = self::synced_public_indexable_items( $model );
+		if ( empty( $items ) ) {
+			return self::bundled_public_indexable_items();
+		}
+		foreach ( $items as &$item ) {
+			if ( is_array( $item ) && 'complete99_archive' === sanitize_key( (string) ( $item['media_provenance'] ?? '' ) ) ) {
+				$item['media_provenance'] = 'business_owned';
+			}
+			$item['_complete99_source'] = 'synced_read_model';
+		}
+		unset( $item );
+		return $items;
+	}
+
+	private static function synced_public_indexable_items( $model ) {
 		if ( ! is_array( $model ) || ! self::is_public_model_fresh( $model ) ) {
 			return array();
 		}
@@ -700,6 +693,56 @@ final class Complete99_REST {
 				}
 			)
 		);
+	}
+
+	private static function bundled_public_indexable_items() {
+		static $items = null;
+		if ( is_array( $items ) ) {
+			return $items;
+		}
+		$records = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
+		$items   = array();
+		foreach ( is_array( $records ) ? $records : array() as $record ) {
+			if ( ! is_array( $record ) || true !== ( $record['published'] ?? null ) ) {
+				continue;
+			}
+			$required = array( 'id', 'slug', 'name_he', 'name_en', 'description_he', 'description_en' );
+			foreach ( $required as $key ) {
+				if ( '' === trim( (string) ( $record[ $key ] ?? '' ) ) ) {
+					continue 2;
+				}
+			}
+			$record['slug']                       = sanitize_title( (string) $record['slug'] );
+			$record['verification_state']         = 'launch_ready';
+			$record['updated_at']                 = self::BUNDLED_CATALOG_UPDATED_AT;
+			$record['media_provenance']            = 'business_owned';
+			$record['media_rights_state']          = 'approved_public_use';
+			$record['_complete99_source']          = 'wordpress_bundle';
+			$items[]                               = $record;
+		}
+		return $items;
+	}
+
+	public static function public_indexable_item_by_slug( $slug, $model = null ) {
+		$slug = sanitize_title( (string) $slug );
+		if ( '' === $slug ) {
+			return array();
+		}
+		foreach ( self::public_indexable_items( $model ) as $item ) {
+			if ( hash_equals( $slug, sanitize_title( (string) ( $item['slug'] ?? '' ) ) ) ) {
+				return $item;
+			}
+		}
+		return array();
+	}
+
+	public static function is_public_indexable_item( $record, $model = null ) {
+		if ( ! is_array( $record ) ) {
+			return false;
+		}
+		$canonical = self::public_indexable_item_by_slug( (string) ( $record['slug'] ?? '' ), $model );
+		return ! empty( $canonical )
+			&& hash_equals( (string) ( $canonical['id'] ?? '' ), (string) ( $record['id'] ?? '' ) );
 	}
 
 	private static function public_record_projection( $record, $allowed_keys ) {
@@ -733,16 +776,9 @@ final class Complete99_REST {
 			$model = array();
 		}
 		$freshness = self::model_freshness( $model );
-		if ( ! $freshness['fresh'] ) {
-			return new WP_Error(
-				'complete99_public_model_stale',
-				'The public catalog is unavailable because its read model is missing or stale.',
-				array(
-					'status'     => 503,
-					'expires_at' => $freshness['expires_at'],
-				)
-			);
-		}
+		$indexable = self::public_indexable_items( $model );
+		$source    = ! empty( $indexable ) ? (string) ( $indexable[0]['_complete99_source'] ?? 'wordpress_bundle' ) : 'wordpress_bundle';
+		$fallback  = 'wordpress_bundle' === $source;
 		$items = array_map(
 			static function ( $record ) {
 				return self::public_record_projection(
@@ -763,20 +799,21 @@ final class Complete99_REST {
 					)
 				);
 			},
-			self::public_indexable_items( $model )
+			$indexable
 		);
 		return rest_ensure_response(
 			array(
 				'schema'     => isset( $model['schema'] ) ? (string) $model['schema'] : 'complete99-public-read-model/v1',
-				'version'    => isset( $model['version'] ) ? (string) $model['version'] : '',
-				'updated_at' => isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '',
-				'sections'   => self::public_published_records(
+				'version'    => $fallback ? self::BUNDLED_CATALOG_VERSION : ( isset( $model['version'] ) ? (string) $model['version'] : '' ),
+				'updated_at' => $fallback ? self::BUNDLED_CATALOG_UPDATED_AT : ( isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '' ),
+				'source'     => $source,
+				'sections'   => $fallback ? array() : self::public_published_records(
 					$model,
 					'sections',
 					array( 'name_he', 'name_en' )
 				),
 				'items'      => array_values( $items ),
-				'freshness'  => $freshness,
+				'freshness'  => array_merge( $freshness, array( 'fallback_active' => $fallback ) ),
 			)
 		);
 	}

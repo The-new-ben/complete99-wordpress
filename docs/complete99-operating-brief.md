@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-07-31
-Status: public consumer boundary locked, bilingual culinary release 1.3.6 in progress
+Status: bilingual culinary release 1.3.7, 12 dishes and 26-product store candidate
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -19,7 +19,7 @@ Complete99 combines four connected layers:
    practical guides.
 3. A private operating platform for inventory, orders, suppliers, costs, tasks,
    campaigns, workers and future integrations.
-4. A future consumer pantry shop for verified real products.
+4. A consumer ingredient shop backed by WooCommerce and linked to the food graph.
 
 The public promise is food: what Complete99 cooks, what goes into it, the
 traditions around it, and where a visitor can check the current menu and order.
@@ -39,8 +39,7 @@ copy.
 ### Secondary
 
 - Readers interested in ingredients, traditions and practical food guidance.
-- Future pantry customers, only after real products, payment and fulfilment are
-  verified.
+- Store customers choosing pantry ingredients for pickup in Tel Aviv.
 
 ### Not addressed at launch
 
@@ -48,8 +47,9 @@ copy.
 - Institutional services, procurement, workforce, inventory, supplier, cost,
   campaign or operating-system marketing.
 - Franchising and investment solicitation.
-- Consumer checkout before products, merchant identity, tax, payment, shipping,
-  privacy, returns, and customer-service ownership are operational.
+- Electronic payment until provider credentials, exact supplier-label and
+  applicable country-of-origin records, and live checkout acceptance are
+  operational.
 
 ## 3. Public and private boundaries
 
@@ -88,7 +88,7 @@ Hebrew is the root language. English mirrors the same hierarchy under `/en/`.
 | `/ingredients/` | Ingredients in the context of the food | Index |
 | `/traditions/` | Homes, communities and cooking traditions | Index |
 | `/knowledge/` | Practical guidance for choosing and understanding dishes | Index |
-| `/store/` | Held pantry direction, then real products after approval | Hold and noindex until commerce launch |
+| `/store/` | Curated 26-product ingredient store and cart | Index when the exact catalog receipt is ready |
 | `/about/` | Restaurant story and consumer identity | Index |
 | `/contact/` | Verified address, telephone and contact route | Index |
 | `/privacy/`, `/terms/`, `/accessibility/` | Consumer policy foundation | Index |
@@ -127,7 +127,7 @@ profile, a schema profile, and editorial ownership.
 ### Footer
 
 - Dishes, ingredients, traditions and knowledge.
-- Pantry only with a truthful held or live state.
+- Store, cart and pickup path when the exact catalog receipt is ready.
 - About, contact, privacy, terms, accessibility and commerce policies when
   applicable.
 - Only verified social profiles and contact details.
@@ -180,8 +180,8 @@ errors.
 Release 1.3.1 creates contracts and checks, not worker assignments.
 
 - WordPress keeps consumer publishing and commerce readiness metadata.
-- WooCommerce remains the future product, cart, checkout, payment and stock
-  authority.
+- WooCommerce is the product, cart and stock authority. It becomes the payment
+  authority only after gateway credentials and live acceptance.
 - The private outbox records order, refund and stock facts without direct
   customer contact or address data.
 - Complete99 OS may consume the outbox later through authenticated access.
@@ -192,17 +192,16 @@ Release 1.3.1 creates contracts and checks, not worker assignments.
 
 ## 8. Store readiness
 
-WooCommerce is the intended commerce engine; a custom cart is not. Installation
-does not equal launch. The store remains a non-transactional architecture until
-all of the following have an accountable owner and passing evidence:
+WooCommerce is the commerce engine; a custom cart is not. Release 1.3.7 opens
+the exact 26-product catalog, classic cart and local-pickup continuation. The
+electronic checkout remains closed until the payment-specific evidence below
+passes:
 
 - merchant identity and contact details;
-- approved products, variations, images, descriptions, prices, inventory, and
-  VAT treatment;
 - payment provider and live-account verification;
-- shipping/service regions, rates, packaging, delivery times, and failure
-  handling;
-- returns, cancellations, privacy, terms, accessibility, and customer support;
+- exact supplier-label, online allergen and applicable country-of-origin
+  records for every product;
+- checkout-specific cancellations, privacy, terms and customer support review;
 - test orders, refunds, taxes, emails, stock movement, analytics, and security;
 - truthful Product/Offer structured data matching the visible page.
 

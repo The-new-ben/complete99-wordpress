@@ -1,7 +1,33 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-07-31
-Release target: Complete99 Platform 1.3.6
+Release target: Complete99 Platform 1.3.7
+
+## Current 1.3.7 catalog boundary
+
+Release 1.3.7 supersedes the earlier evaluation-only pantry state described in
+the historical sections below.
+
+- WooCommerce 10.9.4 is installed from the exact pinned official package.
+- The curated public store contains exactly 26 owner-authorized ingredient products.
+- Each new product begins with stock 1, no backorders and one normal public
+  product image with no archive label or disclaimer.
+- Prices are owner-authorized opening retail prices informed by the bound market
+  observations dated 2026-07-31.
+- The store and classic cart are public when the exact catalog receipt passes.
+- Cart customers can edit their items and continue by telephone for order
+  confirmation and pickup at 99 Ibn Gabirol Street.
+- Electronic payment and checkout remain closed until gateway credentials,
+  exact supplier-label and applicable country-of-origin records, and payment
+  acceptance evidence are supplied.
+- The signed private OS inventory route depends on catalog readiness, not
+  payment readiness.
+- Reapplying the catalog never resets operational stock.
+
+Sections that discuss a held pantry, hidden evaluation products or full
+checkout acceptance remain historical evidence or requirements for the later
+electronic payment launch. They do not describe the current public catalog and
+cart state.
 
 ## Governing boundary
 
@@ -14,7 +40,7 @@ suppliers, costs, campaigns and operating dashboards stay private. Their legacy
 seed records are migrated to private status and removed from public navigation,
 search ownership and sitemaps.
 
-No Complete99 worker role is installed or assigned by release 1.3.6. The private
+No Complete99 worker role is installed or assigned by release 1.3.7. The private
 commerce outbox reports `unassigned_infrastructure` until a later, separately
 approved operating decision.
 

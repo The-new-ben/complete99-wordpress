@@ -45,15 +45,15 @@ The public endpoint at `/wp-json/complete99/v1/public-catalog` uses a separate
 consumer-safe projection. It includes only published section labels and verified
 bilingual menu facts. It never returns branches, internal identifiers, section
 links, sort or publication controls, verification state, media provenance, media
-rights state, campaign data, or the stored digest. Public menu items do not
-accept price, currency, stock quantity or operational availability. Current
-price and availability remain with the active ordering provider until a verified
-Complete99 commerce launch.
+rights state, campaign data, or the stored digest. Public dish-menu items do not
+accept price, currency, stock quantity or operational availability. The separate
+verified WooCommerce catalog owns ingredient-product prices, stock and cart
+state.
 
-An image-bearing menu item must name approved provenance as Complete99 archive,
-business owned or licensed, and its rights state must be
-`approved_public_use`. An item without those two facts fails closed. Every
-public item also carries its own verified update time.
+An image-bearing menu item must carry an internal approved provenance and
+`approved_public_use` rights state. Public projections do not expose provenance
+or internal review wording. Selected dish and product images render as normal
+media without an archive label, disclaimer or unusual public treatment.
 
 Boolean fields accept only JSON booleans or the exact strings `true` and `false`;
 other values fail with HTTP 400. Menu-item identifiers permanently own their
@@ -68,27 +68,27 @@ entries all fail closed until a fresh signed sync is stored.
 
 ## Commerce boundary
 
-WooCommerce becomes the public transaction engine only after the controlled
-store launch gate passes. Before launch, a capability-gated administrator
-preview can exercise real checkout transactions for acceptance evidence, while
-Complete99 blocks native product, cart, checkout, account and Store API surfaces
-from anonymous public use. The public pantry page remains nontransactional and
-`noindex`.
+WooCommerce 10.9.4 is the product, stock and cart engine for release 1.3.7. The
+curated 26-product store and classic cart become public when the exact catalog
+receipt passes. Payment and electronic checkout remain closed until the
+separate controlled checkout gate passes. Administrators can later exercise
+real checkout transactions for acceptance evidence without changing catalog
+readiness.
 
-Product discovery remains contained after launch. The entire public Store API
-stays blocked because the accepted customer flow is the classic checkout.
-Anonymous core product, variation,
+Product discovery remains contained in the curated store. Payment and checkout
+Store API routes remain blocked while payment is closed. Anonymous core product, variation,
 product-taxonomy, product-only REST search and product oEmbed routes are also
 blocked, while ordinary public search removes products. Private WooCommerce
 administrators retain the core product access needed to manage the catalogue.
 Anonymous media REST and product-linked attachment pages are closed. Because
-upload files are public web assets, an approved product cannot pass readiness
-until every primary and gallery image is explicitly reviewed as safe for public
-exposure even while the pantry is held.
+upload files are public web assets, every selected product image is bound by
+exact product code and SHA-256 and explicitly approved for normal public use.
 
-The private launch gate requires approved bilingual product facts, real images,
-positive managed stock, ILS pricing, merchant and fulfilment settings, published
-consumer policies, and working live payment and shipping configuration.
+The private launch gate requires reviewed bilingual product facts, exact online
+supplier-label and applicable country-of-origin records, real images, positive
+managed stock, ILS pricing, merchant and fulfilment settings, published
+consumer policies, and working live payment and shipping configuration. Catalog
+publication authorization does not satisfy the separate label and origin gates.
 Checkout acceptance contract `complete99-commerce-acceptance/v3` requires two
 different recent real orders, one Hebrew and one English. Each order must prove
 an enabled refund-capable live gateway, a hashed processor transaction

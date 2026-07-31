@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.3.6.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.3.7.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-31 20:15:00",
+  "last_updated": "2026-07-31 21:55:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.3.6</h4><ul><li>Repeated all public cache purges for an exactly equivalent read-model retry without rewriting the stored model.</li><li>Returned a truthful cache receipt and write_changed=false after an equivalent retry succeeds.</li><li>Kept cache-purge failures fail closed and recoverable with a new signed nonce.</li><li>Covered response-loss and repeated cache-failure recovery with executable receiver tests.</li></ul>"
+    "changelog": "<h4>1.3.7</h4><ul><li>Published a bilingual, food-first pantry catalog with 26 linked ingredient products and opening stock.</li><li>Presented approved dish and product images normally without archive notices or unusual public treatment.</li><li>Separated public catalog and cart readiness from the electronic payment launch gate.</li><li>Added exact WooCommerce dependency verification and fail-closed recovery for dependency and catalog materialization.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.3.6"
+  "version": "1.3.7"
 }

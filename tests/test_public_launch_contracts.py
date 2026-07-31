@@ -146,6 +146,8 @@ function is_singular($post_type = '') {{ return false; }}
 function get_queried_object_id() {{ return 0; }}
 class Complete99_REST {{
     public static function public_indexable_items() {{ return array(); }}
+    public static function public_indexable_item_by_slug($slug) {{ return array(); }}
+    public static function is_public_indexable_item($record) {{ return false; }}
 }}
 class Complete99_Content {{
     public static function is_complete99_post($post_id) {{ return false; }}
@@ -321,8 +323,12 @@ class Complete99_Commerce {{
         return 'https://example.test/order/' . $lang . '/';
     }}
     public static function is_ready() {{ return false; }}
+    public static function catalog_is_ready() {{ return false; }}
     public static function can_preview_commerce() {{ return false; }}
     public static function is_transaction_page() {{ return false; }}
+}}
+class Complete99_REST {{
+    public static function public_indexable_items() {{ return array(); }}
 }}
 require '{consumer_path}';
 $results = array();

@@ -80,14 +80,14 @@ class InventoryBridgeSourceContracts(unittest.TestCase):
             "'publish' !== $post_status",
             "'yes' !== (string) get_post_meta( $product_id, self::META_SYNC_ENABLED, true )",
             "'woocommerce' !== (string) get_post_meta( $product_id, self::STOCK_AUTHORITY, true )",
-            "true !== Complete99_Commerce::is_ready()",
+            "true !== Complete99_Commerce::catalog_is_ready()",
             "wc_update_product_stock( $product_id, $item['quantity'], 'set' )",
         ):
             self.assertIn(marker, self.source)
 
     def test_migration_guard_requires_exact_durable_catalog(self):
         for marker in (
-            "private static function migration_guard()",
+            "private static function migration_guard( $mode )",
             "Complete99_Platform::migration_failed()",
             "Complete99_Platform::evaluation_catalog_ready()",
             "COMPLETE99_PLATFORM_VERSION !== (string) get_option",
@@ -302,6 +302,7 @@ class InventoryBridgeBehaviorContracts(unittest.TestCase):
                 class Complete99_Commerce {
                     public static $ready = false;
                     public static function is_ready() { return self::$ready; }
+                    public static function catalog_is_ready() { return self::$ready; }
                 }
                 class FakeWpdb {
                     public function prepare( $query, ...$args ) { return array( $query, $args ); }
@@ -599,7 +600,7 @@ class InventoryBridgeBehaviorContracts(unittest.TestCase):
             result["stale_time_result"]["error"],
         )
 
-    def test_commerce_requires_readiness_enablement_and_monotonic_versions(self):
+    def test_commerce_requires_catalog_readiness_enablement_and_monotonic_versions(self):
         result = self.run_harness()
         self.assertEqual(
             "complete99_inventory_store_not_ready",

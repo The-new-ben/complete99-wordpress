@@ -103,11 +103,11 @@ class MigrationInvariantContractTests(unittest.TestCase):
         inventory_boot = platform.index("Complete99_Inventory_Bridge::boot();")
         self.assertLess(evaluation_boot, inventory_boot)
 
-        self.assertIn("'complete99_evaluation_catalog_incomplete'", health)
-        self.assertIn("array( 'status' => 503 )", health)
         health_block = health.split("public static function health()", 1)[1].split(
             "public static function verify_sync_signature", 1
         )[0]
+        self.assertNotIn("complete99_evaluation_catalog_incomplete", health_block)
+        self.assertNotIn("evaluation_catalog_status", health_block)
         self.assertNotIn("_complete99_evaluation_price_ils", health_block)
         self.assertNotIn("evaluation_price", health_block)
 

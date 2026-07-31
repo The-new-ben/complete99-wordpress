@@ -57,7 +57,7 @@ final class Complete99_Frontend {
 	public static function maybe_redirect_unready_store() {
 		if (
 			! is_singular()
-			|| Complete99_Commerce::is_ready()
+			|| Complete99_Commerce::catalog_is_ready()
 			|| Complete99_Commerce::can_preview_commerce()
 		) {
 			return;
@@ -445,9 +445,8 @@ final class Complete99_Frontend {
 			return $robots;
 		}
 		if ( self::is_live_dish_request() ) {
-			$dish         = self::live_dish_by_slug( self::live_request_slug() );
-			$verification = $dish && isset( $dish['verification_state'] ) ? (string) $dish['verification_state'] : '';
-			if ( ! in_array( $verification, array( 'verified', 'launch_ready' ), true ) ) {
+			$dish = Complete99_REST::public_indexable_item_by_slug( self::live_request_slug() );
+			if ( empty( $dish ) ) {
 				unset( $robots['index'] );
 				$robots['noindex']  = true;
 				$robots['nofollow'] = false;
@@ -496,7 +495,7 @@ final class Complete99_Frontend {
 		$image     = self::post_image_url( $post->ID );
 		$brand_mark = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
 		$description = wp_strip_all_tags( $post->post_excerpt );
-		if ( 'store' === $key && Complete99_Commerce::is_ready() ) {
+		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
 			$description = 'he' === $lang
 				? 'מוצרי המזווה של קומפלט 99 עם מחיר, משקל, רכיבים, אלרגנים, מלאי ותנאי איסוף או משלוח.'
 				: 'Complete99 pantry goods with price, weight, ingredients, allergens, stock and pickup or delivery terms.';
@@ -543,7 +542,8 @@ final class Complete99_Frontend {
 	private static function is_consumer_transaction_request() {
 		return class_exists( 'Complete99_Commerce' )
 			&& Complete99_Commerce::is_transaction_page()
-			&& ( Complete99_Commerce::is_ready()
+			&& ( ( function_exists( 'is_cart' ) && is_cart() && Complete99_Commerce::cart_is_ready() )
+				|| Complete99_Commerce::is_ready()
 				|| Complete99_Commerce::can_preview_commerce()
 				|| Complete99_Commerce::can_access_customer_continuity() );
 	}
@@ -587,9 +587,7 @@ final class Complete99_Frontend {
 	}
 
 	private static function public_model_items() {
-		$items = class_exists( 'Complete99_Consumer' )
-			? Complete99_Consumer::menu_items()
-			: Complete99_REST::public_indexable_items();
+		$items = Complete99_REST::public_indexable_items();
 		usort(
 			$items,
 			static function ( $left, $right ) {
@@ -604,16 +602,7 @@ final class Complete99_Frontend {
 	}
 
 	public static function live_dish_by_slug( $slug ) {
-		$slug = sanitize_title( (string) $slug );
-		if ( '' === $slug ) {
-			return array();
-		}
-		foreach ( self::public_model_items() as $item ) {
-			if ( hash_equals( (string) $item['slug'], $slug ) ) {
-				return $item;
-			}
-		}
-		return array();
+		return Complete99_REST::public_indexable_item_by_slug( $slug );
 	}
 
 	public static function live_dish_url( $slug, $lang ) {
@@ -684,18 +673,9 @@ final class Complete99_Frontend {
 	}
 
 	private static function is_verified_current_dish_record( $dish ) {
-		if ( ! is_array( $dish )
-			|| true !== ( $dish['published'] ?? null )
-			|| ! in_array( sanitize_key( (string) ( $dish['verification_state'] ?? '' ) ), array( 'verified', 'launch_ready' ), true ) ) {
-			return false;
-		}
-		$source = sanitize_key( (string) ( $dish['_complete99_source'] ?? '' ) );
-		if ( '' !== $source && 'live' !== $source ) {
-			return false;
-		}
 		return class_exists( 'Complete99_REST' )
-			&& method_exists( 'Complete99_REST', 'is_public_item' )
-			&& Complete99_REST::is_public_item( $dish );
+			&& method_exists( 'Complete99_REST', 'is_public_indexable_item' )
+			&& Complete99_REST::is_public_indexable_item( $dish );
 	}
 
 	private static function live_dish_head_metadata( $dish, $lang ) {
@@ -769,6 +749,16 @@ final class Complete99_Frontend {
 			if ( $image ) {
 				$menu_item['image'] = $image;
 			}
+			if ( Complete99_Commerce::catalog_is_ready() && class_exists( 'Complete99_Live_Catalog' ) ) {
+				$store_url = Complete99_Content::route_url( 'store', $lang );
+				$related_products = array();
+				foreach ( Complete99_Live_Catalog::product_ids_for_dish_slug( (string) $dish['slug'] ) as $product_id ) {
+					$related_products[] = array( '@id' => $store_url . '#c99-product-' . absint( $product_id ) );
+				}
+				if ( ! empty( $related_products ) ) {
+					$menu_item['isRelatedTo'] = $related_products;
+				}
+			}
 			$graph[1]['mainEntity'] = array( '@id' => $canonical . '#menu-item' );
 			$graph[]                = $menu_item;
 		}
@@ -804,10 +794,10 @@ final class Complete99_Frontend {
 		$image   = self::post_image_url( $post->ID );
 		$key     = Complete99_Content::translation_group_for_post( $post->ID );
 		$page_description = wp_strip_all_tags( $post->post_excerpt );
-		if ( 'store' === $key && Complete99_Commerce::is_ready() ) {
+		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
 			$page_description = 'he' === $lang
-				? 'מוצרי המזווה של קומפלט 99 עם מידע מלא והמשך מאובטח לסל ולתשלום.'
-				: 'Complete99 pantry goods with full product information and a secure cart and checkout.';
+				? 'מוצרי המזווה של קומפלט 99 עם מחיר, מלאי, רכיבים, אחסון והוספה לסל.'
+				: 'Complete99 pantry goods with price, stock, ingredients, storage and add-to-cart.';
 		}
 		$graph   = array(
 			self::food_business_schema( $lang ),
@@ -877,7 +867,7 @@ final class Complete99_Frontend {
 		if ( $recipe ) {
 			$graph[] = $recipe;
 		}
-		if ( 'store' === $key && Complete99_Commerce::is_ready() ) {
+		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
 			foreach ( Complete99_Commerce::storefront_product_ids() as $product_id ) {
 				$product_schema = self::store_product_schema( $product_id, $lang, $url );
 				if ( $product_schema ) {
@@ -906,13 +896,14 @@ final class Complete99_Frontend {
 		$ingredients = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::INGREDIENTS_HE : Complete99_Commerce::INGREDIENTS_EN, true );
 		$allergens   = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::ALLERGENS_HE : Complete99_Commerce::ALLERGENS_EN, true );
 		$storage     = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::STORAGE_HE : Complete99_Commerce::STORAGE_EN, true );
+		$product_code= (string) get_post_meta( $product_id, '_complete99_catalog_product_code', true );
 		$image       = wp_get_attachment_image_url( $product->get_image_id(), 'full' );
 		$unit_codes  = array( 'kg' => 'KGM', 'g' => 'GRM', 'lbs' => 'LBR', 'oz' => 'ONZ' );
 		$weight_unit = (string) get_option( 'woocommerce_weight_unit', 'kg' );
 		if ( '' === trim( $name ) || '' === trim( $description ) || ! $image ) {
 			return null;
 		}
-		return array(
+		$schema = array(
 			'@type'              => 'Product',
 			'@id'                => $store_url . '#c99-product-' . absint( $product_id ),
 			'name'               => $name,
@@ -935,11 +926,25 @@ final class Complete99_Frontend {
 				'url'           => $store_url . '#c99-product-' . absint( $product_id ),
 				'priceCurrency' => (string) get_woocommerce_currency(),
 				'price'         => (string) $product->get_price(),
-				'availability'  => 'https://schema.org/InStock',
+				'availability'  => $product->is_in_stock() ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
 				'itemCondition' => 'https://schema.org/NewCondition',
 				'seller'        => array( '@id' => home_url( '/#organization' ) ),
 			),
 		);
+		if ( class_exists( 'Complete99_Live_Catalog' ) ) {
+			$relations = Complete99_Live_Catalog::relations_for_product_code( $product_code );
+			$dish_urls = array();
+			foreach ( (array) ( $relations['dish_slugs'] ?? array() ) as $dish_slug ) {
+				$dish_urls[] = self::live_dish_url( $dish_slug, $lang );
+			}
+			if ( ! empty( $dish_urls ) ) {
+				$schema['isRelatedTo'] = array_values( array_unique( $dish_urls ) );
+			}
+			if ( ! empty( $relations['ingredient_code'] ) ) {
+				$schema['subjectOf'] = Complete99_Content::route_url( 'ingredients', $lang ) . '#' . sanitize_html_class( $relations['ingredient_code'] );
+			}
+		}
+		return $schema;
 	}
 
 	private static function verified_recipe_schema( $post, $lang, $image ) {
@@ -1234,7 +1239,6 @@ final class Complete99_Frontend {
 						<source srcset="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/c99-food-house-spread-hero-2021-wp-v01.avif' ); ?>" type="image/avif" />
 						<img src="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/c99-food-house-spread-hero-2021-wp-v01.webp' ); ?>" alt="<?php echo esc_attr( $is_he ? 'מבט מלמעלה על קובה סלק, קוסקוס, קציצות, סלט ומנות נוספות' : 'Overhead spread of beet kubeh, couscous, meatballs, salad and additional dishes' ); ?>" width="1400" height="788" decoding="async" fetchpriority="high" />
 					</picture>
-					<figcaption><?php echo esc_html( $is_he ? 'צילום אוכל מארכיון קומפלט 99' : 'Complete99 archive food photograph' ); ?></figcaption>
 				</figure>
 			</div>
 		</section>
@@ -1298,7 +1302,7 @@ final class Complete99_Frontend {
 			</div>
 		</section>
 		<?php self::render_connected_table( $lang ); ?>
-		<?php self::render_food_archive( $lang ); ?>
+		<?php self::render_food_gallery( $lang ); ?>
 		<section class="c99-editorial-section">
 			<div class="c99-container c99-content-grid">
 				<article class="c99-article"><?php echo apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></article>
@@ -1663,7 +1667,7 @@ final class Complete99_Frontend {
 		}
 		if ( 'dishes' === $key ) {
 			self::render_live_menu( $lang );
-			self::render_food_archive( $lang );
+			self::render_food_gallery( $lang );
 		}
 	}
 
@@ -1690,7 +1694,7 @@ final class Complete99_Frontend {
 		<?php
 	}
 
-	private static function render_food_archive( $lang ) {
+	private static function render_food_gallery( $lang ) {
 		$is_he = 'he' === $lang;
 		$images = array(
 			array(
@@ -1719,21 +1723,20 @@ final class Complete99_Frontend {
 			),
 		);
 		?>
-		<section class="c99-food-archive" aria-labelledby="c99-food-archive-title">
+		<section class="c99-food-gallery" aria-labelledby="c99-food-gallery-title">
 			<div class="c99-container">
 				<div class="c99-section-heading">
 					<div>
-						<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מארכיון האוכל של קומפלט 99' : 'From the Complete99 food archive' ); ?></p>
-						<h2 id="c99-food-archive-title"><?php echo esc_html( $is_he ? 'אוכל שנראה כמו אוכל, עם מקום לסיפור שמאחוריו' : 'Food shown as food, with room for the story behind it' ); ?></h2>
+						<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מהמטבח של קומפלט 99' : 'From the Complete99 kitchen' ); ?></p>
+						<h2 id="c99-food-gallery-title"><?php echo esc_html( $is_he ? 'אוכל שנראה כמו אוכל, עם מקום לסיפור שמאחוריו' : 'Food shown as food, with room for the story behind it' ); ?></h2>
 					</div>
-					<p class="c99-food-archive-note"><?php echo esc_html( $is_he ? 'הצילומים מציגים נושאים קולינריים מארכיון המותג ואינם מציגים תפריט זמין או הצעת מכירה.' : 'These archive photographs illustrate culinary subjects; they do not represent a currently available menu or sales offer.' ); ?></p>
 				</div>
 				<div class="c99-food-mosaic">
-					<?php foreach ( $images as $index => $archive_image ) : ?>
+					<?php foreach ( $images as $index => $gallery_image ) : ?>
 						<figure class="<?php echo 0 === $index ? 'c99-food-mosaic-featured' : ''; ?>">
 							<picture>
-								<source srcset="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/' . $archive_image[0] . '.avif' ); ?>" type="image/avif" />
-								<img src="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/' . $archive_image[0] . '.webp' ); ?>" width="<?php echo esc_attr( $archive_image[1] ); ?>" height="<?php echo esc_attr( $archive_image[2] ); ?>" loading="lazy" decoding="async" alt="<?php echo esc_attr( $archive_image[3] ); ?>" />
+								<source srcset="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/' . $gallery_image[0] . '.avif' ); ?>" type="image/avif" />
+								<img src="<?php echo esc_url( COMPLETE99_PLATFORM_URL . 'assets/images/original/' . $gallery_image[0] . '.webp' ); ?>" width="<?php echo esc_attr( $gallery_image[1] ); ?>" height="<?php echo esc_attr( $gallery_image[2] ); ?>" loading="lazy" decoding="async" alt="<?php echo esc_attr( $gallery_image[3] ); ?>" />
 							</picture>
 						</figure>
 					<?php endforeach; ?>

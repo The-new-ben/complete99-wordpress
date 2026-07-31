@@ -47,7 +47,11 @@ final class Complete99_Commerce {
 	const STORAGE_EN         = '_complete99_product_storage_en';
 	const FULFILMENT_HE      = '_complete99_product_fulfilment_he';
 	const FULFILMENT_EN      = '_complete99_product_fulfilment_en';
+	const ORIGIN_HE          = '_complete99_product_origin_he';
+	const ORIGIN_EN          = '_complete99_product_origin_en';
 	const LABEL_REVIEWED     = '_complete99_product_label_reviewed';
+	const ORIGIN_REVIEWED    = '_complete99_product_origin_reviewed';
+	const CHECKOUT_ELIGIBLE  = '_complete99_product_checkout_eligible';
 	const RIGHTS_REVIEWED    = '_complete99_product_rights_reviewed';
 	const TAX_REVIEWED       = '_complete99_product_tax_reviewed';
 	const MEDIA_PUBLIC_SAFE  = '_complete99_media_public_safe';
@@ -150,6 +154,9 @@ final class Complete99_Commerce {
 		add_action( 'woocommerce_product_set_stock', array( __CLASS__, 'capture_product_stock' ), 20, 1 );
 		add_action( 'woocommerce_variation_set_stock', array( __CLASS__, 'capture_product_stock' ), 20, 1 );
 		add_action( 'woocommerce_checkout_create_order', array( __CLASS__, 'remember_checkout_order_language' ), 10, 2 );
+		add_filter( 'woocommerce_available_payment_gateways', array( __CLASS__, 'gate_classic_payment_gateways' ), PHP_INT_MAX, 1 );
+		add_action( 'woocommerce_after_checkout_validation', array( __CLASS__, 'guard_classic_checkout_validation' ), 1, 2 );
+		add_filter( 'woocommerce_create_order', array( __CLASS__, 'guard_classic_order_creation' ), 1, 2 );
 		add_action( 'woocommerce_created_customer', array( __CLASS__, 'remember_customer_language' ), 1, 3 );
 		add_action( 'woocommerce_created_customer_notification', array( __CLASS__, 'prepare_new_account_email_language' ), 1, 3 );
 		add_action( 'woocommerce_reset_password_notification', array( __CLASS__, 'prepare_reset_password_email_language' ), 1, 2 );
@@ -212,6 +219,7 @@ final class Complete99_Commerce {
 		add_filter( 'wp_robots', array( __CLASS__, 'noindex_native_woocommerce_routes' ), 99 );
 		add_action( 'template_redirect', array( __CLASS__, 'enforce_commerce_no_cache' ), -1 );
 		add_action( 'template_redirect', array( __CLASS__, 'gate_public_woocommerce_routes' ), 0 );
+		add_action( 'wp', array( __CLASS__, 'configure_catalog_cart_continuation' ), 20 );
 		add_action( 'pre_get_posts', array( __CLASS__, 'exclude_products_from_public_search' ), 20 );
 	}
 
@@ -297,6 +305,8 @@ final class Complete99_Commerce {
 			self::STORAGE_EN,
 			self::FULFILMENT_HE,
 			self::FULFILMENT_EN,
+			self::ORIGIN_HE,
+			self::ORIGIN_EN,
 		);
 		foreach ( $product_text_fields as $key ) {
 			register_post_meta(
@@ -314,7 +324,7 @@ final class Complete99_Commerce {
 			);
 		}
 
-		foreach ( array( self::PRODUCT_APPROVED, self::STOCK_AUTHORITY, self::LABEL_REVIEWED, self::RIGHTS_REVIEWED, self::TAX_REVIEWED, self::MEDIA_PUBLIC_SAFE ) as $key ) {
+		foreach ( array( self::PRODUCT_APPROVED, self::STOCK_AUTHORITY, self::LABEL_REVIEWED, self::ORIGIN_REVIEWED, self::CHECKOUT_ELIGIBLE, self::RIGHTS_REVIEWED, self::TAX_REVIEWED, self::MEDIA_PUBLIC_SAFE ) as $key ) {
 			register_post_meta(
 				'product',
 				$key,
@@ -393,6 +403,8 @@ final class Complete99_Commerce {
 				self::STORAGE_EN     => 'Storage instructions in English',
 				self::FULFILMENT_HE  => 'Pickup and delivery terms in Hebrew',
 				self::FULFILMENT_EN  => 'Pickup and delivery terms in English',
+				self::ORIGIN_HE      => 'Country of origin in Hebrew',
+				self::ORIGIN_EN      => 'Country of origin in English',
 			) as $id => $label
 		) {
 			woocommerce_wp_textarea_input(
@@ -406,8 +418,8 @@ final class Complete99_Commerce {
 		woocommerce_wp_checkbox(
 			array(
 				'id'          => self::PRODUCT_APPROVED,
-				'label'       => 'Complete99 storefront approved',
-				'description' => 'Confirms that the real product, label, price, image and fulfilment details have been reviewed.',
+				'label'       => 'Complete99 catalog publication authorized',
+				'description' => 'Confirms product identity, public image, opening price and fulfilment for catalog display. Checkout uses separate gates.',
 			)
 		);
 		woocommerce_wp_select(
@@ -424,6 +436,8 @@ final class Complete99_Commerce {
 		foreach (
 			array(
 				self::LABEL_REVIEWED  => 'Retail label reviewed',
+				self::ORIGIN_REVIEWED => 'Country of origin reviewed',
+				self::CHECKOUT_ELIGIBLE => 'Product approved for checkout',
 				self::RIGHTS_REVIEWED => 'Image and content rights reviewed',
 				self::TAX_REVIEWED    => 'Tax treatment reviewed',
 				self::MEDIA_PUBLIC_SAFE => 'Product media approved as public-safe',
@@ -460,6 +474,8 @@ final class Complete99_Commerce {
 			self::STORAGE_EN,
 			self::FULFILMENT_HE,
 			self::FULFILMENT_EN,
+			self::ORIGIN_HE,
+			self::ORIGIN_EN,
 		);
 		foreach ( $text_fields as $key ) {
 			$value = isset( $_POST[ $key ] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -473,7 +489,7 @@ final class Complete99_Commerce {
 			: '';
 		$product->update_meta_data( self::PRODUCT_APPROVED, $approved );
 		$product->update_meta_data( self::STOCK_AUTHORITY, 'woocommerce' === $authority ? $authority : '' );
-		foreach ( array( self::LABEL_REVIEWED, self::RIGHTS_REVIEWED, self::TAX_REVIEWED, self::MEDIA_PUBLIC_SAFE ) as $key ) {
+		foreach ( array( self::LABEL_REVIEWED, self::ORIGIN_REVIEWED, self::CHECKOUT_ELIGIBLE, self::RIGHTS_REVIEWED, self::TAX_REVIEWED, self::MEDIA_PUBLIC_SAFE ) as $key ) {
 			$product->update_meta_data( $key, isset( $_POST[ $key ] ) ? 'yes' : 'no' ); // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		}
 		$media_public_safe = isset( $_POST[ self::MEDIA_PUBLIC_SAFE ] ) ? 'yes' : 'no'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -802,7 +818,11 @@ final class Complete99_Commerce {
 			self::STORAGE_EN,
 			self::FULFILMENT_HE,
 			self::FULFILMENT_EN,
+			self::ORIGIN_HE,
+			self::ORIGIN_EN,
 			self::LABEL_REVIEWED,
+			self::ORIGIN_REVIEWED,
+			self::CHECKOUT_ELIGIBLE,
 			self::RIGHTS_REVIEWED,
 			self::TAX_REVIEWED,
 			self::MEDIA_PUBLIC_SAFE,
@@ -1404,11 +1424,18 @@ final class Complete99_Commerce {
 
 	public static function public_status() {
 		$readiness = self::readiness();
+		$catalog_ready = self::catalog_is_ready();
+		$cart_ready = self::cart_is_ready();
+		$product_count = $catalog_ready && class_exists( 'Complete99_Live_Catalog' )
+			? count( Complete99_Live_Catalog::product_ids() )
+			: 0;
 		$response = rest_ensure_response(
 			array(
-				'status'              => $readiness['ready'] ? 'checkout_ready' : 'external_ordering',
+				'status'              => $readiness['ready'] ? 'checkout_ready' : ( $catalog_ready ? 'catalog_ready' : 'external_ordering' ),
+				'catalog_ready'       => $catalog_ready,
+				'cart_ready'          => $cart_ready,
 				'checkout_ready'      => $readiness['ready'],
-				'product_count'       => $readiness['ready'] ? $readiness['product_count'] : 0,
+				'product_count'       => $readiness['ready'] ? $readiness['product_count'] : $product_count,
 				'current_order_url'   => self::order_url( 'he' ),
 				'current_order_urls'  => array(
 					'he' => self::order_url( 'he' ),
@@ -1431,6 +1458,29 @@ final class Complete99_Commerce {
 
 	public static function is_ready() {
 		return true === self::readiness()['ready'];
+	}
+
+	/**
+	 * The public product catalog is intentionally independent of checkout.
+	 * Electronic payment remains protected by is_ready().
+	 */
+	public static function catalog_is_ready() {
+		return class_exists( 'Complete99_Live_Catalog' ) && Complete99_Live_Catalog::is_ready();
+	}
+
+	/**
+	 * The editable classic cart is a public catalog surface, not a payment gate.
+	 */
+	public static function cart_is_ready() {
+		if ( ! self::catalog_is_ready() ) {
+			return false;
+		}
+		$cart_id = absint( get_option( 'woocommerce_cart_page_id', 0 ) );
+		if ( 1 > $cart_id || 'publish' !== (string) get_post_status( $cart_id ) ) {
+			return false;
+		}
+		$content = trim( (string) get_post_field( 'post_content', $cart_id ) );
+		return '[woocommerce_cart]' === $content;
 	}
 
 	private static function text_script_counts( $text ) {
@@ -1467,6 +1517,8 @@ final class Complete99_Commerce {
 			array( self::STORAGE_EN, 'en', 3, 60 ),
 			array( self::FULFILMENT_HE, 'he', 3, 60 ),
 			array( self::FULFILMENT_EN, 'en', 3, 60 ),
+			array( self::ORIGIN_HE, 'he', 2, 60 ),
+			array( self::ORIGIN_EN, 'en', 2, 60 ),
 		);
 		foreach ( $contracts as $contract ) {
 			list( $key, $lang, $minimum_expected, $minimum_share ) = $contract;
@@ -1480,6 +1532,9 @@ final class Complete99_Commerce {
 	}
 
 	public static function storefront_product_ids() {
+		if ( self::catalog_is_ready() ) {
+			return Complete99_Live_Catalog::product_ids();
+		}
 		$products = self::approved_products();
 		return $products['valid_ids'];
 	}
@@ -1932,12 +1987,15 @@ final class Complete99_Commerce {
 	}
 
 	private static function allowed_product_ids() {
+		if ( self::catalog_is_ready() ) {
+			return Complete99_Live_Catalog::product_ids();
+		}
 		return self::approved_products()['valid_ids'];
 	}
 
 	private static function is_allowed_product_id( $product_id ) {
 		$product_id = absint( $product_id );
-		if ( 1 > $product_id || ( ! self::is_ready() && ! self::can_preview_commerce() ) ) {
+		if ( 1 > $product_id || ( ! self::catalog_is_ready() && ! self::is_ready() && ! self::can_preview_commerce() ) ) {
 			return false;
 		}
 		$product = function_exists( 'wc_get_product' ) ? wc_get_product( $product_id ) : false;
@@ -1958,7 +2016,7 @@ final class Complete99_Commerce {
 			return $purchasable;
 		}
 		$product_id = is_object( $product ) && method_exists( $product, 'get_id' ) ? $product->get_id() : 0;
-		return (bool) $purchasable && self::is_allowed_product_id( $product_id );
+		return (bool) $purchasable && self::cart_is_ready() && self::is_allowed_product_id( $product_id );
 	}
 
 	public static function disable_woocommerce_auto_update( $update, $item ) {
@@ -2959,11 +3017,73 @@ final class Complete99_Commerce {
 		return true;
 	}
 
+	/**
+	 * Authorize classic checkout only after the full launch gate, during an
+	 * administrator acceptance preview, or for an authenticated existing-order
+	 * continuity request. Catalog and cart readiness alone are never enough.
+	 */
+	private static function classic_checkout_is_authorized() {
+		return self::is_ready()
+			|| self::can_preview_commerce()
+			|| self::can_access_customer_continuity();
+	}
+
+	private static function is_non_ajax_admin_request() {
+		return function_exists( 'is_admin' )
+			&& is_admin()
+			&& ( ! function_exists( 'wp_doing_ajax' ) || ! wp_doing_ajax() )
+			&& self::can_manage_commerce();
+	}
+
+	private static function classic_checkout_hold_message() {
+		return 'en' === self::transaction_language()
+			? 'Electronic checkout is not available for this cart. Please call Complete99 to confirm the order.'
+			: 'התשלום האלקטרוני אינו זמין לסל הזה. יש להתקשר לקומפלט 99 כדי לאשר את ההזמנה.';
+	}
+
+	/**
+	 * Hide every classic payment gateway while checkout is held. This filter is
+	 * also applied to wc-ajax=checkout, which bypasses template redirects.
+	 */
+	public static function gate_classic_payment_gateways( $gateways ) {
+		if ( self::is_non_ajax_admin_request() || self::classic_checkout_is_authorized() ) {
+			return is_array( $gateways ) ? $gateways : array();
+		}
+		return array();
+	}
+
+	/**
+	 * Reject a held classic checkout before customer or order creation.
+	 */
+	public static function guard_classic_checkout_validation( $data, $errors ) {
+		if ( self::is_non_ajax_admin_request() || self::classic_checkout_is_authorized() ) {
+			return;
+		}
+		if ( is_object( $errors ) && method_exists( $errors, 'add' ) ) {
+			$errors->add( 'complete99_classic_checkout_held', self::classic_checkout_hold_message() );
+		}
+	}
+
+	/**
+	 * Final server-side guard for direct WC_Checkout::create_order() calls.
+	 */
+	public static function guard_classic_order_creation( $order_id, $checkout ) {
+		if ( self::is_non_ajax_admin_request() || self::classic_checkout_is_authorized() ) {
+			return $order_id;
+		}
+		return new WP_Error(
+			'complete99_classic_checkout_held',
+			self::classic_checkout_hold_message(),
+			array( 'status' => 409 )
+		);
+	}
+
 	public static function gate_public_woocommerce_routes() {
 		if ( is_admin() || wp_doing_ajax() || ! self::is_public_woocommerce_route() ) {
 			return;
 		}
 		$ready_or_preview = self::is_ready() || self::can_preview_commerce();
+		$cart_or_preview = self::cart_is_ready() || $ready_or_preview;
 		if ( self::can_preview_commerce() ) {
 			if ( ! defined( 'DONOTCACHEPAGE' ) ) {
 				define( 'DONOTCACHEPAGE', true );
@@ -2977,6 +3097,10 @@ final class Complete99_Commerce {
 		}
 		$lang             = self::transaction_language();
 		$store_url        = Complete99_Content::route_url( 'store', $lang );
+		$is_cart = function_exists( 'is_cart' ) && is_cart();
+		if ( $is_cart && $cart_or_preview ) {
+			return;
+		}
 		if ( ! $ready_or_preview && ! self::can_access_customer_continuity() ) {
 			if ( 'GET' !== strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ) ) {
 				wp_die( esc_html__( 'The Complete99 on-site store is not open.', 'complete99-platform' ), '', array( 'response' => 503 ) );
@@ -2994,6 +3118,35 @@ final class Complete99_Commerce {
 			wp_safe_redirect( $store_url . '#c99-live-store-products', 302 );
 			exit;
 		}
+	}
+
+	/**
+	 * Keep cart editing public while checkout is held, with a real order path.
+	 */
+	public static function configure_catalog_cart_continuation() {
+		if ( ! self::cart_is_ready()
+			|| self::is_ready()
+			|| ! function_exists( 'is_cart' )
+			|| ! is_cart() ) {
+			return;
+		}
+		remove_action( 'woocommerce_proceed_to_checkout', 'woocommerce_button_proceed_to_checkout', 20 );
+		add_action( 'woocommerce_proceed_to_checkout', array( __CLASS__, 'render_catalog_cart_continuation' ), 20 );
+	}
+
+	/**
+	 * Render the non-electronic continuation for a catalog-ready cart.
+	 */
+	public static function render_catalog_cart_continuation() {
+		$is_he     = 'he' === self::transaction_language();
+		$store_url = Complete99_Content::route_url( 'store', $is_he ? 'he' : 'en' );
+		?>
+		<div class="c99-cart-continuation" role="group" aria-label="<?php echo esc_attr( 'המשך הזמנה / Order continuation' ); ?>">
+			<p><?php echo esc_html( $is_he ? 'אפשר לעדכן או להסיר מוצרים מהסל. לבדיקת זמינות ולאישור ההזמנה מתקשרים אלינו.' : 'You can update or remove products from the cart. Call us to check availability and confirm the order.' ); ?></p>
+			<a class="checkout-button button alt wc-forward c99-cart-phone-order" href="tel:035231810" aria-label="<?php echo esc_attr( 'לשאלות ולהזמנה בטלפון / Questions and orders by phone: 03-523-1810' ); ?>"><?php echo esc_html( $is_he ? 'לשאלות ולהזמנה: 03-523-1810' : 'Questions and orders: 03-523-1810' ); ?></a>
+			<a class="button wc-backward c99-cart-return-store" href="<?php echo esc_url( $store_url ); ?>"><?php echo esc_html( $is_he ? 'חזרה למזווה' : 'Return to the pantry' ); ?></a>
+		</div>
+		<?php
 	}
 
 	public static function exclude_products_from_public_search( $query ) {
@@ -3741,6 +3894,8 @@ final class Complete99_Commerce {
 			|| $product->backorders_allowed()
 			|| 'woocommerce' !== (string) get_post_meta( $product_id, self::STOCK_AUTHORITY, true )
 			|| 'yes' !== (string) get_post_meta( $product_id, self::LABEL_REVIEWED, true )
+			|| 'yes' !== (string) get_post_meta( $product_id, self::ORIGIN_REVIEWED, true )
+			|| 'yes' !== (string) get_post_meta( $product_id, self::CHECKOUT_ELIGIBLE, true )
 			|| 'yes' !== (string) get_post_meta( $product_id, self::RIGHTS_REVIEWED, true )
 			|| 'yes' !== (string) get_post_meta( $product_id, self::TAX_REVIEWED, true )
 			|| 'yes' !== (string) get_post_meta( $product_id, self::MEDIA_PUBLIC_SAFE, true ) ) {
@@ -3819,7 +3974,11 @@ final class Complete99_Commerce {
 			self::STORAGE_EN,
 			self::FULFILMENT_HE,
 			self::FULFILMENT_EN,
+			self::ORIGIN_HE,
+			self::ORIGIN_EN,
 			self::LABEL_REVIEWED,
+			self::ORIGIN_REVIEWED,
+			self::CHECKOUT_ELIGIBLE,
 			self::RIGHTS_REVIEWED,
 			self::TAX_REVIEWED,
 			self::MEDIA_PUBLIC_SAFE,

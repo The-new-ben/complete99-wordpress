@@ -156,7 +156,7 @@ final class Complete99_Inventory_Bridge {
 		if ( self::is_error( $payload ) ) {
 			return $payload;
 		}
-		$migration = self::migration_guard();
+		$migration = self::migration_guard( $payload['mode'] );
 		if ( self::is_error( $migration ) ) {
 			return $migration;
 		}
@@ -199,7 +199,22 @@ final class Complete99_Inventory_Bridge {
 						500
 					);
 				}
+				$replay_plans = self::preflight( $payload );
+				if ( self::is_error( $replay_plans ) ) {
+					return $replay_plans;
+				}
+				foreach ( $replay_plans as $replay_plan ) {
+					$verified = self::verify_plan_readback( $replay_plan, $payload['mode'] );
+					if ( self::is_error( $verified ) ) {
+						return self::error(
+							'complete99_inventory_replay_drift',
+							'The stored inventory receipt no longer matches the current product state.',
+							409
+						);
+					}
+				}
 				$receipt['idempotent'] = true;
+				$receipt['current_state_verified'] = true;
 				return self::private_response( $receipt );
 			}
 
@@ -263,6 +278,7 @@ final class Complete99_Inventory_Bridge {
 				'write_count'     => $writes,
 				'unchanged_count' => count( $items ) - $writes,
 				'idempotent'      => false,
+				'current_state_verified' => true,
 				'items'           => $items,
 			);
 
@@ -403,17 +419,24 @@ final class Complete99_Inventory_Bridge {
 	/**
 	 * Refuse inventory writes until the current migration and held catalog are exact.
 	 */
-	private static function migration_guard() {
+	private static function migration_guard( $mode ) {
 		if ( ! defined( 'COMPLETE99_PLATFORM_VERSION' )
 			|| ! class_exists( 'Complete99_Platform', false )
 			|| ! is_callable( array( 'Complete99_Platform', 'migration_failed' ) )
-			|| ! is_callable( array( 'Complete99_Platform', 'evaluation_catalog_ready' ) )
 			|| Complete99_Platform::migration_failed()
-			|| COMPLETE99_PLATFORM_VERSION !== (string) get_option( 'complete99_platform_version', '' )
-			|| true !== Complete99_Platform::evaluation_catalog_ready() ) {
+			|| COMPLETE99_PLATFORM_VERSION !== (string) get_option( 'complete99_platform_version', '' ) ) {
 			return self::error(
 				'complete99_inventory_migration_incomplete',
 				'Inventory synchronization is unavailable until the private catalog migration is complete.',
+				503
+			);
+		}
+		if ( 'evaluation' === $mode
+			&& ( ! is_callable( array( 'Complete99_Platform', 'evaluation_catalog_ready' ) )
+				|| true !== Complete99_Platform::evaluation_catalog_ready() ) ) {
+			return self::error(
+				'complete99_inventory_migration_incomplete',
+				'Evaluation inventory requires the exact private evaluation catalog.',
 				503
 			);
 		}
@@ -441,11 +464,11 @@ final class Complete99_Inventory_Bridge {
 				);
 			}
 			if ( ! class_exists( 'Complete99_Commerce' )
-				|| ! is_callable( array( 'Complete99_Commerce', 'is_ready' ) )
-				|| true !== Complete99_Commerce::is_ready() ) {
+				|| ! is_callable( array( 'Complete99_Commerce', 'catalog_is_ready' ) )
+				|| true !== Complete99_Commerce::catalog_is_ready() ) {
 				return self::error(
 					'complete99_inventory_store_not_ready',
-					'Commerce inventory synchronization requires global store readiness.',
+					'Commerce inventory synchronization requires the verified live catalog.',
 					409
 				);
 			}
@@ -784,11 +807,13 @@ final class Complete99_Inventory_Bridge {
 
 		$product  = wc_get_product( $product_id );
 		$quantity = is_object( $product ) ? $product->get_stock_quantity() : null;
+		$expected_status = 0 < $item['quantity'] ? 'instock' : 'outofstock';
 		if ( ! is_object( $product )
 			|| 'publish' !== (string) get_post_status( $product_id )
 			|| true !== (bool) $product->managing_stock()
 			|| ! is_numeric( $quantity )
-			|| $item['quantity'] !== (int) $quantity ) {
+			|| $item['quantity'] !== (int) $quantity
+			|| $expected_status !== (string) $product->get_stock_status() ) {
 			return self::error(
 				'complete99_inventory_stock_readback',
 				'The WooCommerce inventory quantity failed readback.',
@@ -910,7 +935,8 @@ final class Complete99_Inventory_Bridge {
 						$fresh = wc_get_product( $product_id );
 						if ( ! is_object( $fresh )
 							|| (bool) $plan['snapshot']['manage_stock'] !== (bool) $fresh->managing_stock()
-							|| ! self::values_equal( $plan['snapshot']['quantity'], $fresh->get_stock_quantity() ) ) {
+							|| ! self::values_equal( $plan['snapshot']['quantity'], $fresh->get_stock_quantity() )
+							|| (string) $plan['snapshot']['stock_status'] !== (string) $fresh->get_stock_status() ) {
 							$success = false;
 						}
 					} else {

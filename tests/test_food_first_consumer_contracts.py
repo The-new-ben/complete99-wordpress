@@ -538,7 +538,7 @@ def test_group_order_form_collects_and_persists_planning_fields() -> None:
     assert "aggregate quantities only" in form
 
 
-def test_store_is_hidden_and_redirected_for_unready_public_visitors() -> None:
+def test_store_is_published_for_catalog_ready_and_redirected_when_catalog_unready() -> None:
     frontend = _read(FRONTEND)
     consumer = _read(CONSUMER)
     commerce = _read(COMMERCE)
@@ -549,7 +549,7 @@ def test_store_is_hidden_and_redirected_for_unready_public_visitors() -> None:
     ) in frontend
     redirect = _php_method(frontend, "maybe_redirect_unready_store")
     for marker in (
-        "Complete99_Commerce::is_ready()",
+        "Complete99_Commerce::catalog_is_ready()",
         "Complete99_Commerce::can_preview_commerce()",
         "'store' !== Complete99_Content::translation_group_for_post",
         "Complete99_Content::route_url( 'dishes', $lang )",
@@ -564,14 +564,14 @@ def test_store_is_hidden_and_redirected_for_unready_public_visitors() -> None:
 
     for method_name in ("render_header", "render_footer"):
         method = _php_method(consumer, method_name)
-        readiness_gate = method.find("Complete99_Commerce::is_ready()")
+        readiness_gate = method.find("Complete99_Commerce::catalog_is_ready()")
         store_entry = method.find("array( 'store'")
         assert readiness_gate >= 0, method_name
         assert store_entry > readiness_gate, method_name
         assert "Complete99_Commerce::can_preview_commerce()" in method
 
     teaser = _php_method(consumer, "render_pantry_teaser")
-    readiness_gate = teaser.find("Complete99_Commerce::is_ready()")
+    readiness_gate = teaser.find("Complete99_Commerce::catalog_is_ready()")
     store_route = teaser.find("self::route( 'store', $lang )")
     assert readiness_gate >= 0
     assert store_route > readiness_gate

@@ -1,0 +1,878 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+import unittest
+from datetime import date
+from pathlib import Path
+from urllib.parse import urlparse
+
+
+ROOT = Path(__file__).resolve().parents[1]
+PLUGIN = ROOT / "plugin" / "complete99-platform"
+MAIN = PLUGIN / "complete99-platform.php"
+LIVE_CATALOG = PLUGIN / "includes" / "class-complete99-live-catalog.php"
+COMMERCE = PLUGIN / "includes" / "class-complete99-commerce.php"
+CONSUMER = PLUGIN / "includes" / "class-complete99-consumer.php"
+CONTENT = PLUGIN / "includes" / "class-complete99-content.php"
+FRONTEND = PLUGIN / "includes" / "class-complete99-frontend.php"
+REST = PLUGIN / "includes" / "class-complete99-rest.php"
+LIVE_DISH_SITEMAP = PLUGIN / "includes" / "class-complete99-live-dish-sitemap-provider.php"
+CONSUMER_CONTENT = PLUGIN / "data" / "consumer-content.php"
+PUBLIC_SCRIPT = PLUGIN / "assets" / "js" / "public.js"
+CONSUMER_CSS = PLUGIN / "assets" / "css" / "consumer.css"
+MATERIALIZER = ROOT / "scripts" / "materialize-woocommerce.py"
+
+
+EXPECTED_PRICES = {
+    "product-tahini-500g": "11.00",
+    "product-amba-500g": "14.90",
+    "product-hot-sauce-60ml": "12.90",
+    "product-pita-12x50g": "14.90",
+    "product-aubergine-1kg": "6.90",
+    "product-eggs-l-12": "14.24",
+    "product-potato-white-1kg": "4.90",
+    "product-tomato-1kg": "6.90",
+    "product-cucumber-1kg": "6.90",
+    "product-onion-dry-1kg": "4.90",
+    "product-parsley-100g": "5.90",
+    "product-chickpeas-dry-500g": "8.90",
+    "product-beetroot-1kg": "4.90",
+    "product-bulgur-fine-500g": "5.90",
+    "product-couscous-1kg": "11.90",
+    "product-chicken-breast-1kg": "39.90",
+    "product-breadcrumbs-500g": "8.90",
+    "product-ground-beef-1kg": "64.90",
+    "product-tilapia-fillet-1kg": "38.90",
+    "product-tomato-sauce-400g": "9.90",
+    "product-rice-persian-1kg": "11.90",
+    "product-beef-shank-1kg": "69.90",
+    "product-hawayej-soup-100g": "8.90",
+    "product-olive-oil-750ml": "44.90",
+    "product-pickles-brine-320g": "14.90",
+    "product-chicken-liver-1kg": "17.90",
+}
+
+EXPECTED_DISHES = {
+    "sabich",
+    "beet-kubbeh",
+    "schnitzel",
+    "shakshuka",
+    "homemade-meatballs",
+    "fish-patties",
+    "grilled-chicken",
+    "aja-herb-omelet",
+    "couscous",
+    "yemenite-beef-soup",
+    "sabtucha",
+    "chicken-liver",
+}
+
+SAFE_STORE_FILTERS = {
+    "all",
+    "pantry",
+    "fresh-produce",
+    "chilled-frozen",
+    "bakery",
+    "regulated",
+}
+
+
+def php_string(path: Path) -> str:
+    return path.as_posix().replace("'", "\\'")
+
+
+@unittest.skipUnless(shutil.which("php"), "PHP is required for catalog evaluation")
+class Complete99LiveCatalogRuntimeContracts(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        plugin_dir = php_string(PLUGIN) + "/"
+        live_catalog = php_string(LIVE_CATALOG)
+        script = f"""
+define('ABSPATH', __DIR__);
+define('COMPLETE99_PLATFORM_DIR', '{plugin_dir}');
+function sanitize_file_name($value) {{ return basename((string) $value); }}
+function sanitize_key($value) {{
+    return strtolower((string) preg_replace('/[^a-z0-9_\\-]/i', '', (string) $value));
+}}
+function sanitize_title($value) {{
+    return trim(strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', (string) $value)), '-');
+}}
+function absint($value) {{ return abs((int) $value); }}
+function wp_json_encode($value, $flags = 0) {{
+    return json_encode($value, $flags | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+}}
+class WP_Error {{
+    private $code;
+    private $message;
+    public function __construct($code, $message, $data = array()) {{
+        $this->code = $code;
+        $this->message = $message;
+    }}
+    public function get_error_code() {{ return $this->code; }}
+    public function get_error_message() {{ return $this->message; }}
+}}
+function is_wp_error($value) {{ return $value instanceof WP_Error; }}
+require '{live_catalog}';
+$method = new ReflectionMethod('Complete99_Live_Catalog', 'load_bundle');
+$method->setAccessible(true);
+$bundle = $method->invoke(null);
+if (is_wp_error($bundle)) {{
+    throw new RuntimeException($bundle->get_error_code() . ': ' . $bundle->get_error_message());
+}}
+$seed_registry = require COMPLETE99_PLATFORM_DIR . 'data/catalog-product-seeds.php';
+$consumer_menu = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
+$seed_sources = array();
+foreach ($seed_registry['products'] as $seed) {{
+    $seed_sources[$seed['product_code']] = array(
+        'provider' => $seed['market_observation']['source_provider'],
+        'source_updated_at' => $seed['market_observation']['source_updated_at'],
+    );
+}}
+$products = array();
+foreach ($bundle['products'] as $code => $record) {{
+    $products[$code] = array(
+        'price' => $record['price'],
+        'ingredient' => $record['ingredient'],
+        'classification' => $record['classification'],
+        'name' => $record['name'],
+        'package' => $record['package'],
+        'price_evidence' => array_merge($record['price_evidence'], $seed_sources[$code]),
+        'public' => $record['public'],
+        'relations' => $record['relations'],
+        'asset' => array(
+            'filename' => $record['asset']['filename'],
+            'relative_path' => str_replace(COMPLETE99_PLATFORM_DIR, '', $record['asset']['path']),
+            'sha256' => $record['asset']['sha256'],
+            'width' => $record['asset']['width'],
+            'height' => $record['asset']['height'],
+        ),
+    );
+}}
+echo wp_json_encode(array(
+    'products' => $products,
+    'policy' => $bundle['policy'],
+    'prices' => $bundle['price_registry'],
+    'relations' => $bundle['relations'],
+    'consumer_menu' => $consumer_menu,
+));
+"""
+        completed = subprocess.run(
+            ["php", "-r", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=30,
+            check=True,
+        )
+        cls.bundle = json.loads(completed.stdout)
+        cls.live_catalog = LIVE_CATALOG.read_text(encoding="utf-8")
+        cls.commerce = COMMERCE.read_text(encoding="utf-8")
+        cls.consumer = CONSUMER.read_text(encoding="utf-8")
+        cls.content = CONTENT.read_text(encoding="utf-8")
+        cls.frontend = FRONTEND.read_text(encoding="utf-8")
+        cls.rest = REST.read_text(encoding="utf-8")
+        cls.live_dish_sitemap = LIVE_DISH_SITEMAP.read_text(encoding="utf-8")
+        cls.consumer_content = CONSUMER_CONTENT.read_text(encoding="utf-8")
+        cls.script = PUBLIC_SCRIPT.read_text(encoding="utf-8")
+        cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
+        cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
+
+    def test_release_version_is_exact_1_3_7(self) -> None:
+        source = MAIN.read_text(encoding="utf-8")
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.7$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.7' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.7' );", source)
+
+    def test_runtime_bundle_has_exact_allowlist_and_price_map(self) -> None:
+        products = self.bundle["products"]
+        price_registry = self.bundle["prices"]
+        self.assertEqual(26, len(products))
+        self.assertEqual(set(EXPECTED_PRICES), set(products))
+        self.assertEqual(EXPECTED_PRICES, {code: row["price"] for code, row in products.items()})
+        self.assertEqual("complete99-live-catalog-prices/v1", price_registry["schema"])
+        self.assertEqual("ILS", price_registry["currency"])
+        self.assertEqual("2026-07-31", price_registry["reviewed_at"])
+        self.assertEqual(
+            "owner_authorized_opening_retail_price_informed_by_market_observation",
+            price_registry["price_scope"],
+        )
+        selection_rule = price_registry["evidence"]["selection_rule"].lower()
+        for required_phrase in (
+            "owner-authorized opening retail price",
+            "market observation",
+            "not represented as the exact observed third-party price",
+        ):
+            self.assertIn(required_phrase, selection_rule)
+        self.assertEqual(EXPECTED_PRICES, price_registry["prices"])
+
+    def test_every_price_has_a_bound_https_source_and_dates(self) -> None:
+        expected_providers = {"pricez", "chp", "carrefour"}
+        source_urls = set()
+        for code, product in self.bundle["products"].items():
+            evidence = product["price_evidence"]
+            parsed = urlparse(evidence["source_url"])
+            self.assertEqual("https", parsed.scheme, code)
+            self.assertTrue(parsed.hostname, code)
+            self.assertIn(evidence["provider"], expected_providers, code)
+            if evidence["provider"] == "pricez":
+                self.assertIn(parsed.hostname, {"www.pricez.co.il", "prices.pricez.co.il"}, code)
+            elif evidence["provider"] == "chp":
+                self.assertEqual("chp.co.il", parsed.hostname, code)
+            else:
+                self.assertEqual("www.carrefour.co.il", parsed.hostname, code)
+            checked = date.fromisoformat(evidence["accessed_at"])
+            updated = date.fromisoformat(evidence["source_updated_at"])
+            self.assertEqual(date(2026, 7, 31), checked, code)
+            self.assertLessEqual(updated, checked, code)
+            source_urls.add(evidence["source_url"])
+        self.assertEqual(26, len(source_urls))
+
+    def test_relations_are_complete_reciprocal_and_have_unique_anchors(self) -> None:
+        product_relations = self.bundle["relations"]["products"]
+        dish_relations = self.bundle["relations"]["dishes"]
+        self.assertEqual(set(EXPECTED_PRICES), set(product_relations))
+        self.assertEqual(EXPECTED_DISHES, set(dish_relations))
+
+        ingredient_codes = []
+        for code, relation in product_relations.items():
+            ingredient = relation["ingredient_code"]
+            dishes = relation["dish_slugs"]
+            self.assertRegex(ingredient, r"^ingredient-[a-z0-9-]+$", code)
+            self.assertTrue(dishes, code)
+            self.assertEqual(len(dishes), len(set(dishes)), code)
+            self.assertTrue(set(dishes).issubset(EXPECTED_DISHES), code)
+            ingredient_codes.append(ingredient)
+            for dish in dishes:
+                self.assertIn(code, dish_relations[dish], f"{code} -> {dish}")
+
+        self.assertEqual(26, len(set(ingredient_codes)))
+        for dish, codes in dish_relations.items():
+            self.assertTrue(codes, dish)
+            self.assertEqual(len(codes), len(set(codes)), dish)
+            for code in codes:
+                self.assertIn(dish, product_relations[code]["dish_slugs"], f"{dish} -> {code}")
+
+        ingredient_index = self.consumer.split(
+            "private static function render_live_ingredient_index", 1
+        )[1].split("private static function render_group_order_page", 1)[0]
+        product_card = self.consumer.split(
+            "private static function render_store_product_card", 1
+        )[1].split("private static function render_related_store_products", 1)[0]
+        self.assertIn('id="<?php echo esc_attr( $ingredient ); ?>"', ingredient_index)
+        self.assertIn("sanitize_html_class", ingredient_index)
+        self.assertIn("self::route( 'store', $lang ) . '#c99-product-'", ingredient_index)
+        self.assertIn("self::route( 'ingredients', $lang ) . '#'", product_card)
+        self.assertIn("render_live_ingredient_index( $lang )", self.consumer)
+
+    def test_product_assets_are_unique_webp_files_with_exact_hashes(self) -> None:
+        hashes = set()
+        filenames = set()
+        for code, product in self.bundle["products"].items():
+            asset = product["asset"]
+            path = PLUGIN / asset["relative_path"]
+            self.assertEqual(".webp", path.suffix.lower(), code)
+            self.assertEqual(path.name, asset["filename"], code)
+            self.assertTrue(path.is_file(), path)
+            self.assertTrue(re.fullmatch(r"[a-f0-9]{64}", asset["sha256"]), code)
+            self.assertEqual(asset["sha256"], hashlib.sha256(path.read_bytes()).hexdigest(), code)
+            self.assertGreaterEqual(asset["width"], 1000, code)
+            self.assertGreaterEqual(asset["height"], 700, code)
+            self.assertGreater(path.stat().st_size, 50_000, code)
+            hashes.add(asset["sha256"])
+            filenames.add(asset["filename"])
+        self.assertEqual(26, len(hashes))
+        self.assertEqual(26, len(filenames))
+
+    def test_product_policy_is_bilingual_and_taxonomy_bounded(self) -> None:
+        policy = self.bundle["policy"]
+        self.assertEqual("complete99-live-catalog-products/v1", policy["schema"])
+        self.assertEqual("2026-07-31", policy["reviewed_at"])
+        self.assertIs(policy["catalog_publication_authorized"], True)
+        self.assertIs(policy["supplier_label_reviewed"], False)
+        self.assertIs(policy["country_of_origin_reviewed"], False)
+        self.assertIs(policy["checkout_eligible"], False)
+        self.assertEqual(1, policy["initial_stock"])
+        self.assertEqual("no", policy["backorders"])
+        self.assertEqual("taxable", policy["tax_status"])
+        self.assertEqual(set(EXPECTED_PRICES), set(policy["products"]))
+        self.assertEqual({"pantry", "bakery", "produce", "eggs", "protein"}, set(policy["categories"]))
+        self.assertEqual({"ambient", "fresh", "chilled", "frozen"}, set(policy["shipping_classes"]))
+        self.assertEqual(
+            {"ambient", "fresh", "chilled", "frozen", "condiment", "grain", "spice", "produce", "protein"},
+            set(policy["tags"]),
+        )
+
+        term_slugs = []
+        for group in ("categories", "tags", "shipping_classes"):
+            for definition in policy[group].values():
+                self.assertRegex(definition["slug"], r"^complete99-[a-z0-9-]+$")
+                self.assertIn(" | ", definition["name"])
+                term_slugs.append(definition["slug"])
+        self.assertEqual(len(term_slugs), len(set(term_slugs)))
+
+        for code, product in policy["products"].items():
+            self.assertGreater(float(product["weight_kg"]), 0, code)
+            self.assertIn(product["category"], policy["categories"], code)
+            self.assertIn(product["shipping_class"], policy["shipping_classes"], code)
+            self.assertTrue(product["tags"], code)
+            self.assertTrue(set(product["tags"]).issubset(policy["tags"]), code)
+            for field in ("ingredients", "allergens", "storage"):
+                self.assertTrue(product[field]["he"].strip(), f"{code}:{field}:he")
+                self.assertTrue(product[field]["en"].strip(), f"{code}:{field}:en")
+            self.assertTrue(self.bundle["products"][code]["name"]["he"].strip(), code)
+            self.assertTrue(self.bundle["products"][code]["name"]["en"].strip(), code)
+            self.assertTrue(self.bundle["products"][code]["package"]["he"].strip(), code)
+            self.assertTrue(self.bundle["products"][code]["package"]["en"].strip(), code)
+
+        for marker in (
+            "Complete99_Commerce::PRODUCT_APPROVED      => 'yes'",
+            "Complete99_Commerce::LABEL_REVIEWED        => ! empty( $bundle['policy']['supplier_label_reviewed'] ) ? 'yes' : 'no'",
+            "Complete99_Commerce::ORIGIN_REVIEWED       => ! empty( $bundle['policy']['country_of_origin_reviewed'] ) ? 'yes' : 'no'",
+            "Complete99_Commerce::CHECKOUT_ELIGIBLE     => ! empty( $bundle['policy']['checkout_eligible'] ) ? 'yes' : 'no'",
+        ):
+            self.assertIn(marker, self.live_catalog)
+
+    def test_public_store_is_never_the_native_woocommerce_shop_page(self) -> None:
+        pages = self.live_catalog.split("private static function ensure_woocommerce_pages", 1)[
+            1
+        ].split("private static function ensure_standard_vat_rate", 1)[0]
+        self.assertIn(
+            "$store_id   = Complete99_Content::find_translation_post_id( 'store', 'he', true );",
+            pages,
+        )
+        self.assertIn("$native_shop_id = absint( get_option( 'woocommerce_shop_page_id', 0 ) );", pages)
+        self.assertIn("$native_shop_id === absint( $store_id )", pages)
+        self.assertIn("wc_create_page( 'shop', 'woocommerce_shop_page_id', 'Shop', '' );", pages)
+        self.assertIn("'publish' !== (string) get_post_status( $native_shop_id )", pages)
+        self.assertIn("must be published and distinct from the public Complete99 store", pages)
+        self.assertNotRegex(
+            pages,
+            r"update_option\(\s*['\"]woocommerce_shop_page_id['\"]\s*,\s*absint\(\s*\$store_id",
+        )
+
+    def test_materializer_initializes_stock_only_for_new_products_and_reads_marker(self) -> None:
+        dry_run = self.live_catalog.split("public static function dry_run", 1)[1].split(
+            "public static function materialize", 1
+        )[0]
+        ensure_product = self.live_catalog.split("private static function ensure_product", 1)[
+            1
+        ].split("private static function product_attributes", 1)[0]
+        for marker in (
+            "'stock_action' => $is_new ? 'initialize' : 'preserve'",
+            "'initial_stock' => $is_new ? 1 : null",
+            "'backorders' => 'no'",
+            "'product_count'   => count( $actions )",
+        ):
+            self.assertIn(marker, dry_run)
+        for marker in (
+            "$product->set_status( 'publish' );",
+            "$product->set_catalog_visibility( 'visible' );",
+            "$product->set_manage_stock( true );",
+            "$product->set_backorders( 'no' );",
+            "'_complete99_live_catalog_initial_stock'   => '1'",
+            "'_complete99_live_catalog_currency'        => 'ILS'",
+        ):
+            self.assertIn(marker, ensure_product)
+
+        self.assertIn(
+            "const META_STOCK_INITIALIZED = '_complete99_live_catalog_stock_initialized';",
+            self.live_catalog,
+        )
+        self.assertIn("$sets_initial_stock = ! $existing_id;", ensure_product)
+        initial_branch = ensure_product.split("if ( $sets_initial_stock )", 1)[1].split(
+            "$product->set_backorders( 'no' );", 1
+        )[0]
+        self.assertIn("$product->set_stock_quantity( 1 );", initial_branch)
+        self.assertIn("$product->set_stock_status( 'instock' );", initial_branch)
+        self.assertEqual(1, ensure_product.count("set_stock_quantity"))
+        self.assertEqual(1, ensure_product.count("set_stock_status"))
+        self.assertNotIn("metadata_exists", ensure_product)
+        readback = ensure_product.split("$initial_stock_readback = wc_get_product", 1)[1].split(
+            "$meta = array(", 1
+        )[0]
+        for marker in (
+            "$initial_stock_readback->managing_stock()",
+            "$initial_stock_readback->get_stock_quantity()",
+            "$initial_stock_readback->get_stock_status()",
+            "$initial_stock_readback->get_backorders()",
+        ):
+            self.assertIn(marker, readback)
+        self.assertIn("self::META_STOCK_INITIALIZED                => 'yes'", ensure_product)
+
+        preflight = self.live_catalog.split("private static function preflight", 1)[1].split(
+            "private static function ensure_store_configuration", 1
+        )[0]
+        identity = self.live_catalog.split("private static function product_identity", 1)[1].split(
+            "private static function receipt_contract_is_valid", 1
+        )[0]
+        self.assertIn("get_post_meta( $product_id, self::META_STOCK_INITIALIZED, true )", preflight)
+        self.assertIn("self::META_STOCK_INITIALIZED", identity)
+
+        materialize = self.live_catalog.split("public static function materialize", 1)[1].split(
+            "public static function product_ids", 1
+        )[0]
+        receipt_validation = self.live_catalog.split(
+            "private static function receipt_contract_is_valid", 1
+        )[1].split("private static function transactional_storage_preflight", 1)[0]
+        for marker in (
+            "$initial_stock_receipts",
+            "'initialized_now' => $initialized_now",
+            "'initial_stock_receipts' => $initial_stock_receipts",
+            "'initial_stock_digest'   => self::digest( $initial_stock_receipts )",
+        ):
+            self.assertIn(marker, materialize)
+        self.assertIn("self::digest( $receipt['initial_stock_receipts'] )", receipt_validation)
+        self.assertIn("true === $stock['initialized_now']", receipt_validation)
+
+    def test_materialization_has_checked_transaction_recovery_and_cache_contract(self) -> None:
+        materialize = self.live_catalog.split("public static function materialize", 1)[1].split(
+            "public static function product_ids", 1
+        )[0]
+        transaction_helper = self.live_catalog.split("private static function transaction_statement", 1)[
+            1
+        ].split("private static function create_recovery_marker", 1)[0]
+        recovery_helpers = self.live_catalog.split("private static function create_recovery_marker", 1)[
+            1
+        ].split("private static function query_ids", 1)[0]
+        file_recovery = self.live_catalog.split("private static function catalog_upload_stems", 1)[
+            1
+        ].split("private static function canonicalize", 1)[0]
+        status = self.live_catalog.split("public static function status", 1)[1].split(
+            "private static function woocommerce_dependency", 1
+        )[0]
+        storage = self.live_catalog.split("private static function transactional_storage_preflight", 1)[
+            1
+        ].split("private static function transaction_statement", 1)[0]
+
+        self.assertIn(
+            "const OPTION_RECOVERY = 'complete99_live_catalog_recovery_required';",
+            self.live_catalog,
+        )
+        self.assertIn(
+            "const RECOVERY_SCHEMA = 'complete99-live-catalog-recovery/v2';",
+            self.live_catalog,
+        )
+        self.assertIn("self::transactional_storage_preflight()", materialize)
+        self.assertIn("self::write_recovery_marker( $marker )", materialize)
+        self.assertIn("if ( ! self::transaction_statement( 'START TRANSACTION' ) )", materialize)
+        self.assertIn("if ( ! self::transaction_statement( 'COMMIT' ) )", materialize)
+        self.assertIn("$rollback_verified = self::transaction_statement( 'ROLLBACK' );", materialize)
+        self.assertIn("$commit_attempted", materialize)
+        self.assertIn("$rollback_verified", materialize)
+        self.assertIn("$committed", materialize)
+        for failure_state in (
+            "postcommit_verification_failed",
+            "commit_unverified",
+            "rollback_unverified",
+        ):
+            self.assertIn(failure_state, materialize)
+        self.assertIn("complete99_live_catalog_recovery_required", materialize)
+
+        lock_position = materialize.index("$lock = self::acquire_lock();")
+        marker_read_position = materialize.index(
+            "$existing_recovery = get_option( self::OPTION_RECOVERY, $missing_recovery );"
+        )
+        baseline_position = materialize.index(
+            "$baseline = self::recovery_database_baseline( $repeat );"
+        )
+        journal_position = materialize.index(
+            "$journal  = self::build_recovery_file_journal();"
+        )
+        start_position = materialize.index("self::transaction_statement( 'START TRANSACTION' )")
+        self.assertLess(lock_position, marker_read_position)
+        post_lock_flush = materialize.index("self::flush_catalog_caches()", lock_position)
+        self.assertLess(lock_position, post_lock_flush)
+        self.assertLess(post_lock_flush, marker_read_position)
+        self.assertLess(baseline_position, start_position)
+        self.assertLess(journal_position, start_position)
+        strict_position = materialize.index("$readback = self::status( true, true );")
+        flush_position = materialize.rfind("self::flush_catalog_caches()", 0, strict_position)
+        self.assertGreater(flush_position, start_position)
+        self.assertLess(flush_position, strict_position)
+        self.assertIn("'mutation_id'      => $marker['mutation_id']", materialize)
+
+        self.assertIn("array( 'START TRANSACTION', 'COMMIT', 'ROLLBACK' )", transaction_helper)
+        self.assertIn("$result = $wpdb->query( $statement );", transaction_helper)
+        self.assertIn("false !== $result", transaction_helper)
+        self.assertIn("$wpdb->last_error", transaction_helper)
+        for marker in (
+            "'baseline_digest'     => self::digest( $baseline )",
+            "'file_journal_digest' => self::digest( $journal )",
+            "'storage_digest'      => self::digest( $storage )",
+            "'mutation_id'         => $mutation_id",
+            "self::seal_recovery_marker( $marker )",
+            "self::recovery_marker_is_valid( $marker, $bundle, $storage )",
+            "self::recover_rolled_back_boundary( $marker, $bundle )",
+            "self::status( true, true )",
+            "self::clear_recovery_boundary( $marker )",
+        ):
+            self.assertIn(marker, recovery_helpers)
+        recovery_strict = recovery_helpers.index("$recoverable_status = self::status( true, true );")
+        recovery_flush = recovery_helpers.rfind("self::flush_catalog_caches()", 0, recovery_strict)
+        self.assertGreaterEqual(recovery_flush, 0)
+        self.assertLess(recovery_flush, recovery_strict)
+        self.assertIn("update_option( self::OPTION_RECOVERY, $marker, false )", recovery_helpers)
+        self.assertIn("get_option( self::OPTION_RECOVERY, false )", recovery_helpers)
+        self.assertIn("delete_option( self::OPTION_RECOVERY )", recovery_helpers)
+        self.assertIn("wp_cache_flush()", recovery_helpers)
+        self.assertIn("hash_equals( (string) $marker['mutation_id']", recovery_helpers)
+        self.assertIn("'recovery_required'", status)
+        self.assertIn("$ignore_recovery_marker", status)
+
+        for marker in (
+            "'uploads_basedir'",
+            "'target_dir'",
+            "'allowed_stems'",
+            "'baseline_files'",
+            "self::recovery_file_is_referenced( $file, $journal )",
+            "self::catalog_upload_filename_is_allowed( $name, $journal['allowed_stems'] )",
+            "wp_delete_file( $file )",
+            "A new Complete99 upload is referenced and was preserved",
+            "A preexisting Complete99 upload changed after journaling",
+        ):
+            self.assertIn(marker, file_recovery)
+        self.assertNotIn("cleanup_new_files", self.live_catalog)
+        self.assertNotIn("glob(", file_recovery)
+        self.assertNotIn("unlink(", file_recovery)
+
+        for table in (
+            "$wpdb->posts",
+            "$wpdb->postmeta",
+            "$wpdb->terms",
+            "$wpdb->term_taxonomy",
+            "$wpdb->term_relationships",
+            "$wpdb->options",
+            "wc_product_meta_lookup",
+            "woocommerce_tax_rates",
+            "woocommerce_shipping_zone_methods",
+        ):
+            self.assertIn(table, storage)
+        self.assertIn("'innodb' !== strtolower", storage)
+
+    def test_store_filters_badges_and_controls_are_accessible_and_safe(self) -> None:
+        filters = self.consumer.split("private static function render_store_filters", 1)[1].split(
+            "private static function render_store_product_card", 1
+        )[0]
+        product_card = self.consumer.split("private static function render_store_product_card", 1)[
+            1
+        ].split("private static function render_related_store_products", 1)[0]
+        facet_map = self.live_catalog.split("private static function facet_for_classification", 1)[
+            1
+        ].split("private static function product_identity", 1)[0]
+        filter_codes = set(re.findall(r"^\s*'([a-z][a-z-]+)'\s*=>", filters, re.MULTILINE))
+        mapped_facets = set(re.findall(r"=>\s*'([a-z][a-z-]+)'", facet_map))
+        self.assertEqual(SAFE_STORE_FILTERS, filter_codes)
+        self.assertEqual(SAFE_STORE_FILTERS - {"all"}, mapped_facets)
+        for marker in (
+            'role="group"',
+            'aria-live="polite"',
+            'aria-atomic="true"',
+            'aria-pressed="<?php echo',
+            "data-c99-product-filter-button",
+        ):
+            self.assertIn(marker, filters)
+        self.assertIn('data-c99-product-facets="<?php echo esc_attr( $facet ); ?>"', product_card)
+        badge_block = product_card.split('<div class="c99-store-product-badges">', 1)[1].split(
+            "</div>", 1
+        )[0]
+        self.assertIn("$facet_labels[ $facet ]", badge_block)
+        self.assertIn("$package", badge_block)
+        for unsupported_badge in ("vegan", "vegetarian", "gluten-free", "kosher", "healthy", "medical"):
+            self.assertNotIn(unsupported_badge, badge_block.lower())
+
+        store_script = self.script.split("[data-c99-product-filter]", 1)[1].split(
+            "[data-c99-dish-filter]", 1
+        )[0]
+        self.assertIn("button.setAttribute('aria-pressed', selected ? 'true' : 'false')", store_script)
+        self.assertIn("card.hidden = !visibleCard", store_script)
+        self.assertIn("count.textContent", store_script)
+        filter_button_css = re.search(r"\.c99-product-filter-buttons button\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(filter_button_css)
+        self.assertRegex(filter_button_css.group(1), r"min-height:\s*44px")
+
+    def test_public_images_render_normally_with_zero_archive_caption_copy(self) -> None:
+        public_renderers = "\n".join((self.consumer, self.frontend))
+        for forbidden in (
+            "c99-archive-note",
+            "Complete99 archive photograph",
+            "archive photograph remains illustrative",
+            "archive image notice",
+            "צילום מארכיון",
+            "תמונת ארכיון",
+        ):
+            self.assertNotIn(forbidden.lower(), public_renderers.lower())
+
+        menu_grid = self.consumer.split("private static function render_menu_grid", 1)[1].split(
+            "private static function render_menu_page", 1
+        )[0]
+        dish_page = self.consumer.split("public static function render_live_dish_page", 1)[1].split(
+            "private static function render_dish_component_tree", 1
+        )[0]
+        product_card = self.consumer.split("private static function render_store_product_card", 1)[
+            1
+        ].split("private static function render_related_store_products", 1)[0]
+        self.assertIn("<figure><img", menu_grid)
+        self.assertIn("fetchpriority=\"high\"", dish_page)
+        self.assertIn("wp_get_attachment_image", product_card)
+        self.assertNotIn("<figcaption", menu_grid)
+        self.assertNotIn("<figcaption", dish_page)
+        self.assertNotIn("<figcaption", product_card)
+
+    def test_catalog_and_cart_readiness_are_separate_from_payment_checkout(self) -> None:
+        public_status = self.commerce.split("public static function public_status", 1)[1].split(
+            "public static function private_readiness", 1
+        )[0]
+        catalog_contract = self.commerce.split("public static function is_ready", 1)[1].split(
+            "private static function text_script_counts", 1
+        )[0]
+        allowed_product = self.commerce.split("private static function is_allowed_product_id", 1)[1].split(
+            "public static function gate_product_visibility", 1
+        )[0]
+        live_store = self.consumer.split("private static function render_live_store_page", 1)[1].split(
+            "private static function render_store_filters", 1
+        )[0]
+        product_card = self.consumer.split("private static function render_store_product_card", 1)[
+            1
+        ].split("private static function render_related_store_products", 1)[0]
+
+        for marker in (
+            "'catalog_ready'       => $catalog_ready",
+            "'cart_ready'          => $cart_ready",
+            "'checkout_ready'      => $readiness['ready']",
+            "'catalog_ready' : 'external_ordering'",
+        ):
+            self.assertIn(marker, public_status)
+        self.assertIn("Complete99_Live_Catalog::is_ready()", catalog_contract)
+        for marker in (
+            "public static function cart_is_ready()",
+            "self::catalog_is_ready()",
+            "get_option( 'woocommerce_cart_page_id', 0 )",
+            "'publish' !== (string) get_post_status( $cart_id )",
+            "return '[woocommerce_cart]' === $content",
+        ):
+            self.assertIn(marker, catalog_contract)
+        self.assertIn("! self::catalog_is_ready() && ! self::is_ready()", allowed_product)
+        self.assertIn("$cart_url", live_store)
+        self.assertIn("$cart_ready     = Complete99_Commerce::cart_is_ready();", live_store)
+        self.assertIn("if ( $cart_ready )", live_store)
+        self.assertIn("self::render_store_cart_feedback( $lang, $cart_url )", live_store)
+        self.assertIn("if ( $checkout_ready )", live_store)
+        self.assertIn("'add-to-cart' => absint( $product_id )", product_card)
+        self.assertIn("Complete99_Commerce::cart_is_ready()", product_card)
+        self.assertIn("Add to cart", product_card)
+        self.assertNotIn("$checkout_ready", product_card)
+
+        cart_feedback = self.consumer.split("private static function render_store_cart_feedback", 1)[
+            1
+        ].split("private static function render_store_filters", 1)[0]
+        for marker in (
+            'role="status" aria-live="polite" aria-atomic="true"',
+            "woocommerce_output_all_notices()",
+            "wc_print_notices()",
+            "data-c99-cart-count",
+            "$cart_url",
+        ):
+            self.assertIn(marker, cart_feedback)
+
+        purchasability = self.commerce.split("public static function gate_product_purchasability", 1)[
+            1
+        ].split("public static function disable_woocommerce_auto_update", 1)[0]
+        self.assertIn("self::cart_is_ready()", purchasability)
+        transaction_shell = self.frontend.split("private static function is_consumer_transaction_request", 1)[
+            1
+        ].split("private static function render_canonical_link", 1)[0]
+        self.assertIn("is_cart() && Complete99_Commerce::cart_is_ready()", transaction_shell)
+
+        route_gate = self.commerce.split("public static function gate_public_woocommerce_routes", 1)[
+            1
+        ].split("public static function configure_catalog_cart_continuation", 1)[0]
+        self.assertIn("$cart_or_preview = self::cart_is_ready() || $ready_or_preview", route_gate)
+        self.assertIn("if ( $is_cart && $cart_or_preview )", route_gate)
+        continuation = self.commerce.split(
+            "public static function configure_catalog_cart_continuation", 1
+        )[1].split("public static function exclude_products_from_public_search", 1)[0]
+        self.assertIn("if ( ! self::cart_is_ready()", continuation)
+        self.assertIn("remove_action( 'woocommerce_proceed_to_checkout'", continuation)
+        self.assertIn("render_catalog_cart_continuation", continuation)
+        self.assertIn("tel:035231810", continuation)
+
+        readiness = self.commerce.split("private static function readiness", 1)[1].split(
+            "private static function approved_products", 1
+        )[0]
+        self.assertIn("$missing[] = 'payment_gateway';", readiness)
+
+    def test_gateway_id_and_enabled_snapshot_is_identical_before_and_after_apply(self) -> None:
+        reader = self.materializer.split("def read_gateway_snapshot", 1)[1].split(
+            "def install_and_verify_woocommerce", 1
+        )[0]
+        for marker in (
+            'client.request("GET", WOOCOMMERCE_GATEWAYS_PATH)',
+            "gateway_id = gateway.get(\"id\")",
+            "enabled = gateway.get(\"enabled\")",
+            "type(enabled) is not bool",
+            "gateway_id in seen",
+            'snapshot.append({"id": gateway_id, "enabled": enabled})',
+            'return sorted(snapshot, key=lambda row: row["id"])',
+        ):
+            self.assertIn(marker, reader)
+
+        installation = self.materializer.split("def install_and_verify_woocommerce", 1)[1].split(
+            "def verify_catalog_dry_run", 1
+        )[0]
+        self.assertIn("gateway_snapshot = read_gateway_snapshot(client, require_all_disabled=True)", installation)
+        self.assertIn('"snapshot": gateway_snapshot', installation)
+        self.assertIn('"inspected_ids": [row["id"] for row in gateway_snapshot]', installation)
+
+        apply_gate = self.materializer.split('gate = "woocommerce-install-and-runtime"', 1)[1].split(
+            'audit["result"] = "verified"', 1
+        )[0]
+        install_position = apply_gate.index("install_and_verify_woocommerce(")
+        catalog_position = apply_gate.index("materialize_catalog(client, deployment_id)")
+        readback_position = apply_gate.index('gate = "gateway-post-apply-readback"')
+        self.assertLess(install_position, catalog_position)
+        self.assertLess(catalog_position, readback_position)
+        for marker in (
+            'gateway_before = audit["woocommerce"]["gateway_configuration"]["snapshot"]',
+            "gateway_after = read_gateway_snapshot(client, require_all_disabled=True)",
+            "if gateway_after != gateway_before:",
+            "WooCommerce payment gateway enablement changed during catalog materialization",
+            '"unchanged": True',
+            '"read_only_verification": True',
+            '"snapshot": gateway_after',
+        ):
+            self.assertIn(marker, apply_gate)
+
+    def test_public_store_index_and_sitemap_depend_on_catalog_not_payment(self) -> None:
+        sitemap = self.content.split("public static function filter_sitemap_posts_query_args", 1)[
+            1
+        ].split("public static function robots_index_gate", 1)[0]
+        index_gate = self.content.split("public static function is_index_eligible", 1)[1].split(
+            "public static function sanitize_language", 1
+        )[0]
+        for source in (sitemap, index_gate):
+            self.assertIn("Complete99_Commerce::catalog_is_ready()", source)
+            self.assertNotIn("Complete99_Commerce::is_ready()", source)
+        self.assertIn("'_complete99_translation_key'", sitemap)
+        self.assertIn("'store'", sitemap)
+        self.assertIn("self::PUBLIC_AUDIENCE", sitemap)
+        self.assertIn("'store' === $translation_key", index_gate)
+
+    def test_unavailable_product_never_renders_an_add_to_cart_link(self) -> None:
+        product_card = self.consumer.split("private static function render_store_product_card", 1)[
+            1
+        ].split("private static function render_related_store_products", 1)[0]
+        self.assertIn(
+            "$can_purchase = Complete99_Commerce::cart_is_ready() && $product->is_in_stock() && $product->is_purchasable();",
+            product_card,
+        )
+        purchase = product_card.split('<div class="c99-store-product-purchase">', 1)[1]
+        available = purchase.split("<?php if ( $can_purchase ) : ?>", 1)[1].split(
+            "<?php else : ?>", 1
+        )[0]
+        unavailable = purchase.split("<?php else : ?>", 1)[1].split("<?php endif; ?>", 1)[0]
+        self.assertIn("$action_url", available)
+        self.assertIn("Add to cart", available)
+        self.assertNotIn("$action_url", unavailable)
+        self.assertNotIn("Add to cart", unavailable)
+        self.assertIn('aria-disabled="true"', unavailable)
+
+    def test_public_health_exposes_no_private_catalog_or_evaluation_details(self) -> None:
+        health = self.rest.split("public static function health", 1)[1].split(
+            "public static function verify_sync_signature", 1
+        )[0]
+        for forbidden in (
+            "evaluation_catalog",
+            "catalog_graph",
+            "evaluation_catalog_ready",
+            "complete99_evaluation_catalog_receipt",
+            "product_ids",
+            "product_digests",
+        ):
+            self.assertNotIn(forbidden, health)
+        for public_field in (
+            "'status'",
+            "'component'",
+            "'version'",
+            "'content_schema'",
+            "'read_model'",
+            "'fresh'",
+            "'ttl_seconds'",
+        ):
+            self.assertIn(public_field, health)
+
+    def test_bundled_twelve_dish_source_is_shared_after_read_model_expiry(self) -> None:
+        menu = self.bundle["consumer_menu"]
+        self.assertEqual(12, len(menu))
+        self.assertEqual(EXPECTED_DISHES, {row["slug"] for row in menu})
+        self.assertTrue(all(row["published"] is True for row in menu))
+
+        resolver = self.rest.split("public static function public_indexable_items", 1)[1].split(
+            "private static function synced_public_indexable_items", 1
+        )[0]
+        bundled = self.rest.split("private static function bundled_public_indexable_items", 1)[
+            1
+        ].split("public static function public_indexable_item_by_slug", 1)[0]
+        self.assertIn("self::synced_public_indexable_items( $model )", resolver)
+        self.assertIn("if ( empty( $items ) )", resolver)
+        self.assertIn("return self::bundled_public_indexable_items();", resolver)
+        self.assertIn("data/consumer-menu.php", bundled)
+        self.assertIn("'launch_ready'", bundled)
+        self.assertIn("'business_owned'", bundled)
+        self.assertIn("'approved_public_use'", bundled)
+        self.assertIn("'_complete99_source'", bundled)
+
+        consumer_menu = self.consumer.split("public static function menu_items", 1)[1].split(
+            "public static function image_url", 1
+        )[0]
+        frontend_menu = self.frontend.split("private static function public_model_items", 1)[1].split(
+            "public static function live_dish_by_slug", 1
+        )[0]
+        robots = self.frontend.split("public static function robots", 1)[1].split(
+            "public static function head_metadata", 1
+        )[0]
+        for source in (consumer_menu, frontend_menu, self.live_dish_sitemap):
+            self.assertIn("Complete99_REST::public_indexable_items()", source)
+        self.assertIn("Complete99_REST::public_indexable_item_by_slug", robots)
+
+    def test_consumer_copy_describes_live_catalog_cart_and_pending_payment(self) -> None:
+        for stale in (
+            "there are currently no products for sale",
+            "there are currently no products for purchase",
+            "orders are currently completed on an external website",
+            "this site has no cart, payment or sale transaction",
+            "future direction only",
+            "ordering button opens an external service",
+        ):
+            self.assertNotIn(stale, self.consumer_content.lower())
+        for current in (
+            "The pantry presents 26 products",
+            "Products can be added to the cart",
+            "Electronic payment will open after the payment provider is connected",
+            "המזווה מציג 26 מוצרים",
+            "אפשר להוסיף מוצרים לסל",
+            "סליקה אלקטרונית תיפתח לאחר חיבור ספק הסליקה",
+        ):
+            self.assertIn(current, self.consumer_content)
+
+    def test_live_materializer_never_mutates_a_payment_gateway(self) -> None:
+        self.assertNotIn("payment_gateways(", self.live_catalog)
+        self.assertNotIn("WC_Payment_Gateway", self.live_catalog)
+        self.assertNotRegex(
+            self.live_catalog,
+            r"update_option\(\s*['\"]woocommerce_(?:bacs|cod|cheque|paypal|stripe)",
+        )
+        self.assertNotRegex(self.live_catalog, r"woocommerce_[a-z0-9_-]*gateway")
+        ensure_configuration = self.live_catalog.split(
+            "private static function ensure_store_configuration", 1
+        )[1].split("private static function ensure_woocommerce_pages", 1)[0]
+        self.assertNotIn("payment", ensure_configuration.lower())
+        self.assertNotIn("gateway", ensure_configuration.lower())
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /*
  * Consumer menu references.
  *
- * These records describe dishes documented in the Complete99 archive and the
+ * These records describe dishes documented in the Complete99 food collection and the
  * verified external ordering menu. They deliberately omit price, stock,
  * allergens, nutrition, preparation claims and availability. Live operational
  * data from Complete99 OS replaces these references as soon as an approved
@@ -206,10 +206,10 @@ return array(
 		'slug'               => 'yemenite-beef-soup',
 		'name_he'             => 'מרק בשר תימני',
 		'name_en'             => 'Yemenite Beef Soup',
-		'category_he'         => 'מרק מהארכיון',
-		'category_en'         => 'Soup from the archive',
-		'description_he'      => 'מרק בשר תימני שמופיע בארכיון קומפלט 99. זמינות הסיר נבדקת בתפריט ההזמנות.',
-		'description_en'      => 'Yemenite beef soup documented in the Complete99 archive. Pot availability is checked in the ordering menu.',
+		'category_he'         => 'מרק ביתי',
+		'category_en'         => 'Home-style soup',
+		'description_he'      => 'מרק בשר תימני עמוק ומחמם. זמינות הסיר נבדקת בתפריט ההזמנות.',
+		'description_en'      => 'A deep, warming Yemenite beef soup. Pot availability is checked in the ordering menu.',
 		'tag_he'              => 'סיר עמוק',
 		'tag_en'              => 'A deep, warming pot',
 		'facets'              => array( 'pots', 'meat' ),
