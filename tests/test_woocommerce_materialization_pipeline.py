@@ -676,6 +676,67 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
         self.assertEqual("dry_run", raised.exception.phase)
         self.assertEqual(1, client.calls)
 
+    def test_catalog_failure_keeps_only_validated_structured_diagnostics(self) -> None:
+        self.assertEqual(
+            set(COMMERCE.EXPECTED_PRODUCT_CODES),
+            set(COMMERCE.DEPLOY.CATALOG_PRODUCT_CODES),
+        )
+        catalog_source = (
+            ROOT
+            / "plugin"
+            / "complete99-platform"
+            / "includes"
+            / "class-complete99-live-catalog.php"
+        ).read_text(encoding="utf-8")
+        runtime_causes = set(COMMERCE.DEPLOY.CATALOG_RUNTIME_MESSAGE_CAUSE.values())
+        for cause in COMMERCE.DEPLOY.CATALOG_CAUSE_STAGE:
+            if cause not in runtime_causes:
+                self.assertIn(f"'{cause}'", catalog_source)
+        for message, cause in COMMERCE.DEPLOY.CATALOG_RUNTIME_MESSAGE_CAUSE.items():
+            self.assertIn(f"'{message}'", catalog_source)
+            self.assertIn(cause, COMMERCE.DEPLOY.CATALOG_CAUSE_STAGE)
+        self.assertIn(
+            "'Catalog recovery is required after an unverified mutation boundary: '",
+            catalog_source,
+        )
+        original = COMMERCE.DEPLOY.HTTPDeployError(
+            "catalog apply failed",
+            status=500,
+            code="complete99_live_catalog_apply_failed",
+            data={
+                "catalog_stage": "secret_token",
+                "catalog_cause_code": "complete99_live_catalog_asset_upload_failed",
+                "catalog_product_code": "product-tahini-500g",
+                "server_path": "/home/example/public_html",
+                "unsafe_stage": "attachment/../../etc",
+            },
+        )
+        error = COMMERCE.CatalogMaterializationError("apply", original)
+
+        self.assertEqual(
+            {
+                "catalog_stage": "attachment",
+                "catalog_cause_code": "complete99_live_catalog_asset_upload_failed",
+                "catalog_product_code": "product-tahini-500g",
+            },
+            error.diagnostic,
+        )
+        self.assertNotIn("server_path", error.diagnostic)
+        self.assertNotIn("unsafe_stage", error.diagnostic)
+
+        invalid_original = COMMERCE.DEPLOY.HTTPDeployError(
+            "catalog apply failed",
+            status=500,
+            code="complete99_live_catalog_apply_failed",
+            data={
+                "catalog_stage": "secret_token",
+                "catalog_cause_code": "complete99_live_catalog_secretvalue",
+                "catalog_product_code": "product-secretvalue",
+            },
+        )
+        invalid = COMMERCE.CatalogMaterializationError("apply", invalid_original)
+        self.assertEqual({}, invalid.diagnostic)
+
     def test_runtime_and_rest_checks_precede_catalog_and_gateways_are_read_only(self) -> None:
         deployment_id = "c99-commerce-test-5678"
         token = "U" * 48
