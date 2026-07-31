@@ -42,7 +42,7 @@ $records[] = array(
 	'key'          => 'home',
 	'type'         => 'page',
 	'slug'         => array( 'he' => 'complete99-home', 'en' => 'en' ),
-	'title'        => array( 'he' => 'קומפלט 99 — אוכל, תפעול וצמיחה במקום אחד', 'en' => 'Complete99 — food, operations and growth in one system' ),
+	'title'        => array( 'he' => 'קומפלט 99 - אוכל, תפעול וצמיחה במקום אחד', 'en' => 'Complete99 - food, operations and growth in one system' ),
 	'excerpt'      => array(
 		'he' => 'תשתית אחת לשירותי הסעדה מוסדיים, ידע קולינרי ומרכז שליטה רב־סניפי.',
 		'en' => 'One foundation for institutional foodservice, culinary knowledge and multi-location operations.',
@@ -89,14 +89,14 @@ $records[] = array(
 	'content' => array(
 		'he' => $c99_page_content(
 			'he',
-			'קומפלט 99 מחברת בין המטבח לבין חדר הניהול. המטרה היא להפוך ידע שנמצא אצל אנשים, בקבצים ובשיחות לתהליכים ברורים שאפשר ללמד, למדוד ולשפר — בלי למחוק את האופי של האוכל ואת האחריות המקצועית.',
+			'קומפלט 99 מחברת בין המטבח לבין חדר הניהול. המטרה היא להפוך ידע שנמצא אצל אנשים, בקבצים ובשיחות לתהליכים ברורים שאפשר ללמד, למדוד ולשפר - בלי למחוק את האופי של האוכל ואת האחריות המקצועית.',
 			array( 'בעלות ברורה על כל תהליך ותוכן.', 'תיעוד מקורות, שינויים ואישורים.', 'עבודה נוחה גם לעובדים שאינם יושבים מול מחשב.', 'הפרדה בין מידע ציבורי לבין מידע תפעולי רגיש.' ),
 			'בכל שיתוף פעולה מגדירים יחד את המצב הקיים, את בעלי התפקידים, את מטרות השירות ואת סדר ההתקדמות. כך נשמר חיבור ברור בין העבודה במטבח לבין החלטות ההנהלה.',
 			'',
 		),
 		'en' => $c99_page_content(
 			'en',
-			'Complete99 connects the kitchen with the management room. Its purpose is to turn knowledge held by people, files and conversations into clear processes that can be taught, measured and improved—without erasing food identity or professional accountability.',
+			'Complete99 connects the kitchen with the management room. Its purpose is to turn knowledge held by people, files and conversations into clear processes that can be taught, measured and improved-without erasing food identity or professional accountability.',
 			array( 'A clear owner for every process and content item.', 'Sources, changes and approvals recorded.', 'Usable workflows for teams away from a desk.', 'A firm boundary between public and sensitive operational information.' ),
 			'Every engagement defines the current state, responsible roles, service objectives and order of work. This keeps kitchen execution connected to management decisions.',
 			'',
@@ -223,7 +223,7 @@ $legal_records = array(
 						),
 					),
 				),
-				array( 'טופס יצירת קשר — לשאלת פרטיות או בקשת מידע.', 'תנאי שימוש — כללי השימוש באתר.', 'נגישות — התאמות ודיווח על קושי.' ),
+				array( 'טופס יצירת קשר - לשאלת פרטיות או בקשת מידע.', 'תנאי שימוש - כללי השימוש באתר.', 'נגישות - התאמות ודיווח על קושי.' ),
 				'קומפלט 99 אינה מוכרת מידע שנמסר בטופס הציבורי. מידע יימסר לצד אחר רק לצורך הפעלת האתר והטיפול המבוקש, בהסכמה מתאימה, להגנה על זכויות ובטיחות, או כאשר קיימת חובה חוקית.',
 			),
 			'en' => $c99_hub_content(
@@ -252,7 +252,7 @@ $legal_records = array(
 						),
 					),
 				),
-				array( 'Contact form — for a privacy question or information request.', 'Terms of use — rules for using the public site.', 'Accessibility — adjustments and reporting a barrier.' ),
+				array( 'Contact form - for a privacy question or information request.', 'Terms of use - rules for using the public site.', 'Accessibility - adjustments and reporting a barrier.' ),
 				'Complete99 does not sell information submitted through the public form. Information is disclosed only to operate the site and handle the requested matter, with an appropriate instruction or consent, to protect rights and safety, or where a legal obligation applies.',
 			),
 		),
@@ -291,7 +291,7 @@ $legal_records = array(
 						),
 					),
 				),
-				array( 'פרטיות — שימוש במידע ופניות.', 'נגישות — יעד, שימוש ודיווח על קושי.', 'יצירת קשר — שאלות על האתר או השירות.' ),
+				array( 'פרטיות - שימוש במידע ופניות.', 'נגישות - יעד, שימוש ודיווח על קושי.', 'יצירת קשר - שאלות על האתר או השירות.' ),
 				'אין להסתמך על האתר במקום ייעוץ משפטי, תזונתי, רפואי, בטיחותי, הלכתי או מקצועי אחר. במקרה של סתירה בין האתר להסכם חתום, ההסכם החתום גובר ביחסים שבין הצדדים.',
 			),
 			'en' => $c99_hub_content(
@@ -320,7 +320,7 @@ $legal_records = array(
 						),
 					),
 				),
-				array( 'Privacy — information and enquiries.', 'Accessibility — target, use and reporting a barrier.', 'Contact — questions about the site or service.' ),
+				array( 'Privacy - information and enquiries.', 'Accessibility - target, use and reporting a barrier.', 'Contact - questions about the site or service.' ),
 				'The website is not a substitute for legal, nutrition, medical, safety, religious or other professional advice. Where the website conflicts with a signed agreement, the signed agreement governs the relationship between its parties.',
 			),
 		),
@@ -359,7 +359,7 @@ $legal_records = array(
 						),
 					),
 				),
-				array( 'יצירת קשר — דיווח על קושי ובקשת חלופה.', 'פרטיות — כיצד מטפלים בפרטי הפנייה.', 'תנאי שימוש — כללי השימוש באתר.' ),
+				array( 'יצירת קשר - דיווח על קושי ובקשת חלופה.', 'פרטיות - כיצד מטפלים בפרטי הפנייה.', 'תנאי שימוש - כללי השימוש באתר.' ),
 				'עדכון אחרון: יולי 2026. האתר ייבדק מחדש לאחר שינוי מהותי בתבנית, בטופס, בניווט או בשירות חיצוני. משוב מאנשים המשתמשים בטכנולוגיות עזר הוא חלק חשוב מתהליך השיפור.',
 			),
 			'en' => $c99_hub_content(
@@ -388,7 +388,7 @@ $legal_records = array(
 						),
 					),
 				),
-				array( 'Contact — report a barrier and request an alternative.', 'Privacy — handling information in the enquiry.', 'Terms of use — rules for using the site.' ),
+				array( 'Contact - report a barrier and request an alternative.', 'Privacy - handling information in the enquiry.', 'Terms of use - rules for using the site.' ),
 				'Last updated: July 2026. The site will be reviewed after a material change to its template, form, navigation or external service. Feedback from people who use assistive technology is an important part of improvement.',
 			),
 		),
@@ -437,7 +437,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'הסעדה מוסדית — מסגרת השירות הכוללת.', 'ארוחות עובדים — חוויית יום עבודה ותכנון ביקוש.', 'ניהול חדר אוכל והפעלת מטבח — אחריות ותהליכי יום.', 'מטבח מרכזי והפצה — אצוות, מסירה וקבלה.', 'תכנון תפריט ומידע תזונתי — קולינריה לצד ביקורת מקצועית.' ),
+				array( 'הסעדה מוסדית - מסגרת השירות הכוללת.', 'ארוחות עובדים - חוויית יום עבודה ותכנון ביקוש.', 'ניהול חדר אוכל והפעלת מטבח - אחריות ותהליכי יום.', 'מטבח מרכזי והפצה - אצוות, מסירה וקבלה.', 'תכנון תפריט ומידע תזונתי - קולינריה לצד ביקורת מקצועית.' ),
 				'קיבולת, זמינות, כשרות, רישוי, כוח אדם, מחיר ותוצאות שירות נקבעים רק על בסיס אתר, מסמכים וגורמים מוסמכים. התוכן כאן מסביר את המסגרת ואינו מחליף אפיון, חוזה או ייעוץ מקצועי.',
 			),
 			'en' => $c99_hub_content(
@@ -465,7 +465,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'Institutional foodservice — the overall service framework.', 'Employee meals — workday experience and demand planning.', 'Dining-room and on-site kitchen operations — ownership and daily workflows.', 'Central kitchen and delivery — batches, handover and receipt.', 'Menu and nutrition information — culinary planning with qualified review.' ),
+				array( 'Institutional foodservice - the overall service framework.', 'Employee meals - workday experience and demand planning.', 'Dining-room and on-site kitchen operations - ownership and daily workflows.', 'Central kitchen and delivery - batches, handover and receipt.', 'Menu and nutrition information - culinary planning with qualified review.' ),
 				'Capacity, availability, kosher status, licensing, staffing, price and service outcomes can only be stated for a documented site with the relevant professional records. This content describes the framework; it does not replace discovery, contract terms or qualified advice.',
 			),
 		),
@@ -503,7 +503,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'חברות ומשרדים — שירות כחלק מחוויית העבודה.', 'ייצור ולוגיסטיקה — משמרות, עומסים ומסירה.', 'חינוך — מסלול שמחייב אחריות ייעודית.', 'דיור מוגן ורווחה — שירות רגיש עם גורמים מקצועיים.' ),
+				array( 'חברות ומשרדים - שירות כחלק מחוויית העבודה.', 'ייצור ולוגיסטיקה - משמרות, עומסים ומסירה.', 'חינוך - מסלול שמחייב אחריות ייעודית.', 'דיור מוגן ורווחה - שירות רגיש עם גורמים מקצועיים.' ),
 				'דוגמאות המגזר מתארות שאלות ותהליכים, לא רשימת לקוחות או ניסיון שלא פורסם. התאמה, שעות, קיבולת, רגולציה ותוצאות נקבעות לכל ארגון ואתר בנפרד.',
 			),
 			'en' => $c99_hub_content(
@@ -531,7 +531,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'Companies and offices — foodservice within the work experience.', 'Manufacturing and logistics — shifts, demand peaks and handover.', 'Education — a route with dedicated accountability.', 'Senior living and welfare — sensitive service with qualified oversight.' ),
+				array( 'Companies and offices - foodservice within the work experience.', 'Manufacturing and logistics - shifts, demand peaks and handover.', 'Education - a route with dedicated accountability.', 'Senior living and welfare - sensitive service with qualified oversight.' ),
 				'The sector examples describe questions and processes, not undisclosed clients or experience claims. Suitability, hours, capacity, regulatory obligations and outcomes must be established for each organisation and site.',
 			),
 		),
@@ -569,7 +569,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'מרכז שליטה — תמונת היום והחריגים.', 'פתיחת יום ורשימות בקרה — תהליך לפי תפקיד וסניף.', 'מתכונים, מפרטי כמויות ועלות מנה — גרסאות ובעלות.', 'מלאי, רכש וספקים — קבלה, פער ואישור.', 'ריבוי סניפים — תקן מרכזי והתאמות מקומיות.', 'מותג וקמפיינים — בריף, נכסים ובקרה.' ),
+				array( 'מרכז שליטה - תמונת היום והחריגים.', 'פתיחת יום ורשימות בקרה - תהליך לפי תפקיד וסניף.', 'מתכונים, מפרטי כמויות ועלות מנה - גרסאות ובעלות.', 'מלאי, רכש וספקים - קבלה, פער ואישור.', 'ריבוי סניפים - תקן מרכזי והתאמות מקומיות.', 'מותג וקמפיינים - בריף, נכסים ובקרה.' ),
 				'עמודי הפלטפורמה מציגים את שיטת העבודה. הם אינם מציגים חיבור חי, נתוני לקוח, מחיר תוכנה או הבטחה לעבוד עם מערכת חיצונית. כל חיבור דורש הרשאה, תכנון אבטחה ובדיקה בסביבה המתאימה.',
 			),
 			'en' => $c99_hub_content(
@@ -597,7 +597,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'Command centre — today’s operating picture and exceptions.', 'Opening workflows — role- and location-aware checklists.', 'Recipes, bill of materials and food cost — versions and ownership.', 'Inventory, procurement and suppliers — receiving, discrepancy and approval.', 'Multiple locations — central standards and local adaptations.', 'Brand and campaigns — brief, assets and review.' ),
+				array( 'Command centre - today’s operating picture and exceptions.', 'Opening workflows - role- and location-aware checklists.', 'Recipes, bill of materials and food cost - versions and ownership.', 'Inventory, procurement and suppliers - receiving, discrepancy and approval.', 'Multiple locations - central standards and local adaptations.', 'Brand and campaigns - brief, assets and review.' ),
 				'Platform pages explain the operating method. They do not claim a live connection, expose client data, state a standalone software price or promise compatibility with an external system. Every connection requires authorisation, security design and testing in the relevant environment.',
 			),
 		),
@@ -606,8 +606,8 @@ $hub_records = array(
 		'key'     => 'dishes',
 		'title'   => array( 'he' => 'אטלס המנות של קומפלט 99', 'en' => 'The Complete99 dish atlas' ),
 		'excerpt' => array(
-			'he' => 'סיפור, מקור, מרכיבים, מסורת ומתכון בדוק — לכל מנה יש תיק תוכן עצמאי.',
-			'en' => 'Story, origins, ingredients, tradition and a tested recipe—one governed dossier for each dish.',
+			'he' => 'סיפור, מקור, מרכיבים, מסורת ומתכון בדוק - לכל מנה יש תיק תוכן עצמאי.',
+			'en' => 'Story, origins, ingredients, tradition and a tested recipe-one governed dossier for each dish.',
 		),
 		'content' => array(
 			'he' => $c99_hub_content(
@@ -635,7 +635,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'מנות — תיקי התוכן המרכזיים.', 'מרכיבים — חומרי גלם, תפקיד ושימוש.', 'מסורות — הקשר קהילתי, עונתי וטקסי.', 'מרכז הידע — שיטות מחקר, מטבח ותפעול.' ),
+				array( 'מנות - תיקי התוכן המרכזיים.', 'מרכיבים - חומרי גלם, תפקיד ושימוש.', 'מסורות - הקשר קהילתי, עונתי וטקסי.', 'מרכז הידע - שיטות מחקר, מטבח ותפעול.' ),
 				'ששת תיקי המנות הראשונים עדיין נמצאים בעבודה ואינם מוצגים כמאמרים גמורים. מנה תופיע באטלס רק לאחר שהכתיבה, המקורות, בדיקת המטבח, האלרגנים, התמונות והעריכה בשתי השפות הושלמו.',
 			),
 			'en' => $c99_hub_content(
@@ -663,7 +663,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'Dishes — the central culinary dossiers.', 'Ingredients — raw materials, roles and uses.', 'Traditions — community, seasonal and ritual context.', 'Knowledge — research, kitchen and operating methods.' ),
+				array( 'Dishes - the central culinary dossiers.', 'Ingredients - raw materials, roles and uses.', 'Traditions - community, seasonal and ritual context.', 'Knowledge - research, kitchen and operating methods.' ),
 				'The first six dish dossiers remain in active editorial work and are not presented as finished articles. A dish enters the atlas only after writing, sources, kitchen work, allergen review, imagery and both language editions are complete.',
 			),
 		),
@@ -701,7 +701,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'מקור והיסטוריה — בהבחנה בין עובדה, מסורת והשערה.', 'טעם, מרקם וטכניקה — ידע מעשי למטבח.', 'אחסון ובטיחות — הנחיות לפי הקשר.', 'מנות ומסורות קשורות — קישורים במקום שכפול.' ),
+				array( 'מקור והיסטוריה - בהבחנה בין עובדה, מסורת והשערה.', 'טעם, מרקם וטכניקה - ידע מעשי למטבח.', 'אחסון ובטיחות - הנחיות לפי הקשר.', 'מנות ומסורות קשורות - קישורים במקום שכפול.' ),
 				'עמודי מרכיב ייפתחו לציבור רק כאשר יש להם בעל תוכן, מקורות, טקסט מקורי וקשרים ברורים למנות או למסורות. עמודי תגית קצרים ורשימות אוטומטיות אינם תחליף למאמר מרכיב ערוך.',
 			),
 			'en' => $c99_hub_content(
@@ -729,7 +729,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'Origin and history — distinguishing record, tradition and hypothesis.', 'Flavour, texture and technique — practical kitchen knowledge.', 'Storage and safety — contextual guidance.', 'Related dishes and traditions — useful links instead of repetition.' ),
+				array( 'Origin and history - distinguishing record, tradition and hypothesis.', 'Flavour, texture and technique - practical kitchen knowledge.', 'Storage and safety - contextual guidance.', 'Related dishes and traditions - useful links instead of repetition.' ),
 				'Ingredient pages become public only when they have a content owner, sources, original writing and meaningful links to dishes or traditions. Thin tag pages and automated lists are not substitutes for an edited ingredient article.',
 			),
 		),
@@ -767,7 +767,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'שבת ומועדים — הקשר טקסי ועונתי.', 'קהילות ותפוצות — קולות ומסלולי הגירה.', 'מנות קשורות — המתכון והסיפור הקולינרי.', 'מרכיבים — שינויי מקום, עונה וזמינות.' ),
+				array( 'שבת ומועדים - הקשר טקסי ועונתי.', 'קהילות ותפוצות - קולות ומסלולי הגירה.', 'מנות קשורות - המתכון והסיפור הקולינרי.', 'מרכיבים - שינויי מקום, עונה וזמינות.' ),
 				'מסורת אינה תחליף לפסק הלכה, ייעוץ כשרות או קביעה על זהות. עמודים יבדילו בין מנהג מתועד, זיכרון אישי, פרשנות ומידע מקצועי, ויכבדו בקשות פרטיות וזכויות יוצרים.',
 			),
 			'en' => $c99_hub_content(
@@ -795,7 +795,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'Shabbat and holidays — ritual and seasonal context.', 'Communities and diasporas — voices and migration routes.', 'Related dishes — recipe and culinary history.', 'Ingredients — changes in place, season and availability.' ),
+				array( 'Shabbat and holidays - ritual and seasonal context.', 'Communities and diasporas - voices and migration routes.', 'Related dishes - recipe and culinary history.', 'Ingredients - changes in place, season and availability.' ),
 				'Tradition is not a substitute for a religious ruling, kosher advice or a conclusion about identity. Pages distinguish documented practice, personal memory, interpretation and professional information while respecting privacy requests and copyright.',
 			),
 		),
@@ -833,7 +833,7 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'רכש והתקשרות — דרישות, מסמכים ובחירה.', 'תפעול וסניפים — תפקידים, בקרה וחריגים.', 'מטבח ומזון — מתכונים, מרכיבים ובטיחות.', 'אנשים ושירות — קליטה, הדרכה ומשוב.', 'מותג וצמיחה — בריף, תוכן, פניות ומדידה.' ),
+				array( 'רכש והתקשרות - דרישות, מסמכים ובחירה.', 'תפעול וסניפים - תפקידים, בקרה וחריגים.', 'מטבח ומזון - מתכונים, מרכיבים ובטיחות.', 'אנשים ושירות - קליטה, הדרכה ומשוב.', 'מותג וצמיחה - בריף, תוכן, פניות ומדידה.' ),
 				'מרכז הידע אינו מייצר עמודים אוטומטיים רק כדי לכסות ביטוי חיפוש. עמוד חדש נכנס לאינדקס רק כאשר הוא מקורי, מהותי, מחובר להיררכיה, עבר עריכה ויש לו בעלים שמתחייב לעדכן אותו.',
 			),
 			'en' => $c99_hub_content(
@@ -861,14 +861,14 @@ $hub_records = array(
 						),
 					),
 				),
-				array( 'Procurement and engagement — requirements, records and selection.', 'Operations and locations — roles, controls and exceptions.', 'Kitchen and food — recipes, ingredients and safety.', 'People and service — onboarding, training and feedback.', 'Brand and growth — briefs, content, enquiries and measurement.' ),
+				array( 'Procurement and engagement - requirements, records and selection.', 'Operations and locations - roles, controls and exceptions.', 'Kitchen and food - recipes, ingredients and safety.', 'People and service - onboarding, training and feedback.', 'Brand and growth - briefs, content, enquiries and measurement.' ),
 				'The knowledge centre does not create automated pages merely to cover a query. A new page can enter the index only when it is original, substantive, connected to the hierarchy, edited and assigned to an owner who will maintain it.',
 			),
 		),
 	),
 	array(
 		'key'     => 'store',
-		'title'   => array( 'he' => 'חנות קומפלט 99 — מבנה קטלוג עתידי', 'en' => 'Complete99 store — future catalogue structure' ),
+		'title'   => array( 'he' => 'חנות קומפלט 99 - מבנה קטלוג עתידי', 'en' => 'Complete99 store - future catalogue structure' ),
 		'excerpt' => array(
 			'he' => 'הקטגוריות והאחריות הדרושות לחנות ציוד וחומרי מזון; הזמנות עדיין אינן פתוחות.',
 			'en' => 'The categories and responsibilities required for an equipment and pantry store; ordering is not yet open.',
@@ -1068,5 +1068,31 @@ foreach ( $platform_data as $item ) {
 		'parent_hub'   => 'platform',
 	);
 }
+
+$consumer_overrides = require __DIR__ . '/consumer-content.php';
+$consumer_public_keys = array( 'home', 'about', 'contact', 'dishes', 'ingredients', 'traditions', 'knowledge', 'store', 'proposal', 'privacy', 'terms', 'accessibility' );
+$private_public_keys = array( 'tender-pack', 'app', 'services', 'industries', 'platform' );
+$private_public_types = array( 'c99_service', 'c99_industry', 'c99_platform_feature', 'c99_case_study' );
+foreach ( $records as &$record ) {
+	if ( isset( $consumer_overrides[ $record['key'] ] ) ) {
+		foreach ( $consumer_overrides[ $record['key'] ] as $field => $value ) {
+			$record[ $field ] = $value;
+		}
+		if ( in_array( $record['key'], $consumer_public_keys, true ) ) {
+			$record['status']       = 'publish';
+			$record['public_route'] = true;
+			if ( 'store' !== $record['key'] ) {
+				$record['verification']   = 'editorial_review';
+				$record['index_eligible'] = true;
+			}
+		}
+	}
+	if ( in_array( $record['key'], $private_public_keys, true )
+		|| in_array( $record['type'], $private_public_types, true ) ) {
+		$record['status']         = 'private';
+		$record['index_eligible'] = false;
+	}
+}
+unset( $record );
 
 return $records;

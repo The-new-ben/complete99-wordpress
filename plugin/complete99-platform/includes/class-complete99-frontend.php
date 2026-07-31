@@ -15,6 +15,7 @@ final class Complete99_Frontend {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 		add_action( 'wp_head', array( __CLASS__, 'head_metadata' ), 4 );
 		add_action( 'template_redirect', array( __CLASS__, 'remove_core_canonical' ), 0 );
+		add_action( 'template_redirect', array( __CLASS__, 'maybe_redirect_unready_store' ), 1 );
 		add_action( 'template_redirect', array( __CLASS__, 'protect_unready_dishes' ), 1 );
 		add_action( 'template_redirect', array( __CLASS__, 'maybe_render_live_dish' ), 2 );
 	}
@@ -26,7 +27,9 @@ final class Complete99_Frontend {
 	}
 
 	public static function remove_core_canonical() {
-		if ( self::is_live_dish_request() || ( is_singular() && Complete99_Content::is_complete99_post( get_queried_object_id() ) ) ) {
+		if ( self::is_live_dish_request()
+			|| self::is_consumer_transaction_request()
+			|| ( is_singular() && Complete99_Content::is_complete99_post( get_queried_object_id() ) ) ) {
 			remove_action( 'wp_head', 'rel_canonical' );
 		}
 	}
@@ -50,9 +53,39 @@ final class Complete99_Frontend {
 		exit;
 	}
 
+	public static function maybe_redirect_unready_store() {
+		if (
+			! is_singular()
+			|| Complete99_Commerce::is_ready()
+			|| Complete99_Commerce::can_preview_commerce()
+		) {
+			return;
+		}
+
+		$post_id = get_queried_object_id();
+		if (
+			! $post_id
+			|| ! Complete99_Content::is_complete99_post( $post_id )
+			|| 'store' !== Complete99_Content::translation_group_for_post( $post_id )
+		) {
+			return;
+		}
+
+		$lang        = Complete99_Content::language_for_post( $post_id );
+		$destination = Complete99_Content::route_url( 'dishes', $lang );
+		if ( ! $destination ) {
+			$destination = home_url( 'en' === $lang ? '/en/' : '/' );
+		}
+		wp_safe_redirect( $destination, 302, 'Complete99' );
+		exit;
+	}
+
 	public static function template_include( $template ) {
 		if ( self::is_live_dish_request() && is_404() ) {
 			return COMPLETE99_PLATFORM_DIR . 'templates/not-found.php';
+		}
+		if ( self::is_consumer_transaction_request() ) {
+			return COMPLETE99_PLATFORM_DIR . 'templates/commerce-shell.php';
 		}
 		if ( is_singular() && Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
 			return COMPLETE99_PLATFORM_DIR . 'templates/public-shell.php';
@@ -61,9 +94,22 @@ final class Complete99_Frontend {
 	}
 
 	public static function body_classes( $classes ) {
+		if ( self::is_consumer_transaction_request() ) {
+			$lang      = Complete99_Commerce::transaction_language();
+			$classes[] = 'complete99-public';
+			$classes[] = 'c99-consumer-site';
+			$classes[] = 'c99-consumer-commerce';
+			$classes[] = 'complete99-lang-' . $lang;
+			$classes[] = 'en' === $lang ? 'complete99-ltr' : 'complete99-rtl';
+			if ( 'en' === $lang ) {
+				$classes = array_values( array_diff( $classes, array( 'rtl' ) ) );
+			}
+			return array_values( array_unique( $classes ) );
+		}
 		if ( self::is_live_dish_request() ) {
 			$lang      = self::live_request_language();
 			$classes[] = 'complete99-public';
+			$classes[] = 'c99-consumer-site';
 			$classes[] = 'complete99-live-dish';
 			$classes[] = 'complete99-lang-' . $lang;
 			$classes[] = 'en' === $lang ? 'complete99-ltr' : 'complete99-rtl';
@@ -81,6 +127,7 @@ final class Complete99_Frontend {
 				$classes = array_values( array_diff( $classes, array( 'rtl' ) ) );
 			}
 			$classes[] = 'complete99-public';
+			$classes[] = 'c99-consumer-site';
 			$classes[] = 'complete99-lang-' . $lang;
 			$classes[] = 'en' === $lang ? 'complete99-ltr' : 'complete99-rtl';
 		}
@@ -88,13 +135,21 @@ final class Complete99_Frontend {
 	}
 
 	public static function enqueue() {
-		if ( ! self::is_live_dish_request() && ( ! is_singular() || ! Complete99_Content::is_complete99_post( get_queried_object_id() ) ) ) {
+		if ( ! self::is_live_dish_request()
+			&& ! self::is_consumer_transaction_request()
+			&& ( ! is_singular() || ! Complete99_Content::is_complete99_post( get_queried_object_id() ) ) ) {
 			return;
 		}
 		wp_enqueue_style(
 			'complete99-public',
 			COMPLETE99_PLATFORM_URL . 'assets/css/public.css',
 			array(),
+			COMPLETE99_PLATFORM_VERSION
+		);
+		wp_enqueue_style(
+			'complete99-consumer',
+			COMPLETE99_PLATFORM_URL . 'assets/css/consumer.css',
+			array( 'complete99-public' ),
 			COMPLETE99_PLATFORM_VERSION
 		);
 		wp_enqueue_script(
@@ -107,6 +162,16 @@ final class Complete99_Frontend {
 	}
 
 	public static function document_title( $title ) {
+		if ( self::is_consumer_transaction_request() ) {
+			$lang = Complete99_Commerce::transaction_language();
+			$type = Complete99_Commerce::transaction_page_type();
+			$labels = array(
+				'cart'     => 'he' === $lang ? 'סל קניות' : 'Shopping cart',
+				'checkout' => 'he' === $lang ? 'תשלום' : 'Checkout',
+				'account'  => 'he' === $lang ? 'החשבון שלי' : 'My account',
+			);
+			return $labels[ $type ] . ' | Complete99';
+		}
 		if ( self::is_live_dish_request() ) {
 			$dish = self::live_dish_by_slug( self::live_request_slug() );
 			$lang = self::live_request_language();
@@ -130,6 +195,16 @@ final class Complete99_Frontend {
 			$robots['nofollow'] = false;
 			return $robots;
 		}
+		if ( self::is_live_dish_request() ) {
+			$dish         = self::live_dish_by_slug( self::live_request_slug() );
+			$verification = $dish && isset( $dish['verification_state'] ) ? (string) $dish['verification_state'] : '';
+			if ( ! in_array( $verification, array( 'verified', 'launch_ready' ), true ) ) {
+				unset( $robots['index'] );
+				$robots['noindex']  = true;
+				$robots['nofollow'] = false;
+			}
+			return $robots;
+		}
 		if ( ! is_singular() || ! Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
 			return $robots;
 		}
@@ -141,6 +216,17 @@ final class Complete99_Frontend {
 	}
 
 	public static function head_metadata() {
+		if ( self::is_consumer_transaction_request() ) {
+			$lang        = Complete99_Commerce::transaction_language();
+			$type        = Complete99_Commerce::transaction_page_type();
+			$canonical   = Complete99_Commerce::transaction_url( $type, $lang );
+			$description = 'he' === $lang
+				? 'סל, תשלום ופרטי הזמנה מאובטחים של המזווה של קומפלט 99.'
+				: 'Secure cart, checkout and order details for the Complete99 pantry.';
+			self::render_canonical_link( $canonical );
+			echo '<meta name="description" content="' . esc_attr( $description ) . '" />' . "\n";
+			return;
+		}
 		if ( self::is_live_dish_request() ) {
 			$dish = self::live_dish_by_slug( self::live_request_slug() );
 			if ( $dish ) {
@@ -160,6 +246,18 @@ final class Complete99_Frontend {
 		$canonical = get_permalink( $post );
 		$image     = self::post_image_url( $post->ID );
 		$brand_mark = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
+		$description = wp_strip_all_tags( $post->post_excerpt );
+		if ( 'store' === $key && Complete99_Commerce::is_ready() ) {
+			$description = 'he' === $lang
+				? 'מוצרי המזווה של קומפלט 99 עם מחיר, משקל, רכיבים, אלרגנים, מלאי ותנאי איסוף או משלוח.'
+				: 'Complete99 pantry goods with price, weight, ingredients, allergens, stock and pickup or delivery terms.';
+			$product_ids = Complete99_Commerce::storefront_product_ids();
+			$product     = ! empty( $product_ids ) && function_exists( 'wc_get_product' ) ? wc_get_product( $product_ids[0] ) : false;
+			if ( $product ) {
+				$product_image = wp_get_attachment_image_url( $product->get_image_id(), 'full' );
+				$image         = $product_image ? $product_image : $image;
+			}
+		}
 
 		echo '<link rel="icon" href="' . esc_url( $brand_mark ) . '" type="image/svg+xml" sizes="any" />' . "\n";
 		self::render_canonical_link( $canonical );
@@ -170,16 +268,16 @@ final class Complete99_Frontend {
 		if ( $en_url ) {
 			echo '<link rel="alternate" hreflang="' . esc_attr( 'en' ) . '" href="' . esc_url( $en_url ) . '" />' . "\n";
 		}
-		echo '<meta name="description" content="' . esc_attr( wp_strip_all_tags( $post->post_excerpt ) ) . '" />' . "\n";
+		echo '<meta name="description" content="' . esc_attr( $description ) . '" />' . "\n";
 		echo '<meta property="og:type" content="website" />' . "\n";
 		echo '<meta property="og:locale" content="' . esc_attr( 'he' === $lang ? 'he_IL' : 'en_US' ) . '" />' . "\n";
 		echo '<meta property="og:locale:alternate" content="' . esc_attr( 'he' === $lang ? 'en_US' : 'he_IL' ) . '" />' . "\n";
 		echo '<meta property="og:title" content="' . esc_attr( wp_strip_all_tags( $post->post_title ) ) . '" />' . "\n";
-		echo '<meta property="og:description" content="' . esc_attr( wp_strip_all_tags( $post->post_excerpt ) ) . '" />' . "\n";
+		echo '<meta property="og:description" content="' . esc_attr( $description ) . '" />' . "\n";
 		echo '<meta property="og:url" content="' . esc_url( $canonical ) . '" />' . "\n";
 		echo '<meta name="twitter:card" content="' . esc_attr( $image ? 'summary_large_image' : 'summary' ) . '" />' . "\n";
 		echo '<meta name="twitter:title" content="' . esc_attr( wp_strip_all_tags( $post->post_title ) ) . '" />' . "\n";
-		echo '<meta name="twitter:description" content="' . esc_attr( wp_strip_all_tags( $post->post_excerpt ) ) . '" />' . "\n";
+		echo '<meta name="twitter:description" content="' . esc_attr( $description ) . '" />' . "\n";
 		if ( $image ) {
 			echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
 			echo '<meta name="twitter:image" content="' . esc_url( $image ) . '" />' . "\n";
@@ -191,6 +289,14 @@ final class Complete99_Frontend {
 
 	private static function is_live_dish_request() {
 		return '' !== self::live_request_slug();
+	}
+
+	private static function is_consumer_transaction_request() {
+		return class_exists( 'Complete99_Commerce' )
+			&& Complete99_Commerce::is_transaction_page()
+			&& ( Complete99_Commerce::is_ready()
+				|| Complete99_Commerce::can_preview_commerce()
+				|| Complete99_Commerce::can_access_customer_continuity() );
 	}
 
 	private static function render_canonical_link( $url ) {
@@ -207,7 +313,9 @@ final class Complete99_Frontend {
 	}
 
 	private static function public_model_items() {
-		$items = Complete99_REST::public_indexable_items();
+		$items = class_exists( 'Complete99_Consumer' )
+			? Complete99_Consumer::menu_items()
+			: Complete99_REST::public_indexable_items();
 		usort(
 			$items,
 			static function ( $left, $right ) {
@@ -240,6 +348,9 @@ final class Complete99_Frontend {
 	}
 
 	private static function live_image_url( $item ) {
+		if ( class_exists( 'Complete99_Consumer' ) ) {
+			return Complete99_Consumer::image_url( $item );
+		}
 		$asset = sanitize_file_name( isset( $item['image_asset'] ) ? (string) $item['image_asset'] : '' );
 		if ( '' === $asset || 0 !== strpos( $asset, 'c99-' ) ) {
 			return '';
@@ -279,6 +390,40 @@ final class Complete99_Frontend {
 		exit;
 	}
 
+	public static function live_dish_breadcrumb_items( $dish, $lang ) {
+		$is_he = 'he' === $lang;
+		$name  = $is_he ? (string) ( $dish['name_he'] ?? '' ) : (string) ( $dish['name_en'] ?? '' );
+		return array(
+			array(
+				'label' => $is_he ? 'בית' : 'Home',
+				'url'   => self::navigation_url( 'home', $lang ),
+			),
+			array(
+				'label' => $is_he ? 'מנות' : 'Dishes',
+				'url'   => self::navigation_url( 'dishes', $lang ),
+			),
+			array(
+				'label' => wp_strip_all_tags( $name ),
+				'url'   => self::live_dish_url( (string) ( $dish['slug'] ?? '' ), $lang ),
+			),
+		);
+	}
+
+	private static function is_verified_current_dish_record( $dish ) {
+		if ( ! is_array( $dish )
+			|| true !== ( $dish['published'] ?? null )
+			|| ! in_array( sanitize_key( (string) ( $dish['verification_state'] ?? '' ) ), array( 'verified', 'launch_ready' ), true ) ) {
+			return false;
+		}
+		$source = sanitize_key( (string) ( $dish['_complete99_source'] ?? '' ) );
+		if ( '' !== $source && 'live' !== $source ) {
+			return false;
+		}
+		return class_exists( 'Complete99_REST' )
+			&& method_exists( 'Complete99_REST', 'is_public_item' )
+			&& Complete99_REST::is_public_item( $dish );
+	}
+
 	private static function live_dish_head_metadata( $dish, $lang ) {
 		$is_he       = 'he' === $lang;
 		$name        = $is_he ? $dish['name_he'] : $dish['name_en'];
@@ -307,31 +452,13 @@ final class Complete99_Frontend {
 			echo '<meta name="twitter:image" content="' . esc_url( $image ) . '" />' . "\n";
 		}
 
-		$availability = array(
-			'available' => 'https://schema.org/InStock',
-			'low'       => 'https://schema.org/LimitedAvailability',
-			'sold_out'  => 'https://schema.org/OutOfStock',
-		);
-		$menu_item    = array(
-			'@type'       => 'MenuItem',
-			'@id'         => $canonical . '#menu-item',
-			'name'        => wp_strip_all_tags( $name ),
-			'description' => wp_strip_all_tags( $description ),
-			'url'         => $canonical,
-			'inLanguage'  => $lang,
-		);
-		if ( $image ) {
-			$menu_item['image'] = $image;
-		}
-		$price    = isset( $dish['public_price'] ) && is_numeric( $dish['public_price'] ) ? (float) $dish['public_price'] : 0;
-		$currency = strtoupper( isset( $dish['currency'] ) ? (string) $dish['currency'] : '' );
-		if ( 0 < $price && preg_match( '/^[A-Z]{3}$/', $currency ) ) {
-			$menu_item['offers'] = array(
-				'@type'         => 'Offer',
-				'price'         => number_format( $price, 2, '.', '' ),
-				'priceCurrency' => $currency,
-				'availability'  => isset( $availability[ $dish['availability'] ] ) ? $availability[ $dish['availability'] ] : $availability['available'],
-				'url'           => $canonical,
+		$breadcrumb_items = array();
+		foreach ( self::live_dish_breadcrumb_items( $dish, $lang ) as $position => $breadcrumb ) {
+			$breadcrumb_items[] = array(
+				'@type'    => 'ListItem',
+				'position' => $position + 1,
+				'name'     => $breadcrumb['label'],
+				'item'     => $breadcrumb['url'],
 			);
 		}
 		$updated_at = isset( $dish['updated_at'] ) ? strtotime( (string) $dish['updated_at'] ) : false;
@@ -342,25 +469,58 @@ final class Complete99_Frontend {
 			'name'        => wp_strip_all_tags( $name ),
 			'description' => wp_strip_all_tags( $description ),
 			'inLanguage'  => $lang,
-			'mainEntity'  => array( '@id' => $canonical . '#menu-item' ),
+			'breadcrumb'  => array( '@id' => $canonical . '#breadcrumb' ),
 		);
 		if ( $updated_at ) {
 			$web_page['dateModified'] = gmdate( 'c', $updated_at );
 		}
-		$schema = array(
-			'@context' => 'https://schema.org',
-			'@graph'   => array(
-				array(
-					'@type' => 'Organization',
-					'@id'   => home_url( '/#organization' ),
-					'name'  => 'Complete99',
-					'url'   => home_url( '/' ),
-				),
-				$web_page,
-				$menu_item,
+		$graph = array(
+			self::food_business_schema( $lang ),
+			$web_page,
+			array(
+				'@type'           => 'BreadcrumbList',
+				'@id'             => $canonical . '#breadcrumb',
+				'itemListElement' => $breadcrumb_items,
 			),
 		);
+		if ( self::is_verified_current_dish_record( $dish ) ) {
+			$menu_item = array(
+				'@type'       => 'MenuItem',
+				'@id'         => $canonical . '#menu-item',
+				'name'        => wp_strip_all_tags( $name ),
+				'description' => wp_strip_all_tags( $description ),
+				'url'         => $canonical,
+				'inLanguage'  => $lang,
+			);
+			if ( $image ) {
+				$menu_item['image'] = $image;
+			}
+			$graph[1]['mainEntity'] = array( '@id' => $canonical . '#menu-item' );
+			$graph[]                = $menu_item;
+		}
+		$schema = array(
+			'@context' => 'https://schema.org',
+			'@graph'   => $graph,
+		);
 		echo '<script type="application/ld+json">' . wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) . '</script>' . "\n";
+	}
+
+	private static function food_business_schema( $lang ) {
+		return array(
+			'@type'     => 'Restaurant',
+			'@id'       => home_url( '/#organization' ),
+			'name'      => 'Complete99',
+			'url'       => home_url( '/' ),
+			'telephone' => '+972-3-523-1810',
+			'address'   => array(
+				'@type'           => 'PostalAddress',
+				'streetAddress'   => '99 Shlomo Ibn Gabirol',
+				'addressLocality' => 'Tel Aviv',
+				'addressCountry'  => 'IL',
+			),
+			'hasMenu'   => Complete99_Content::route_url( 'dishes', $lang ),
+			'sameAs'    => array( Complete99_Commerce::order_url( $lang ) ),
+		);
 	}
 
 	private static function schema_graph( $post, $lang, $alternate ) {
@@ -369,19 +529,20 @@ final class Complete99_Frontend {
 		$page_id = $url . '#webpage';
 		$image   = self::post_image_url( $post->ID );
 		$key     = Complete99_Content::translation_group_for_post( $post->ID );
+		$page_description = wp_strip_all_tags( $post->post_excerpt );
+		if ( 'store' === $key && Complete99_Commerce::is_ready() ) {
+			$page_description = 'he' === $lang
+				? 'מוצרי המזווה של קומפלט 99 עם מידע מלא והמשך מאובטח לסל ולתשלום.'
+				: 'Complete99 pantry goods with full product information and a secure cart and checkout.';
+		}
 		$graph   = array(
-			array(
-				'@type' => 'Organization',
-				'@id'   => $org_id,
-				'name'  => 'Complete99',
-				'url'   => home_url( '/' ),
-			),
+			self::food_business_schema( $lang ),
 			array(
 				'@type'       => 'WebPage',
 				'@id'         => $page_id,
 				'url'         => $url,
 				'name'        => wp_strip_all_tags( $post->post_title ),
-				'description' => wp_strip_all_tags( $post->post_excerpt ),
+				'description' => $page_description,
 				'inLanguage'  => $lang,
 				'isPartOf'     => array( '@id' => home_url( '/#website' ) ),
 			),
@@ -442,10 +603,68 @@ final class Complete99_Frontend {
 		if ( $recipe ) {
 			$graph[] = $recipe;
 		}
+		if ( 'store' === $key && Complete99_Commerce::is_ready() ) {
+			foreach ( Complete99_Commerce::storefront_product_ids() as $product_id ) {
+				$product_schema = self::store_product_schema( $product_id, $lang, $url );
+				if ( $product_schema ) {
+					$graph[] = $product_schema;
+				}
+			}
+		}
 
 		return array(
 			'@context' => 'https://schema.org',
 			'@graph'   => $graph,
+		);
+	}
+
+	private static function store_product_schema( $product_id, $lang, $store_url ) {
+		if ( ! function_exists( 'wc_get_product' ) ) {
+			return null;
+		}
+		$product = wc_get_product( absint( $product_id ) );
+		if ( ! $product ) {
+			return null;
+		}
+		$is_he       = 'he' === $lang;
+		$name        = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::NAME_HE : Complete99_Commerce::NAME_EN, true );
+		$description = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::DESCRIPTION_HE : Complete99_Commerce::DESCRIPTION_EN, true );
+		$ingredients = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::INGREDIENTS_HE : Complete99_Commerce::INGREDIENTS_EN, true );
+		$allergens   = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::ALLERGENS_HE : Complete99_Commerce::ALLERGENS_EN, true );
+		$storage     = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::STORAGE_HE : Complete99_Commerce::STORAGE_EN, true );
+		$image       = wp_get_attachment_image_url( $product->get_image_id(), 'full' );
+		$unit_codes  = array( 'kg' => 'KGM', 'g' => 'GRM', 'lbs' => 'LBR', 'oz' => 'ONZ' );
+		$weight_unit = (string) get_option( 'woocommerce_weight_unit', 'kg' );
+		if ( '' === trim( $name ) || '' === trim( $description ) || ! $image ) {
+			return null;
+		}
+		return array(
+			'@type'              => 'Product',
+			'@id'                => $store_url . '#c99-product-' . absint( $product_id ),
+			'name'               => $name,
+			'description'        => $description,
+			'inLanguage'         => $lang,
+			'image'              => array( $image ),
+			'sku'                => (string) $product->get_sku(),
+			'weight'             => array(
+				'@type'    => 'QuantitativeValue',
+				'value'    => (float) $product->get_weight(),
+				'unitCode' => $unit_codes[ $weight_unit ] ?? strtoupper( $weight_unit ),
+			),
+			'additionalProperty' => array(
+				array( '@type' => 'PropertyValue', 'name' => $is_he ? 'רכיבים' : 'Ingredients', 'value' => $ingredients ),
+				array( '@type' => 'PropertyValue', 'name' => $is_he ? 'אלרגנים' : 'Allergens', 'value' => $allergens ),
+				array( '@type' => 'PropertyValue', 'name' => $is_he ? 'אחסון' : 'Storage', 'value' => $storage ),
+			),
+			'offers'             => array(
+				'@type'         => 'Offer',
+				'url'           => $store_url . '#c99-product-' . absint( $product_id ),
+				'priceCurrency' => (string) get_woocommerce_currency(),
+				'price'         => (string) $product->get_price(),
+				'availability'  => 'https://schema.org/InStock',
+				'itemCondition' => 'https://schema.org/NewCondition',
+				'seller'        => array( '@id' => home_url( '/#organization' ) ),
+			),
 		);
 	}
 
@@ -575,6 +794,10 @@ final class Complete99_Frontend {
 	}
 
 	public static function render_header( $post_id, $lang, $live_slug = '' ) {
+		if ( class_exists( 'Complete99_Consumer' ) ) {
+			Complete99_Consumer::render_header( $post_id, $lang, $live_slug );
+			return;
+		}
 		$is_he       = 'he' === $lang;
 		$brand_home  = self::navigation_url( 'home', $lang );
 		$current_key = Complete99_Content::translation_group_for_post( $post_id );
@@ -583,7 +806,7 @@ final class Complete99_Frontend {
 		<a class="c99-skip-link" href="#c99-main"><?php echo esc_html( $is_he ? 'דילוג לתוכן' : 'Skip to content' ); ?></a>
 		<header class="c99-site-header">
 			<div class="c99-container c99-header-inner">
-				<a class="c99-brand" href="<?php echo esc_url( $brand_home ); ?>" aria-label="<?php echo esc_attr( $is_he ? 'קומפלט 99 — בית' : 'Complete99 — home' ); ?>">
+				<a class="c99-brand" href="<?php echo esc_url( $brand_home ); ?>" aria-label="<?php echo esc_attr( $is_he ? 'קומפלט 99 - בית' : 'Complete99 - home' ); ?>">
 					<span class="c99-brand-mark" aria-hidden="true"><span>9</span><span>9</span></span>
 					<span class="c99-brand-copy"><strong><?php echo esc_html( $is_he ? 'קומפלט 99' : 'Complete99' ); ?></strong><small><?php echo esc_html( $is_he ? 'אוכל · תפעול · צמיחה' : 'Food · operations · growth' ); ?></small></span>
 				</a>
@@ -653,6 +876,10 @@ final class Complete99_Frontend {
 	}
 
 	public static function render_current( $post ) {
+		if ( class_exists( 'Complete99_Consumer' ) ) {
+			Complete99_Consumer::render_current( $post );
+			return;
+		}
 		$lang  = Complete99_Content::language_for_post( $post->ID );
 		$key   = Complete99_Content::translation_group_for_post( $post->ID );
 		$is_he = 'he' === $lang;
@@ -883,7 +1110,7 @@ final class Complete99_Frontend {
 						echo esc_html(
 							sprintf(
 								$is_he ? 'מקור: Complete99 OS · גרסת פרסום %s' : 'Source: Complete99 OS · publication version %s',
-								isset( $model['version'] ) && '' !== (string) $model['version'] ? (string) $model['version'] : '—'
+								isset( $model['version'] ) && '' !== (string) $model['version'] ? (string) $model['version'] : '-'
 							)
 						);
 						?>
@@ -901,6 +1128,10 @@ final class Complete99_Frontend {
 	}
 
 	public static function render_live_dish_page( $dish, $lang ) {
+		if ( class_exists( 'Complete99_Consumer' ) ) {
+			Complete99_Consumer::render_live_dish_page( $dish, $lang );
+			return;
+		}
 		$is_he       = 'he' === $lang;
 		$name        = $is_he ? $dish['name_he'] : $dish['name_en'];
 		$description = $is_he ? $dish['description_he'] : $dish['description_en'];
@@ -954,6 +1185,10 @@ final class Complete99_Frontend {
 	}
 
 	public static function render_live_dish_not_found_page( $lang ) {
+		if ( class_exists( 'Complete99_Consumer' ) ) {
+			Complete99_Consumer::render_not_found_page( $lang );
+			return;
+		}
 		$is_he  = 'he' === $lang;
 		$hub_id = Complete99_Content::find_translation_post_id( 'dishes', $lang, true );
 		?>
@@ -1024,7 +1259,7 @@ final class Complete99_Frontend {
 			'dishes' => array(
 				'eyebrow' => $is_he ? 'מנה היא יותר מרשימת מרכיבים' : 'A dish is more than an ingredient list',
 				'title'    => $is_he ? 'ספריית אוכל שמחברת טעם, מקור ועבודה במטבח' : 'A food library connecting flavour, origin and kitchen practice',
-				'summary'  => $is_he ? 'כל מנה מיועדת לקבל מקום מסודר לסיפור, למרכיבים, לשיטות הכנה, למסורות ולמידע שימושי — רק כשהחומר שלם ואחראי.' : 'Each dish is designed to have a structured place for its story, ingredients, preparation, traditions and useful information once the material is complete and responsible.',
+				'summary'  => $is_he ? 'כל מנה מיועדת לקבל מקום מסודר לסיפור, למרכיבים, לשיטות הכנה, למסורות ולמידע שימושי - רק כשהחומר שלם ואחראי.' : 'Each dish is designed to have a structured place for its story, ingredients, preparation, traditions and useful information once the material is complete and responsible.',
 				'cards'    => array(
 					array( 'ingredients', '01', $is_he ? 'מרכיבים' : 'Ingredients', $is_he ? 'מה נכנס למנה, מה תפקידו ואיך עובדים איתו.' : 'What goes into a dish, why it is there and how it is handled.' ),
 					array( 'traditions', '02', $is_he ? 'מסורות קולינריות' : 'Culinary traditions', $is_he ? 'הקשרים משפחתיים, אזוריים ויהודיים בלי לקצר את הסיפור.' : 'Family, regional and Jewish contexts without flattening the story.' ),
@@ -1065,7 +1300,7 @@ final class Complete99_Frontend {
 			),
 			'store' => array(
 				'eyebrow' => $is_he ? 'קטלוג בתכנון אחראי' : 'A catalogue being planned responsibly',
-				'title'    => $is_he ? 'ציוד, כלי עבודה ומוצרי מזווה — כשהמסחר יהיה מוכן' : 'Equipment, working tools and pantry goods — when commerce is ready',
+				'title'    => $is_he ? 'ציוד, כלי עבודה ומוצרי מזווה - כשהמסחר יהיה מוכן' : 'Equipment, working tools and pantry goods - when commerce is ready',
 				'summary'  => $is_he ? 'החנות נבנית סביב מוצרים שימושיים למטבח ולשירות. מכירה, תשלום ומשלוח יוצגו רק לאחר השלמת פרטי הסוחר, המחירים, המלאי, האספקה וההחזרות.' : 'The store is being shaped around useful kitchen and service products. Sales, payment and delivery will appear only after merchant, pricing, stock, fulfilment and returns details are complete.',
 				'cards'    => array(
 					array( '', '01', $is_he ? 'ציוד וכלי מטבח' : 'Kitchen equipment & tools', $is_he ? 'כלים לעבודה יום־יומית, הכנה, הגשה וארגון.' : 'Tools for daily work, preparation, service and organisation.' ),
@@ -1294,6 +1529,10 @@ final class Complete99_Frontend {
 	}
 
 	public static function render_footer( $lang ) {
+		if ( class_exists( 'Complete99_Consumer' ) ) {
+			Complete99_Consumer::render_footer( $lang );
+			return;
+		}
 		$is_he = 'he' === $lang;
 		$clusters = array(
 			array(

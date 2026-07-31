@@ -13,7 +13,7 @@ $c99_dish_content = static function ( $language, $dish_name ) {
 			. '<h2>מרכיבים וטכניקה</h2><p><strong>נדרשת בדיקת מטבח:</strong> רשימת המרכיבים, כמויות, תשואה, איבוד, טמפרטורה, זמני הכנה, קירור והגשה יוזנו בגרסה מבוקרת. אלרגנים, כשרות והחלפות מרכיב יעברו בדיקה נפרדת.</p>'
 			. '<h2>מתכון ציבורי לעומת BOM</h2><p>המתכון הציבורי ייכתב לאחר בדיקה חוזרת במטבח ביתי. מפרט הייצור, הספקים, העלות, מספרי האצווה והבקרות נשארים במערכת הפרטית ואינם נחשפים באתר.</p>'
 			. '<h2>בריאות ותזונה</h2><p>לא תופיע הבטחה שהמנה ״בריאה״ או מתאימה למצב רפואי. אפשר לפרסם רכיבים ושיטת הכנה מאומתים; ניתוח תזונתי או המלצה דורשים חישוב ובדיקה של בעל מקצוע מוסמך.</p>'
-			. '<h2>רשימת מקורות לפרסום</h2><ul><li>מקור היסטורי או מחקר קולינרי — חסר.</li><li>ראיון משפחתי מתועד — חסר.</li><li>פרוטוקול בדיקת מתכון ותשואה — חסר.</li><li>בדיקת אלרגנים ותזונה — חסרה.</li></ul>'
+			. '<h2>רשימת מקורות לפרסום</h2><ul><li>מקור היסטורי או מחקר קולינרי - חסר.</li><li>ראיון משפחתי מתועד - חסר.</li><li>פרוטוקול בדיקת מתכון ותשואה - חסר.</li><li>בדיקת אלרגנים ותזונה - חסרה.</li></ul>'
 			. '</div>';
 	}
 	return '<div class="c99-prose c99-dish-draft">'
@@ -23,7 +23,7 @@ $c99_dish_content = static function ( $language, $dish_name ) {
 		. '<h2>Ingredients and technique</h2><p><strong>Kitchen test required:</strong> ingredients, quantities, yield, loss, temperatures, preparation, cooling and service times belong in a controlled version. Allergens, kosher status and substitutions require separate review.</p>'
 		. '<h2>Public recipe and private BOM</h2><p>A public recipe can follow a repeatable home-kitchen test. Production specifications, suppliers, costs, batch identifiers and controls remain in the private operating system.</p>'
 		. '<h2>Health and nutrition</h2><p>No claim will describe the dish as “healthy” or suitable for a medical condition. Verified ingredients and methods may be published; nutrition analysis or advice requires calculation and review by a qualified professional.</p>'
-		. '<h2>Publication source register</h2><ul><li>Historical or culinary research source — missing.</li><li>Documented family interview — missing.</li><li>Recipe and yield test record — missing.</li><li>Allergen and nutrition review — missing.</li></ul>'
+		. '<h2>Publication source register</h2><ul><li>Historical or culinary research source - missing.</li><li>Documented family interview - missing.</li><li>Recipe and yield test record - missing.</li><li>Allergen and nutrition review - missing.</li></ul>'
 		. '</div>';
 };
 

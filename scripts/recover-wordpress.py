@@ -119,6 +119,115 @@ def discover_lock_owner(
     return owner_id, discovery
 
 
+def rollback_and_verify(
+    deployer: Any,
+    client: Any,
+    token: str,
+    deployment_id: str,
+    audit: dict[str, Any],
+    decision: str,
+) -> None:
+    """Rollback one uncommitted mutation and prove the exact prior state."""
+    rollback = deployer.rollback_with_recovery(
+        client,
+        token,
+        deployment_id,
+    )
+    if not rollback.get("rolled_back") or not rollback.get("database_restore"):
+        raise deployer.DeployError("Recovery rollback was not confirmed")
+    audit["rollback"] = {
+        "rolled_back": True,
+        "had_plugin": bool(rollback.get("had_plugin")),
+        "prior_active": bool(rollback.get("prior_active")),
+        "prior_version": rollback.get("prior_version", ""),
+        "prior_deployment": rollback.get("prior_deployment", ""),
+    }
+    audit["rollback_integrity"] = deployer.verify_rollback_integrity(
+        client,
+        token,
+        deployment_id,
+        rollback,
+    )
+    if rollback.get("prior_active"):
+        audit["prior_health"] = deployer.verify_health(
+            client,
+            str(rollback.get("prior_version", "")),
+            str(rollback.get("prior_deployment", "")),
+        )
+        audit["prior_rendered_home"] = deployer.verify_rendered_home(
+            client,
+            str(rollback.get("prior_version", "")),
+            str(rollback.get("prior_deployment", "")),
+            deployment_id,
+        )
+    elif rollback.get("had_plugin"):
+        audit["prior_inactive_plugin"] = deployer.verify_inactive_plugin(
+            client,
+            str(rollback.get("prior_version", "")),
+        )
+    else:
+        audit["prior_absence"] = deployer.verify_plugin_absent(client)
+    audit["finalize"] = deployer.finalize_deployment(
+        client,
+        token,
+        deployment_id,
+    )
+    audit["decision"] = decision
+
+
+def recover_forward_candidate(
+    deployer: Any,
+    client: Any,
+    token: str,
+    deployment_id: str,
+    status: dict[str, Any],
+    audit: dict[str, Any],
+) -> None:
+    """Stabilize a clean forward candidate or rollback its exact prior state."""
+    phase = str(status.get("phase", ""))
+    expected_version = str(status.get("expected_version", ""))
+    installed_plugin_sha256 = str(status.get("installed_plugin_sha256", ""))
+    try:
+        audit["stabilize"] = deployer.stabilize_deployment(
+            client,
+            token,
+            deployment_id,
+            expected_version,
+            installed_plugin_sha256,
+        )
+    except Exception as stabilization_error:
+        audit["stabilization_failure"] = {
+            "error": type(stabilization_error).__name__,
+            "phase": phase,
+        }
+        rollback_and_verify(
+            deployer,
+            client,
+            token,
+            deployment_id,
+            audit,
+            "rollback_failed_forward_stabilization",
+        )
+        return
+
+    audit["health"] = deployer.verify_health(
+        client,
+        expected_version,
+        deployment_id,
+    )
+    audit["rendered_home"] = deployer.verify_rendered_home(
+        client,
+        expected_version,
+        deployment_id,
+    )
+    audit["finalize"] = deployer.finalize_deployment(
+        client,
+        token,
+        deployment_id,
+    )
+    audit["decision"] = "stabilize_completed_forward_migration"
+
+
 def main() -> int:
     deployer = load_deployer()
     parser = argparse.ArgumentParser()
@@ -401,69 +510,23 @@ def main() -> int:
             and status.get("current_plugin_sha256")
             == status.get("installed_plugin_sha256")
         ):
-            expected_version = str(status.get("expected_version", ""))
-            installed_plugin_sha256 = str(
-                status.get("installed_plugin_sha256", "")
-            )
-            audit["stabilize"] = deployer.stabilize_deployment(
+            recover_forward_candidate(
+                deployer,
                 client,
                 token,
                 args.deployment_id,
-                expected_version,
-                installed_plugin_sha256,
+                status,
+                audit,
             )
-            audit["health"] = deployer.verify_health(
-                client,
-                expected_version,
-                args.deployment_id,
-            )
-            audit["rendered_home"] = deployer.verify_rendered_home(
-                client,
-                expected_version,
-                args.deployment_id,
-            )
-            audit["finalize"] = deployer.finalize_deployment(
-                client, token, args.deployment_id
-            )
-            audit["decision"] = "stabilize_completed_forward_migration"
         else:
-            rollback = deployer.rollback_with_recovery(
-                client, token, args.deployment_id
+            rollback_and_verify(
+                deployer,
+                client,
+                token,
+                args.deployment_id,
+                audit,
+                "rollback_interrupted_mutation",
             )
-            if not rollback.get("rolled_back") or not rollback.get("database_restore"):
-                raise deployer.DeployError("Recovery rollback was not confirmed")
-            audit["rollback"] = {
-                "rolled_back": True,
-                "had_plugin": bool(rollback.get("had_plugin")),
-                "prior_active": bool(rollback.get("prior_active")),
-                "prior_version": rollback.get("prior_version", ""),
-                "prior_deployment": rollback.get("prior_deployment", ""),
-            }
-            audit["rollback_integrity"] = deployer.verify_rollback_integrity(
-                client, token, args.deployment_id, rollback
-            )
-            if rollback.get("prior_active"):
-                audit["prior_health"] = deployer.verify_health(
-                    client,
-                    str(rollback.get("prior_version", "")),
-                    str(rollback.get("prior_deployment", "")),
-                )
-                audit["prior_rendered_home"] = deployer.verify_rendered_home(
-                    client,
-                    str(rollback.get("prior_version", "")),
-                    str(rollback.get("prior_deployment", "")),
-                    args.deployment_id,
-                )
-            elif rollback.get("had_plugin"):
-                audit["prior_inactive_plugin"] = deployer.verify_inactive_plugin(
-                    client, str(rollback.get("prior_version", ""))
-                )
-            else:
-                audit["prior_absence"] = deployer.verify_plugin_absent(client)
-            audit["finalize"] = deployer.finalize_deployment(
-                client, token, args.deployment_id
-            )
-            audit["decision"] = "rollback_interrupted_mutation"
         audit["result"] = "recovered"
     except Exception as error:
         primary_error = error

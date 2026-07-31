@@ -29,11 +29,11 @@ $complete99_deployment = (string) get_option( 'complete99_last_deployment_id', C
 	data-c99-version="<?php echo esc_attr( COMPLETE99_PLATFORM_VERSION ); ?>"
 	data-c99-deployment="<?php echo esc_attr( $complete99_deployment ); ?>"
 ></span>
-<?php Complete99_Frontend::render_header( $complete99_post->ID, $complete99_lang ); ?>
+<?php Complete99_Consumer::render_header( $complete99_post->ID, $complete99_lang ); ?>
 <main id="c99-main" tabindex="-1">
-	<?php Complete99_Frontend::render_current( $complete99_post ); ?>
+	<?php Complete99_Consumer::render_current( $complete99_post ); ?>
 </main>
-<?php Complete99_Frontend::render_footer( $complete99_lang ); ?>
+<?php Complete99_Consumer::render_footer( $complete99_lang ); ?>
 <?php wp_footer(); ?>
 </body>
 </html>

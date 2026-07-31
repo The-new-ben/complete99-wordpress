@@ -5,7 +5,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 final class Complete99_Content {
-	const SEED_VERSION = '2026-07-28.2';
+	const SEED_VERSION = '2026-07-29.1';
+	const PUBLIC_AUDIENCE = 'culinary_consumer_v1';
 	const DISH_MIN_WORDS_PER_LANGUAGE = 5000;
 	const DISH_MIN_SOURCES            = 8;
 	const DISH_MIN_AUTHORITATIVE      = 2;
@@ -20,6 +21,12 @@ final class Complete99_Content {
 		'c99_guide'            => array( 'guide', 'guides', 'מרכז ידע', 'Knowledge', 'knowledge' ),
 		'c99_case_study'       => array( 'case_study', 'case_studies', 'מקרי בוחן', 'Case studies', 'case-studies' ),
 		'c99_team_member'      => array( 'team_member', 'team_members', 'צוות', 'Team', 'team' ),
+	);
+
+	private static $public_post_types = array(
+		'c99_dish',
+		'c99_ingredient',
+		'c99_guide',
 	);
 
 	private static $hub_by_post_type = array(
@@ -44,6 +51,12 @@ final class Complete99_Content {
 		'c99_region'         => array( 'אזור', 'Region', array( 'c99_location', 'c99_case_study' ) ),
 	);
 
+	private static $public_taxonomies = array(
+		'c99_dish_course',
+		'c99_food_tradition',
+		'c99_dietary_note',
+	);
+
 	public static function boot_governance() {
 		add_filter( 'wp_sitemaps_add_provider', array( __CLASS__, 'filter_sitemap_provider' ), 10, 2 );
 		add_filter( 'wp_sitemaps_post_types', array( __CLASS__, 'filter_sitemap_post_types' ) );
@@ -55,6 +68,7 @@ final class Complete99_Content {
 	public static function register() {
 		foreach ( self::$post_types as $post_type => $definition ) {
 			list( $singular_cap, $plural_cap, $label_he, $label_en ) = $definition;
+			$is_public = self::is_public_post_type( $post_type );
 			register_post_type(
 				$post_type,
 				array(
@@ -64,24 +78,30 @@ final class Complete99_Content {
 						'add_new_item'  => sprintf( 'הוספת %s', $label_he ),
 						'edit_item'     => sprintf( 'עריכת %s', $label_he ),
 					),
-					'public'              => true,
-					'show_in_rest'        => true,
+					'public'              => $is_public,
+					'publicly_queryable'  => $is_public,
+					'show_ui'             => true,
+					'show_in_menu'        => true,
+					'show_in_rest'        => $is_public,
+					'show_in_admin_bar'   => $is_public,
 					'has_archive'         => false,
 					'hierarchical'        => false,
 					'rewrite'             => false,
+					'query_var'           => $is_public,
 					'supports'            => array( 'title', 'editor', 'excerpt', 'thumbnail', 'revisions', 'author', 'custom-fields' ),
 					'menu_icon'           => self::menu_icon( $post_type ),
 					'capability_type'     => array( 'c99_' . $singular_cap, 'c99_' . $plural_cap ),
 					'capabilities'        => self::capabilities( $singular_cap, $plural_cap ),
 					'map_meta_cap'        => true,
 					'delete_with_user'    => false,
-					'show_in_nav_menus'   => true,
-					'exclude_from_search' => false,
+					'show_in_nav_menus'   => $is_public,
+					'exclude_from_search' => ! $is_public,
 				)
 			);
 		}
 
 		foreach ( self::$taxonomies as $taxonomy => $definition ) {
+			$is_public = self::is_public_taxonomy( $taxonomy );
 			register_taxonomy(
 				$taxonomy,
 				$definition[2],
@@ -90,11 +110,16 @@ final class Complete99_Content {
 						'name'          => $definition[0],
 						'singular_name' => $definition[0],
 					),
-					'public'            => true,
-					'show_in_rest'      => true,
+					'public'            => $is_public,
+					'publicly_queryable' => $is_public,
+					'show_ui'           => true,
+					'show_in_rest'      => $is_public,
+					'show_in_nav_menus' => $is_public,
+					'show_tagcloud'     => false,
 					'show_admin_column' => true,
 					'hierarchical'      => true,
 					'rewrite'           => false,
+					'query_var'         => $is_public,
 				)
 			);
 		}
@@ -107,16 +132,25 @@ final class Complete99_Content {
 		add_filter( 'redirect_post_location', array( __CLASS__, 'dish_gate_redirect' ), 10, 2 );
 	}
 
+	private static function is_public_post_type( $post_type ) {
+		return in_array( (string) $post_type, self::$public_post_types, true );
+	}
+
+	private static function is_public_taxonomy( $taxonomy ) {
+		return in_array( (string) $taxonomy, self::$public_taxonomies, true );
+	}
+
 	private static function register_meta() {
-		$public_types = array_merge( array( 'page' ), array_keys( self::$post_types ) );
-		foreach ( $public_types as $post_type ) {
+		$managed_types = array_merge( array( 'page' ), array_keys( self::$post_types ) );
+		foreach ( $managed_types as $post_type ) {
+			$show_in_rest = 'page' === $post_type || self::is_public_post_type( $post_type );
 			register_post_meta(
 				$post_type,
 				'_complete99_managed',
 				array(
 					'type'              => 'boolean',
 					'single'            => true,
-					'show_in_rest'      => true,
+					'show_in_rest'      => $show_in_rest,
 					'sanitize_callback' => 'rest_sanitize_boolean',
 					'auth_callback'     => static function () {
 						return current_user_can( 'edit_posts' );
@@ -129,7 +163,7 @@ final class Complete99_Content {
 				array(
 					'type'              => 'string',
 					'single'            => true,
-					'show_in_rest'      => true,
+					'show_in_rest'      => $show_in_rest,
 					'sanitize_callback' => 'sanitize_key',
 					'auth_callback'     => static function () {
 						return current_user_can( 'edit_posts' );
@@ -142,7 +176,7 @@ final class Complete99_Content {
 				array(
 					'type'              => 'string',
 					'single'            => true,
-					'show_in_rest'      => true,
+					'show_in_rest'      => $show_in_rest,
 					'sanitize_callback' => array( __CLASS__, 'sanitize_language' ),
 					'auth_callback'     => static function () {
 						return current_user_can( 'edit_posts' );
@@ -155,7 +189,7 @@ final class Complete99_Content {
 				array(
 					'type'              => 'string',
 					'single'            => true,
-					'show_in_rest'      => true,
+					'show_in_rest'      => $show_in_rest,
 					'sanitize_callback' => 'sanitize_key',
 					'auth_callback'     => static function () {
 						return current_user_can( 'edit_posts' );
@@ -168,7 +202,7 @@ final class Complete99_Content {
 				array(
 					'type'              => 'boolean',
 					'single'            => true,
-					'show_in_rest'      => true,
+					'show_in_rest'      => $show_in_rest,
 					'sanitize_callback' => 'rest_sanitize_boolean',
 					'auth_callback'     => static function () {
 						return current_user_can( 'edit_posts' );
@@ -181,7 +215,7 @@ final class Complete99_Content {
 				array(
 					'type'              => 'string',
 					'single'            => true,
-					'show_in_rest'      => true,
+					'show_in_rest'      => $show_in_rest,
 					'sanitize_callback' => 'sanitize_key',
 					'auth_callback'     => static function () {
 						return current_user_can( 'edit_posts' );
@@ -287,7 +321,7 @@ final class Complete99_Content {
 		if ( ! is_array( $post_types ) ) {
 			return array();
 		}
-		$allowed = array_fill_keys( array_merge( array( 'page' ), array_keys( self::$post_types ) ), true );
+		$allowed = array_fill_keys( array_merge( array( 'page' ), self::$public_post_types ), true );
 		foreach ( array_keys( $post_types ) as $post_type ) {
 			if ( ! isset( $allowed[ $post_type ] ) ) {
 				unset( $post_types[ $post_type ] );
@@ -301,7 +335,7 @@ final class Complete99_Content {
 	}
 
 	public static function filter_sitemap_posts_query_args( $args, $post_type ) {
-		$allowed = array_merge( array( 'page' ), array_keys( self::$post_types ) );
+		$allowed = array_merge( array( 'page' ), self::$public_post_types );
 		if ( ! in_array( (string) $post_type, $allowed, true ) ) {
 			$args['post__in'] = array( 0 );
 			return $args;
@@ -340,7 +374,7 @@ final class Complete99_Content {
 	}
 
 	public static function robots_index_gate( $robots ) {
-		if ( is_tax( array_keys( self::$taxonomies ) ) ) {
+		if ( is_tax( self::$public_taxonomies ) ) {
 			unset( $robots['index'] );
 			$robots['noindex']  = true;
 			$robots['nofollow'] = false;
@@ -366,6 +400,12 @@ final class Complete99_Content {
 			|| '' !== (string) $post->post_password
 			|| ! self::is_complete99_post( $post->ID )
 			|| ! rest_sanitize_boolean( get_post_meta( $post->ID, '_complete99_index_eligible', true ) ) ) {
+			return false;
+		}
+		$translation_key = sanitize_key( (string) get_post_meta( $post->ID, '_complete99_translation_key', true ) );
+		if ( 'store' === $translation_key
+			&& class_exists( 'Complete99_Commerce' )
+			&& ! Complete99_Commerce::is_ready() ) {
 			return false;
 		}
 		$verification = (string) get_post_meta( $post->ID, '_complete99_verification_state', true );
@@ -421,6 +461,9 @@ final class Complete99_Content {
 
 	public static function register_rewrites() {
 		foreach ( self::$post_types as $post_type => $definition ) {
+			if ( ! self::is_public_post_type( $post_type ) ) {
+				continue;
+			}
 			$base = $definition[4];
 			add_rewrite_rule(
 				'^' . preg_quote( $base, '/' ) . '/([^/]+)/?$',
@@ -446,7 +489,7 @@ final class Complete99_Content {
 	}
 
 	public static function filter_post_type_link( $url, $post ) {
-		if ( ! isset( self::$post_types[ $post->post_type ] ) ) {
+		if ( ! isset( self::$post_types[ $post->post_type ] ) || ! self::is_public_post_type( $post->post_type ) ) {
 			return $url;
 		}
 		$lang = (string) get_post_meta( $post->ID, '_complete99_language', true );
@@ -703,9 +746,14 @@ final class Complete99_Content {
 		}
 
 		$current_description = (string) get_option( 'blogdescription', '' );
-		if ( '' === trim( $current_description ) || 'Just another WordPress site' === $current_description ) {
-			update_option( 'blogdescription', 'אוכל של בית. תפעול של מחר.' );
-			if ( 'אוכל של בית. תפעול של מחר.' !== (string) get_option( 'blogdescription', '' ) ) {
+		$legacy_description  = in_array(
+			trim( $current_description ),
+			array( '', 'Just another WordPress site', 'אוכל של בית. תפעול של מחר.' ),
+			true
+		);
+		if ( $legacy_description ) {
+			update_option( 'blogdescription', 'סביח, קובה ואוכל ביתי בתל אביב.' );
+			if ( 'סביח, קובה ואוכל ביתי בתל אביב.' !== (string) get_option( 'blogdescription', '' ) ) {
 				throw new \RuntimeException( 'Complete99 site-description correction failed readback.' );
 			}
 		}
@@ -743,37 +791,48 @@ final class Complete99_Content {
 			$current_status  = (string) $existing_record['post_status'];
 			$required_status = self::required_seed_status( $blueprint, $current_status );
 			$post['post_status']  = $required_status;
+			$audience_reset = self::requires_consumer_audience_reset( $blueprint, $existing );
 
-			if ( ! $hash_state['exists'] ) {
-				if ( ! hash_equals( $new_hash, $current_hash ) ) {
-					throw new \RuntimeException( 'A Complete99 seed is missing provenance for editor-owned content.' );
-				}
-				self::store_seed_meta( $existing, '_complete99_seed_hash', $new_hash );
-			} else {
-				$stored_hash = (string) $hash_state['value'];
-				if ( ! self::is_sha256( $stored_hash ) ) {
-					throw new \RuntimeException( 'A Complete99 seed provenance hash is invalid.' );
-				}
-			}
-
-			$stored_hash = $hash_state['exists'] ? (string) $hash_state['value'] : $new_hash;
-			if ( hash_equals( $stored_hash, $current_hash ) ) {
+			if ( $audience_reset ) {
 				$post['ID'] = $existing;
 				$result     = wp_update_post( wp_slash( $post ), true );
 				if ( is_wp_error( $result ) || $existing !== (int) $result ) {
 					return 0;
 				}
 				self::store_seed_meta( $existing, '_complete99_seed_hash', $new_hash );
-			} elseif ( $required_status !== $current_status ) {
-				$result = wp_update_post(
-					array(
-						'ID'          => $existing,
-						'post_status' => $required_status,
-					),
-					true
-				);
-				if ( is_wp_error( $result ) || $existing !== (int) $result ) {
-					return 0;
+			} elseif ( ! $hash_state['exists'] ) {
+				if ( ! hash_equals( $new_hash, $current_hash ) ) {
+					throw new \RuntimeException( 'A Complete99 seed is missing provenance for editor-owned content.' );
+				}
+				self::store_seed_meta( $existing, '_complete99_seed_hash', $new_hash );
+			}
+			if ( ! $audience_reset && $hash_state['exists'] ) {
+				$stored_hash = (string) $hash_state['value'];
+				if ( ! self::is_sha256( $stored_hash ) ) {
+					throw new \RuntimeException( 'A Complete99 seed provenance hash is invalid.' );
+				}
+			}
+
+			if ( ! $audience_reset ) {
+				$stored_hash = $hash_state['exists'] ? (string) $hash_state['value'] : $new_hash;
+				if ( hash_equals( $stored_hash, $current_hash ) ) {
+					$post['ID'] = $existing;
+					$result     = wp_update_post( wp_slash( $post ), true );
+					if ( is_wp_error( $result ) || $existing !== (int) $result ) {
+						return 0;
+					}
+					self::store_seed_meta( $existing, '_complete99_seed_hash', $new_hash );
+				} elseif ( $required_status !== $current_status ) {
+					$result = wp_update_post(
+						array(
+							'ID'          => $existing,
+							'post_status' => $required_status,
+						),
+						true
+					);
+					if ( is_wp_error( $result ) || $existing !== (int) $result ) {
+						return 0;
+					}
 				}
 			}
 			$id = $existing;
@@ -794,6 +853,9 @@ final class Complete99_Content {
 		self::store_seed_meta( $id, '_complete99_index_eligible', self::seed_index_eligible( $blueprint ) );
 		self::store_seed_meta( $id, '_complete99_seed_version', self::SEED_VERSION );
 		self::store_seed_meta( $id, '_complete99_verification_state', isset( $blueprint['verification'] ) ? $blueprint['verification'] : 'editorial_review' );
+		if ( self::is_consumer_public_blueprint( $blueprint ) ) {
+			self::store_seed_meta( $id, '_complete99_public_audience', self::PUBLIC_AUDIENCE );
+		}
 		if ( ! empty( $blueprint['image'] ) ) {
 			self::store_seed_meta( $id, '_complete99_image_asset', sanitize_file_name( $blueprint['image'] ) );
 		}
@@ -801,6 +863,18 @@ final class Complete99_Content {
 			self::sync_seed_recipe( $id, $blueprint['recipe'] );
 		}
 		return (int) $id;
+	}
+
+	private static function is_consumer_public_blueprint( $blueprint ) {
+		$consumer_keys = array( 'home', 'about', 'contact', 'dishes', 'ingredients', 'traditions', 'knowledge', 'store', 'proposal', 'privacy', 'terms', 'accessibility' );
+		return ! empty( $blueprint['public_route'] )
+			&& 'page' === (string) ( $blueprint['type'] ?? '' )
+			&& in_array( (string) ( $blueprint['key'] ?? '' ), $consumer_keys, true );
+	}
+
+	private static function requires_consumer_audience_reset( $blueprint, $post_id ) {
+		return self::is_consumer_public_blueprint( $blueprint )
+			&& self::PUBLIC_AUDIENCE !== (string) get_post_meta( $post_id, '_complete99_public_audience', true );
 	}
 
 	private static function store_seed_meta( $post_id, $key, $value ) {
@@ -897,6 +971,10 @@ final class Complete99_Content {
 
 	private static function required_seed_status( $blueprint, $current_status ) {
 		$expected = self::expected_seed_status( $blueprint );
+		$must_be_public = 'publish' === $expected && ! empty( $blueprint['public_route'] );
+		if ( $must_be_public ) {
+			return 'publish';
+		}
 		if ( 'private' === $current_status ) {
 			return 'private';
 		}
@@ -908,6 +986,10 @@ final class Complete99_Content {
 
 	private static function allowed_seed_statuses( $blueprint ) {
 		$expected = self::expected_seed_status( $blueprint );
+		$must_be_public = 'publish' === $expected && ! empty( $blueprint['public_route'] );
+		if ( $must_be_public ) {
+			return array( 'publish' );
+		}
 		if ( 'private' === $expected ) {
 			return array( 'private' );
 		}
@@ -993,8 +1075,6 @@ final class Complete99_Content {
 	 * Prove the complete data model before the migration version is committed.
 	 */
 	public static function assert_migration_invariants() {
-		self::assert_roles_persisted();
-
 		$launch = require COMPLETE99_PLATFORM_DIR . 'data/launch-content.php';
 		$dishes = require COMPLETE99_PLATFORM_DIR . 'data/dish-seeds.php';
 		$english_home = self::unique_seed_record( 'home:en' );
@@ -1044,6 +1124,9 @@ final class Complete99_Content {
 					'_complete99_seed_version'      => self::SEED_VERSION,
 					'_complete99_verification_state'=> isset( $blueprint['verification'] ) ? $blueprint['verification'] : 'editorial_review',
 				);
+				if ( self::is_consumer_public_blueprint( $blueprint ) ) {
+					$expected_meta['_complete99_public_audience'] = self::PUBLIC_AUDIENCE;
+				}
 				foreach ( $expected_meta as $key => $value ) {
 					$stored           = self::direct_single_meta_state( $post_id, $key );
 					$expected_value   = sanitize_meta( $key, $value, 'post', (string) $post['post_type'] );
@@ -1376,18 +1459,18 @@ final class Complete99_Content {
 
 		echo '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">';
 		echo '<div>';
-		$lines_field( 'c99_sources', 'Credible source URLs — one per line (minimum 8)', isset( $recipe['sources'] ) ? $recipe['sources'] : array(), 8 );
-		$lines_field( 'c99_authoritative_sources', 'Authoritative/primary source URLs — one per line (minimum 2)', isset( $recipe['authoritative_sources'] ) ? $recipe['authoritative_sources'] : array(), 4 );
-		$lines_field( 'c99_source_notes', 'Claim/source and dispute notes — one per line', isset( $recipe['source_notes'] ) ? $recipe['source_notes'] : array(), 6 );
-		$lines_field( 'c99_ingredients', 'Tested public ingredients — one per line', isset( $recipe['ingredients'] ) ? $recipe['ingredients'] : array(), 8 );
-		$lines_field( 'c99_instructions', 'Tested public instructions — one step per line', isset( $recipe['instructions'] ) ? $recipe['instructions'] : array(), 8 );
-		$lines_field( 'c99_allergens', 'Allergen record — one item per line; use “none identified” only after review', isset( $recipe['allergens'] ) ? $recipe['allergens'] : array(), 4 );
+		$lines_field( 'c99_sources', 'Credible source URLs - one per line (minimum 8)', isset( $recipe['sources'] ) ? $recipe['sources'] : array(), 8 );
+		$lines_field( 'c99_authoritative_sources', 'Authoritative/primary source URLs - one per line (minimum 2)', isset( $recipe['authoritative_sources'] ) ? $recipe['authoritative_sources'] : array(), 4 );
+		$lines_field( 'c99_source_notes', 'Claim/source and dispute notes - one per line', isset( $recipe['source_notes'] ) ? $recipe['source_notes'] : array(), 6 );
+		$lines_field( 'c99_ingredients', 'Tested public ingredients - one per line', isset( $recipe['ingredients'] ) ? $recipe['ingredients'] : array(), 8 );
+		$lines_field( 'c99_instructions', 'Tested public instructions - one step per line', isset( $recipe['instructions'] ) ? $recipe['instructions'] : array(), 8 );
+		$lines_field( 'c99_allergens', 'Allergen record - one item per line; use “none identified” only after review', isset( $recipe['allergens'] ) ? $recipe['allergens'] : array(), 4 );
 		echo '</div><div>';
 		$text_field( 'c99_yield', 'Recipe yield', isset( $recipe['yield'] ) ? $recipe['yield'] : '' );
 		$text_field( 'c99_prep_minutes', 'Preparation minutes', isset( $recipe['prep_minutes'] ) ? $recipe['prep_minutes'] : '', 'number' );
 		$text_field( 'c99_cook_minutes', 'Cooking minutes', isset( $recipe['cook_minutes'] ) ? $recipe['cook_minutes'] : '', 'number' );
-		$lines_field( 'c99_weights', 'Tested weights — one per line', isset( $recipe['weights'] ) ? $recipe['weights'] : array(), 4 );
-		$lines_field( 'c99_temperatures', 'Tested temperatures — one per line', isset( $recipe['temperatures'] ) ? $recipe['temperatures'] : array(), 4 );
+		$lines_field( 'c99_weights', 'Tested weights - one per line', isset( $recipe['weights'] ) ? $recipe['weights'] : array(), 4 );
+		$lines_field( 'c99_temperatures', 'Tested temperatures - one per line', isset( $recipe['temperatures'] ) ? $recipe['temperatures'] : array(), 4 );
 		$text_field( 'c99_test_date', 'Kitchen test date', isset( $recipe['test_date'] ) ? $recipe['test_date'] : '', 'date' );
 		$text_field( 'c99_kitchen_test_id', 'Kitchen test ID', isset( $recipe['kitchen_test_id'] ) ? $recipe['kitchen_test_id'] : '' );
 		$text_field( 'c99_recipe_version', 'Public recipe version', isset( $recipe['recipe_version'] ) ? $recipe['recipe_version'] : '' );

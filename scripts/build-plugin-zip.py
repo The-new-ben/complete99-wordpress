@@ -19,10 +19,11 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-29 05:35:00"
+RELEASE_LAST_UPDATED = "2026-07-29 08:25:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
+GENERATED_SOURCE_ROOT = PurePath("assets/images/generated")
 FORBIDDEN_SECRET_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
 FORBIDDEN_SECRET_EXACT_NAMES = {"id_rsa", "id_ed25519"}
 FORBIDDEN_JSON_NAME = re.compile(
@@ -113,6 +114,11 @@ def source_files() -> list[Path]:
             continue
         relative = path.relative_to(SOURCE)
         if any(part in EXCLUDED_PARTS for part in relative.parts):
+            continue
+        if (
+            relative.parent == GENERATED_SOURCE_ROOT
+            and relative.suffix.casefold() == ".png"
+        ):
             continue
         forbidden_reason = forbidden_secret_path_reason(relative)
         if forbidden_reason:
@@ -211,8 +217,9 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Added a Complete99-owned bilingual not-found experience for unknown live-dish URLs with correct document language and direction.</li>"
-                "<li>Kept missing dishes on HTTP 404 with explicit noindex, no canonical claim and useful recovery links to the dish library and home page.</li>"
+                "<li>Rebuilt the public Hebrew and English experience for culinary consumers with food-first navigation, menu references and clear ordering paths.</li>"
+                "<li>Added a fail-closed pantry shop foundation that remains non-transactional until real products, stock, merchant, payment and fulfilment checks pass.</li>"
+                "<li>Added private WooCommerce order and inventory handoff infrastructure without activating worker assignments.</li>"
                 "</ul>"
             )
         },

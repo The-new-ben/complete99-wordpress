@@ -1196,6 +1196,8 @@ def rollback_with_recovery(
         status = poll_deployment_status(client, token, deployment_id)
         if status.get("phase") in {
             "installed",
+            "installed_pending_cleanup",
+            "installed_pending_stabilization",
             "failed",
             "rollback_failed",
             "commit_failed",

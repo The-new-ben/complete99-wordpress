@@ -13,6 +13,10 @@ from pathlib import Path, PurePosixPath
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = "complete99-platform"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
+VERIFIED_ORDER_URLS = (
+    b"https://wolt.com/he/isr/tel-aviv/restaurant/sabich-complete",
+    b"https://wolt.com/en/isr/tel-aviv/restaurant/sabich-complete",
+)
 FORBIDDEN_SECRET_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
 FORBIDDEN_SECRET_EXACT_NAMES = {"id_rsa", "id_ed25519"}
 FORBIDDEN_JSON_NAME = re.compile(
@@ -171,8 +175,19 @@ def main() -> int:
         assert "a2db6871deec989a74e1f90fafc6d58ae526a879" in provenance
         assert f"{puc_root}/license.txt" in names
 
-        joined = b"\n".join(archive.read(name) for name in names if not name.endswith("/"))
-        assert b"wolt" not in joined.lower(), "Wolt reference found in production package"
+        for name in names:
+            assert "wolt" not in name.casefold(), f"Third-party branded asset path found: {name}"
+            if name.endswith("/"):
+                continue
+            contents = archive.read(name).lower()
+            without_verified_order_url = contents
+            for verified_order_url in VERIFIED_ORDER_URLS:
+                without_verified_order_url = without_verified_order_url.replace(
+                    verified_order_url, b""
+                )
+            assert b"wolt.com" not in without_verified_order_url, (
+                f"Unapproved Wolt destination found in production package: {name}"
+            )
 
     print(f"validated {artifact.name} sha256={actual} entries={len(names)}")
     return 0

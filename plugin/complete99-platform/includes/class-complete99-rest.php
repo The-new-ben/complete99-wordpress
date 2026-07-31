@@ -10,7 +10,7 @@ final class Complete99_REST {
 	const MAX_CLOCK_SKEW   = 300;
 	const NONCE_TTL        = 600;
 	const MAX_MODEL_ITEMS  = 500;
-	const PUBLIC_MODEL_TTL = 604800;
+	const PUBLIC_MODEL_TTL = 86400;
 
 	public static function boot() {
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
@@ -57,6 +57,20 @@ final class Complete99_REST {
 				array( 'status' => 503 )
 			);
 		}
+		$evaluation = Complete99_Platform::evaluation_catalog_status();
+		if ( true !== ( $evaluation['ready'] ?? false ) ) {
+			return new WP_Error(
+				'complete99_evaluation_catalog_incomplete',
+				'Complete99 is not ready because its private catalog migration is incomplete.',
+				array( 'status' => 503 )
+			);
+		}
+		$evaluation_receipt = is_array( $evaluation['receipt'] ?? null )
+			? $evaluation['receipt']
+			: array();
+		$evaluation_materialized = is_array( $evaluation['materialized'] ?? null )
+			? $evaluation['materialized']
+			: array();
 		return rest_ensure_response(
 			array(
 				'status'          => 'ok',
@@ -66,6 +80,16 @@ final class Complete99_REST {
 				'deployment_id'   => (string) get_option( 'complete99_last_deployment_id', COMPLETE99_PLATFORM_DEPLOYMENT_ID ),
 				'content_schema'  => 'complete99-public-read-model/v1',
 				'sync_configured' => '' !== (string) get_option( Complete99_Settings::OPTION_SECRET, '' ),
+				'evaluation_catalog' => array(
+					'ready'                  => true,
+					'mode'                   => (string) ( $evaluation_receipt['mode'] ?? '' ),
+					'seed_count'             => (int) ( $evaluation_receipt['seed_count'] ?? 0 ),
+					'receipt_ingredient_count'=> (int) ( $evaluation_receipt['ingredient_count'] ?? 0 ),
+					'receipt_plan_count'     => (int) ( $evaluation_receipt['product_plan_count'] ?? 0 ),
+					'materialized_ingredient_count' => (int) ( $evaluation_materialized['ingredient_count'] ?? 0 ),
+					'materialized_plan_count'=> (int) ( $evaluation_materialized['product_plan_count'] ?? 0 ),
+					'woo_materialized'       => true === ( $evaluation_receipt['woo_materialized'] ?? null ),
+				),
 				'read_model'      => array(
 					'version'    => isset( $model['version'] ) ? (string) $model['version'] : '',
 					'updated_at' => isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '',
@@ -99,24 +123,76 @@ final class Complete99_REST {
 		}
 
 		$nonce_key = 'c99_sync_' . substr( hash_hmac( 'sha256', $nonce, wp_salt( 'nonce' ) ), 0, 40 );
-		if ( false !== get_transient( $nonce_key ) ) {
-			return new WP_Error( 'complete99_sync_replay', 'This sync request has already been used.', array( 'status' => 409 ) );
-		}
-
 		$canonical = $timestamp . "\n" . $nonce . "\n" . hash( 'sha256', $raw );
 		$expected  = hash_hmac( 'sha256', $canonical, $secret );
 		if ( ! hash_equals( $expected, $signature ) ) {
 			return new WP_Error( 'complete99_sync_signature', 'The sync signature is invalid.', array( 'status' => 401 ) );
 		}
 
-		set_transient( $nonce_key, 1, self::NONCE_TTL );
+		$reserved = self::reserve_sync_nonce( $nonce_key );
+		if ( is_wp_error( $reserved ) ) {
+			return $reserved;
+		}
 		return true;
+	}
+
+	private static function reserve_sync_nonce( $nonce_key ) {
+		if ( ! self::acquire_sync_lock( 'nonce' ) ) {
+			return new WP_Error( 'complete99_sync_lock', 'The sync receiver is busy. Retry with a new nonce.', array( 'status' => 503 ) );
+		}
+		try {
+			if ( false !== get_transient( $nonce_key ) ) {
+				return new WP_Error( 'complete99_sync_replay', 'This sync request has already been used.', array( 'status' => 409 ) );
+			}
+			set_transient( $nonce_key, 1, self::NONCE_TTL );
+			if ( 1 !== (int) get_transient( $nonce_key ) ) {
+				return new WP_Error( 'complete99_sync_nonce_storage', 'The sync nonce reservation could not be verified.', array( 'status' => 503 ) );
+			}
+			return true;
+		} finally {
+			self::release_sync_lock( 'nonce' );
+		}
+	}
+
+	private static function sync_lock_name( $scope ) {
+		$site_id = function_exists( 'get_current_blog_id' ) ? absint( get_current_blog_id() ) : 0;
+		$site    = function_exists( 'home_url' ) ? (string) home_url( '/' ) : '';
+		return 'c99-' . sanitize_key( (string) $scope ) . '-' . substr( hash( 'sha256', $site_id . '|' . $site ), 0, 32 );
+	}
+
+	private static function acquire_sync_lock( $scope ) {
+		global $wpdb;
+		if ( ! is_object( $wpdb ) || ! method_exists( $wpdb, 'prepare' ) || ! method_exists( $wpdb, 'get_var' ) ) {
+			return false;
+		}
+		$locked = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', self::sync_lock_name( $scope ), 3 ) );
+		return '1' === (string) $locked;
+	}
+
+	private static function release_sync_lock( $scope ) {
+		global $wpdb;
+		if ( is_object( $wpdb ) && method_exists( $wpdb, 'prepare' ) && method_exists( $wpdb, 'get_var' ) ) {
+			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', self::sync_lock_name( $scope ) ) );
+		}
 	}
 
 	public static function sync_read_model( WP_REST_Request $request ) {
 		$payload = json_decode( (string) $request->get_body(), true );
 		if ( ! is_array( $payload ) || 'complete99-public-read-model/v1' !== ( isset( $payload['schema'] ) ? $payload['schema'] : '' ) ) {
 			return new WP_Error( 'complete99_sync_schema', 'Unsupported public read-model schema.', array( 'status' => 400 ) );
+		}
+		$unknown_payload_fields = array_values(
+			array_diff(
+				array_keys( $payload ),
+				array( 'schema', 'version', 'generated_at', 'branches', 'menu_sections', 'menu_items', 'campaigns' )
+			)
+		);
+		if ( ! empty( $unknown_payload_fields ) ) {
+			return new WP_Error(
+				'complete99_sync_unknown_field',
+				'The public read model contains an unknown top-level field.',
+				array( 'status' => 400 )
+			);
 		}
 
 		$generated = isset( $payload['generated_at'] ) && is_string( $payload['generated_at'] )
@@ -129,14 +205,19 @@ final class Complete99_REST {
 		if ( $generated_at < time() - self::MAX_CLOCK_SKEW || $generated_at > time() + self::MAX_CLOCK_SKEW ) {
 			return new WP_Error( 'complete99_sync_stale_model', 'The public read model was not generated inside the accepted freshness window.', array( 'status' => 409 ) );
 		}
-
-		$branches = self::clean_records(
-			isset( $payload['branches'] ) ? $payload['branches'] : array(),
-			array( 'id', 'name_he', 'name_en', 'slug', 'city_he', 'city_en', 'status', 'published' )
-		);
-		if ( is_wp_error( $branches ) ) {
-			return $branches;
+		$campaigns = isset( $payload['campaigns'] ) ? $payload['campaigns'] : array();
+		if ( ! is_array( $campaigns ) || ! empty( $campaigns ) ) {
+			return new WP_Error(
+				'complete99_sync_private_field',
+				'Campaigns are private and cannot be accepted by the public read model.',
+				array( 'status' => 422 )
+			);
 		}
+
+		$branch_records = isset( $payload['branches'] ) ? $payload['branches'] : array();
+		$branch_count   = is_array( $branch_records )
+			? min( count( $branch_records ), self::MAX_MODEL_ITEMS )
+			: 0;
 		$sections = self::clean_records(
 			isset( $payload['menu_sections'] ) ? $payload['menu_sections'] : array(),
 			array( 'id', 'name_he', 'name_en', 'sort', 'published' )
@@ -159,9 +240,8 @@ final class Complete99_REST {
 				'tag_he',
 				'tag_en',
 				'image_asset',
-				'public_price',
-				'currency',
-				'availability',
+				'media_provenance',
+				'media_rights_state',
 				'vegetarian',
 				'verification_state',
 				'published',
@@ -172,14 +252,11 @@ final class Complete99_REST {
 		if ( is_wp_error( $items ) ) {
 			return $items;
 		}
-		$campaigns = self::clean_records(
-			isset( $payload['campaigns'] ) ? $payload['campaigns'] : array(),
-			array( 'id', 'title_he', 'title_en', 'summary_he', 'summary_en', 'cta_label_he', 'cta_label_en', 'cta_url', 'published' )
-		);
-		if ( is_wp_error( $campaigns ) ) {
-			return $campaigns;
-		}
 
+		if ( ! self::acquire_sync_lock( 'read-model' ) ) {
+			return new WP_Error( 'complete99_sync_lock', 'The public read model is being updated. Retry with a new nonce.', array( 'status' => 503 ) );
+		}
+		try {
 		$stored_model = self::read_persisted_read_model();
 		if ( is_wp_error( $stored_model ) ) {
 			return $stored_model;
@@ -200,14 +277,61 @@ final class Complete99_REST {
 			'version'    => sanitize_text_field( isset( $payload['version'] ) ? (string) $payload['version'] : '' ),
 			'generated'  => sanitize_text_field( $generated ),
 			'updated_at' => gmdate( 'c' ),
-			'branches'   => $branches,
 			'sections'   => $sections,
 			'items'      => $items,
-			'campaigns'  => $campaigns,
+			'campaigns'  => array(),
 		);
+		$stored_generated_at = ! empty( $stored_model['generated'] )
+			? self::parse_rfc3339_timestamp( (string) $stored_model['generated'] )
+			: false;
+		if ( false !== $stored_generated_at && $generated_at < $stored_generated_at ) {
+			return new WP_Error( 'complete99_sync_non_monotonic', 'An older public read model cannot replace the current model.', array( 'status' => 409 ) );
+		}
+		if ( false !== $stored_generated_at && $generated_at === $stored_generated_at ) {
+			$equivalent = (string) ( $stored_model['version'] ?? '' ) === (string) $clean['version']
+				&& hash_equals(
+					hash(
+						'sha256',
+						wp_json_encode(
+							array(
+								'sections'  => $clean['sections'],
+								'items'     => $clean['items'],
+								'campaigns' => $clean['campaigns'],
+							),
+							JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+						)
+					),
+					hash(
+						'sha256',
+						wp_json_encode(
+							array(
+								'sections'  => $stored_model['sections'] ?? array(),
+								'items'     => $stored_model['items'] ?? array(),
+								'campaigns' => $stored_model['campaigns'] ?? array(),
+							),
+							JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+						)
+					)
+				);
+			if ( ! $equivalent ) {
+				return new WP_Error( 'complete99_sync_non_monotonic', 'A different public read model must use a later generation timestamp.', array( 'status' => 409 ) );
+			}
+			$freshness = self::model_freshness( $stored_model );
+			return rest_ensure_response(
+				array(
+					'stored'        => true,
+					'write_changed' => false,
+					'version'       => (string) $stored_model['version'],
+					'digest'        => (string) ( $stored_model['digest'] ?? '' ),
+					'item_count'    => count( $clean['sections'] ) + count( $clean['items'] ),
+					'expires_at'    => $freshness['expires_at'],
+					'cache'         => array( 'status' => 'unchanged' ),
+				)
+			);
+		}
 
-		$total = count( $clean['branches'] ) + count( $clean['sections'] ) + count( $clean['items'] ) + count( $clean['campaigns'] );
-		if ( $total > self::MAX_MODEL_ITEMS ) {
+		$total = count( $clean['sections'] ) + count( $clean['items'] );
+		if ( $branch_count + $total > self::MAX_MODEL_ITEMS ) {
 			return new WP_Error( 'complete99_sync_items', 'The public read model contains too many records.', array( 'status' => 413 ) );
 		}
 
@@ -238,6 +362,9 @@ final class Complete99_REST {
 				'cache'         => $cache,
 			)
 		);
+		} finally {
+			self::release_sync_lock( 'read-model' );
+		}
 	}
 
 	private static function clean_records( $records, $allowed_keys ) {
@@ -248,6 +375,14 @@ final class Complete99_REST {
 		foreach ( array_slice( $records, 0, self::MAX_MODEL_ITEMS ) as $record ) {
 			if ( ! is_array( $record ) ) {
 				continue;
+			}
+			$unknown_record_fields = array_values( array_diff( array_keys( $record ), $allowed_keys ) );
+			if ( ! empty( $unknown_record_fields ) ) {
+				return new WP_Error(
+					'complete99_sync_unknown_field',
+					'A public read-model record contains an unknown field.',
+					array( 'status' => 400 )
+				);
 			}
 			$item = array();
 			foreach ( $allowed_keys as $key ) {
@@ -269,13 +404,12 @@ final class Complete99_REST {
 						'Public read-model boolean fields must use JSON booleans or the strings "true" or "false".',
 						array( 'status' => 400 )
 					);
-				} elseif ( in_array( $key, array( 'sort', 'public_price' ), true ) ) {
+				} elseif ( 'sort' === $key ) {
 					$item[ $key ] = is_numeric( $record[ $key ] ) ? (float) $record[ $key ] : null;
 				} elseif ( 'slug' === $key ) {
 					$item[ $key ] = sanitize_title( (string) $record[ $key ] );
-				} elseif ( 'availability' === $key ) {
-					$availability = sanitize_key( (string) $record[ $key ] );
-					$item[ $key ] = in_array( $availability, array( 'available', 'low', 'sold_out' ), true ) ? $availability : '';
+				} elseif ( in_array( $key, array( 'media_provenance', 'media_rights_state' ), true ) ) {
+					$item[ $key ] = sanitize_key( (string) $record[ $key ] );
 				} elseif ( 'cta_url' === $key ) {
 					$item[ $key ] = esc_url_raw( (string) $record[ $key ], array( 'https' ) );
 				} elseif ( 'image_asset' === $key ) {
@@ -525,10 +659,21 @@ final class Complete99_REST {
 				return false;
 			}
 		}
+		$updated_at = self::parse_rfc3339_timestamp( (string) ( $record['updated_at'] ?? '' ) );
+		if ( false === $updated_at || $updated_at > time() + self::MAX_CLOCK_SKEW || $updated_at < time() - self::PUBLIC_MODEL_TTL ) {
+			return false;
+		}
+		$image_asset = sanitize_file_name( (string) ( $record['image_asset'] ?? '' ) );
+		if ( '' !== $image_asset ) {
+			$provenance = sanitize_key( (string) ( $record['media_provenance'] ?? '' ) );
+			$rights     = sanitize_key( (string) ( $record['media_rights_state'] ?? '' ) );
+			if ( ! in_array( $provenance, array( 'complete99_archive', 'business_owned', 'licensed' ), true )
+				|| 'approved_public_use' !== $rights ) {
+				return false;
+			}
+		}
 		$verification = sanitize_key( isset( $record['verification_state'] ) ? (string) $record['verification_state'] : '' );
-		$availability = sanitize_key( isset( $record['availability'] ) ? (string) $record['availability'] : '' );
-		return in_array( $verification, array( 'verified', 'launch_ready' ), true )
-			&& in_array( $availability, array( 'available', 'low', 'sold_out' ), true );
+		return in_array( $verification, array( 'verified', 'launch_ready' ), true );
 	}
 
 	public static function public_indexable_items( $model = null ) {
@@ -549,6 +694,31 @@ final class Complete99_REST {
 		);
 	}
 
+	private static function public_record_projection( $record, $allowed_keys ) {
+		if ( ! is_array( $record ) ) {
+			return array();
+		}
+		$public = array();
+		foreach ( $allowed_keys as $key ) {
+			if ( array_key_exists( $key, $record ) ) {
+				$public[ $key ] = $record[ $key ];
+			}
+		}
+		return $public;
+	}
+
+	private static function public_published_records( $model, $key, $allowed_keys ) {
+		$records = isset( $model[ $key ] ) && is_array( $model[ $key ] ) ? $model[ $key ] : array();
+		$public  = array();
+		foreach ( $records as $record ) {
+			if ( ! is_array( $record ) || true !== ( isset( $record['published'] ) ? $record['published'] : null ) ) {
+				continue;
+			}
+			$public[] = self::public_record_projection( $record, $allowed_keys );
+		}
+		return $public;
+	}
+
 	public static function public_catalog() {
 		$model = get_option( 'complete99_public_read_model', array() );
 		if ( ! is_array( $model ) ) {
@@ -565,23 +735,41 @@ final class Complete99_REST {
 				)
 			);
 		}
-		foreach ( array( 'branches', 'sections', 'items', 'campaigns' ) as $key ) {
-			if ( 'items' === $key ) {
-				$model[ $key ] = self::public_indexable_items( $model );
-				continue;
-			}
-			$records       = isset( $model[ $key ] ) && is_array( $model[ $key ] ) ? $model[ $key ] : array();
-			$model[ $key ] = array_values(
-				array_filter(
-					$records,
-					static function ( $record ) {
-						return is_array( $record ) && true === ( isset( $record['published'] ) ? $record['published'] : null );
-					}
-				)
-			);
-		}
-		unset( $model['generated'] );
-		$model['freshness'] = $freshness;
-		return rest_ensure_response( $model );
+		$items = array_map(
+			static function ( $record ) {
+				return self::public_record_projection(
+					$record,
+					array(
+						'slug',
+						'name_he',
+						'name_en',
+						'category_he',
+						'category_en',
+						'description_he',
+						'description_en',
+						'tag_he',
+						'tag_en',
+						'image_asset',
+						'vegetarian',
+						'updated_at',
+					)
+				);
+			},
+			self::public_indexable_items( $model )
+		);
+		return rest_ensure_response(
+			array(
+				'schema'     => isset( $model['schema'] ) ? (string) $model['schema'] : 'complete99-public-read-model/v1',
+				'version'    => isset( $model['version'] ) ? (string) $model['version'] : '',
+				'updated_at' => isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '',
+				'sections'   => self::public_published_records(
+					$model,
+					'sections',
+					array( 'name_he', 'name_en' )
+				),
+				'items'      => array_values( $items ),
+				'freshness'  => $freshness,
+			)
+		);
 	}
 }

@@ -274,7 +274,7 @@ final class Complete99_Settings {
 		printf(
 			'<input class="regular-text code" type="password" name="%1$s" value="" minlength="32" autocomplete="new-password" placeholder="%2$s" />',
 			esc_attr( self::OPTION_SECRET ),
-			esc_attr( $configured ? __( 'Configured — enter a new value only to rotate', 'complete99-platform' ) : __( 'Enter 32+ random characters', 'complete99-platform' ) )
+			esc_attr( $configured ? __( 'Configured - enter a new value only to rotate', 'complete99-platform' ) : __( 'Enter 32+ random characters', 'complete99-platform' ) )
 		);
 		echo '<p class="description">';
 		echo esc_html__( 'Generate this once in a password manager, store the matching value in the Complete99 OS secret store, and rotate it if exposure is suspected.', 'complete99-platform' );

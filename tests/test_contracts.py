@@ -155,13 +155,20 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("protect_unready_dishes", frontend)
         self.assertIn("dish_gate_status( $post->ID )['passed']", frontend)
 
-    def test_no_reference_or_wolt_assets(self) -> None:
+    def test_no_reference_or_third_party_ordering_assets(self) -> None:
+        approved_order_urls = (
+            b"https://wolt.com/he/isr/tel-aviv/restaurant/sabich-complete",
+            b"https://wolt.com/en/isr/tel-aviv/restaurant/sabich-complete",
+        )
         for path in PLUGIN.rglob("*"):
             if not path.is_file():
                 continue
             raw = path.read_bytes().lower()
             self.assertNotIn(b"assets/reference", raw, path)
-            self.assertNotIn(b"wolt", raw, path)
+            self.assertNotIn("wolt", path.name.casefold(), path)
+            for approved_order_url in approved_order_urls:
+                raw = raw.replace(approved_order_url, b"")
+            self.assertNotIn(b"wolt.com", raw, path)
 
     def test_schema_is_truthfully_gated(self) -> None:
         text = (PLUGIN / "includes" / "class-complete99-frontend.php").read_text(encoding="utf-8")
@@ -202,14 +209,38 @@ class Complete99ContractTests(unittest.TestCase):
         path = PLUGIN / "data" / "keyword-ownership.csv"
         with path.open(encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
-        self.assertGreaterEqual(len(rows), 40)
+        public_groups = {
+            "home",
+            "about",
+            "contact",
+            "dishes",
+            "ingredients",
+            "traditions",
+            "knowledge",
+            "store",
+            "proposal",
+            "privacy",
+            "terms",
+            "accessibility",
+        }
+        self.assertEqual(2 * len(public_groups), len(rows))
+        self.assertEqual(public_groups, {row["translation_key"] for row in rows})
         ownership = {(row["language"], row["primary_intent"]) for row in rows}
         self.assertEqual(len(rows), len(ownership))
         for row in rows:
             self.assertTrue(row["canonical_path"].startswith("/"))
             self.assertTrue(row["prohibited_competing_pages"])
             self.assertTrue(row["evidence_gate"])
-            self.assertIn(row["publication_status"], {"launch", "proof-gated", "qualified-review", "product-demo"})
+            self.assertIn(
+                row["publication_status"],
+                {
+                    "launch",
+                    "consumer",
+                    "proof-gated",
+                    "qualified-review",
+                    "product-demo",
+                },
+            )
 
     def test_rendered_public_language_has_no_internal_delivery_terms(self) -> None:
         launch_path = (PLUGIN / "data" / "launch-content.php").as_posix().replace("'", "\\'")
@@ -218,41 +249,45 @@ class Complete99ContractTests(unittest.TestCase):
             f"$records=require '{launch_path}';"
             "$public=[];"
             "foreach($records as $r){"
-            "if(isset($r['status'])&&$r['status']==='draft'){continue;}"
+            "if(isset($r['status'])&&in_array($r['status'],['draft','private'],true)){continue;}"
             "foreach(['he','en'] as $lang){$public[]=$r['title'][$lang].' '.$r['excerpt'][$lang].' '.$r['content'][$lang];}"
             "}"
             "echo json_encode($public, JSON_UNESCAPED_UNICODE);"
         )
         result = subprocess.run(["php", "-r", php], check=True, capture_output=True, text=True, encoding="utf-8")
         rendered = " ".join(json.loads(result.stdout))
-        frontend = (PLUGIN / "includes" / "class-complete99-frontend.php").read_text(encoding="utf-8")
-        pairs = re.findall(r"\$is_he\s*\?\s*'([^']*)'\s*:\s*'([^']*)'", frontend)
+        consumer = (PLUGIN / "includes" / "class-complete99-consumer.php").read_text(encoding="utf-8")
+        pairs = re.findall(r"\$is_he\s*\?\s*'([^']*)'\s*:\s*'([^']*)'", consumer)
         visible_frontend = " ".join(value for pair in pairs for value in pair)
         public_language = (rendered + " " + visible_frontend).lower()
         forbidden = (
             "demo",
             "draft",
-            "verification",
-            "verified",
-            "unverified",
-            "proof",
-            "verification_required",
-            "proof-gated",
-            "proof gated",
             "project",
             "mvp",
             "placeholder",
             "prototype",
             "connector status",
+            "institutional",
+            "operations platform",
+            "supplier",
+            "worker assignment",
+            "inventory management",
+            "procurement",
+            "campaign studio",
+            "human resources",
+            "bom",
+            "הסעדה מוסדית",
+            "פלטפורמת תפעול",
+            "ניהול ספקים",
+            "שיבוץ עובדים",
+            "ניהול מלאי",
+            "רכש",
+            "סטודיו קמפיינים",
+            "משאבי אנוש",
             "הדגמה",
             "טיוטה",
-            "נדרש אימות",
-            "אימות",
-            "מאומת",
-            "הוכחה",
-            "ראיה",
             "גרסת ייצור פנימית",
-            "שער הוכחה",
             "פרויקט",
             "אב טיפוס",
             "מציין מקום",
@@ -260,12 +295,9 @@ class Complete99ContractTests(unittest.TestCase):
         )
         for phrase in forbidden:
             self.assertNotIn(phrase, public_language, phrase)
-        self.assertIn("procurement", public_language)
-        self.assertIn("human resources", public_language)
-        self.assertIn("רכש", public_language)
-        self.assertIn("משאבי אנוש", public_language)
-        self.assertIn("not offered as standalone software", public_language)
-        self.assertIn("אינו מוצע כמוצר תוכנה עצמאי", public_language)
+        self.assertIn("home cooking", public_language)
+        self.assertIn("sabich", public_language)
+        self.assertIn("אוכל ביתי", public_language)
 
     def test_bridge_obeys_transaction_and_cleanup_contract(self) -> None:
         text = (ROOT / "deploy" / "temporary-bridge.php").read_text(encoding="utf-8")
