@@ -4,6 +4,12 @@ Date: 2026-07-31
 Status: internal evidence addendum, not a public release claim  
 Parent benchmark: [Complete99 consumer culinary and ecommerce benchmark](consumer-culinary-ecommerce-benchmark-2026-07-29.md)
 
+Release correction: candidate 1.3.0 was superseded by 1.3.1 after a registered
+boolean metadata readback defect was reproduced during the live migration
+checkpoint. References to 1.3.0 below preserve the benchmark snapshot; 1.3.1 is
+the deployment candidate and retains the same consumer, catalog, pricing, stock,
+asset, and public-safety scope.
+
 ## Decision
 
 The live site and the local release candidate must be described separately.

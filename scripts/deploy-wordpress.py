@@ -1047,7 +1047,10 @@ def stabilize_deployment(
 ) -> dict[str, Any]:
     response: dict[str, Any] | None = None
     original_error: DeployError | None = None
+    initial_failure_context: dict[str, Any] = {}
+    stabilization_attempts = 0
     for attempt in range(2):
+        stabilization_attempts += 1
         try:
             response = bridge_call(client, "stabilize", token, deployment_id)
             break
@@ -1059,6 +1062,7 @@ def stabilize_deployment(
                 and error.code == "c99_stabilize_forward_mismatch"
                 and error.data.get("retryable_forward_mismatch") is True
             ):
+                initial_failure_context = dict(error.data)
                 time.sleep(2)
                 continue
             break
@@ -1137,6 +1141,8 @@ def stabilize_deployment(
         "response_recovered": bool(
             response.get("cache_purge", {}).get("response_recovered")
         ),
+        "initial_failure_context": initial_failure_context,
+        "stabilization_attempts": stabilization_attempts,
         "stabilized": True,
         "stabilized_from_phase": response.get("stabilized_from_phase", ""),
         "version": version,

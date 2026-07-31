@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.3.0
+Release target: Complete99 Platform 1.3.1
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.3.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.3.0 and its versioned package URL.
+- The public update manifest matches version 1.3.1 and its versioned package URL.
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
@@ -64,7 +64,7 @@ Release target: Complete99 Platform 1.3.0
 
 ## Pantry hold checks
 
-These are mandatory for release 1.3.0 while no real products exist:
+These are mandatory for release 1.3.1 while no real products exist:
 
 - WooCommerce is not installed by the Complete99 plugin bridge.
 - Public pantry states that no products are sold on the site.
@@ -154,7 +154,7 @@ Verify:
 ## Native deployment acceptance
 
 The hardened pipeline has been exercised with Application Password and Code
-Snippets REST requests. Release 1.3.0 also requires the pending-phase recovery
+Snippets REST requests. Release 1.3.1 also requires the pending-phase recovery
 regressions to pass:
 
 - failed stabilization can roll back from

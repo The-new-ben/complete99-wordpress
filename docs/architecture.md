@@ -21,7 +21,7 @@ Complete99 has a strict public and private split.
 Raw camera streams, telemetry, employee data, supplier costs, private production
 specifications, tokens and social credentials do not belong in WordPress.
 
-Release 1.3.0 does not install or assign Complete99 worker roles. The role
+Release 1.3.1 does not install or assign Complete99 worker roles. The role
 definitions remain dormant code. Commerce order, refund, fulfilment and stock
 events use an unassigned private outbox until a later operating decision.
 
@@ -146,7 +146,7 @@ deliberately excluded from public Recipe schema until review is complete.
 
 ### One-time consumer audience reset
 
-Release 1.3.0 introduces the durable public audience marker
+Release 1.3.1 introduces the durable public audience marker
 `culinary_consumer_v1`. It applies only to the bilingual managed page seeds for:
 
 - home;
@@ -175,10 +175,10 @@ the page. The reset is therefore one time per managed record while its audience
 marker remains intact. Removing or changing the marker deliberately makes that
 record eligible for the reset again.
 
-Before deploying 1.3.0, capture the prior plugin directory and scoped database
+Before deploying 1.3.1, capture the prior plugin directory and scoped database
 state. The production workflow must exercise a real rollback to the prior
 plugin and page state, verify it independently, then redeploy the identical
-1.3.0 artifact. Migration acceptance verifies the audience marker, content
+1.3.1 artifact. Migration acceptance verifies the audience marker, content
 provenance, required private status of legacy records and database version.
 Editorial changes that still belong on the consumer site can be reviewed and
 reapplied only after the reset has completed.
