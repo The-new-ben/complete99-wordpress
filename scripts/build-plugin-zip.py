@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-31 03:51:00"
+RELEASE_LAST_UPDATED = "2026-07-31 07:25:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -217,10 +217,10 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Made Complete99 own every public 404 instead of falling through to active-theme copy.</li>"
-                "<li>Added deterministic Hebrew and English 404 language selection, titles, headings and recovery links.</li>"
-                "<li>Added explicit noindex and follow directives for every 404 response.</li>"
-                "<li>Preserved the dedicated missing-dish experience for menu routes.</li>"
+                "<li>Centralized document-head rendering across every Complete99 public shell.</li>"
+                "<li>Guaranteed one escaped title and one viewport declaration even when themes or SEO plugins emit duplicates.</li>"
+                "<li>Preserved unrelated head markup, script and style text, comments and accessible SVG titles.</li>"
+                "<li>Added adversarial regression coverage for quoted attributes and misleading attribute names.</li>"
                 "</ul>"
             )
         },

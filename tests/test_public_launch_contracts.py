@@ -198,7 +198,8 @@ echo json_encode($results, JSON_UNESCAPED_UNICODE);
             template,
         )
         self.assertIn("render_not_found_page", template)
-        self.assertIn("wp_head();", template)
+        self.assertIn("Complete99_Frontend::render_document_head();", template)
+        self.assertNotIn("wp_head();", template)
         self.assertIn("wp_footer();", template)
         self.assertNotIn('rel="canonical"', template)
 

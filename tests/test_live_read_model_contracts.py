@@ -965,7 +965,8 @@ class LiveReadModelContracts(unittest.TestCase):
         ):
             self.assertIn(marker, self.frontend)
         self.assertNotIn("publicDishes", self.frontend)
-        self.assertIn("wp_head()", self.template)
+        self.assertIn("Complete99_Frontend::render_document_head()", self.template)
+        self.assertNotIn("wp_head()", self.template)
         self.assertIn("render_live_dish_page", self.template)
 
     def test_live_menu_has_responsive_and_accessible_presentation_contracts(self) -> None:

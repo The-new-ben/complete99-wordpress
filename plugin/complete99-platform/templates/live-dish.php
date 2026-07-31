@@ -15,10 +15,8 @@ $complete99_deployment = (string) get_option( 'complete99_last_deployment_id', C
 <html lang="<?php echo esc_attr( $complete99_live_lang ); ?>" dir="<?php echo esc_attr( $complete99_live_dir ); ?>">
 <head>
 	<meta charset="<?php bloginfo( 'charset' ); ?>" />
-	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<script>document.documentElement.classList.add('c99-js');</script>
-	<?php Complete99_Frontend::render_document_title_tag(); ?>
-	<?php wp_head(); ?>
+	<?php Complete99_Frontend::render_document_head(); ?>
 </head>
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>

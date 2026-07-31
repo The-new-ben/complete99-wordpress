@@ -828,7 +828,9 @@ echo json_encode(
         self.assertIn("Complete99_Commerce::can_access_customer_continuity()", self.frontend)
         self.assertLess(
             self.commerce_shell.index("switch_to_locale"),
-            self.commerce_shell.index("wp_head"),
+            self.commerce_shell.index(
+                "Complete99_Frontend::render_document_head()"
+            ),
         )
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for integrity evaluation")

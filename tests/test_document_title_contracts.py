@@ -19,12 +19,12 @@ TEMPLATES = (
 
 
 class Complete99DocumentTitleContracts(unittest.TestCase):
-    def test_every_plugin_owned_shell_renders_the_shared_title_before_wp_head(
+    def test_every_plugin_owned_shell_uses_the_shared_document_head_renderer(
         self,
     ) -> None:
         frontend = FRONTEND.read_text(encoding="utf-8")
         renderer = frontend.split(
-            "public static function render_document_title_tag", 1
+            "public static function render_document_head", 1
         )[1].split("public static function robots", 1)[0]
 
         self.assertIn(
@@ -33,15 +33,22 @@ class Complete99DocumentTitleContracts(unittest.TestCase):
         self.assertIn("wp_get_document_title()", renderer)
         self.assertIn("esc_html( $title )", renderer)
         self.assertIn("$title = 'Complete99';", renderer)
+        self.assertIn("ob_start();", renderer)
+        self.assertIn("wp_head();", renderer)
+        self.assertIn("strip_document_head_duplicates( $head )", renderer)
+        self.assertIn('name="viewport"', renderer)
+        self.assertIn("private static function find_html_tag_end", renderer)
+        self.assertIn("private static function html_tag_attribute", renderer)
 
-        call = "Complete99_Frontend::render_document_title_tag();"
+        call = "Complete99_Frontend::render_document_head();"
         for template in TEMPLATES:
             source = template.read_text(encoding="utf-8")
             self.assertEqual(1, source.count(call), template)
-            self.assertLess(source.index(call), source.index("wp_head();"), template)
+            self.assertNotIn("wp_head();", source, template)
+            self.assertNotIn('name="viewport"', source, template)
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for template rendering")
-    def test_live_dish_and_not_found_templates_emit_one_escaped_title(self) -> None:
+    def test_live_dish_and_not_found_templates_emit_one_canonical_head(self) -> None:
         php = r"""
 define('ABSPATH', __DIR__);
 define('COMPLETE99_PLATFORM_DIR', __PLUGIN_DIR__);
@@ -53,6 +60,7 @@ define('C99_NOT_FOUND_TEMPLATE', __NOT_FOUND_TEMPLATE__);
 $GLOBALS['c99_query'] = array();
 $GLOBALS['c99_is_404'] = false;
 $GLOBALS['c99_core_title_active'] = true;
+$GLOBALS['c99_head_calls'] = 0;
 $GLOBALS['c99_items'] = array(
     array(
         'id' => 'menu-reference-sabich',
@@ -124,9 +132,17 @@ function body_class() {
 function wp_body_open() {}
 function wp_footer() {}
 function wp_head() {
+    ++$GLOBALS['c99_head_calls'];
     if ($GLOBALS['c99_core_title_active']) {
         echo '<title>Core duplicate</title>';
     }
+    echo '<TITLE data-note="1 > 0">SEO duplicate</TITLE>';
+    echo '<meta content="a > b" NAME="VIEWPORT">';
+    echo "<meta data-name=\"viewport\" name=\"description\" content=\"keep\">";
+    echo '<script id="c99-script-sentinel">window.c99Literal="<title>script literal</title><meta name=\"viewport\">";</script>';
+    echo '<style id="c99-style-sentinel">.c99::before{content:"<title>style literal</title>"}</style>';
+    echo '<!-- <title>comment literal</title><meta name="viewport"> -->';
+    echo '<svg id="c99-svg-sentinel"><title>Accessible icon title</title></svg>';
 }
 
 class Complete99_Consumer {
@@ -177,9 +193,46 @@ $documents = array(
 );
 $result = array();
 foreach ($documents as $key => $html) {
-    preg_match_all('#<title>(.*?)</title>#s', $html, $matches);
-    $result[$key] = $matches[1];
+    preg_match('#<head>(.*?)</head>#s', $html, $head_match);
+    $head = $head_match[1];
+    preg_match('#<title>(.*?)</title>#s', $head, $title_match);
+    $canonical_title = $title_match[1];
+    $result[$key] = array(
+        'title' => $canonical_title,
+        'title_count' => substr_count(
+            $head,
+            '<title>' . $canonical_title . '</title>'
+        ),
+        'viewport_count' => substr_count(
+            $head,
+            '<meta name="viewport" content="width=device-width, initial-scale=1" />'
+        ),
+        'core_duplicate_removed' => false === strpos($head, 'Core duplicate'),
+        'seo_duplicate_removed' => false === strpos($head, 'SEO duplicate'),
+        'competing_viewport_removed' => false === strpos($head, 'content="a > b"'),
+        'description_preserved' => false !== strpos(
+            $head,
+            '<meta data-name="viewport" name="description" content="keep">'
+        ),
+        'script_preserved' => false !== strpos(
+            $head,
+            '<script id="c99-script-sentinel">window.c99Literal="<title>script literal</title><meta name=\"viewport\">";</script>'
+        ),
+        'style_preserved' => false !== strpos(
+            $head,
+            '<style id="c99-style-sentinel">.c99::before{content:"<title>style literal</title>"}</style>'
+        ),
+        'comment_preserved' => false !== strpos(
+            $head,
+            '<!-- <title>comment literal</title><meta name="viewport"> -->'
+        ),
+        'svg_title_preserved' => false !== strpos(
+            $head,
+            '<svg id="c99-svg-sentinel"><title>Accessible icon title</title></svg>'
+        ),
+    );
 }
+$result['_head_calls'] = $GLOBALS['c99_head_calls'];
 echo json_encode(
     $result,
     JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
@@ -204,25 +257,41 @@ echo json_encode(
             check=False,
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
-        titles = json.loads(completed.stdout)
+        outcomes = json.loads(completed.stdout)
 
         self.assertEqual(
-            ["הסביח של 99 &amp; מיוחד | Complete99"], titles["he_live"]
+            "הסביח של 99 &amp; מיוחד | Complete99",
+            outcomes["he_live"]["title"],
         )
         self.assertEqual(
-            ["The 99 Sabich &amp; Special | Complete99"], titles["en_live"]
-        )
-        self.assertEqual(["המנה לא נמצאה | קומפלט 99"], titles["he_404"])
-        self.assertEqual(["Dish not found | Complete99"], titles["en_404"])
-        self.assertEqual(
-            ["העמוד לא נמצא | קומפלט 99"], titles["he_generic_404"]
+            "The 99 Sabich &amp; Special | Complete99",
+            outcomes["en_live"]["title"],
         )
         self.assertEqual(
-            ["Page not found | Complete99"], titles["en_generic_404"]
+            "המנה לא נמצאה | קומפלט 99", outcomes["he_404"]["title"]
         )
-        for case_titles in titles.values():
-            self.assertEqual(1, len(case_titles))
-            self.assertTrue(case_titles[0].strip())
+        self.assertEqual(
+            "Dish not found | Complete99", outcomes["en_404"]["title"]
+        )
+        self.assertEqual(
+            "העמוד לא נמצא | קומפלט 99",
+            outcomes["he_generic_404"]["title"],
+        )
+        self.assertEqual(
+            "Page not found | Complete99",
+            outcomes["en_generic_404"]["title"],
+        )
+        self.assertEqual(len(outcomes) - 1, outcomes["_head_calls"])
+        for key, outcome in outcomes.items():
+            if key.startswith("_"):
+                continue
+            self.assertTrue(outcome["title"].strip())
+            self.assertEqual(1, outcome["title_count"])
+            self.assertEqual(1, outcome["viewport_count"])
+            for contract, passed in outcome.items():
+                if contract in {"title", "title_count", "viewport_count"}:
+                    continue
+                self.assertTrue(passed, f"{key}: {contract}")
 
 
 if __name__ == "__main__":
