@@ -325,6 +325,38 @@ class PipelineHardeningTests(unittest.TestCase):
                 allowed_hosts={"unapproved.example"},
             )
 
+    def test_package_upload_ceiling_accepts_current_release_and_stays_bounded(
+        self,
+    ) -> None:
+        metadata, _, raw = DEPLOY.load_artifact((ROOT / "plugin-dist").resolve())
+        self.assertEqual("1.3.0", metadata["version"])
+
+        ceiling = DEPLOY.package_upload_ceiling(len(raw))
+        self.assertEqual(
+            len(raw) + DEPLOY.PACKAGE_UPLOAD_HEADROOM_BYTES,
+            ceiling,
+        )
+        self.assertGreater(ceiling, len(raw))
+        self.assertLessEqual(ceiling, DEPLOY.MAX_PACKAGE_UPLOAD_BYTES)
+
+        bridge = DEPLOY.render_bridge(
+            "safe-temporary-token",
+            "c99-package-ceiling-contract",
+            ceiling,
+            True,
+            target_host="localhost",
+            allowed_hosts={"localhost"},
+        )
+        self.assertIn(f"'max_bytes'     => {ceiling}", bridge)
+
+        for invalid in (0, -1, True, 1.5):
+            with self.assertRaises(DEPLOY.DeployError, msg=repr(invalid)):
+                DEPLOY.package_upload_ceiling(invalid)  # type: ignore[arg-type]
+        with self.assertRaises(DEPLOY.DeployError):
+            DEPLOY.package_upload_ceiling(
+                DEPLOY.MAX_PACKAGE_UPLOAD_BYTES + 1
+            )
+
     def test_http_errors_keep_only_safe_lock_discovery_metadata(self) -> None:
         class ConflictHandler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:  # noqa: N802

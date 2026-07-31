@@ -35,10 +35,29 @@ PLUGIN_REST_PATH = "/wp-json/wp/v2/plugins/complete99-platform/complete99-platfo
 SNIPPET_PREFIX = "tmp-complete99-deploy-"
 BOOTSTRAP_SNIPPET_NAME = "c99-deploy-bootstrap"
 BOOTSTRAP_SNIPPET_KNOWN_ID = 5
+MIN_PACKAGE_UPLOAD_BYTES = 2 * 1024 * 1024
+MAX_PACKAGE_UPLOAD_BYTES = 32 * 1024 * 1024
+PACKAGE_UPLOAD_HEADROOM_BYTES = 64 * 1024
 
 
 class DeployError(RuntimeError):
     pass
+
+
+def package_upload_ceiling(package_size: int) -> int:
+    """Return a bounded bridge ceiling that safely contains the exact package."""
+
+    if type(package_size) is not int or package_size <= 0:
+        raise DeployError("Release package size must be a positive integer")
+    ceiling = min(
+        max(package_size + PACKAGE_UPLOAD_HEADROOM_BYTES, MIN_PACKAGE_UPLOAD_BYTES),
+        MAX_PACKAGE_UPLOAD_BYTES,
+    )
+    if package_size > ceiling:
+        raise DeployError(
+            "Release package exceeds the bounded deployment upload ceiling"
+        )
+    return ceiling
 
 
 class HTTPDeployError(DeployError):
@@ -1615,7 +1634,7 @@ def main() -> int:
     metadata, artifact, raw = load_artifact(args.dist.resolve())
     deployment_id = args.deployment_id or f"c99-{metadata['version']}-{int(time.time())}-{secrets.token_hex(4)}"
     token = secrets.token_urlsafe(36)
-    max_bytes = min(max(len(raw) + 65536, 2 * 1024 * 1024), 8 * 1024 * 1024)
+    max_bytes = package_upload_ceiling(len(raw))
     client = Client(
         args.base_url,
         args.user,
