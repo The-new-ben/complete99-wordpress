@@ -100,6 +100,27 @@ class Complete99_Settings {{
     public static function install_defaults() {{}}
     public static function assert_defaults() {{}}
 }}
+class Complete99_Commerce {{
+    public static function register_product_planning_type() {{}}
+}}
+class Complete99_Catalog_Graph {{
+    public static function register_meta() {{}}
+}}
+class Complete99_Evaluation_Catalog {{
+    const OPTION_RECEIPT = 'complete99_evaluation_catalog_receipt';
+    const MODE_PRIVATE_ONLY = 'private_only';
+    public static function register_meta() {{}}
+    public static function materialize($mode) {{
+        update_option(self::OPTION_RECEIPT, array('stub' => 'ready'), false);
+        return array('mode' => $mode);
+    }}
+    public static function persisted_status($receipt) {{
+        return array('ready' => is_array($receipt) && 'ready' === ($receipt['stub'] ?? ''));
+    }}
+}}
+class Complete99_Inventory_Bridge {{
+    public static function register_meta() {{}}
+}}
 
 class MigrationWpdbIdentityStub {{
     public $prefix = 'wp_';
@@ -172,6 +193,131 @@ echo json_encode($results, JSON_THROW_ON_ERROR);
                 },
                 result[label],
             )
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for the runtime contract")
+    def test_evaluation_invariant_failure_rolls_back_without_version_write(
+        self,
+    ) -> None:
+        platform_path = json.dumps(PLATFORM.as_posix())
+        with tempfile.TemporaryDirectory(prefix="complete99-evaluation-rollback-") as tmp:
+            content_dir = json.dumps(Path(tmp).as_posix())
+            script = f"""
+define('ABSPATH', __DIR__);
+define('WP_CONTENT_DIR', {content_dir});
+define('DB_ENGINE', 'sqlite');
+define('COMPLETE99_PLATFORM_VERSION', '9.9.9');
+define('COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'evaluation-rollback-test');
+
+class WP_Error {{}}
+function is_wp_error($value) {{ return $value instanceof WP_Error; }}
+function trailingslashit($value) {{ return rtrim($value, '/\\\\') . '/'; }}
+function get_current_blog_id() {{ return 1; }}
+function home_url($path = '/') {{ return 'http://localhost' . $path; }}
+function maybe_unserialize($value) {{ return $value; }}
+function wp_cache_flush() {{ return true; }}
+function flush_rewrite_rules($hard = true) {{ return true; }}
+function update_option($name, $value, $autoload = null) {{
+    global $wpdb;
+    $wpdb->values[$name] = $value;
+    return true;
+}}
+
+class Complete99_Content {{
+    public static function register() {{}}
+    public static function register_rewrites() {{}}
+    public static function seed_launch_content() {{}}
+    public static function assert_migration_invariants() {{}}
+}}
+class Complete99_Leads {{
+    public static function register_post_type() {{}}
+}}
+class Complete99_Settings {{
+    public static function install_defaults() {{}}
+    public static function assert_defaults() {{}}
+}}
+class Complete99_Commerce {{
+    public static function register_product_planning_type() {{}}
+}}
+class Complete99_Catalog_Graph {{
+    public static function register_meta() {{}}
+}}
+class Complete99_Evaluation_Catalog {{
+    const OPTION_RECEIPT = 'complete99_evaluation_catalog_receipt';
+    const MODE_PRIVATE_ONLY = 'private_only';
+    public static function register_meta() {{}}
+    public static function materialize($mode) {{
+        update_option(self::OPTION_RECEIPT, array('stub' => 'corrupt'), false);
+        return array('mode' => $mode);
+    }}
+    public static function persisted_status($receipt) {{
+        return array('ready' => false);
+    }}
+}}
+class Complete99_Inventory_Bridge {{
+    public static function register_meta() {{}}
+}}
+
+class MigrationEvaluationRollbackWpdb {{
+    public $prefix = 'wp_';
+    public $options = 'wp_options';
+    public $last_error = '';
+    public $is_mysql = false;
+    public $values = array(
+        'complete99_platform_version' => '1.0.4',
+        'complete99_last_deployment_id' => 'prior-runtime',
+    );
+    public $snapshot = array();
+    public $queries = array();
+    public function prepare($query, ...$args) {{
+        return array('query' => $query, 'args' => $args);
+    }}
+    public function get_var($prepared) {{
+        $name = (string) ($prepared['args'][0] ?? '');
+        return array_key_exists($name, $this->values)
+            ? $this->values[$name]
+            : null;
+    }}
+    public function query($query) {{
+        $this->queries[] = $query;
+        if ('START TRANSACTION' === $query) {{
+            $this->snapshot = $this->values;
+        }} elseif ('ROLLBACK' === $query) {{
+            $this->values = $this->snapshot;
+        }}
+        return 1;
+    }}
+}}
+$wpdb = new MigrationEvaluationRollbackWpdb();
+require {platform_path};
+$run = new ReflectionMethod('Complete99_Platform', 'run_migration');
+$run->setAccessible(true);
+$result = $run->invoke(null, false);
+echo json_encode(array(
+    'failed' => is_wp_error($result),
+    'queries' => $wpdb->queries,
+    'version' => $wpdb->values['complete99_platform_version'] ?? '',
+    'receipt_exists' => array_key_exists(
+        'complete99_evaluation_catalog_receipt',
+        $wpdb->values
+    ),
+), JSON_THROW_ON_ERROR);
+"""
+            completed = subprocess.run(
+                ["php", "-r", script],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=15,
+                check=False,
+            )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertTrue(result["failed"])
+        self.assertEqual(["START TRANSACTION", "ROLLBACK"], result["queries"])
+        self.assertEqual("1.0.4", result["version"])
+        self.assertFalse(result["receipt_exists"])
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for the runtime contract")
     def test_recipe_provenance_preserves_chef_edits(self) -> None:

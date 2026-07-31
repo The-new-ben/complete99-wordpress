@@ -35,6 +35,11 @@ final class Complete99_Platform {
 		Complete99_Settings::boot();
 		Complete99_Leads::boot();
 		Complete99_REST::boot();
+		Complete99_Commerce::boot();
+		Complete99_Catalog_Graph::boot();
+		Complete99_Evaluation_Catalog::boot();
+		Complete99_Inventory_Bridge::boot();
+		Complete99_Review_Lab::boot();
 		Complete99_Frontend::boot();
 		Complete99_Live_Dish_Sitemap_Provider::boot();
 		Complete99_SEO_Registry::boot();
@@ -227,11 +232,70 @@ final class Complete99_Platform {
 	}
 
 	/**
+	 * Return a price-free durable evaluation catalog status.
+	 *
+	 * @return array
+	 */
+	public static function evaluation_catalog_status() {
+		$fallback = array(
+			'schema'       => 'complete99-evaluation-catalog-status/v1',
+			'ready'        => false,
+			'reason'       => 'durable_read_failed',
+			'receipt'      => array(
+				'present'            => false,
+				'valid'              => false,
+				'status'             => '',
+				'mode'               => '',
+				'seed_count'         => 0,
+				'ingredient_count'   => 0,
+				'product_plan_count' => 0,
+				'woo_product_count'  => 0,
+				'woo_materialized'   => false,
+			),
+			'materialized' => array(
+				'ingredient_count'   => 0,
+				'product_plan_count' => 0,
+			),
+		);
+		if ( ! class_exists( 'Complete99_Evaluation_Catalog', false )
+			|| ! is_callable( array( 'Complete99_Evaluation_Catalog', 'persisted_status' ) ) ) {
+			$fallback['reason'] = 'module_unavailable';
+			return $fallback;
+		}
+		try {
+			$receipt = self::persisted_option( Complete99_Evaluation_Catalog::OPTION_RECEIPT );
+			$status  = Complete99_Evaluation_Catalog::persisted_status( $receipt );
+			return is_array( $status ) ? $status : $fallback;
+		} catch ( \Throwable $error ) {
+			return $fallback;
+		}
+	}
+
+	/**
+	 * Whether the exact private evaluation catalog is durably ready.
+	 */
+	public static function evaluation_catalog_ready() {
+		$status = self::evaluation_catalog_status();
+		return true === ( $status['ready'] ?? false );
+	}
+
+	/**
+	 * Fail the migration or deployment checkpoint on any catalog drift.
+	 */
+	public static function assert_evaluation_catalog_invariants() {
+		if ( ! self::evaluation_catalog_ready() ) {
+			throw new \RuntimeException( 'evaluation-catalog-invariants' );
+		}
+		return true;
+	}
+
+	/**
 	 * Run every plugin-owned database mutation in one transaction.
 	 *
-	 * An interrupted connection rolls back seed posts, metadata, options and role
-	 * changes together. The deployment bridge separately verifies that the three
-	 * affected WordPress tables use transactional storage.
+	 * An interrupted connection rolls back seed posts, metadata and options
+	 * together. Role definitions remain dormant until a later explicit activation.
+	 * The deployment bridge separately verifies that the affected WordPress tables
+	 * use transactional storage.
 	 *
 	 * @param bool $hard_flush Whether to write a full rewrite-rule refresh.
 	 * @return true|\WP_Error
@@ -262,11 +326,21 @@ final class Complete99_Platform {
 			Complete99_Content::register();
 			Complete99_Content::register_rewrites();
 			Complete99_Leads::register_post_type();
-			Complete99_Content::install_roles();
+			Complete99_Commerce::register_product_planning_type();
+			Complete99_Catalog_Graph::register_meta();
+			Complete99_Evaluation_Catalog::register_meta();
+			Complete99_Inventory_Bridge::register_meta();
 			Complete99_Settings::install_defaults();
 			Complete99_Content::seed_launch_content();
+			$evaluation = Complete99_Evaluation_Catalog::materialize(
+				Complete99_Evaluation_Catalog::MODE_PRIVATE_ONLY
+			);
+			if ( is_wp_error( $evaluation ) ) {
+				throw new \RuntimeException( 'evaluation-catalog-materialization' );
+			}
 			Complete99_Content::assert_migration_invariants();
 			Complete99_Settings::assert_defaults();
+			self::assert_evaluation_catalog_invariants();
 			update_option( 'complete99_platform_version', COMPLETE99_PLATFORM_VERSION, false );
 			if ( '' === trim( (string) $stored_deployment_id ) ) {
 				update_option( 'complete99_last_deployment_id', $deployment_id, false );

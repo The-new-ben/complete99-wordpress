@@ -17,9 +17,27 @@
 		toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
 		nav.classList.toggle('is-open', open);
 		document.body.classList.toggle('c99-menu-open', open && mobileQuery.matches);
+		if (open && mobileQuery.matches) {
+			window.requestAnimationFrame(function () {
+				var firstLink = nav.querySelector('a, button:not([disabled])');
+				if (firstLink) {
+					firstLink.focus();
+				}
+			});
+		}
 		if (!open) {
 			closeMegaMenus();
 		}
+	}
+
+	function mobileFocusables() {
+		return [toggle].concat(
+			Array.prototype.slice.call(
+				nav.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')
+			).filter(function (element) {
+				return !element.hidden && element.offsetParent !== null;
+			})
+		);
 	}
 
 	function panelFor(button) {
@@ -91,6 +109,10 @@
 	});
 
 	document.addEventListener('focusin', function (event) {
+		if (mobileQuery.matches && toggle.getAttribute('aria-expanded') === 'true' && header && !header.contains(event.target)) {
+			setMenuOpen(false);
+			return;
+		}
 		var openMega = megaToggles.find(function (button) {
 			return button.getAttribute('aria-expanded') === 'true';
 		});
@@ -101,6 +123,21 @@
 	});
 
 	document.addEventListener('keydown', function (event) {
+		if (event.key === 'Tab' && mobileQuery.matches && toggle.getAttribute('aria-expanded') === 'true') {
+			var focusables = mobileFocusables();
+			var first = focusables[0];
+			var last = focusables[focusables.length - 1];
+			if (event.shiftKey && document.activeElement === first) {
+				event.preventDefault();
+				last.focus();
+				return;
+			}
+			if (!event.shiftKey && document.activeElement === last) {
+				event.preventDefault();
+				first.focus();
+				return;
+			}
+		}
 		if (event.key !== 'Escape') {
 			return;
 		}
@@ -132,4 +169,103 @@
 	} else {
 		mobileQuery.addListener(handleViewportChange);
 	}
+}());
+
+(function () {
+	'use strict';
+
+	var shell = document.querySelector('[data-c99-dish-filter]');
+	var grid = document.querySelector('[data-c99-dish-grid]');
+	if (!shell || !grid) {
+		return;
+	}
+
+	var buttons = Array.prototype.slice.call(shell.querySelectorAll('[data-c99-filter]'));
+	var cards = Array.prototype.slice.call(grid.querySelectorAll('[data-c99-dish-card]'));
+	var count = shell.querySelector('[data-c99-filter-count]');
+	var empty = document.querySelector('[data-c99-filter-empty]');
+	var language = (document.documentElement.lang || 'he').toLowerCase();
+
+	function cardMatches(card, filter) {
+		if (filter === 'all') {
+			return true;
+		}
+		var facets = (card.getAttribute('data-c99-facets') || '').split(/\s+/);
+		return facets.indexOf(filter) !== -1;
+	}
+
+	function announce(total) {
+		if (!count) {
+			return;
+		}
+		if (language.indexOf('he') === 0) {
+			count.textContent = total === 1 ? 'מנה אחת' : total + ' מנות';
+			return;
+		}
+		count.textContent = total === 1 ? '1 dish' : total + ' dishes';
+	}
+
+	function updateAddress(filter) {
+		if (!window.history || typeof window.history.replaceState !== 'function') {
+			return;
+		}
+		var url = new URL(window.location.href);
+		if (filter === 'all') {
+			url.searchParams.delete('dish-style');
+		} else {
+			url.searchParams.set('dish-style', filter);
+		}
+		window.history.replaceState({}, '', url.toString());
+	}
+
+	function applyFilter(filter, updateUrl) {
+		var visible = 0;
+		buttons.forEach(function (button) {
+			var selected = button.getAttribute('data-c99-filter') === filter;
+			button.classList.toggle('is-active', selected);
+			button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+		});
+		cards.forEach(function (card) {
+			var matches = cardMatches(card, filter);
+			card.hidden = !matches;
+			if (matches) {
+				visible += 1;
+			}
+		});
+		if (empty) {
+			empty.hidden = visible !== 0;
+		}
+		announce(visible);
+		if (updateUrl) {
+			updateAddress(filter);
+		}
+	}
+
+	buttons.forEach(function (button, index) {
+		button.addEventListener('click', function () {
+			applyFilter(button.getAttribute('data-c99-filter') || 'all', true);
+		});
+		button.addEventListener('keydown', function (event) {
+			var next = index;
+			if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+				next = (index + 1) % buttons.length;
+			} else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+				next = (index - 1 + buttons.length) % buttons.length;
+			} else if (event.key === 'Home') {
+				next = 0;
+			} else if (event.key === 'End') {
+				next = buttons.length - 1;
+			} else {
+				return;
+			}
+			event.preventDefault();
+			buttons[next].focus();
+		});
+	});
+
+	var requested = new URL(window.location.href).searchParams.get('dish-style');
+	var validRequested = buttons.some(function (button) {
+		return button.getAttribute('data-c99-filter') === requested;
+	});
+	applyFilter(validRequested ? requested : 'all', false);
 }());

@@ -1,6 +1,6 @@
 # Complete99 media rights register
 
-Last updated: 2026-07-28
+Last updated: 2026-07-31
 
 This register is private operational evidence. Public pages may use neutral,
 factual alt text. They must not claim photographer ownership, current menu
@@ -9,7 +9,7 @@ separate approval record supports that statement.
 
 ## Archive food photography
 
-Source: `complete99-public/public/assets/original/`  
+Source: `complete99-public/public/assets/original/`
 WordPress destination: `plugin/complete99-platform/assets/images/original/`
 
 The owner identified these files as restaurant archive materials retrieved from
@@ -26,6 +26,10 @@ Current public-safe status:
   certification, diet, allergen status, nutrition, or preparation method.
 - May not be described publicly as “business-owned photography” until the final
   photographer/contract check is recorded.
+- Dish names and concise descriptions may be drawn from the verified live
+  ordering menu, but the archive photograph remains illustrative. Menu cards
+  and dish pages must say that the photograph is archival and current
+  presentation may differ.
 - Source JPEGs remain in the upstream project. WordPress ships optimized AVIF
   and WebP derivatives only.
 
@@ -49,8 +53,8 @@ Included stems:
 
 Files:
 
-- `assets/images/complete99-connected-table-editorial-v1.avif`
-- `assets/images/complete99-connected-table-editorial-v1.webp`
+- `plugin/complete99-platform/assets/images/complete99-connected-table-editorial-v1.avif`
+- `plugin/complete99-platform/assets/images/complete99-connected-table-editorial-v1.webp`
 
 Created with OpenAI's built-in image generation on 2026-07-28 for Complete99.
 It is a stylized brand illustration, not documentary photography. It may
@@ -65,9 +69,61 @@ It must not be presented as:
 
 Public alt/caption wording must identify it as an editorial illustration.
 
+## Pantry packaging direction concept
+
+Files:
+
+- `plugin/complete99-platform/assets/images/concepts/complete99-pantry-packaging-concept-v1.avif`
+- `plugin/complete99-platform/assets/images/concepts/complete99-pantry-packaging-concept-v1.webp`
+
+Created with OpenAI's built-in image generation on 2026-07-29 for Complete99.
+It is a product-development concept with blank, unbranded labels. It is not a
+photograph of an existing SKU, recipe, package, stock item or retail offer.
+
+The public store hold page may use it only when the nearby caption clearly says
+that it is a direction concept and not a product for sale. It must not be used
+with a price, add-to-cart control, product structured data, certification,
+ingredient list, nutrition statement, availability claim or delivery promise.
+
+## Generated culinary evaluation library
+
+Directory:
+
+- `plugin/complete99-platform/assets/images/generated/`
+
+Registry:
+
+- `plugin/complete99-platform/data/generated-asset-manifest.php`
+
+The library contains 50 source PNG files and 50 matched WebP delivery files.
+They were created with OpenAI's built-in image generation between 2026-07-30
+and 2026-07-31 for Complete99. The set covers dishes, ingredient and product
+references, kitchen preparation, group meals, knowledge-centre visuals, pantry
+architecture, and delivery concepts.
+
+Every file is an illustrative evaluation asset. It is not documentary evidence
+of a current menu presentation, supplier item, package, stock condition,
+customer, worker, kitchen, delivery service, certification, diet, allergen
+status, nutrient value, price, or health outcome.
+
+Public use requires an individual visual review and an approved mapping to the
+exact dish, ingredient, article, or service context. Product assets must remain
+separate from a supplier's factual label, net weight, ingredient declaration,
+allergen declaration, kosher record, nutrition panel, barcode, and current
+price source. Those facts must come from accepted supplier evidence.
+
+The PNG files are retained as editable source evidence. Release packages omit
+the PNG files and ship the optimized WebP files. File names, source and delivery
+hashes, dimensions, related entities, review state, rights status, and caveats
+are recorded in the generated asset manifest.
+
+These assets must not be used with fabricated badges, medical claims,
+certifications, supplier branding, current availability statements, or a
+public add-to-cart control before the corresponding acceptance gates pass.
+
 ## Current Complete99 mark
 
-File: `assets/images/complete99-mark.svg`
+File: `plugin/complete99-platform/assets/images/complete99-mark.svg`
 
 This is a project-authored code-native brand mark created for the current
 Complete99 system. It replaces the red 2021 “Sabich Complete” archive logo for

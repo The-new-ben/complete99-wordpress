@@ -37,10 +37,10 @@ confirm that it grants plugin-update authority on this one WordPress site.
 
 Create environment `production`, add any desired reviewer gate, and add:
 
-- `WP_BASE_URL` — exact HTTPS origin, with no trailing WordPress admin path.
-- `WP_DEPLOY_USER` — dedicated deployment username.
-- `WP_APP_PASSWORD` — site-specific WordPress Application Password.
-- `COMPLETE99_WORDPRESS_SYNC_SECRET` — the exact 32–4096-character value held by
+- `WP_BASE_URL` - exact HTTPS origin, with no trailing WordPress admin path.
+- `WP_DEPLOY_USER` - dedicated deployment username.
+- `WP_APP_PASSWORD` - site-specific WordPress Application Password.
+- `COMPLETE99_WORDPRESS_SYNC_SECRET` - the exact 32–4096-character value held by
   the Complete99 OS server-side secret store.
 
 Set the repository variable `WP_PRODUCTION_READY` to `false` during setup. Change

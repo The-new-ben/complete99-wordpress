@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
-Last updated: 2026-07-28  
-Status: live foundation, first premium information-architecture release in progress
+Last updated: 2026-07-29
+Status: public consumer boundary locked, bilingual culinary release 1.3.0 in progress
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -11,42 +11,42 @@ camera, credential, or internal-control language.
 
 ## 1. The business we are building
 
-Complete99 combines four connected products:
+Complete99 combines four connected layers:
 
-1. Institutional foodservice for organizations.
-2. A culinary knowledge system covering dishes, recipes, ingredients, and
-   traditions.
-3. A private, multi-location operating platform for opening routines, people,
-   food production, exceptions, assets, and campaigns.
-4. A future store for verified products, equipment, pantry goods, and useful
-   foodservice tools.
+1. A public bilingual culinary consumer website for the restaurant at 99 Ibn
+   Gabirol, Tel Aviv.
+2. A culinary knowledge system covering dishes, ingredients, traditions and
+   practical guides.
+3. A private operating platform for inventory, orders, suppliers, costs, tasks,
+   campaigns, workers and future integrations.
+4. A future consumer pantry shop for verified real products.
 
-The public promise is simple: food, operations, and responsible growth working
-from one coherent foundation. The operating platform is a capability within the
-service relationship, not a self-serve SaaS product at launch.
+The public promise is food: what Complete99 cooks, what goes into it, the
+traditions around it, and where a visitor can check the current menu and order.
+The private operating platform has no place in the consumer website hierarchy or
+copy.
 
 ## 2. Audience decision
 
 ### Primary
 
-- Procurement, facilities, HR, operations, and foodservice leaders at Israeli
-  companies, offices, manufacturing sites, and logistics organizations.
-- Owners, general managers, branch managers, chefs, and operational teams
-  evaluating the Complete99 working model.
+- People deciding what to eat from Complete99 in Tel Aviv.
+- People looking for sabich, beet kubbeh, couscous, soups, pita dishes and
+  home-style plates.
+- Hebrew and English visitors who need a clear continuation to the current
+  ordering menu.
 
 ### Secondary
 
-- International institutional buyers using the English site.
-- Readers seeking sourced culinary knowledge, after dish dossiers pass their
-  editorial, source, kitchen, image-rights, allergen, and translation checks.
-- Retail customers, only after real products and fulfillment exist.
+- Readers interested in ingredients, traditions and practical food guidance.
+- Future pantry customers, only after real products, payment and fulfilment are
+  verified.
 
 ### Not addressed at launch
 
-- Walk-in restaurant ordering.
 - Medical nutrition or individual health advice.
-- Education, minors, senior living, welfare, security, or regulated care
-  verticals before qualified evidence and operating approval exist.
+- Institutional services, procurement, workforce, inventory, supplier, cost,
+  campaign or operating-system marketing.
 - Franchising and investment solicitation.
 - Consumer checkout before products, merchant identity, tax, payment, shipping,
   privacy, returns, and customer-service ownership are operational.
@@ -55,24 +55,26 @@ service relationship, not a self-serve SaaS product at launch.
 
 ### Appropriate for the public site
 
-- Services, audiences, working method, and an honest product capability tour.
-- Verified dishes and ingredients with sources, authorship, review, and dates.
-- Approved public locations, images, case studies, and certifications.
+- Food, dishes, ingredients, traditions and practical culinary guidance.
+- The verified restaurant address, telephone and external ordering continuation.
+- Verified dishes and ingredients with sources, authorship, review and dates.
+- Approved consumer images and real location facts.
 - Real products, prices, stock, delivery terms, and policies after commerce
   readiness is approved.
 
 ### Private-only
 
-- Recipe production specifications, yields, food cost, margin, supplier terms,
-  purchase orders, staff records, incidents, lead records, and internal tasks.
+- Institutional services, proposals, operating dashboards, private campaigns,
+  recipe production specifications, yields, food cost, margin, supplier terms,
+  purchase orders, staff records, incidents and internal tasks.
 - Camera feeds, device commands, credentials, telemetry, access logs, and
   security controls.
-- Draft content, failed checks, evidence workflows, migration/deployment terms,
-  signing details, private campaign data, and AI drafts.
+- Draft content, failed checks, evidence workflows, migration and deployment
+  terms, signing details and machine-generated drafts.
 
-The acronym “BOM” is reserved for specialist platform material and must always
-be paired with plain-language wording such as “recipe and production
-specification.” It does not belong in general consumer navigation.
+No Complete99 worker role is installed or assigned by release 1.3.0. Role
+definitions remain dormant infrastructure. The commerce outbox has no worker
+assignment.
 
 ## 4. Public information architecture
 
@@ -80,36 +82,32 @@ Hebrew is the root language. English mirrors the same hierarchy under `/en/`.
 
 | Hub | Canonical responsibility | Launch index policy |
 | --- | --- | --- |
-| `/services/` | What Complete99 delivers and how | Index |
-| `/industries/` | Who the service fits and the constraints considered | Index when substantive |
-| `/platform/` | Honest capability tour of the operating system | Index |
-| `/dishes/` | Verified dish dossiers and dish discovery | Index hub; gate every dossier |
-| `/ingredients/` | Ingredient identity, uses, storage, and sourced knowledge | Index hub; gate every article |
-| `/traditions/` | Carefully sourced culinary and Jewish-tradition context | Index hub; gate every article |
-| `/knowledge/` | Guides, recipes, methods, and editorial standards | Index |
-| `/case-studies/` | Permissioned institutional evidence | Hold until a real approved case exists |
-| `/locations/` | Genuine branches with verified NAP, hours, photos, and service facts | Hold until a branch record is verified |
-| `/store/` | Commercial categories and real purchasable products | Hold/noindex until commerce is configured |
-| `/about/` | Identity, responsibilities, editorial method, and team | Index |
-| `/request-proposal/` | Institutional qualification and conversion | Index without competing with services |
+| `/` | Food-first Hebrew home and ordering continuation | Index |
+| `/en/` | Mirrored English home | Index |
+| `/dishes/` | Dish discovery and approved live dish links | Index hub; gate every dossier |
+| `/ingredients/` | Ingredients in the context of the food | Index |
+| `/traditions/` | Homes, communities and cooking traditions | Index |
+| `/knowledge/` | Practical guidance for choosing and understanding dishes | Index |
+| `/store/` | Held pantry direction, then real products after approval | Hold and noindex until commerce launch |
+| `/about/` | Restaurant story and consumer identity | Index |
+| `/contact/` | Verified address, telephone and contact route | Index |
+| `/privacy/`, `/terms/`, `/accessibility/` | Consumer policy foundation | Index |
 
 ### Entity ownership and cannibalization rules
 
 - A dish dossier owns “what is this dish,” its identity, its verified context,
   and one primary tested recipe.
 - A standalone recipe owns a genuinely distinct preparation intent. Print,
-  scaling, and cook-mode variants are utility views and canonicalize to the
+  scaling and cook-mode variants are utility views and canonicalize to the
   owning dossier.
 - An ingredient page owns ingredient facts and uses; it does not retell a dish
   dossier.
 - A tradition page owns cultural and historical context and links to relevant
-  dishes; it does not target ordering or service queries.
-- A service page owns what is delivered. An industry page owns the audience's
-  constraints and fit. The proposal page owns conversion.
+  dishes. It does not target transaction queries.
 - A product page owns a real SKU or variation family. Editorial pages may link
   to products but do not duplicate commercial intent.
-- A location page exists only for a genuine location. Named institutions appear
-  only in permissioned case studies, never in generated “client” pages.
+- A location page exists only for a genuine consumer location with current
+  address, hours and contact facts.
 
 Every indexable page has exactly one primary intent owner, one canonical path,
 one locale in a translation group, one parent hub, an index policy, an evidence
@@ -119,20 +117,18 @@ profile, a schema profile, and editorial ownership.
 
 ### Header
 
-- One utility layer for language and future verified contact/account actions.
-- Six or seven crawlable primary hubs, not a flat inventory of leaf pages.
-- One persistent institutional action: request a fit assessment.
-- One persistent discovery action: explore dishes and knowledge.
-- A server-rendered mega menu with real links, full keyboard support, Escape,
-  focus return, visible focus, and RTL/LTR parity.
+- One utility layer for current ordering and language.
+- Five consumer discovery links: Dishes, Ingredients, Traditions, Knowledge and
+  Pantry.
+- One persistent action to the verified language-specific Wolt menu.
+- A server-rendered menu with real links, keyboard wrapping, Escape, focus return,
+  visible focus and RTL/LTR parity.
 
 ### Footer
 
-- Services and audiences.
-- Dishes, ingredients, traditions, and knowledge.
-- Platform and proposal paths.
-- Store categories only when they are truthful and useful.
-- About, contact, privacy, terms, accessibility, and commerce policies when
+- Dishes, ingredients, traditions and knowledge.
+- Pantry only with a truthful held or live state.
+- About, contact, privacy, terms, accessibility and commerce policies when
   applicable.
 - Only verified social profiles and contact details.
 
@@ -140,15 +136,14 @@ profile, a schema profile, and editorial ownership.
 
 1. Deep breadcrumb trail.
 2. Bilingual dish identity and rights-cleared images.
-3. Verified ingredients, allergens, nutrition, and availability at a glance.
+3. Verified ingredients and allergen boundaries.
 4. Sourced origin and tradition context with claim-level citations.
 5. A public-safe preparation summary.
 6. Tested recipe, yield, serving scaling, and cook mode.
 7. Ingredient encyclopedia links.
-8. Institutional formats and proposal action.
-9. Related dishes, recipes, and traditions.
-10. Clearly separated relevant products, when real.
-11. Sources, author, chef tester, editor, and review dates.
+8. Related dishes, recipes and traditions.
+9. Clearly separated relevant products, when real.
+10. Sources, author, chef tester, editor and review dates.
 
 No word count, AI detector, or template completion can make a dossier
 publishable by itself. The existing 5,000-word bilingual rule is a minimum
@@ -158,10 +153,10 @@ editorial gate, not a writing target and never permission to add filler.
 
 The benchmark combines:
 
+- Hummus Ashkara's direct local menu and ordering continuation.
 - Ottolenghi's recipes, ingredient encyclopedia, and content-commerce graph.
 - Eataly's editorial category landings.
 - Sweetgreen's ingredient, nutrition, location, and menu transparency.
-- Fooditude's institutional-buyer clarity.
 - Farmer J's recognizable illustration language.
 
 Complete99 must outperform common competitor defects:
@@ -180,30 +175,20 @@ support, responsive AVIF/WebP imagery, explicit image dimensions, one optimized
 eager LCP image, lazy loading below the fold, and zero first-party console
 errors.
 
-## 7. The 20-role council
+## 7. Infrastructure without imposed roles
 
-| Role | Public launch requirement | Private/near-term requirement | Claims held until proven |
-| --- | --- | --- | --- |
-| Owner/CEO | Clear commercial promise and audience hierarchy | Portfolio and branch growth model | Scale, leadership, revenue, or customer claims |
-| COO | Honest operating capability tour | Real day opening, handovers, exceptions, audit trail | Decorative dashboards described as live |
-| Chef | Dish hub and visible editorial method | Recipe versions, yield, kitchen test, chef sign-off | Untested recipes or origin claims |
-| Food safety | Responsibility and allergen boundaries | Food-safety controls and incident workflow | Suitability, kosher, or compliance without evidence |
-| Procurement | Sourcing and receiving method | Suppliers, items, substitutions, POs, discrepancies | Supplier names, prices, or endorsements |
-| Finance | Clear business models and proposal path | Costing, budget, VAT, invoices, branch P&L | Savings or pricing without an approved model |
-| Institutional sales | Strong qualification and proposal journey | CRM stages, owner, SLA, tender workspace | Availability, capacity, or customer claims |
-| Marketing | Consistent brand and owned assets | Briefs, approvals, UTMs, calendar, measurement | Campaign outcomes without source data |
-| Social | Reserved channel strategy | Real OAuth, scheduling, moderation, receipts | “Connected” or “published” before provider proof |
-| SEO | Hubs, deep breadcrumbs, link graph, ownership registry | Search Console, SERP review, schema and orphan monitoring | Thousands of thin or overlapping pages |
-| Commerce | Store architecture and readiness checklist | WooCommerce, products, tax, payment, shipping, orders | Checkout before operational readiness |
-| Editorial | Authorship, sources, review, translation quality | Editorial calendar and claim-level citations | Padded, fabricated, or detector-driven prose |
-| Design | Complete visual identity and food-rich system | Photography plan, icon family, reusable art direction | Assets without rights |
-| UX/accessibility | Usable menu, search, footer, forms, mobile and keyboard QA | Filters, saved journeys, branch-aware navigation | Device controls without safe authenticated UX |
-| Branch manager | Truthful location model | Hours, local menus, overrides, ownership | Locations before NAP and hours are verified |
-| HR/training | Role and responsibility explanation | Training, competence, handover, acknowledgements | Staff records or certificates on public WordPress |
-| Customer service | Clear contact and consent handling | Assigned inbox, notifications, status, retention | Unstaffed phone, email, WhatsApp, or service hours |
-| Data/analytics | Define events and launch KPIs | Consent-aware analytics, funnel, attribution, CWV | Decorative numbers described as operating data |
-| Security/privacy | Legal/privacy/accessibility foundation | DPA, vendors, access review, incidents | Cameras, people data, secrets, or raw telemetry |
-| Automation/AI | Human accountability and honest scope | Permissioned tools, sources, logs, evaluations | AI approving claims, orders, safety, or public sends |
+Release 1.3.0 creates contracts and checks, not worker assignments.
+
+- WordPress keeps consumer publishing and commerce readiness metadata.
+- WooCommerce remains the future product, cart, checkout, payment and stock
+  authority.
+- The private outbox records order, refund and stock facts without direct
+  customer contact or address data.
+- Complete99 OS may consume the outbox later through authenticated access.
+- `worker_assignment_mode` remains `unassigned_infrastructure`.
+- No migration calls the dormant WordPress role installer.
+- Any future owner, approval chain, supplier process or campaign workflow needs
+  a separate operating decision.
 
 ## 8. Store readiness
 
@@ -228,7 +213,9 @@ operations belong behind an authenticated portal and API boundary.
 
 - The UPress WordPress site is the long-term public/SEO source of truth.
 - `https://complete99-public.benben777.chatgpt.site/` is a sanitized, public
-  interim capability preview. It contains no private operating state.
+  historical application reference. It is not the consumer website, is not an
+  authoritative source for public claims and is not marketed or linked as a
+  consumer feature.
 - `https://complete99-os.benben777.chatgpt.site/` is the private owner
   prototype. It must remain access-controlled until server-side roles,
   per-record authorization, production identity, and security review are
@@ -267,7 +254,7 @@ Every production release must preserve:
 - keyboard navigation, visible focus, console, overflow, and control-size checks;
 - a recoverable rollback path and a periodic exercised rollback.
 
-Current live alias: `https://a235232-tmp.s1242.upress.link/`  
+Current live alias: `https://a235232-tmp.s1242.upress.link/`
 Future canonical domain: `complete99.co.il` after registration and DNS/SSL.
 
 ## 11. Evidence-backed sources

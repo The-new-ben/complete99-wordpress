@@ -743,6 +743,7 @@ add_action(
 			$option_names = array(
 				'active_plugins',
 				'complete99_last_deployment_id',
+				'complete99_evaluation_catalog_receipt',
 				'complete99_os_public_url',
 				'complete99_os_url',
 				'complete99_platform_version',
@@ -797,13 +798,27 @@ add_action(
 				return $query_error( 'seed_ids' );
 			}
 			$seed_ids = array_map( 'intval', $seed_rows );
+			$wpdb->last_error = '';
+			$evaluation_rows = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s ORDER BY post_id",
+					'_complete99_evaluation_catalog_managed',
+					'1'
+				)
+			);
+			if ( '' !== (string) $wpdb->last_error || ! is_array( $evaluation_rows ) ) {
+				return $query_error( 'evaluation_ids' );
+			}
+			$evaluation_ids = array_map( 'intval', $evaluation_rows );
+			$managed_ids    = array_values( array_unique( array_merge( $seed_ids, $evaluation_ids ) ) );
+			sort( $managed_ids, SORT_NUMERIC );
 			$posts    = array();
 			$postmeta = array();
-			if ( ! empty( $seed_ids ) ) {
-				$placeholders = implode( ',', array_fill( 0, count( $seed_ids ), '%d' ) );
+			if ( ! empty( $managed_ids ) ) {
+				$placeholders = implode( ',', array_fill( 0, count( $managed_ids ), '%d' ) );
 				$post_query   = $wpdb->prepare(
 					"SELECT * FROM {$wpdb->posts} WHERE ID IN ({$placeholders}) OR (post_type = 'revision' AND post_parent IN ({$placeholders})) ORDER BY ID",
-					array_merge( $seed_ids, $seed_ids )
+					array_merge( $managed_ids, $managed_ids )
 				);
 				$wpdb->last_error = '';
 				$posts        = $wpdb->get_results( $post_query, ARRAY_A );
@@ -832,6 +847,7 @@ add_action(
 				'postmeta'  => $postmeta,
 				'posts'     => $posts,
 				'seed_ids'  => $seed_ids,
+				'evaluation_ids'=> $evaluation_ids,
 				'sync_secret_existed'=> $sync_secret_existed,
 				'sync_secret_configured'=> $sync_secret_configured,
 			);
@@ -905,7 +921,9 @@ add_action(
 			global $wpdb;
 			if (
 				! is_array( $snapshot )
-				|| ! isset( $snapshot['options'], $snapshot['posts'], $snapshot['postmeta'], $snapshot['seed_ids'], $snapshot['sync_secret_existed'], $snapshot['sync_secret_configured'] )
+				|| ! isset( $snapshot['options'], $snapshot['posts'], $snapshot['postmeta'], $snapshot['seed_ids'], $snapshot['evaluation_ids'], $snapshot['sync_secret_existed'], $snapshot['sync_secret_configured'] )
+				|| ! is_array( $snapshot['seed_ids'] )
+				|| ! is_array( $snapshot['evaluation_ids'] )
 				|| ! is_bool( $snapshot['sync_secret_existed'] )
 				|| ! is_bool( $snapshot['sync_secret_configured'] )
 				|| ( $snapshot['sync_secret_configured'] && ! $snapshot['sync_secret_existed'] )
@@ -1000,11 +1018,25 @@ add_action(
 					throw new \RuntimeException( 'seed_read' );
 				}
 				$current_seed_ids = array_map( 'intval', $current_seed_rows );
+				$wpdb->last_error = '';
+				$current_evaluation_rows = $wpdb->get_col(
+					$wpdb->prepare(
+						"SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = %s ORDER BY post_id",
+						'_complete99_evaluation_catalog_managed',
+						'1'
+					)
+				);
+				if ( '' !== (string) $wpdb->last_error || ! is_array( $current_evaluation_rows ) ) {
+					throw new \RuntimeException( 'evaluation_read' );
+				}
+				$current_evaluation_ids = array_map( 'intval', $current_evaluation_rows );
 				$seed_ids = array_values(
 					array_unique(
 						array_merge(
 							array_map( 'intval', $snapshot['seed_ids'] ),
-							$current_seed_ids
+							array_map( 'intval', $snapshot['evaluation_ids'] ),
+							$current_seed_ids,
+							$current_evaluation_ids
 						)
 					)
 				);
@@ -1485,7 +1517,8 @@ add_action(
 					$runtime_loaded = defined( 'COMPLETE99_PLATFORM_VERSION' )
 						&& $expected_version === (string) COMPLETE99_PLATFORM_VERSION
 						&& class_exists( 'Complete99_Platform', false )
-						&& method_exists( 'Complete99_Platform', 'migration_failed' );
+						&& method_exists( 'Complete99_Platform', 'migration_failed' )
+						&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' );
 					if (
 						'' !== $database_version_error
 						|| ! $runtime_loaded
@@ -1505,6 +1538,7 @@ add_action(
 					try {
 						Complete99_Content::assert_migration_invariants();
 						Complete99_Settings::assert_defaults();
+						Complete99_Platform::assert_evaluation_catalog_invariants();
 					} catch ( \Throwable $error ) {
 						return new WP_Error(
 							'c99_stabilize_migration_invariants',
@@ -2575,7 +2609,7 @@ add_action(
 							)
 						);
 					}
-					if ( ! $interrupted_phase && ! in_array( $phase, array( 'installed', 'failed', 'rollback_failed', 'commit_failed' ), true ) ) {
+					if ( ! $interrupted_phase && ! in_array( $phase, array( 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup', 'failed', 'rollback_failed', 'commit_failed' ), true ) ) {
 						return new WP_Error(
 							'c99_rollback_not_ready',
 							'Rollback is refused while the deployment is not in a terminal mutable phase.',
@@ -2584,7 +2618,7 @@ add_action(
 					}
 					$lease = $claim_lock(
 						$deployment_id,
-						array( 'prepared', 'installing', 'rolling_back', 'committing', 'installed', 'failed', 'rollback_failed', 'commit_failed' ),
+						array( 'prepared', 'installing', 'rolling_back', 'committing', 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup', 'failed', 'rollback_failed', 'commit_failed' ),
 						$phase,
 						false,
 						$interrupted_phase
@@ -2611,11 +2645,12 @@ add_action(
 						return $database_snapshot;
 					}
 					if (
-						! isset( $database_snapshot['options'], $database_snapshot['posts'], $database_snapshot['postmeta'], $database_snapshot['seed_ids'], $database_snapshot['sync_secret_existed'], $database_snapshot['sync_secret_configured'] )
+						! isset( $database_snapshot['options'], $database_snapshot['posts'], $database_snapshot['postmeta'], $database_snapshot['seed_ids'], $database_snapshot['evaluation_ids'], $database_snapshot['sync_secret_existed'], $database_snapshot['sync_secret_configured'] )
 						|| ! is_array( $database_snapshot['options'] )
 						|| ! is_array( $database_snapshot['posts'] )
 						|| ! is_array( $database_snapshot['postmeta'] )
 						|| ! is_array( $database_snapshot['seed_ids'] )
+						|| ! is_array( $database_snapshot['evaluation_ids'] )
 						|| ! is_bool( $database_snapshot['sync_secret_existed'] )
 						|| ! is_bool( $database_snapshot['sync_secret_configured'] )
 						|| ( $database_snapshot['sync_secret_configured'] && ! $database_snapshot['sync_secret_existed'] )

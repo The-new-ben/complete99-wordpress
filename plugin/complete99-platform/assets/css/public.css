@@ -10,7 +10,7 @@
 	--c99-gold: #eab451;
 	--c99-line: #dce4df;
 	--c99-danger: #a44932;
-	--c99-focus: #8a4f00;
+	--c99-focus: #073c2a;
 	--c99-shadow: 0 22px 70px rgba(28, 61, 48, .12);
 	--c99-radius: 24px;
 	--c99-font: Heebo, "Noto Sans Hebrew", Assistant, Arial, sans-serif;
@@ -66,8 +66,9 @@ html[dir="rtl"] body.complete99-public {
 .complete99-public input:focus-visible,
 .complete99-public textarea:focus-visible,
 .complete99-public select:focus-visible {
-	outline: 2px solid var(--c99-focus);
-	outline-offset: 3px;
+	outline: 3px solid #fff;
+	outline-offset: 2px;
+	box-shadow: 0 0 0 6px var(--c99-focus);
 }
 
 .complete99-public h1,

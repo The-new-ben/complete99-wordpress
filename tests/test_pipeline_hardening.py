@@ -11,6 +11,7 @@ import types
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -731,6 +732,23 @@ class PipelineHardeningTests(unittest.TestCase):
             'audit["decision"] = "stabilize_completed_forward_migration"',
             recovery,
         )
+        rollback = bridge.split("$route_prefix . '/rollback'", 1)[1].split(
+            "$route_prefix . '/finalize'",
+            1,
+        )[0]
+        self.assertIn(
+            "array( 'installed', 'installed_pending_stabilization', "
+            "'installed_pending_cleanup', 'failed', 'rollback_failed', "
+            "'commit_failed' )",
+            rollback,
+        )
+        self.assertIn('"installed_pending_cleanup"', deployer)
+        self.assertIn('"installed_pending_stabilization"', deployer)
+        self.assertIn("recover_forward_candidate(", recovery)
+        self.assertIn(
+            '"rollback_failed_forward_stabilization"',
+            recovery,
+        )
 
         class StabilizeClient:
             def request(
@@ -787,6 +805,160 @@ class PipelineHardeningTests(unittest.TestCase):
             result["stabilized_from_phase"],
         )
         self.assertIn("'c99_finalize_unstabilized'", bridge)
+
+    def test_pending_forward_phases_retry_rollback_without_stale_lease(self) -> None:
+        for phase in (
+            "installed_pending_stabilization",
+            "installed_pending_cleanup",
+        ):
+            with self.subTest(phase=phase):
+                bridge_responses = [
+                    DEPLOY.DeployError("injected lost rollback response"),
+                    {
+                        "rolled_back": True,
+                        "database_restore": {"restored": True},
+                    },
+                ]
+                with mock.patch.object(
+                    DEPLOY,
+                    "bridge_call",
+                    side_effect=bridge_responses,
+                ) as bridge_call, mock.patch.object(
+                    DEPLOY,
+                    "poll_deployment_status",
+                    return_value={"phase": phase},
+                ) as poll_status:
+                    result = DEPLOY.rollback_with_recovery(
+                        object(),
+                        "temporary-token",
+                        "c99-prod-pending-rollback",
+                    )
+
+                self.assertTrue(result["rolled_back"])
+                self.assertTrue(result["database_restore"]["restored"])
+                self.assertEqual(2, bridge_call.call_count)
+                poll_status.assert_called_once()
+
+    def test_failed_pending_stabilization_rolls_back_and_verifies_prior_state(
+        self,
+    ) -> None:
+        for phase in (
+            "installed_pending_stabilization",
+            "installed_pending_cleanup",
+        ):
+            with self.subTest(phase=phase):
+                calls: list[str] = []
+
+                def stabilization_failure(*_args: object) -> dict[str, object]:
+                    calls.append("stabilize")
+                    raise DEPLOY.DeployError("injected stabilization failure")
+
+                fake_deployer = types.SimpleNamespace(
+                    DeployError=DEPLOY.DeployError,
+                    stabilize_deployment=stabilization_failure,
+                    rollback_with_recovery=lambda *_args: (
+                        calls.append("rollback")
+                        or {
+                            "rolled_back": True,
+                            "database_restore": {"restored": True},
+                            "had_plugin": True,
+                            "prior_active": True,
+                            "prior_version": "1.2.1",
+                            "prior_deployment": "c99-prod-prior-1234",
+                        }
+                    ),
+                    verify_rollback_integrity=lambda *_args: (
+                        calls.append("rollback_integrity")
+                        or {"database_restored": True}
+                    ),
+                    verify_health=lambda *_args: (
+                        calls.append("prior_health") or {"status": "ok"}
+                    ),
+                    verify_rendered_home=lambda *_args: (
+                        calls.append("prior_rendered_home")
+                        or {"deployment_id": "c99-prod-prior-1234"}
+                    ),
+                    verify_inactive_plugin=lambda *_args: (
+                        calls.append("prior_inactive_plugin")
+                        or {"plugin_status": "inactive"}
+                    ),
+                    verify_plugin_absent=lambda *_args: (
+                        calls.append("prior_absence") or {"plugin_absent": True}
+                    ),
+                    finalize_deployment=lambda *_args: (
+                        calls.append("finalize") or {"finalized": True}
+                    ),
+                )
+                audit: dict[str, object] = {}
+                RECOVER.recover_forward_candidate(
+                    fake_deployer,
+                    object(),
+                    "temporary-token",
+                    "c99-prod-pending-recovery",
+                    {
+                        "phase": phase,
+                        "expected_version": "1.3.0",
+                        "installed_plugin_sha256": "a" * 64,
+                    },
+                    audit,
+                )
+
+                self.assertEqual(
+                    [
+                        "stabilize",
+                        "rollback",
+                        "rollback_integrity",
+                        "prior_health",
+                        "prior_rendered_home",
+                        "finalize",
+                    ],
+                    calls,
+                )
+                self.assertEqual(
+                    {
+                        "error": "DeployError",
+                        "phase": phase,
+                    },
+                    audit["stabilization_failure"],
+                )
+                self.assertEqual(
+                    "rollback_failed_forward_stabilization",
+                    audit["decision"],
+                )
+                self.assertTrue(audit["rollback"]["rolled_back"])
+                self.assertTrue(audit["finalize"]["finalized"])
+
+    def test_failed_stabilization_refuses_unconfirmed_rollback(self) -> None:
+        fake_deployer = types.SimpleNamespace(
+            DeployError=DEPLOY.DeployError,
+            stabilize_deployment=lambda *_args: (_ for _ in ()).throw(
+                DEPLOY.DeployError("injected stabilization failure")
+            ),
+            rollback_with_recovery=lambda *_args: {
+                "rolled_back": True,
+                "database_restore": {},
+            },
+        )
+        audit: dict[str, object] = {}
+
+        with self.assertRaisesRegex(
+            DEPLOY.DeployError,
+            "Recovery rollback was not confirmed",
+        ):
+            RECOVER.recover_forward_candidate(
+                fake_deployer,
+                object(),
+                "temporary-token",
+                "c99-prod-pending-recovery",
+                {
+                    "phase": "installed_pending_stabilization",
+                    "expected_version": "1.3.0",
+                    "installed_plugin_sha256": "a" * 64,
+                },
+                audit,
+            )
+        self.assertNotIn("finalize", audit)
+        self.assertNotIn("decision", audit)
 
     def test_committed_cleanup_uses_the_installed_directory_digest(self) -> None:
         bridge = (ROOT / "deploy" / "temporary-bridge.php").read_text(
@@ -1053,7 +1225,7 @@ class PipelineHardeningTests(unittest.TestCase):
                 "too-short",
             )
 
-    def test_workflow_is_manual_and_safe_first_install_is_the_default(self) -> None:
+    def test_workflow_is_manual_and_1_3_0_requires_rollback_exercise(self) -> None:
         workflow = (
             ROOT / ".github" / "workflows" / "wordpress-deploy.yml"
         ).read_text(encoding="utf-8")
@@ -1065,8 +1237,27 @@ class PipelineHardeningTests(unittest.TestCase):
         bootstrap_input = workflow.split("bootstrap_code_snippets:", 1)[1].split(
             "permissions:", 1
         )[0]
-        self.assertIn("default: false", rollback_input)
+        self.assertIn("default: true", rollback_input)
         self.assertIn("default: true", bootstrap_input)
+        rollback_guard = workflow.split(
+            "- name: Require the 1.3.0 rollback and identical-artifact redeploy exercise",
+            1,
+        )[1].split(
+            "- name: Require the secure sync bootstrap before any live request",
+            1,
+        )[0]
+        self.assertIn(
+            '$releaseMetadata.version -eq "1.3.0"',
+            rollback_guard,
+        )
+        self.assertIn(
+            '"${{ inputs.rollback_exercise }}" -ne "true"',
+            rollback_guard,
+        )
+        self.assertIn(
+            "rollback_exercise=true before any production request",
+            rollback_guard,
+        )
         self.assertIn("recover-wordpress.py", workflow)
         self.assertIn("--discover", workflow)
         self.assertIn("WP_ALLOWED_DEPLOY_HOSTS", workflow)
