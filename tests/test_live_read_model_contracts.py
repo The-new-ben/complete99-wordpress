@@ -16,6 +16,7 @@ CSS = PLUGIN / "assets" / "css" / "public.css"
 
 PHP_RUNTIME_BOOTSTRAP = r"""
 define('ABSPATH', __DIR__);
+define('COMPLETE99_PLATFORM_DIR', '__PLUGIN_PATH__/');
 
 class WP_Error {
     private $code;
@@ -240,7 +241,13 @@ class LiveReadModelContracts(unittest.TestCase):
 
     def run_php_runtime(self, body: str) -> dict:
         rest_path = REST.as_posix().replace("'", "\\'")
-        script = PHP_RUNTIME_BOOTSTRAP.replace("__REST_PATH__", rest_path) + "\n" + body
+        plugin_path = PLUGIN.as_posix().replace("'", "\\'")
+        script = (
+            PHP_RUNTIME_BOOTSTRAP.replace("__REST_PATH__", rest_path)
+            .replace("__PLUGIN_PATH__", plugin_path)
+            + "\n"
+            + body
+        )
         result = subprocess.run(
             ["php", "-r", script],
             check=True,
@@ -436,9 +443,11 @@ class LiveReadModelContracts(unittest.TestCase):
                 "sections",
                 "items",
                 "freshness",
+                "source",
             },
             set(catalog),
         )
+        self.assertEqual("synced_read_model", catalog["source"])
         self.assertNotIn("campaigns", catalog)
         self.assertNotIn("branches", catalog)
         self.assertNotIn("digest", catalog)
@@ -549,7 +558,7 @@ class LiveReadModelContracts(unittest.TestCase):
                 "unapproved_media": False,
                 "approved_media": True,
                 "indexable_count": 1,
-                "stale_indexable_count": 0,
+                "stale_indexable_count": 12,
             },
             result,
         )
@@ -1166,7 +1175,7 @@ class LiveReadModelContracts(unittest.TestCase):
             result["cache_failure"]["data"]["cache"]["object_cache"]["flushed"]
         )
 
-    def test_generation_freshness_and_public_catalog_fail_closed(self) -> None:
+    def test_generation_freshness_rejects_bad_sync_and_uses_bundled_catalog(self) -> None:
         result = self.run_php_runtime(
             r"""
         c99_reset_runtime();
@@ -1190,12 +1199,15 @@ class LiveReadModelContracts(unittest.TestCase):
             'items' => array(c99_item('dish-a', 'dish-a')),
         );
         c99_reset_runtime($stale_model);
-        $catalog = Complete99_REST::public_catalog();
+        $catalog_response = Complete99_REST::public_catalog();
+        $catalog = $catalog_response instanceof WP_REST_Response
+            ? $catalog_response->data
+            : array();
 
         echo json_encode(array(
             'invalid' => c99_error($invalid),
             'stale' => c99_error($stale),
-            'catalog' => c99_error($catalog),
+            'catalog' => $catalog,
             'indexable' => Complete99_REST::public_indexable_items($stale_model),
         ));
         """
@@ -1204,9 +1216,19 @@ class LiveReadModelContracts(unittest.TestCase):
         self.assertEqual(400, result["invalid"]["status"])
         self.assertEqual("complete99_sync_stale_model", result["stale"]["code"])
         self.assertEqual(409, result["stale"]["status"])
-        self.assertEqual("complete99_public_model_stale", result["catalog"]["code"])
-        self.assertEqual(503, result["catalog"]["status"])
-        self.assertEqual([], result["indexable"])
+        self.assertEqual("wordpress_bundle", result["catalog"]["source"])
+        self.assertEqual("wordpress-bundle-2026-07-31", result["catalog"]["version"])
+        self.assertTrue(result["catalog"]["freshness"]["fallback_active"])
+        self.assertFalse(result["catalog"]["freshness"]["fresh"])
+        self.assertEqual([], result["catalog"]["sections"])
+        self.assertEqual(12, len(result["catalog"]["items"]))
+        self.assertEqual(12, len(result["indexable"]))
+        self.assertTrue(
+            all(
+                item["_complete99_source"] == "wordpress_bundle"
+                for item in result["indexable"]
+            )
+        )
 
     def test_live_dish_routes_are_bilingual_and_do_not_replace_editorial_routes(self) -> None:
         self.assertIn("'^menu/([^/]+)/?$'", self.content)

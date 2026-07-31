@@ -254,6 +254,41 @@ jobs:
             Remove-Item -LiteralPath $mutationMarker -Force
           }
 
+      - name: Install pinned WooCommerce and materialize the live catalog
+        id: commerce
+        continue-on-error: true
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
+        shell: powershell
+        run: |
+          & python scripts/materialize-woocommerce.py `
+            --deployment-id "c99-commerce-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          exit $LASTEXITCODE
+
+      - name: Recover an interrupted WooCommerce bridge
+        if: steps.commerce.outcome == 'failure'
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
+        shell: powershell
+        run: |
+          & python scripts/materialize-woocommerce.py `
+            --deployment-id "c99-commerce-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
+            --recover-bridge
+          exit $LASTEXITCODE
+
+      - name: Fail closed after an audited commerce failure
+        if: always() && steps.commerce.outcome == 'failure'
+        shell: powershell
+        run: |
+          Write-Error "WooCommerce or catalog verification failed. The recovery and audit steps have completed."
+          exit 1
+
       - name: Upload non-secret deployment audit
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -262,5 +297,6 @@ jobs:
           path: |
             deploy-audit/*.json
             recovery-audit/*.json
+            commerce-audit/*.json
           if-no-files-found: warn
           retention-days: 30

@@ -686,10 +686,10 @@ $records = array(
 			'dish_id'           => 'menu-reference-yemenite-soup',
 			'slug'              => 'yemenite-beef-soup',
 			'name'              => array( 'he' => 'מרק בשר תימני', 'en' => 'Yemenite Beef Soup' ),
-			'category'          => array( 'he' => 'מרק מהארכיון', 'en' => 'Soup from the archive' ),
+			'category'          => array( 'he' => 'מרק ביתי', 'en' => 'Home-style soup' ),
 			'description'       => array(
-				'he' => 'מרק בשר תימני שמופיע בארכיון קומפלט 99.',
-				'en' => 'Yemenite beef soup documented in the Complete99 archive.',
+				'he' => 'מרק בשר תימני עמוק ומחמם.',
+				'en' => 'A deep, warming Yemenite beef soup.',
 			),
 			'editorial_tagline' => array( 'he' => 'סיר עמוק', 'en' => 'A deep, warming pot' ),
 			'source_id'         => $wolt_source_id,

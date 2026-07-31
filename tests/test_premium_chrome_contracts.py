@@ -119,7 +119,7 @@ class PremiumChromeContracts(unittest.TestCase):
         self.assertNotIn("c99-live-dot", self.frontend)
         self.assertNotIn(".c99-live-dot", self.css)
 
-    def test_food_imagery_is_local_responsive_and_factually_labelled(self) -> None:
+    def test_food_imagery_is_local_responsive_and_presented_normally(self) -> None:
         self.assertIn(
             "assets/images/original/c99-food-house-spread-hero-2021-wp-v01.avif",
             self.frontend,
@@ -127,7 +127,12 @@ class PremiumChromeContracts(unittest.TestCase):
         self.assertIn('width="1400" height="788"', self.frontend)
         self.assertIn('fetchpriority="high"', self.frontend)
         self.assertIn('loading="lazy"', self.frontend)
-        self.assertIn("Complete99 archive food photograph", self.frontend)
+        self.assertIn(
+            "Overhead spread of beet kubeh, couscous, meatballs, salad and additional dishes",
+            self.frontend,
+        )
+        self.assertNotIn("Complete99 archive food photograph", self.frontend)
+        self.assertNotIn("c99-archive-note", self.frontend)
         self.assertNotIn("business-owned", self.frontend.lower())
         self.assertIn("complete99-connected-table-editorial-v1.avif", self.frontend)
         self.assertIn("assets/images/complete99-mark.svg", self.frontend)

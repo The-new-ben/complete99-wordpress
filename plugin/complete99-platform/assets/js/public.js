@@ -174,6 +174,92 @@
 (function () {
 	'use strict';
 
+	var shell = document.querySelector('[data-c99-product-filter]');
+	var grid = document.querySelector('[data-c99-product-grid]');
+	if (!shell || !grid) {
+		return;
+	}
+
+	var buttons = Array.prototype.slice.call(shell.querySelectorAll('[data-c99-product-filter-button]'));
+	var cards = Array.prototype.slice.call(grid.querySelectorAll('[data-c99-product-card]'));
+	var count = shell.querySelector('[data-c99-product-filter-count]');
+	var empty = document.querySelector('[data-c99-product-filter-empty]');
+	var language = (document.documentElement.lang || 'he').toLowerCase();
+
+	function matches(card, filter) {
+		return filter === 'all' || (card.getAttribute('data-c99-product-facets') || '').split(/\s+/).indexOf(filter) !== -1;
+	}
+
+	function announce(total) {
+		if (!count) {
+			return;
+		}
+		count.textContent = language.indexOf('he') === 0
+			? (total === 1 ? 'מוצר אחד' : total + ' מוצרים')
+			: (total === 1 ? '1 product' : total + ' products');
+	}
+
+	function applyFilter(filter, updateUrl) {
+		var visible = 0;
+		buttons.forEach(function (button) {
+			var selected = button.getAttribute('data-c99-product-filter-button') === filter;
+			button.classList.toggle('is-active', selected);
+			button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+		});
+		cards.forEach(function (card) {
+			var visibleCard = matches(card, filter);
+			card.hidden = !visibleCard;
+			if (visibleCard) {
+				visible += 1;
+			}
+		});
+		if (empty) {
+			empty.hidden = visible !== 0;
+		}
+		announce(visible);
+		if (updateUrl && window.history && typeof window.history.replaceState === 'function') {
+			var url = new URL(window.location.href);
+			if (filter === 'all') {
+				url.searchParams.delete('product-type');
+			} else {
+				url.searchParams.set('product-type', filter);
+			}
+			window.history.replaceState({}, '', url.toString());
+		}
+	}
+
+	buttons.forEach(function (button, index) {
+		button.addEventListener('click', function () {
+			applyFilter(button.getAttribute('data-c99-product-filter-button') || 'all', true);
+		});
+		button.addEventListener('keydown', function (event) {
+			var next = index;
+			if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+				next = (index + 1) % buttons.length;
+			} else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+				next = (index - 1 + buttons.length) % buttons.length;
+			} else if (event.key === 'Home') {
+				next = 0;
+			} else if (event.key === 'End') {
+				next = buttons.length - 1;
+			} else {
+				return;
+			}
+			event.preventDefault();
+			buttons[next].focus();
+		});
+	});
+
+	var requested = new URL(window.location.href).searchParams.get('product-type');
+	var valid = buttons.some(function (button) {
+		return button.getAttribute('data-c99-product-filter-button') === requested;
+	});
+	applyFilter(valid ? requested : 'all', false);
+}());
+
+(function () {
+	'use strict';
+
 	var shell = document.querySelector('[data-c99-dish-filter]');
 	var grid = document.querySelector('[data-c99-dish-grid]');
 	if (!shell || !grid) {

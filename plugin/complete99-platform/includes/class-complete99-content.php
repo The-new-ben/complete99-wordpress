@@ -359,6 +359,32 @@ final class Complete99_Content {
 				'compare' => 'IN',
 			),
 		);
+		if ( 'page' === (string) $post_type
+			&& class_exists( 'Complete99_Commerce' )
+			&& Complete99_Commerce::catalog_is_ready() ) {
+			$eligibility = array(
+				'relation' => 'OR',
+				$eligibility,
+				array(
+					'relation' => 'AND',
+					array(
+						'key'     => '_complete99_managed',
+						'value'   => '1',
+						'compare' => '=',
+					),
+					array(
+						'key'     => '_complete99_translation_key',
+						'value'   => 'store',
+						'compare' => '=',
+					),
+					array(
+						'key'     => '_complete99_public_audience',
+						'value'   => self::PUBLIC_AUDIENCE,
+						'compare' => '=',
+					),
+				),
+			);
+		}
 		if ( ! empty( $args['meta_query'] ) ) {
 			$args['meta_query'] = array(
 				'relation' => 'AND',
@@ -398,14 +424,17 @@ final class Complete99_Content {
 		if ( ! $post
 			|| 'publish' !== (string) $post->post_status
 			|| '' !== (string) $post->post_password
-			|| ! self::is_complete99_post( $post->ID )
-			|| ! rest_sanitize_boolean( get_post_meta( $post->ID, '_complete99_index_eligible', true ) ) ) {
+			|| ! self::is_complete99_post( $post->ID ) ) {
 			return false;
 		}
 		$translation_key = sanitize_key( (string) get_post_meta( $post->ID, '_complete99_translation_key', true ) );
-		if ( 'store' === $translation_key
-			&& class_exists( 'Complete99_Commerce' )
-			&& ! Complete99_Commerce::is_ready() ) {
+		if ( 'store' === $translation_key ) {
+			return 'page' === (string) $post->post_type
+				&& self::PUBLIC_AUDIENCE === (string) get_post_meta( $post->ID, '_complete99_public_audience', true )
+				&& class_exists( 'Complete99_Commerce' )
+				&& Complete99_Commerce::catalog_is_ready();
+		}
+		if ( ! rest_sanitize_boolean( get_post_meta( $post->ID, '_complete99_index_eligible', true ) ) ) {
 			return false;
 		}
 		$verification = (string) get_post_meta( $post->ID, '_complete99_verification_state', true );

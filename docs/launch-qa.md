@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.3.6
+Release target: Complete99 Platform 1.3.7
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.3.6
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.3.6 and its versioned package URL.
+- The public update manifest matches version 1.3.7 and its versioned package URL.
 - An exactly equivalent read-model retry repeats all public cache purges,
   reports `write_changed=false`, and can recover after a prior purge failure.
 - Every plugin-owned shell emits exactly one escaped document title and one
@@ -49,12 +49,12 @@ Release target: Complete99 Platform 1.3.6
   bilingual consumer copy.
 - Public copy explains food directly and does not narrate templates, publishing
   systems or future content mechanics.
-- Archive images are described as archive references.
+- The 26 selected catalog images render as normal product media with no public
+  archive label, caveat or unusual treatment.
 - A live read-model image appears only with approved provenance and public-use
   rights.
-- The packaging visual is labelled as a concept and never presented as a real
-  product photograph.
-- Every generated or archive asset has a media-rights-register entry.
+- Every public catalog image has an exact source hash, product-code binding,
+  owner approval and public-use receipt.
 - Dish records remain private until bilingual editorial, kitchen, allergen,
   source and image checks pass.
 
@@ -70,31 +70,32 @@ Release target: Complete99 Platform 1.3.6
   unverified publication state fails closed.
 - Public catalog, live menu, dish URLs, SEO rows and sitemap entries agree.
 
-## Pantry hold checks
+## Catalog and cart checks
 
-These are mandatory for release 1.3.1 while no real products exist:
+- WooCommerce 10.9.4 is installed from the pinned official package and the
+  full installed tree matches the expected digest.
+- The public store contains exactly 26 owner-authorized catalog products and is indexable.
+- Every product has its exact SKU, researched opening price, normal image,
+  category, tags, stock authority and reciprocal dish relation.
+- New products begin with stock 1. Reapplying the catalog preserves operational
+  stock and never resets it.
+- Backorders are disabled and out-of-stock products have no active add button.
+- The Hebrew and English store use working filters, visible cart state and an
+  editable classic WooCommerce cart.
+- The public Complete99 store is never the native WooCommerce Shop page.
+- Native product, taxonomy and Shop pages redirect to the curated store without
+  a loop and remain noindex.
+- Local pickup is enabled in the default zone and read back from the exact
+  WooCommerce shipping-method row.
+- Complete99 OS inventory sync requires catalog readiness, not payment
+  readiness, and verifies quantity plus stock status on every replay.
 
-- WooCommerce is not installed by the Complete99 plugin bridge.
-- Public pantry states that no products are sold on the site.
-- No purchase button, cart, checkout or Product/Offer schema appears.
-- Pantry is `noindex` and absent from the sitemap.
-- Native product, cart, checkout, account and Store API surfaces fail closed.
-- Public store status reports `external_ordering`.
-- Hebrew and English food-order actions remain operational through Wolt.
+## Electronic payment launch checks
 
-## Future commerce launch checks
+Apply only after payment-provider credentials are supplied:
 
-Apply only after the separate WooCommerce dependency and real product data are
-approved:
-
-- WooCommerce dependency version, official URL, size and SHA-256 are recorded.
-- UPress files and database backup exists and rollback is proved.
-- Only real approved simple physical products appear.
-- Product name, description, price, weight, SKU, image, ingredients, allergens,
-  storage and fulfilment facts are bilingual and visible.
-- Every primary and gallery image has a reviewed public-safe classification,
-  readable file SHA-256 and attachment metadata digest.
-- WooCommerce owns managed positive stock and backorders are disabled.
+- Every product has its exact supplier label, online ingredient and allergen
+  disclosure, and applicable country-of-origin record reviewed and stored.
 - Merchant address, ILS currency, published cart, checkout, account, terms and
   privacy pages, gateway, shipping method and SSL pass.
 - Accepted legal facts match the six bilingual public legal pages.
@@ -111,10 +112,9 @@ approved:
   readback, and replay or acknowledgement does not rewrite a corrupt store.
 - Launch audit version 3 still matches staged readiness, legal acceptance,
   checkout acceptance and both pantry page identities.
-- The entire anonymous WooCommerce Store API returns 404 after launch as well
-  as during the held state. The accepted customer flow remains classic
-  checkout.
-- Passing both checkout acceptance runs leaves the pantry held. A separate
+- Payment and checkout Store API routes stay closed until launch. The catalog
+  and classic cart remain independently usable.
+- Passing both checkout acceptance runs leaves electronic checkout held. A separate
   authenticated call to the store launch endpoint is required to open it.
 - Launch occurs only through the authenticated store launch endpoint.
 
@@ -128,9 +128,9 @@ Capture and review:
 - desktop and mobile navigation open states;
 - Dishes, Ingredients, Traditions, Knowledge, Pantry, About, Contact, Privacy,
   Terms and Accessibility;
-- one known archive dish;
+- the 12 known dish pages and at least one related product set;
 - one unknown Hebrew and English dish route;
-- future cart and checkout only when commerce is approved.
+- the live cart, plus checkout only after payment is approved.
 
 Verify:
 

@@ -289,6 +289,20 @@ class Complete99_Commerce {
     }
 }
 
+class Complete99_REST {
+    public static function public_indexable_items() {
+        return $GLOBALS['c99_items'];
+    }
+    public static function public_indexable_item_by_slug($slug) {
+        foreach ($GLOBALS['c99_items'] as $item) {
+            if (($item['slug'] ?? '') === $slug) {
+                return $item;
+            }
+        }
+        return array();
+    }
+}
+
 class Complete99_Consumer {
     public static function menu_items() {
         return $GLOBALS['c99_items'];

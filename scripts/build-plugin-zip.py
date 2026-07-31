@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-31 20:15:00"
+RELEASE_LAST_UPDATED = "2026-07-31 21:55:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -217,10 +217,10 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Repeated all public cache purges for an exactly equivalent read-model retry without rewriting the stored model.</li>"
-                "<li>Returned a truthful cache receipt and write_changed=false after an equivalent retry succeeds.</li>"
-                "<li>Kept cache-purge failures fail closed and recoverable with a new signed nonce.</li>"
-                "<li>Covered response-loss and repeated cache-failure recovery with executable receiver tests.</li>"
+                "<li>Published a bilingual, food-first pantry catalog with 26 linked ingredient products and opening stock.</li>"
+                "<li>Presented approved dish and product images normally without archive notices or unusual public treatment.</li>"
+                "<li>Separated public catalog and cart readiness from the electronic payment launch gate.</li>"
+                "<li>Added exact WooCommerce dependency verification and fail-closed recovery for dependency and catalog materialization.</li>"
                 "</ul>"
             )
         },

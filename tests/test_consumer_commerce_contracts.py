@@ -203,7 +203,14 @@ echo json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON
         script = f"""
 define('ABSPATH', __DIR__);
 define('COMPLETE99_PLATFORM_DIR', '{plugin_dir}');
-$GLOBALS['c99_live_items'] = array();
+$GLOBALS['c99_live_items'] = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
+foreach ($GLOBALS['c99_live_items'] as &$item) {{
+    $item['verification_state'] = 'launch_ready';
+    $item['media_provenance'] = 'business_owned';
+    $item['media_rights_state'] = 'approved_public_use';
+    $item['_complete99_source'] = 'wordpress_bundle';
+}}
+unset($item);
 function sanitize_title($value) {{
     return strtolower(trim((string) $value));
 }}
@@ -223,7 +230,10 @@ $GLOBALS['c99_live_items'] = array(
         'slug' => 'live-dish',
         'sort' => 1,
         'verification_state' => 'launch_ready',
-        'published' => true
+        'published' => true,
+        'media_provenance' => 'business_owned',
+        'media_rights_state' => 'approved_public_use',
+        '_complete99_source' => 'synced_read_model'
     )
 );
 $live = Complete99_Consumer::menu_items();
@@ -250,11 +260,11 @@ echo json_encode(
         )
         result = json.loads(completed.stdout)
         self.assertEqual(12, result["reference_count"])
-        self.assertEqual(["reference"], result["reference_sources"])
-        self.assertEqual(["menu_reference"], result["reference_states"])
+        self.assertEqual(["wordpress_bundle"], result["reference_sources"])
+        self.assertEqual(["launch_ready"], result["reference_states"])
         self.assertEqual(1, result["live_count"])
         self.assertEqual("dish-live-1", result["live_id"])
-        self.assertEqual("live", result["live_source"])
+        self.assertEqual("synced_read_model", result["live_source"])
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for menu evaluation")
     def test_reference_menu_has_owned_images_and_no_transaction_fields(self) -> None:
@@ -296,11 +306,12 @@ echo json_encode(
             ]
             self.assertTrue(all(path.exists() for path in variants), variants)
 
-    def test_reference_dishes_fail_closed_for_search_indexing(self) -> None:
+    def test_live_dish_robots_use_the_shared_public_eligibility_resolver(self) -> None:
         robots = self.frontend.split("public static function robots", 1)[1].split(
             "public static function head_metadata", 1
         )[0]
-        self.assertIn("array( 'verified', 'launch_ready' )", robots)
+        self.assertIn("Complete99_REST::public_indexable_item_by_slug", robots)
+        self.assertIn("if ( empty( $dish ) )", robots)
         self.assertIn("$robots['noindex']  = true", robots)
         self.assertNotIn("menu_reference", robots)
 
@@ -351,11 +362,14 @@ class Complete99_Commerce {{
     public static function order_url($lang) {{
         return 'https://orders.example.test/' . $lang . '/';
     }}
+    public static function catalog_is_ready() {{
+        return false;
+    }}
 }}
 class Complete99_REST {{
-    public static function is_public_item($dish) {{
+    public static function is_public_indexable_item($dish) {{
         return true === ($dish['published'] ?? null)
-            && 'live' === ($dish['_complete99_source'] ?? '')
+            && in_array(($dish['_complete99_source'] ?? ''), array('synced_read_model', 'wordpress_bundle'), true)
             && in_array(($dish['verification_state'] ?? ''), array('verified', 'launch_ready'), true);
     }}
 }}
@@ -380,7 +394,7 @@ $base = array(
 );
 $verified = $base;
 $verified['verification_state'] = 'verified';
-$verified['_complete99_source'] = 'live';
+$verified['_complete99_source'] = 'synced_read_model';
 $reference = $base;
 $reference['verification_state'] = 'menu_reference';
 $reference['_complete99_source'] = 'reference';
@@ -465,7 +479,7 @@ echo json_encode(
         self.assertIn("Browse all dishes", store_renderer)
         self.assertNotIn("There is no site cart or checkout yet", store_renderer)
         self.assertNotIn("Store status", store_renderer)
-        self.assertIn("Complete99_Commerce::is_ready()", store_renderer)
+        self.assertIn("Complete99_Commerce::catalog_is_ready()", store_renderer)
         live_store = self.consumer.split("private static function render_live_store_page", 1)[1]
         self.assertNotIn("[products ids=", live_store)
         self.assertIn("render_store_product_card", live_store)
@@ -473,6 +487,48 @@ echo json_encode(
         self.assertIn("Complete99_Commerce::ALLERGENS_EN", live_store)
         self.assertIn("Complete99_Commerce::transaction_url", live_store)
         self.assertIn("Complete99_Consumer::render_transaction_page", self.commerce_shell)
+
+    def test_classic_ajax_checkout_is_server_side_held_until_full_readiness(self) -> None:
+        for hook in (
+            "woocommerce_available_payment_gateways",
+            "woocommerce_after_checkout_validation",
+            "woocommerce_create_order",
+        ):
+            self.assertIn(hook, self.commerce)
+        authorization = self.commerce.split(
+            "private static function classic_checkout_is_authorized", 1
+        )[1].split("private static function is_non_ajax_admin_request", 1)[0]
+        for gate in (
+            "self::is_ready()",
+            "self::can_preview_commerce()",
+            "self::can_access_customer_continuity()",
+        ):
+            self.assertIn(gate, authorization)
+        gateways = self.commerce.split(
+            "public static function gate_classic_payment_gateways", 1
+        )[1].split("public static function guard_classic_checkout_validation", 1)[0]
+        self.assertIn("return array();", gateways)
+        validation = self.commerce.split(
+            "public static function guard_classic_checkout_validation", 1
+        )[1].split("public static function guard_classic_order_creation", 1)[0]
+        self.assertIn("complete99_classic_checkout_held", validation)
+        creation = self.commerce.split(
+            "public static function guard_classic_order_creation", 1
+        )[1].split("public static function gate_public_woocommerce_routes", 1)[0]
+        self.assertIn("new WP_Error", creation)
+        self.assertIn("complete99_classic_checkout_held", creation)
+
+    def test_supplier_label_and_origin_are_independent_checkout_gates(self) -> None:
+        for marker in (
+            "const ORIGIN_HE",
+            "const ORIGIN_EN",
+            "const ORIGIN_REVIEWED",
+            "const CHECKOUT_ELIGIBLE",
+            "get_post_meta( $product_id, self::LABEL_REVIEWED, true )",
+            "get_post_meta( $product_id, self::ORIGIN_REVIEWED, true )",
+            "get_post_meta( $product_id, self::CHECKOUT_ELIGIBLE, true )",
+        ):
+            self.assertIn(marker, self.commerce)
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for commerce evaluation")
     def test_commerce_readiness_fails_closed_without_woocommerce(self) -> None:
@@ -1051,22 +1107,23 @@ echo json_encode(
         self.assertIn("not a product for sale", register)
         self.assertIn("must not be used", register)
         self.assertIn("product structured data", register)
-        self.assertIn("photograph from the complete99 food collection", self.consumer.lower())
-        self.assertIn("the archive photograph remains illustrative", register)
 
-    def test_menu_hero_keeps_archive_disclosure_for_live_menu_data(self) -> None:
+    def test_menu_hero_renders_a_normal_image_without_archive_disclosure(self) -> None:
         menu_renderer = self.consumer.split(
             "private static function render_menu_page", 1
         )[1].split("private static function render_store_page", 1)[0]
-        caption = "Complete99 archive photograph"
         self.assertIn("c99-food-sabich-pita-gallery-2021-wp-v01", menu_renderer)
-        self.assertIn(f'<figcaption class="c99-archive-note">', menu_renderer)
-        self.assertIn(caption, menu_renderer)
-        caption_line = next(line for line in menu_renderer.splitlines() if caption in line)
-        self.assertNotIn("$has_live", caption_line)
+        self.assertIn("self::brand_picture", menu_renderer)
+        for forbidden in (
+            "c99-archive-note",
+            "Complete99 archive photograph",
+            "archive photograph remains illustrative",
+            "צילום מארכיון",
+            "תמונת ארכיון",
+        ):
+            self.assertNotIn(forbidden, menu_renderer)
         register = MEDIA_REGISTER.read_text(encoding="utf-8").lower()
         self.assertIn("c99-food-sabich-pita-gallery-2021-wp-v01", register)
-        self.assertIn("the archive photograph remains illustrative", register)
 
     def test_consumer_css_supports_keyboard_touch_mobile_and_reduced_motion(self) -> None:
         self.assertIn(":focus-visible", self.css)

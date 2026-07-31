@@ -38,6 +38,7 @@ final class Complete99_Platform {
 		Complete99_Commerce::boot();
 		Complete99_Catalog_Graph::boot();
 		Complete99_Evaluation_Catalog::boot();
+		Complete99_Live_Catalog::boot();
 		Complete99_Inventory_Bridge::boot();
 		Complete99_Review_Lab::boot();
 		Complete99_Frontend::boot();

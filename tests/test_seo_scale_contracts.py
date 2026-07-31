@@ -100,9 +100,10 @@ echo json_encode($selected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             )
         ).lower()
         for marker in (
-            "כרגע אין מוצרים לרכישה באתר",
-            "there are currently no products for sale on this site",
-            "before a purchase button appears",
+            "26 מוצרי מזווה וחומרי גלם",
+            "26 pantry goods and ingredients",
+            "add products, change quantities and remove items",
+            "electronic payment will open after the payment provider is connected",
         ):
             self.assertIn(marker, store_public)
         for key in set(HUBS) - {"store"}:

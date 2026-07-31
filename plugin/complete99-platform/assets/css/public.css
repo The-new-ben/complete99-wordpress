@@ -1401,21 +1401,13 @@ html[dir="rtl"] body.complete99-public {
 	line-height: 1.75;
 }
 
-.c99-food-archive {
+.c99-food-gallery {
 	padding: 96px 0;
 	background: var(--c99-cream);
 }
 
-.c99-food-archive .c99-section-heading {
+.c99-food-gallery .c99-section-heading {
 	align-items: end;
-}
-
-.c99-food-archive-note {
-	max-width: 420px;
-	margin: 0;
-	color: var(--c99-muted);
-	font-size: 14px;
-	line-height: 1.65;
 }
 
 .c99-food-mosaic {
@@ -1963,7 +1955,7 @@ html[dir="rtl"] body.complete99-public {
 	.c99-campaign-section,
 	.c99-services-section,
 	.c99-hub-overview,
-	.c99-food-archive,
+	.c99-food-gallery,
 	.c99-editorial-section,
 	.c99-content-section,
 	.c99-lead-section {
