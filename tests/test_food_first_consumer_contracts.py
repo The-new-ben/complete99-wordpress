@@ -4,7 +4,7 @@ import json
 import re
 import shutil
 import subprocess
-from unittest import SkipTest
+import unittest
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -39,7 +39,7 @@ def _php_path(path: Path, *, directory: bool = False) -> str:
 
 def _run_php_json(script: str) -> object:
     if not shutil.which("php"):
-        raise SkipTest("PHP is required for executable PHP contract checks")
+        raise unittest.SkipTest("PHP is required for executable PHP contract checks")
     completed = subprocess.run(
         ["php", "-r", script],
         cwd=ROOT,
@@ -576,3 +576,18 @@ def test_store_is_hidden_and_redirected_for_unready_public_visitors() -> None:
     assert readiness_gate >= 0
     assert store_route > readiness_gate
     assert "Complete99_Commerce::can_preview_commerce()" in teaser
+
+
+def load_tests(
+    loader: unittest.TestLoader,
+    tests: unittest.TestSuite,
+    pattern: str | None,
+) -> unittest.TestSuite:
+    """Register this module's function contracts with unittest discovery."""
+
+    del loader, tests, pattern
+    suite = unittest.TestSuite()
+    for name, candidate in sorted(globals().items()):
+        if name.startswith("test_") and callable(candidate):
+            suite.addTest(unittest.FunctionTestCase(candidate, description=name))
+    return suite
