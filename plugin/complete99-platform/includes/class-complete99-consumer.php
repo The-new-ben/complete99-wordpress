@@ -914,6 +914,28 @@ final class Complete99_Consumer {
 		<?php
 	}
 
+	public static function render_site_not_found_page( $lang ) {
+		$is_he   = 'he' === $lang;
+		$home_id = Complete99_Content::find_translation_post_id( 'home', $lang, true );
+		self::render_header( $home_id, $lang );
+		?>
+		<main id="c99-main" tabindex="-1">
+			<section class="c99-consumer-not-found">
+				<div class="c99-container">
+					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? '404 · העמוד לא נמצא' : '404 · Page not found' ); ?></p>
+					<h1><?php echo esc_html( $is_he ? 'העמוד שחיפשתם לא נמצא' : 'The page you were looking for was not found' ); ?></h1>
+					<p class="c99-hero-summary"><?php echo esc_html( $is_he ? 'הכתובת שביקשתם אינה זמינה. אפשר לחזור לעמוד הבית או לפתוח את תפריט המנות.' : 'The address you requested is unavailable. Return home or open the dish menu.' ); ?></p>
+					<div class="c99-hero-actions">
+						<a class="c99-button c99-button-primary" href="<?php echo esc_url( self::route( 'home', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'לעמוד הבית' : 'Return home' ); ?></a>
+						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( self::route( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'לכל המנות' : 'View all dishes' ); ?></a>
+					</div>
+				</div>
+			</section>
+		</main>
+		<?php
+		self::render_footer( $lang );
+	}
+
 	public static function render_not_found_page( $lang ) {
 		$is_he  = 'he' === $lang;
 		$hub_id = Complete99_Content::find_translation_post_id( 'dishes', $lang, true );

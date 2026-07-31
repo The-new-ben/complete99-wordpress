@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-31 03:05:00"
+RELEASE_LAST_UPDATED = "2026-07-31 03:51:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -217,10 +217,10 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
-                "<li>Ensured every plugin-owned public shell renders one escaped, non-empty document title independent of active-theme title support.</li>"
-                "<li>Rebuilt the public Hebrew and English experience for culinary consumers with food-first navigation, menu references and clear ordering paths.</li>"
-                "<li>Added a fail-closed pantry shop foundation that remains non-transactional until real products, stock, merchant, payment and fulfilment checks pass.</li>"
-                "<li>Added private WooCommerce order and inventory handoff infrastructure without activating worker assignments.</li>"
+                "<li>Made Complete99 own every public 404 instead of falling through to active-theme copy.</li>"
+                "<li>Added deterministic Hebrew and English 404 language selection, titles, headings and recovery links.</li>"
+                "<li>Added explicit noindex and follow directives for every 404 response.</li>"
+                "<li>Preserved the dedicated missing-dish experience for menu routes.</li>"
                 "</ul>"
             )
         },

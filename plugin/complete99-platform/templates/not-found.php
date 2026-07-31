@@ -4,8 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$complete99_not_found_lang = sanitize_key( (string) get_query_var( 'complete99_live_lang', 'he' ) );
-$complete99_not_found_lang = 'en' === $complete99_not_found_lang ? 'en' : 'he';
+$complete99_not_found_lang = Complete99_Frontend::not_found_language();
 $complete99_not_found_dir  = 'he' === $complete99_not_found_lang ? 'rtl' : 'ltr';
 $complete99_deployment     = (string) get_option( 'complete99_last_deployment_id', COMPLETE99_PLATFORM_DEPLOYMENT_ID );
 ?>
@@ -27,7 +26,7 @@ $complete99_deployment     = (string) get_option( 'complete99_last_deployment_id
 	data-c99-version="<?php echo esc_attr( COMPLETE99_PLATFORM_VERSION ); ?>"
 	data-c99-deployment="<?php echo esc_attr( $complete99_deployment ); ?>"
 ></span>
-<?php Complete99_Frontend::render_live_dish_not_found_page( $complete99_not_found_lang ); ?>
+<?php Complete99_Frontend::render_not_found_page( $complete99_not_found_lang ); ?>
 <?php wp_footer(); ?>
 </body>
 </html>

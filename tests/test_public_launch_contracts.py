@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import unittest
 import urllib.request
@@ -15,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugin" / "complete99-platform"
 SETTINGS = PLUGIN / "includes" / "class-complete99-settings.php"
 FRONTEND = PLUGIN / "includes" / "class-complete99-frontend.php"
+CONSUMER = PLUGIN / "includes" / "class-complete99-consumer.php"
 NOT_FOUND_TEMPLATE = PLUGIN / "templates" / "not-found.php"
 DISH_SEEDS = PLUGIN / "data" / "dish-seeds.php"
 LAUNCH_CONTENT = PLUGIN / "data" / "launch-content.php"
@@ -185,7 +187,8 @@ echo json_encode($results, JSON_UNESCAPED_UNICODE);
         self.assertNotIn("rtl", outcomes["en"]["body"])
         for language in ("he", "en"):
             self.assertTrue(outcomes[language]["robots"]["noindex"])
-            self.assertFalse(outcomes[language]["robots"]["nofollow"])
+            self.assertTrue(outcomes[language]["robots"]["follow"])
+            self.assertNotIn("nofollow", outcomes[language]["robots"])
             self.assertNotIn("index", outcomes[language]["robots"])
 
         template = NOT_FOUND_TEMPLATE.read_text(encoding="utf-8")
@@ -194,10 +197,176 @@ echo json_encode($results, JSON_UNESCAPED_UNICODE);
             'dir="<?php echo esc_attr( $complete99_not_found_dir ); ?>">',
             template,
         )
-        self.assertIn("render_live_dish_not_found_page", template)
+        self.assertIn("render_not_found_page", template)
         self.assertIn("wp_head();", template)
         self.assertIn("wp_footer();", template)
         self.assertNotIn('rel="canonical"', template)
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for 404 evaluation")
+    def test_generic_404s_use_bilingual_plugin_shell_and_followable_noindex(
+        self,
+    ) -> None:
+        frontend_path = FRONTEND.as_posix().replace("'", "\\'")
+        plugin_path = (PLUGIN.as_posix() + "/").replace("'", "\\'")
+        php = f"""
+define('ABSPATH', __DIR__);
+define('COMPLETE99_PLATFORM_DIR', '{plugin_path}');
+$GLOBALS['complete99_removed_canonical'] = false;
+function get_query_var($key, $default = '') {{ return $default; }}
+function sanitize_title($value) {{
+    return strtolower(trim((string) $value));
+}}
+function sanitize_key($value) {{
+    return preg_replace('/[^a-z0-9_\\-]/', '', strtolower((string) $value));
+}}
+function wp_unslash($value) {{ return $value; }}
+function wp_parse_url($url, $component = -1) {{
+    return -1 === $component ? parse_url($url) : parse_url($url, $component);
+}}
+function home_url($path = '') {{
+    return 'https://example.test/subsite/' . ltrim((string) $path, '/');
+}}
+function is_404() {{ return true; }}
+function is_singular($post_type = '') {{ return false; }}
+function get_queried_object_id() {{ return 0; }}
+function remove_action($hook, $callback, $priority = 10) {{
+    if ('wp_head' === $hook && 'rel_canonical' === $callback) {{
+        $GLOBALS['complete99_removed_canonical'] = true;
+    }}
+}}
+class Complete99_Content {{
+    public static function is_complete99_post($post_id) {{ return false; }}
+}}
+require '{frontend_path}';
+$cases = array(
+    'he' => '/subsite/missing-page/',
+    'en' => '/subsite/en/missing-page/',
+);
+$results = array();
+foreach ($cases as $expected_language => $request_uri) {{
+    $_SERVER['REQUEST_URI'] = $request_uri;
+    $GLOBALS['complete99_removed_canonical'] = false;
+    Complete99_Frontend::remove_core_canonical();
+    $results[$expected_language] = array(
+        'body' => Complete99_Frontend::body_classes(array('rtl')),
+        'canonical_removed' => $GLOBALS['complete99_removed_canonical'],
+        'language' => Complete99_Frontend::not_found_language(),
+        'robots' => Complete99_Frontend::robots(
+            array('index' => true, 'nofollow' => true, 'max-image-preview' => 'large')
+        ),
+        'template' => basename(
+            Complete99_Frontend::template_include('theme-404.php')
+        ),
+        'title' => Complete99_Frontend::document_title('Theme fallback'),
+    );
+}}
+echo json_encode($results, JSON_UNESCAPED_UNICODE);
+"""
+        result = subprocess.run(
+            ["php", "-r", php],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        outcomes = json.loads(result.stdout)
+
+        self.assertEqual("not-found.php", outcomes["he"]["template"])
+        self.assertEqual("not-found.php", outcomes["en"]["template"])
+        self.assertEqual("he", outcomes["he"]["language"])
+        self.assertEqual("en", outcomes["en"]["language"])
+        self.assertEqual("העמוד לא נמצא | קומפלט 99", outcomes["he"]["title"])
+        self.assertEqual("Page not found | Complete99", outcomes["en"]["title"])
+        self.assertIn("complete99-rtl", outcomes["he"]["body"])
+        self.assertIn("complete99-ltr", outcomes["en"]["body"])
+        self.assertIn("rtl", outcomes["he"]["body"])
+        self.assertNotIn("rtl", outcomes["en"]["body"])
+        for language in ("he", "en"):
+            outcome = outcomes[language]
+            self.assertTrue(outcome["canonical_removed"])
+            self.assertIn("complete99-not-found", outcome["body"])
+            self.assertTrue(outcome["robots"]["noindex"])
+            self.assertTrue(outcome["robots"]["follow"])
+            self.assertNotIn("index", outcome["robots"])
+            self.assertNotIn("nofollow", outcome["robots"])
+            self.assertEqual("large", outcome["robots"]["max-image-preview"])
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for 404 rendering")
+    def test_generic_404_renderer_emits_bilingual_h1_and_body(self) -> None:
+        consumer_path = CONSUMER.as_posix().replace("'", "\\'")
+        php = f"""
+define('ABSPATH', __DIR__);
+function esc_html($value) {{
+    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}}
+function esc_attr($value) {{
+    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}}
+function esc_url($value) {{ return esc_attr($value); }}
+function home_url($path = '') {{
+    return 'https://example.test/' . ltrim((string) $path, '/');
+}}
+class Complete99_Content {{
+    public static function find_translation_post_id($key, $lang, $published) {{
+        return 0;
+    }}
+    public static function route_url($key, $lang) {{
+        $prefix = 'en' === $lang ? 'en/' : '';
+        return 'https://example.test/' . $prefix . $key . '/';
+    }}
+}}
+class Complete99_Commerce {{
+    public static function order_url($lang) {{
+        return 'https://example.test/order/' . $lang . '/';
+    }}
+    public static function is_ready() {{ return false; }}
+    public static function can_preview_commerce() {{ return false; }}
+    public static function is_transaction_page() {{ return false; }}
+}}
+require '{consumer_path}';
+$results = array();
+foreach (array('he', 'en') as $language) {{
+    ob_start();
+    Complete99_Consumer::render_site_not_found_page($language);
+    $html = ob_get_clean();
+    preg_match('#<h1>(.*?)</h1>#s', $html, $heading);
+    preg_match(
+        '#<p class="c99-hero-summary">(.*?)</p>#s',
+        $html,
+        $summary
+    );
+    $results[$language] = array(
+        'h1' => html_entity_decode(strip_tags($heading[1]), ENT_QUOTES, 'UTF-8'),
+        'summary' => html_entity_decode(
+            strip_tags($summary[1]),
+            ENT_QUOTES,
+            'UTF-8'
+        ),
+    );
+}}
+echo json_encode($results, JSON_UNESCAPED_UNICODE);
+"""
+        result = subprocess.run(
+            ["php", "-r", php],
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        outcomes = json.loads(result.stdout)
+
+        self.assertEqual("העמוד שחיפשתם לא נמצא", outcomes["he"]["h1"])
+        self.assertEqual(
+            "הכתובת שביקשתם אינה זמינה. אפשר לחזור לעמוד הבית או לפתוח את תפריט המנות.",
+            outcomes["he"]["summary"],
+        )
+        self.assertEqual(
+            "The page you were looking for was not found", outcomes["en"]["h1"]
+        )
+        self.assertEqual(
+            "The address you requested is unavailable. Return home or open the dish menu.",
+            outcomes["en"]["summary"],
+        )
 
     def test_homepage_has_no_visible_or_schema_breadcrumb_duplication(self) -> None:
         frontend = FRONTEND.read_text(encoding="utf-8")
