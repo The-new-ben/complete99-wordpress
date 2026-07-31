@@ -1,7 +1,7 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-07-31
-Release target: Complete99 Platform 1.3.5
+Release target: Complete99 Platform 1.3.6
 
 ## Governing boundary
 
@@ -14,7 +14,7 @@ suppliers, costs, campaigns and operating dashboards stay private. Their legacy
 seed records are migrated to private status and removed from public navigation,
 search ownership and sitemaps.
 
-No Complete99 worker role is installed or assigned by release 1.3.5. The private
+No Complete99 worker role is installed or assigned by release 1.3.6. The private
 commerce outbox reports `unassigned_infrastructure` until a later, separately
 approved operating decision.
 
