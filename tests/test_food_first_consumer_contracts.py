@@ -4,11 +4,9 @@ import json
 import re
 import shutil
 import subprocess
+from unittest import SkipTest
 from pathlib import Path
 from urllib.parse import urlparse
-
-import pytest
-
 
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugin" / "complete99-platform"
@@ -41,7 +39,7 @@ def _php_path(path: Path, *, directory: bool = False) -> str:
 
 def _run_php_json(script: str) -> object:
     if not shutil.which("php"):
-        pytest.skip("PHP is required for executable PHP contract checks")
+        raise SkipTest("PHP is required for executable PHP contract checks")
     completed = subprocess.run(
         ["php", "-r", script],
         cwd=ROOT,
