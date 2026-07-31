@@ -94,6 +94,7 @@ _CATALOG_CAUSES_BY_STAGE = {
     },
     "configuration": {
         "complete99_live_catalog_option_readback_failed",
+        "complete99_live_catalog_option_type_invalid",
         "complete99_live_catalog_address_readback_failed",
         "complete99_live_catalog_public_page_missing",
         "complete99_live_catalog_native_shop_api_missing",
@@ -135,8 +136,19 @@ _CATALOG_CAUSES_BY_STAGE = {
     },
     "readback": {
         "complete99_live_catalog_runtime_precommit_cache_flush",
+        "complete99_live_catalog_runtime_postcommit_cache_flush",
         "complete99_live_catalog_runtime_strict_readback",
-        "complete99_live_catalog_runtime_fresh_strict_readback",
+        "complete99_live_catalog_strict_readback_receipt_missing",
+        "complete99_live_catalog_strict_readback_registry_invalid",
+        "complete99_live_catalog_strict_readback_woocommerce_dependency",
+        "complete99_live_catalog_strict_readback_recovery_required",
+        "complete99_live_catalog_strict_readback_recovery_unknown",
+        "complete99_live_catalog_strict_readback_receipt_invalid",
+        "complete99_live_catalog_strict_readback_store_configuration_mismatch",
+        "complete99_live_catalog_strict_readback_product_binding_invalid",
+        "complete99_live_catalog_strict_readback_product_readback_mismatch",
+        "complete99_live_catalog_strict_readback_product_count_mismatch",
+        "complete99_live_catalog_strict_readback_receipt_identity_mismatch",
     },
     "recovery": {
         "complete99_live_catalog_recovery_cache",
@@ -181,17 +193,14 @@ CATALOG_RUNTIME_MESSAGE_CAUSE = {
     "The public catalog cache could not be flushed before strict transactional readback.": (
         "complete99_live_catalog_runtime_precommit_cache_flush"
     ),
-    "The public catalog failed strict readback.": (
-        "complete99_live_catalog_runtime_strict_readback"
+    "The committed public catalog cache could not be flushed.": (
+        "complete99_live_catalog_runtime_postcommit_cache_flush"
     ),
     "The catalog database transaction could not commit.": (
         "complete99_live_catalog_runtime_transaction_commit"
     ),
     "The committed catalog could not clear its recovery boundary.": (
         "complete99_live_catalog_runtime_postcommit_boundary"
-    ),
-    "The committed public catalog failed fresh strict readback.": (
-        "complete99_live_catalog_runtime_fresh_strict_readback"
     ),
 }
 CATALOG_RECOVERY_MESSAGE_PREFIX = (
@@ -488,22 +497,21 @@ class Client:
                 and 1 <= len(raw_message) <= 512
                 and not any(ord(character) < 32 for character in raw_message)
             ):
+                cause_message = raw_message
+                if cause_message.startswith(CATALOG_RECOVERY_MESSAGE_PREFIX):
+                    cause_message = cause_message[
+                        len(CATALOG_RECOVERY_MESSAGE_PREFIX) :
+                    ]
                 cause_match = re.match(
                     r"\A(complete99_live_catalog_[a-z0-9_]{1,64})(?::|\Z)",
-                    raw_message,
+                    cause_message,
                 )
                 if (
                     cause_match is not None
                     and cause_match.group(1) in CATALOG_CAUSE_STAGE
                 ):
                     cause_candidates.add(cause_match.group(1))
-                runtime_cause = CATALOG_RUNTIME_MESSAGE_CAUSE.get(raw_message)
-                if runtime_cause is None and raw_message.startswith(
-                    CATALOG_RECOVERY_MESSAGE_PREFIX
-                ):
-                    runtime_cause = CATALOG_RUNTIME_MESSAGE_CAUSE.get(
-                        raw_message[len(CATALOG_RECOVERY_MESSAGE_PREFIX) :]
-                    )
+                runtime_cause = CATALOG_RUNTIME_MESSAGE_CAUSE.get(cause_message)
                 if runtime_cause is not None:
                     cause_candidates.add(runtime_cause)
                 product_candidates.update(

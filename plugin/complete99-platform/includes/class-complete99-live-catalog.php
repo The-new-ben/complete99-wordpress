@@ -30,6 +30,19 @@ final class Complete99_Live_Catalog {
 		'rollback_cleanup_failed',
 		'transaction_start_cleanup_failed',
 	);
+	const STRICT_READBACK_CAUSES = array(
+		'receipt_missing'              => 'complete99_live_catalog_strict_readback_receipt_missing',
+		'registry_invalid'             => 'complete99_live_catalog_strict_readback_registry_invalid',
+		'woocommerce_dependency'       => 'complete99_live_catalog_strict_readback_woocommerce_dependency',
+		'recovery_required'            => 'complete99_live_catalog_strict_readback_recovery_required',
+		'recovery_unknown'             => 'complete99_live_catalog_strict_readback_recovery_unknown',
+		'receipt_invalid'              => 'complete99_live_catalog_strict_readback_receipt_invalid',
+		'store_configuration_mismatch' => 'complete99_live_catalog_strict_readback_store_configuration_mismatch',
+		'product_binding_invalid'      => 'complete99_live_catalog_strict_readback_product_binding_invalid',
+		'product_readback_mismatch'    => 'complete99_live_catalog_strict_readback_product_readback_mismatch',
+		'product_count_mismatch'       => 'complete99_live_catalog_strict_readback_product_count_mismatch',
+		'receipt_identity_mismatch'    => 'complete99_live_catalog_strict_readback_receipt_identity_mismatch',
+	);
 
 	const META_MANAGED       = '_complete99_live_catalog_managed';
 	const META_PRODUCT_CODE  = '_complete99_catalog_product_code';
@@ -456,8 +469,11 @@ final class Complete99_Live_Catalog {
 				throw new \RuntimeException( 'The public catalog cache could not be flushed before strict transactional readback.' );
 			}
 			$readback = self::status( true, true );
-			if ( empty( $readback['ready'] ) ) {
-				throw new \RuntimeException( 'The public catalog failed strict readback.' );
+			if ( ! self::readback_receipt_matches_marker( $readback, $marker ) ) {
+				if ( ! empty( $readback['ready'] ) ) {
+					$readback['reason'] = 'receipt_identity_mismatch';
+				}
+				throw new \RuntimeException( self::strict_readback_failure_message( $readback ) );
 			}
 
 			$commit_attempted = true;
@@ -466,13 +482,25 @@ final class Complete99_Live_Catalog {
 			}
 			$started = false;
 			$committed = true;
-			if ( ! self::flush_catalog_caches() || ! self::clear_recovery_boundary( $marker ) ) {
+			if ( ! self::flush_catalog_caches() ) {
+				throw new \RuntimeException( 'The committed public catalog cache could not be flushed.' );
+			}
+			$readback = self::status( true, true );
+			if ( ! self::readback_receipt_matches_marker( $readback, $marker ) ) {
+				if ( ! empty( $readback['ready'] ) ) {
+					$readback['reason'] = 'receipt_identity_mismatch';
+				}
+				throw new \RuntimeException( self::strict_readback_failure_message( $readback ) );
+			}
+			if ( ! self::clear_recovery_boundary( $marker ) ) {
 				throw new \RuntimeException( 'The committed catalog could not clear its recovery boundary.' );
 			}
 			$readback = self::status( true );
-			if ( empty( $readback['ready'] )
-				|| ! hash_equals( (string) $marker['mutation_id'], (string) ( $readback['receipt']['mutation_id'] ?? '' ) ) ) {
-				throw new \RuntimeException( 'The committed public catalog failed fresh strict readback.' );
+			if ( ! self::readback_receipt_matches_marker( $readback, $marker ) ) {
+				if ( ! empty( $readback['ready'] ) ) {
+					$readback['reason'] = 'receipt_identity_mismatch';
+				}
+				throw new \RuntimeException( self::strict_readback_failure_message( $readback ) );
 			}
 			return array(
 				'schema'          => self::STATUS_SCHEMA,
@@ -618,6 +646,7 @@ final class Complete99_Live_Catalog {
 				|| 'yes' !== (string) get_post_meta( $product_id, self::META_MANAGED, true )
 				|| ! hash_equals( $code, (string) get_post_meta( $product_id, self::META_PRODUCT_CODE, true ) ) ) {
 				$status['reason'] = 'product_binding_invalid';
+				$status['product_code'] = $code;
 				self::$status_cache[ $cache_key ] = $status;
 				return $status;
 			}
@@ -625,6 +654,7 @@ final class Complete99_Live_Catalog {
 			if ( self::is_error( $identity )
 				|| ! hash_equals( (string) $receipt['product_digests'][ $code ], self::digest( $identity ) ) ) {
 				$status['reason'] = 'product_readback_mismatch';
+				$status['product_code'] = $code;
 				self::$status_cache[ $cache_key ] = $status;
 				return $status;
 			}
@@ -650,6 +680,25 @@ final class Complete99_Live_Catalog {
 		);
 		self::$status_cache[ $cache_key ] = $status;
 		return $status;
+	}
+
+	private static function strict_readback_failure_message( $readback ) {
+		$reason = is_array( $readback ) ? (string) ( $readback['reason'] ?? '' ) : '';
+		$cause  = self::STRICT_READBACK_CAUSES[ $reason ] ?? 'complete99_live_catalog_runtime_strict_readback';
+		$message = $cause . ': Strict public catalog readback failed.';
+		$product_code = is_array( $readback ) ? (string) ( $readback['product_code'] ?? '' ) : '';
+		if ( in_array( $product_code, self::PRODUCT_CODES, true ) ) {
+			$message .= ' ' . $product_code;
+		}
+		return $message;
+	}
+
+	private static function readback_receipt_matches_marker( $readback, $marker ) {
+		return is_array( $readback )
+			&& ! empty( $readback['ready'] )
+			&& is_array( $marker )
+			&& hash_equals( (string) ( $marker['mutation_id'] ?? '' ), (string) ( $readback['receipt']['mutation_id'] ?? '' ) )
+			&& hash_equals( (string) ( $marker['deployment_id'] ?? '' ), (string) ( $readback['receipt']['deployment_id'] ?? '' ) );
 	}
 
 	private static function woocommerce_dependency() {
@@ -1206,7 +1255,11 @@ final class Complete99_Live_Catalog {
 		);
 		$options = array();
 		foreach ( $option_names as $name ) {
-			$options[ $name ] = get_option( $name, null );
+			$value = self::normalize_store_option_value( $name, get_option( $name, null ) );
+			if ( self::is_error( $value ) ) {
+				return $value;
+			}
+			$options[ $name ] = $value;
 		}
 		$instance_id = absint( get_option( self::OPTION_PICKUP_INSTANCE, 0 ) );
 		if ( 1 > $instance_id || ! class_exists( 'WC_Tax' ) || ! is_callable( array( 'WC_Tax', '_get_tax_rate' ) ) ) {
@@ -1253,6 +1306,28 @@ final class Complete99_Live_Catalog {
 			'classic_cart'         => array( 'page_id' => $cart_id, 'content' => '[woocommerce_cart]', 'published' => true ),
 			'standard_vat_rate'    => $tax_rates[0],
 		);
+	}
+
+	private static function normalize_store_option_value( $name, $value ) {
+		$integer_options = array(
+			'woocommerce_shop_page_id',
+			'woocommerce_terms_page_id',
+			'wp_page_for_privacy_policy',
+			'woocommerce_cart_page_id',
+			'woocommerce_checkout_page_id',
+			'woocommerce_myaccount_page_id',
+		);
+		if ( in_array( (string) $name, $integer_options, true ) ) {
+			if ( ( is_int( $value ) && 0 < $value )
+				|| ( is_string( $value ) && 1 === preg_match( '/\A[1-9][0-9]*\z/', $value ) ) ) {
+				return absint( $value );
+			}
+			return self::error( 'complete99_live_catalog_option_type_invalid', 'A WooCommerce page option has an invalid type: ' . $name, 500 );
+		}
+		if ( ! is_string( $value ) ) {
+			return self::error( 'complete99_live_catalog_option_type_invalid', 'A WooCommerce text option has an invalid type: ' . $name, 500 );
+		}
+		return $value;
 	}
 
 	private static function ensure_terms( $policy ) {
@@ -1905,8 +1980,7 @@ final class Complete99_Live_Catalog {
 			return self::error( 'complete99_live_catalog_recovery_cache', 'Catalog recovery could not flush caches before committed-state verification.', 500 );
 		}
 		$recoverable_status = self::status( true, true );
-		$committed = ! empty( $recoverable_status['ready'] )
-			&& hash_equals( (string) $marker['mutation_id'], (string) ( $recoverable_status['receipt']['mutation_id'] ?? '' ) );
+		$committed = self::readback_receipt_matches_marker( $recoverable_status, $marker );
 		if ( $committed ) {
 			if ( ! in_array( $marker['state'], array( 'materializing', 'commit_unverified', 'postcommit_verification_failed' ), true ) ) {
 				return self::error( 'complete99_live_catalog_recovery_ambiguous', 'A committed catalog is paired with an incompatible recovery state.', 409 );
@@ -1915,8 +1989,7 @@ final class Complete99_Live_Catalog {
 				return self::error( 'complete99_live_catalog_recovery_marker', 'The committed catalog recovery boundary could not be cleared durably.', 500 );
 			}
 			$fresh = self::status( true );
-			if ( empty( $fresh['ready'] )
-				|| ! hash_equals( (string) $marker['mutation_id'], (string) ( $fresh['receipt']['mutation_id'] ?? '' ) ) ) {
+			if ( ! self::readback_receipt_matches_marker( $fresh, $marker ) ) {
 				self::write_recovery_marker( $marker );
 				self::flush_catalog_caches();
 				return self::error( 'complete99_live_catalog_recovery_ambiguous', 'The committed catalog failed fresh verification after marker clearance.', 409 );

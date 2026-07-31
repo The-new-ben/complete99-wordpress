@@ -68,7 +68,7 @@ entries all fail closed until a fresh signed sync is stored.
 
 ## Commerce boundary
 
-WooCommerce 10.9.4 is the product, stock and cart engine for release 1.3.7. The
+WooCommerce 10.9.4 is the product, stock and cart engine for release 1.3.8. The
 curated 26-product store and classic cart become public when the exact catalog
 receipt passes. Payment and electronic checkout remain closed until the
 separate controlled checkout gate passes. Administrators can later exercise
