@@ -290,10 +290,21 @@ class Client:
             raw_data = parsed.get("data", {}) if isinstance(parsed, dict) else {}
             if isinstance(raw_data, dict):
                 for key in (
+                    "current_database_version",
+                    "current_version",
+                    "database_error",
+                    "database_version_match",
                     "deployment_id",
                     "lock_age_seconds",
+                    "migration_failed",
                     "phase",
+                    "plugin_active",
+                    "plugin_digest_match",
+                    "plugin_header_match",
                     "recovery_lease_seconds",
+                    "retryable_forward_mismatch",
+                    "runtime_loaded",
+                    "runtime_version",
                     "status",
                 ):
                     value = raw_data.get(key)
@@ -1034,9 +1045,27 @@ def stabilize_deployment(
     version: str,
     installed_plugin_sha256: str,
 ) -> dict[str, Any]:
-    try:
-        response = bridge_call(client, "stabilize", token, deployment_id)
-    except DeployError as original_error:
+    response: dict[str, Any] | None = None
+    original_error: DeployError | None = None
+    for attempt in range(2):
+        try:
+            response = bridge_call(client, "stabilize", token, deployment_id)
+            break
+        except DeployError as error:
+            original_error = error
+            if (
+                attempt == 0
+                and isinstance(error, HTTPDeployError)
+                and error.code == "c99_stabilize_forward_mismatch"
+                and error.data.get("retryable_forward_mismatch") is True
+            ):
+                time.sleep(2)
+                continue
+            break
+
+    if response is None:
+        if original_error is None:
+            raise DeployError("Deployment stabilization returned no result")
         status = poll_deployment_status(client, token, deployment_id)
         if (
             status.get("phase") == "installed"
@@ -1977,6 +2006,8 @@ def main() -> int:
         audit["result"] = "failed"
         audit["error"] = type(error).__name__
         audit["failed_gate"] = gate
+        if isinstance(error, HTTPDeployError) and error.data:
+            audit["failure_context"] = error.data
         if reservation_acquired and not mutation_pending and not finalized:
             try:
                 gate = "finalize"
