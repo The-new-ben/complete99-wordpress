@@ -1519,20 +1519,50 @@ add_action(
 						&& class_exists( 'Complete99_Platform', false )
 						&& method_exists( 'Complete99_Platform', 'migration_failed' )
 						&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' );
+					$runtime_version        = defined( 'COMPLETE99_PLATFORM_VERSION' ) ? (string) COMPLETE99_PLATFORM_VERSION : '';
+					$migration_failed       = $runtime_loaded ? (bool) Complete99_Platform::migration_failed() : null;
+					$current_version        = (string) ( $current_data['Version'] ?? '' );
+					$plugin_digest_match    = ! is_wp_error( $current_plugin_sha256 )
+						&& hash_equals( $installed_plugin_sha256, (string) $current_plugin_sha256 );
+					$plugin_header_match    = $expected_version === $current_version;
+					$database_version_match = $expected_version === $current_database_version;
+					$plugin_active          = is_plugin_active( $config['plugin_file'] );
+					$database_error         = '' !== $database_version_error;
+					$retryable_forward_mismatch = ! $database_error
+						&& $plugin_digest_match
+						&& $plugin_header_match
+						&& $plugin_active
+						&& ( ! $runtime_loaded || true === $migration_failed );
 					if (
-						'' !== $database_version_error
+						$database_error
 						|| ! $runtime_loaded
-						|| Complete99_Platform::migration_failed()
-						|| is_wp_error( $current_plugin_sha256 )
-						|| ! hash_equals( $installed_plugin_sha256, (string) $current_plugin_sha256 )
-						|| $expected_version !== (string) ( $current_data['Version'] ?? '' )
-						|| $expected_version !== $current_database_version
-						|| ! is_plugin_active( $config['plugin_file'] )
+						|| true === $migration_failed
+						|| ! $plugin_digest_match
+						|| ! $plugin_header_match
+						|| ! $database_version_match
+						|| ! $plugin_active
 					) {
+						if ( $retryable_forward_mismatch ) {
+							wp_opcache_invalidate_directory( $target_dir );
+							clearstatcache( true, $plugin_path );
+						}
 						return new WP_Error(
 							'c99_stabilize_forward_mismatch',
 							'The forward plugin or its completed database migration does not match the recorded release.',
-							array( 'status' => 409 )
+							array(
+								'status'                     => 409,
+								'runtime_loaded'             => $runtime_loaded,
+								'runtime_version'            => $runtime_version,
+								'migration_failed'           => $migration_failed,
+								'plugin_digest_match'        => $plugin_digest_match,
+								'plugin_header_match'        => $plugin_header_match,
+								'database_version_match'     => $database_version_match,
+								'plugin_active'              => $plugin_active,
+								'database_error'             => $database_error,
+								'current_version'            => $current_version,
+								'current_database_version'   => $current_database_version,
+								'retryable_forward_mismatch' => $retryable_forward_mismatch,
+							)
 						);
 					}
 					try {
@@ -2365,6 +2395,8 @@ add_action(
 						if ( ! $result || ! file_exists( $plugin_path ) ) {
 							return new WP_Error( 'c99_deploy_install', 'WordPress did not install the expected plugin file.', array( 'status' => 500 ) );
 						}
+						wp_opcache_invalidate_directory( $target_dir );
+						clearstatcache( true, $plugin_path );
 						$owned = $heartbeat_state( $state_dir, $deployment_id, 'installing' );
 						if ( is_wp_error( $owned ) ) {
 							return $owned;

@@ -368,6 +368,17 @@ class PipelineHardeningTests(unittest.TestCase):
                             "status": 409,
                             "deployment_id": "c99-prod-owner-1234",
                             "phase": "installing",
+                            "runtime_loaded": False,
+                            "runtime_version": "1.2.1",
+                            "migration_failed": None,
+                            "plugin_digest_match": True,
+                            "plugin_header_match": True,
+                            "database_version_match": False,
+                            "plugin_active": True,
+                            "database_error": False,
+                            "current_version": "1.3.0",
+                            "current_database_version": "1.2.1",
+                            "retryable_forward_mismatch": True,
                             "secret": "must-not-escape",
                             "nested": {"token": "must-not-escape"},
                         },
@@ -400,6 +411,20 @@ class PipelineHardeningTests(unittest.TestCase):
             self.assertEqual(409, error.status)
             self.assertEqual("c99-prod-owner-1234", error.data["deployment_id"])
             self.assertEqual("installing", error.data["phase"])
+            self.assertFalse(error.data["runtime_loaded"])
+            self.assertEqual("1.2.1", error.data["runtime_version"])
+            self.assertIsNone(error.data["migration_failed"])
+            self.assertTrue(error.data["plugin_digest_match"])
+            self.assertTrue(error.data["plugin_header_match"])
+            self.assertFalse(error.data["database_version_match"])
+            self.assertTrue(error.data["plugin_active"])
+            self.assertFalse(error.data["database_error"])
+            self.assertEqual("1.3.0", error.data["current_version"])
+            self.assertEqual(
+                "1.2.1",
+                error.data["current_database_version"],
+            )
+            self.assertTrue(error.data["retryable_forward_mismatch"])
             self.assertNotIn("secret", error.data)
             self.assertNotIn("must-not-escape", str(error))
         finally:
@@ -731,6 +756,24 @@ class PipelineHardeningTests(unittest.TestCase):
         )
         self.assertIn("'c99_stabilize_forward_mismatch'", stabilize)
         self.assertIn("Complete99_Platform::migration_failed()", stabilize)
+        for diagnostic_key in (
+            "runtime_loaded",
+            "runtime_version",
+            "migration_failed",
+            "plugin_digest_match",
+            "plugin_header_match",
+            "database_version_match",
+            "plugin_active",
+            "database_error",
+            "current_version",
+            "current_database_version",
+            "retryable_forward_mismatch",
+        ):
+            self.assertIn(f"'{diagnostic_key}'", stabilize)
+        self.assertIn(
+            "wp_opcache_invalidate_directory( $target_dir )",
+            stabilize,
+        )
         self.assertIn("'c99_stabilize_idempotency_conflict'", stabilize)
         self.assertIn("'c99_stabilize_swap_artifacts'", stabilize)
         self.assertIn(
@@ -781,6 +824,25 @@ class PipelineHardeningTests(unittest.TestCase):
             '"rollback_failed_forward_stabilization"',
             recovery,
         )
+        install_upgrade = bridge.split(
+            "$result   = $upgrader->install(",
+            1,
+        )[1].split("$post_install_snapshot = $capture_database_state()", 1)[0]
+        self.assertLess(
+            install_upgrade.index(
+                "wp_opcache_invalidate_directory( $target_dir )"
+            ),
+            install_upgrade.index(
+                "$data = get_plugin_data( $plugin_path, false, false )"
+            ),
+        )
+        self.assertLess(
+            install_upgrade.index("clearstatcache( true, $plugin_path )"),
+            install_upgrade.index(
+                "$data = get_plugin_data( $plugin_path, false, false )"
+            ),
+        )
+        self.assertIn('audit["failure_context"] = error.data', deployer)
 
         class StabilizeClient:
             def request(
@@ -837,6 +899,83 @@ class PipelineHardeningTests(unittest.TestCase):
             result["stabilized_from_phase"],
         )
         self.assertIn("'c99_finalize_unstabilized'", bridge)
+
+    def test_stabilization_retries_one_safe_forward_mismatch_only(self) -> None:
+        forward_response = {
+            "cache_purge": {"object_cache_flushed": True},
+            "database_version": "1.3.0",
+            "deployment_id": "c99-prod-stabilize-retry",
+            "installed_plugin_sha256": "a" * 64,
+            "post_install_database_fingerprint": "b" * 64,
+            "stabilized": True,
+            "stabilized_from_phase": "installed_pending_stabilization",
+            "version": "1.3.0",
+        }
+        status_response = {
+            "current_active": True,
+            "current_database_version": "1.3.0",
+            "current_deployment": "c99-prod-stabilize-retry",
+            "current_plugin_sha256": "a" * 64,
+            "current_version": "1.3.0",
+            "database_fingerprint": "b" * 64,
+            "installed_plugin_sha256": "a" * 64,
+            "phase": "installed",
+            "post_install_database_fingerprint": "b" * 64,
+            "stabilized": True,
+        }
+        retryable = DEPLOY.HTTPDeployError(
+            "retryable forward mismatch",
+            status=409,
+            code="c99_stabilize_forward_mismatch",
+            data={"retryable_forward_mismatch": True},
+        )
+
+        with mock.patch.object(
+            DEPLOY,
+            "bridge_call",
+            side_effect=[retryable, forward_response, status_response],
+        ) as bridge_call, mock.patch.object(DEPLOY.time, "sleep") as sleep:
+            result = DEPLOY.stabilize_deployment(
+                object(),
+                "temporary-token",
+                "c99-prod-stabilize-retry",
+                "1.3.0",
+                "a" * 64,
+            )
+
+        self.assertTrue(result["stabilized"])
+        self.assertEqual(
+            ["stabilize", "stabilize", "status"],
+            [call.args[1] for call in bridge_call.call_args_list],
+        )
+        sleep.assert_called_once_with(2)
+
+        non_retryable = DEPLOY.HTTPDeployError(
+            "non-retryable forward mismatch",
+            status=409,
+            code="c99_stabilize_forward_mismatch",
+            data={"retryable_forward_mismatch": False},
+        )
+        with mock.patch.object(
+            DEPLOY,
+            "bridge_call",
+            side_effect=non_retryable,
+        ) as no_retry_call, mock.patch.object(
+            DEPLOY,
+            "poll_deployment_status",
+            return_value={"phase": "failed"},
+        ), mock.patch.object(DEPLOY.time, "sleep") as no_sleep:
+            with self.assertRaises(DEPLOY.HTTPDeployError):
+                DEPLOY.stabilize_deployment(
+                    object(),
+                    "temporary-token",
+                    "c99-prod-stabilize-no-retry",
+                    "1.3.0",
+                    "a" * 64,
+                )
+
+        self.assertEqual(1, no_retry_call.call_count)
+        no_sleep.assert_not_called()
 
     def test_pending_forward_phases_retry_rollback_without_stale_lease(self) -> None:
         for phase in (
