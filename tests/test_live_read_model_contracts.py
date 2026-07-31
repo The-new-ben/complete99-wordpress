@@ -918,6 +918,129 @@ class LiveReadModelContracts(unittest.TestCase):
             result["updates_after_first"], result["updates_after_recovery"]
         )
 
+    def test_stale_equivalent_retry_uses_fresh_signature_and_only_repurges_caches(
+        self,
+    ) -> None:
+        result = self.run_php_runtime(
+            r"""
+        $generated = gmdate(
+            'c',
+            time() - Complete99_REST::MAX_CLOCK_SKEW - 5
+        );
+        $item = c99_item('dish-a', 'dish-a');
+        $stored_item = array(
+            'id' => $item['id'],
+            'slug' => $item['slug'],
+            'name_he' => $item['name_he'],
+            'name_en' => $item['name_en'],
+            'description_he' => $item['description_he'],
+            'description_en' => $item['description_en'],
+            'vegetarian' => $item['vegetarian'],
+            'verification_state' => $item['verification_state'],
+            'published' => $item['published'],
+            'sort' => (float) $item['sort'],
+            'updated_at' => $item['updated_at'],
+        );
+        $stored = array(
+            'schema' => 'complete99-public-read-model/v1',
+            'version' => 'complete99-os-v42',
+            'generated' => $generated,
+            'updated_at' => $generated,
+            'sections' => array(),
+            'items' => array($stored_item),
+            'campaigns' => array(),
+        );
+        $stored['digest'] = hash(
+            'sha256',
+            wp_json_encode(
+                $stored,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            )
+        );
+        c99_reset_runtime($stored);
+
+        $secret = str_repeat('s', 32);
+        update_option(Complete99_Settings::OPTION_SECRET, $secret, false);
+        $updates_before_requests = $c99_update_count;
+        $timestamp = (string) time();
+        $send = static function($body, $nonce) use ($timestamp, $secret) {
+            $canonical = $timestamp . "\n" . $nonce . "\n"
+                . hash('sha256', $body);
+            $request = new WP_REST_Request(
+                $body,
+                array(
+                    'x-complete99-timestamp' => $timestamp,
+                    'x-complete99-nonce' => $nonce,
+                    'x-complete99-signature' => hash_hmac(
+                        'sha256',
+                        $canonical,
+                        $secret
+                    ),
+                )
+            );
+            $permission = Complete99_REST::verify_sync_signature($request);
+            return array(
+                'permission' => true === $permission,
+                'response' => true === $permission
+                    ? Complete99_REST::sync_read_model($request)
+                    : $permission,
+            );
+        };
+
+        $payload = c99_payload(array($item));
+        $payload['generated_at'] = $generated;
+        $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $retry = $send($body, 'stale_equivalent_nonce_0001');
+        $calls_after_retry = array(
+            'upress' => $c99_upress_calls,
+            'litespeed' => $c99_litespeed_calls,
+            'object' => $c99_object_cache_calls,
+        );
+
+        $different_payload = $payload;
+        $different_payload['menu_items'][0]['description_en'] = 'Different copy';
+        $different = $send(
+            json_encode($different_payload, JSON_UNESCAPED_SLASHES),
+            'stale_equivalent_nonce_0002'
+        );
+        $calls_after_different = array(
+            'upress' => $c99_upress_calls,
+            'litespeed' => $c99_litespeed_calls,
+            'object' => $c99_object_cache_calls,
+        );
+
+        echo json_encode(array(
+            'retry_permission' => $retry['permission'],
+            'retry' => $retry['response'] instanceof WP_REST_Response
+                ? $retry['response']->data
+                : array(),
+            'different_permission' => $different['permission'],
+            'different' => c99_error($different['response']),
+            'calls_after_retry' => $calls_after_retry,
+            'calls_after_different' => $calls_after_different,
+            'updates_before_requests' => $updates_before_requests,
+            'updates_after_requests' => $c99_update_count,
+        ));
+        """
+        )
+        self.assertTrue(result["retry_permission"])
+        self.assertTrue(result["retry"]["stored"])
+        self.assertFalse(result["retry"]["write_changed"])
+        self.assertTrue(result["retry"]["cache"]["object_cache"]["flushed"])
+        self.assertEqual(
+            {"upress": 1, "litespeed": 1, "object": 1},
+            result["calls_after_retry"],
+        )
+        self.assertTrue(result["different_permission"])
+        self.assertEqual("complete99_sync_stale_model", result["different"]["code"])
+        self.assertEqual(409, result["different"]["status"])
+        self.assertEqual(
+            result["calls_after_retry"], result["calls_after_different"]
+        )
+        self.assertEqual(
+            result["updates_before_requests"], result["updates_after_requests"]
+        )
+
     def test_signed_sync_reserves_nonce_only_after_signature_verification(
         self,
     ) -> None:

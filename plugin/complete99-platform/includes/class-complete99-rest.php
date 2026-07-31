@@ -202,9 +202,6 @@ final class Complete99_REST {
 		if ( false === $generated_at ) {
 			return new WP_Error( 'complete99_sync_generated_at', 'The public read-model generation timestamp is invalid.', array( 'status' => 400 ) );
 		}
-		if ( $generated_at < time() - self::MAX_CLOCK_SKEW || $generated_at > time() + self::MAX_CLOCK_SKEW ) {
-			return new WP_Error( 'complete99_sync_stale_model', 'The public read model was not generated inside the accepted freshness window.', array( 'status' => 409 ) );
-		}
 		$campaigns = isset( $payload['campaigns'] ) ? $payload['campaigns'] : array();
 		if ( ! is_array( $campaigns ) || ! empty( $campaigns ) ) {
 			return new WP_Error(
@@ -284,11 +281,9 @@ final class Complete99_REST {
 		$stored_generated_at = ! empty( $stored_model['generated'] )
 			? self::parse_rfc3339_timestamp( (string) $stored_model['generated'] )
 			: false;
-		if ( false !== $stored_generated_at && $generated_at < $stored_generated_at ) {
-			return new WP_Error( 'complete99_sync_non_monotonic', 'An older public read model cannot replace the current model.', array( 'status' => 409 ) );
-		}
 		if ( false !== $stored_generated_at && $generated_at === $stored_generated_at ) {
-			$equivalent = (string) ( $stored_model['version'] ?? '' ) === (string) $clean['version']
+			$equivalent = (string) ( $stored_model['generated'] ?? '' ) === (string) $clean['generated']
+				&& (string) ( $stored_model['version'] ?? '' ) === (string) $clean['version']
 				&& hash_equals(
 					hash(
 						'sha256',
@@ -313,25 +308,34 @@ final class Complete99_REST {
 						)
 					)
 				);
-			if ( ! $equivalent ) {
-				return new WP_Error( 'complete99_sync_non_monotonic', 'A different public read model must use a later generation timestamp.', array( 'status' => 409 ) );
+			if ( $equivalent ) {
+				$cache = self::purge_public_read_model_caches();
+				if ( is_wp_error( $cache ) ) {
+					return $cache;
+				}
+				$freshness = self::model_freshness( $stored_model );
+				return rest_ensure_response(
+					array(
+						'stored'        => true,
+						'write_changed' => false,
+						'version'       => (string) $stored_model['version'],
+						'digest'        => (string) ( $stored_model['digest'] ?? '' ),
+						'item_count'    => count( $clean['sections'] ) + count( $clean['items'] ),
+						'expires_at'    => $freshness['expires_at'],
+						'cache'         => $cache,
+					)
+				);
 			}
-			$cache = self::purge_public_read_model_caches();
-			if ( is_wp_error( $cache ) ) {
-				return $cache;
-			}
-			$freshness = self::model_freshness( $stored_model );
-			return rest_ensure_response(
-				array(
-					'stored'        => true,
-					'write_changed' => false,
-					'version'       => (string) $stored_model['version'],
-					'digest'        => (string) ( $stored_model['digest'] ?? '' ),
-					'item_count'    => count( $clean['sections'] ) + count( $clean['items'] ),
-					'expires_at'    => $freshness['expires_at'],
-					'cache'         => $cache,
-				)
-			);
+		}
+
+		if ( $generated_at < time() - self::MAX_CLOCK_SKEW || $generated_at > time() + self::MAX_CLOCK_SKEW ) {
+			return new WP_Error( 'complete99_sync_stale_model', 'The public read model was not generated inside the accepted freshness window.', array( 'status' => 409 ) );
+		}
+		if ( false !== $stored_generated_at && $generated_at < $stored_generated_at ) {
+			return new WP_Error( 'complete99_sync_non_monotonic', 'An older public read model cannot replace the current model.', array( 'status' => 409 ) );
+		}
+		if ( false !== $stored_generated_at && $generated_at === $stored_generated_at ) {
+			return new WP_Error( 'complete99_sync_non_monotonic', 'A different public read model must use a later generation timestamp.', array( 'status' => 409 ) );
 		}
 
 		$total = count( $clean['sections'] ) + count( $clean['items'] );
