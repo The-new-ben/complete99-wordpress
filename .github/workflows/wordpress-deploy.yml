@@ -97,7 +97,7 @@ jobs:
       - name: Check out approved production source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Download the immutable exact-commit CI artifact
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
