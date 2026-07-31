@@ -188,6 +188,15 @@ final class Complete99_Frontend {
 		return $post ? wp_strip_all_tags( $post->post_title ) . ' | Complete99' : $title;
 	}
 
+	public static function render_document_title_tag() {
+		remove_action( 'wp_head', '_wp_render_title_tag', 1 );
+		$title = trim( (string) wp_get_document_title() );
+		if ( '' === $title ) {
+			$title = 'Complete99';
+		}
+		echo '<title>' . esc_html( $title ) . '</title>' . "\n";
+	}
+
 	public static function robots( $robots ) {
 		if ( self::is_live_dish_request() && is_404() ) {
 			unset( $robots['index'] );
