@@ -205,13 +205,205 @@ final class Complete99_Frontend {
 		return $post ? wp_strip_all_tags( $post->post_title ) . ' | Complete99' : $title;
 	}
 
-	public static function render_document_title_tag() {
+	public static function render_document_head() {
 		remove_action( 'wp_head', '_wp_render_title_tag', 1 );
 		$title = trim( (string) wp_get_document_title() );
 		if ( '' === $title ) {
 			$title = 'Complete99';
 		}
+
+		ob_start();
+		wp_head();
+		$head = (string) ob_get_clean();
+		$head = self::strip_document_head_duplicates( $head );
+
 		echo '<title>' . esc_html( $title ) . '</title>' . "\n";
+		echo '<meta name="viewport" content="width=device-width, initial-scale=1" />' . "\n";
+		echo (string) $head; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Trusted wp_head output is preserved after structural de-duplication.
+	}
+
+	private static function strip_document_head_duplicates( $head ) {
+		$output          = '';
+		$cursor          = 0;
+		$length          = strlen( $head );
+		$protected_depth = 0;
+		$protected_tags  = array( 'math', 'svg', 'template' );
+		$raw_text_tags   = array( 'iframe', 'noembed', 'noframes', 'noscript', 'plaintext', 'script', 'style', 'textarea', 'xmp' );
+
+		while ( $cursor < $length ) {
+			$tag_start = strpos( $head, '<', $cursor );
+			if ( false === $tag_start ) {
+				$output .= substr( $head, $cursor );
+				break;
+			}
+
+			$output .= substr( $head, $cursor, $tag_start - $cursor );
+
+			if ( 0 === substr_compare( $head, '<!--', $tag_start, 4 ) ) {
+				$comment_end = strpos( $head, '-->', $tag_start + 4 );
+				if ( false === $comment_end ) {
+					$output .= substr( $head, $tag_start );
+					break;
+				}
+				$output .= substr( $head, $tag_start, $comment_end + 3 - $tag_start );
+				$cursor  = $comment_end + 3;
+				continue;
+			}
+
+			$tag_end = self::find_html_tag_end( $head, $tag_start );
+			if ( false === $tag_end ) {
+				$output .= substr( $head, $tag_start );
+				break;
+			}
+
+			$tag_markup = substr( $head, $tag_start, $tag_end + 1 - $tag_start );
+			if ( ! preg_match( '#^<\s*(/?)\s*([a-z][a-z0-9:-]*)\b#i', $tag_markup, $tag_match ) ) {
+				$output .= $tag_markup;
+				$cursor  = $tag_end + 1;
+				continue;
+			}
+
+			$is_closer      = '/' === $tag_match[1];
+			$tag_name       = strtolower( $tag_match[2] );
+			$is_self_closer = ! $is_closer && 1 === preg_match( '#/\s*>$#', $tag_markup );
+
+			if ( $is_closer && in_array( $tag_name, $protected_tags, true ) ) {
+				$protected_depth = max( 0, $protected_depth - 1 );
+				$output         .= $tag_markup;
+				$cursor          = $tag_end + 1;
+				continue;
+			}
+
+			if ( ! $is_closer && in_array( $tag_name, $raw_text_tags, true ) ) {
+				if ( 'plaintext' === $tag_name ) {
+					$output .= substr( $head, $tag_start );
+					break;
+				}
+
+				$closing_pattern = '#</\s*' . preg_quote( $tag_name, '#' ) . '\s*>#i';
+				if ( preg_match( $closing_pattern, $head, $closing_match, PREG_OFFSET_CAPTURE, $tag_end + 1 ) ) {
+					$closing_end = $closing_match[0][1] + strlen( $closing_match[0][0] );
+					$output     .= substr( $head, $tag_start, $closing_end - $tag_start );
+					$cursor      = $closing_end;
+					continue;
+				}
+
+				$output .= substr( $head, $tag_start );
+				break;
+			}
+
+			if ( ! $is_closer && 0 === $protected_depth && 'title' === $tag_name ) {
+				if ( preg_match( '#</\s*title\s*>#i', $head, $closing_match, PREG_OFFSET_CAPTURE, $tag_end + 1 ) ) {
+					$cursor = $closing_match[0][1] + strlen( $closing_match[0][0] );
+				} else {
+					$cursor = $tag_end + 1;
+				}
+				continue;
+			}
+
+			if ( ! $is_closer
+				&& 0 === $protected_depth
+				&& 'meta' === $tag_name
+				&& 'viewport' === strtolower( trim( (string) self::html_tag_attribute( $tag_markup, 'name' ) ) ) ) {
+				$cursor = $tag_end + 1;
+				continue;
+			}
+
+			$output .= $tag_markup;
+			$cursor  = $tag_end + 1;
+			if ( ! $is_closer && ! $is_self_closer && in_array( $tag_name, $protected_tags, true ) ) {
+				++$protected_depth;
+			}
+		}
+
+		return $output;
+	}
+
+	private static function find_html_tag_end( $html, $tag_start ) {
+		$quote  = '';
+		$length = strlen( $html );
+		for ( $index = $tag_start + 1; $index < $length; ++$index ) {
+			$character = $html[ $index ];
+			if ( '' !== $quote ) {
+				if ( $character === $quote ) {
+					$quote = '';
+				}
+				continue;
+			}
+			if ( '"' === $character || "'" === $character ) {
+				$quote = $character;
+			} elseif ( '>' === $character ) {
+				return $index;
+			}
+		}
+		return false;
+	}
+
+	private static function html_tag_attribute( $tag_markup, $wanted_name ) {
+		if ( ! preg_match( '#^<\s*/?\s*[a-z][a-z0-9:-]*#i', $tag_markup, $tag_match ) ) {
+			return null;
+		}
+
+		$cursor = strlen( $tag_match[0] );
+		$length = strlen( $tag_markup );
+		while ( $cursor < $length ) {
+			while ( $cursor < $length && preg_match( '/\s/', $tag_markup[ $cursor ] ) ) {
+				++$cursor;
+			}
+			if ( $cursor >= $length || '>' === $tag_markup[ $cursor ] ) {
+				break;
+			}
+			if ( '/' === $tag_markup[ $cursor ] ) {
+				++$cursor;
+				continue;
+			}
+
+			$name_start = $cursor;
+			while ( $cursor < $length && ! preg_match( '#[\s=/>]#', $tag_markup[ $cursor ] ) ) {
+				++$cursor;
+			}
+			if ( $cursor === $name_start ) {
+				++$cursor;
+				continue;
+			}
+			$name = substr( $tag_markup, $name_start, $cursor - $name_start );
+
+			while ( $cursor < $length && preg_match( '/\s/', $tag_markup[ $cursor ] ) ) {
+				++$cursor;
+			}
+			$value = true;
+			if ( $cursor < $length && '=' === $tag_markup[ $cursor ] ) {
+				++$cursor;
+				while ( $cursor < $length && preg_match( '/\s/', $tag_markup[ $cursor ] ) ) {
+					++$cursor;
+				}
+				if ( $cursor < $length && ( '"' === $tag_markup[ $cursor ] || "'" === $tag_markup[ $cursor ] ) ) {
+					$quote       = $tag_markup[ $cursor ];
+					$value_start = ++$cursor;
+					while ( $cursor < $length && $quote !== $tag_markup[ $cursor ] ) {
+						++$cursor;
+					}
+					$value = substr( $tag_markup, $value_start, $cursor - $value_start );
+					if ( $cursor < $length ) {
+						++$cursor;
+					}
+				} else {
+					$value_start = $cursor;
+					while ( $cursor < $length && ! preg_match( '#[\s>]#', $tag_markup[ $cursor ] ) ) {
+						++$cursor;
+					}
+					$value = substr( $tag_markup, $value_start, $cursor - $value_start );
+				}
+			}
+
+			if ( 0 === strcasecmp( $name, $wanted_name ) ) {
+				return is_string( $value )
+					? html_entity_decode( $value, ENT_QUOTES | ENT_HTML5, 'UTF-8' )
+					: $value;
+			}
+		}
+
+		return null;
 	}
 
 	public static function robots( $robots ) {

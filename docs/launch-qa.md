@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.3.3
+Release target: Complete99 Platform 1.3.4
 
 ## Automated gates
 
@@ -13,7 +13,11 @@ Release target: Complete99 Platform 1.3.3
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.3.3 and its versioned package URL.
+- The public update manifest matches version 1.3.4 and its versioned package URL.
+- Every plugin-owned shell emits exactly one escaped document title and one
+  viewport declaration after competing `wp_head` callbacks are de-duplicated.
+- Script, style, comment and accessible SVG title content remains byte-for-byte
+  intact during head de-duplication.
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
