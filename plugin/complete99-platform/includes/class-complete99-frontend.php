@@ -257,15 +257,17 @@ final class Complete99_Frontend {
 			}
 
 			$tag_markup = substr( $head, $tag_start, $tag_end + 1 - $tag_start );
-			if ( ! preg_match( '#^<\s*(/?)\s*([a-z][a-z0-9:-]*)\b#i', $tag_markup, $tag_match ) ) {
+			if ( ! preg_match( '#^<(/?)([a-z][a-z0-9:-]*)(?=[\x20\t\r\n\f/>])#i', $tag_markup, $tag_match ) ) {
 				$output .= $tag_markup;
 				$cursor  = $tag_end + 1;
 				continue;
 			}
 
-			$is_closer      = '/' === $tag_match[1];
-			$tag_name       = strtolower( $tag_match[2] );
-			$is_self_closer = ! $is_closer && 1 === preg_match( '#/\s*>$#', $tag_markup );
+			$is_closer = '/' === $tag_match[1];
+			$tag_name  = strtolower( $tag_match[2] );
+			$is_protected_self_closer = ! $is_closer
+				&& in_array( $tag_name, array( 'math', 'svg' ), true )
+				&& 1 === preg_match( '#/\s*>$#', $tag_markup );
 
 			if ( $is_closer && in_array( $tag_name, $protected_tags, true ) ) {
 				$protected_depth = max( 0, $protected_depth - 1 );
@@ -280,9 +282,8 @@ final class Complete99_Frontend {
 					break;
 				}
 
-				$closing_pattern = '#</\s*' . preg_quote( $tag_name, '#' ) . '\s*>#i';
-				if ( preg_match( $closing_pattern, $head, $closing_match, PREG_OFFSET_CAPTURE, $tag_end + 1 ) ) {
-					$closing_end = $closing_match[0][1] + strlen( $closing_match[0][0] );
+				$closing_end = self::find_html_raw_text_end( $head, $tag_name, $tag_end + 1 );
+				if ( false !== $closing_end ) {
 					$output     .= substr( $head, $tag_start, $closing_end - $tag_start );
 					$cursor      = $closing_end;
 					continue;
@@ -293,10 +294,12 @@ final class Complete99_Frontend {
 			}
 
 			if ( ! $is_closer && 0 === $protected_depth && 'title' === $tag_name ) {
-				if ( preg_match( '#</\s*title\s*>#i', $head, $closing_match, PREG_OFFSET_CAPTURE, $tag_end + 1 ) ) {
-					$cursor = $closing_match[0][1] + strlen( $closing_match[0][0] );
+				$closing_end = self::find_html_raw_text_end( $head, 'title', $tag_end + 1 );
+				if ( false !== $closing_end ) {
+					$cursor = $closing_end;
 				} else {
-					$cursor = $tag_end + 1;
+					// An unclosed document title makes the remaining fragment title text, so discard that malformed tail.
+					$cursor = $length;
 				}
 				continue;
 			}
@@ -311,12 +314,40 @@ final class Complete99_Frontend {
 
 			$output .= $tag_markup;
 			$cursor  = $tag_end + 1;
-			if ( ! $is_closer && ! $is_self_closer && in_array( $tag_name, $protected_tags, true ) ) {
+			if ( ! $is_closer && ! $is_protected_self_closer && in_array( $tag_name, $protected_tags, true ) ) {
 				++$protected_depth;
 			}
 		}
 
 		return $output;
+	}
+
+	private static function find_html_raw_text_end( $html, $tag_name, $offset ) {
+		$needle = '</' . strtolower( $tag_name );
+		$length = strlen( $html );
+
+		while ( $offset < $length ) {
+			$closing_start = stripos( $html, $needle, $offset );
+			if ( false === $closing_start ) {
+				return false;
+			}
+
+			$delimiter_position = $closing_start + strlen( $needle );
+			if ( $delimiter_position >= $length
+				|| 1 !== preg_match( '#[\x20\t\r\n\f/>]#', $html[ $delimiter_position ] ) ) {
+				$offset = $delimiter_position;
+				continue;
+			}
+
+			$closing_end = self::find_html_tag_end( $html, $closing_start );
+			if ( false === $closing_end ) {
+				return false;
+			}
+
+			return $closing_end + 1;
+		}
+
+		return false;
 	}
 
 	private static function find_html_tag_end( $html, $tag_start ) {
@@ -340,7 +371,7 @@ final class Complete99_Frontend {
 	}
 
 	private static function html_tag_attribute( $tag_markup, $wanted_name ) {
-		if ( ! preg_match( '#^<\s*/?\s*[a-z][a-z0-9:-]*#i', $tag_markup, $tag_match ) ) {
+		if ( ! preg_match( '#^</?[a-z][a-z0-9:-]*(?=[\x20\t\r\n\f/>])#i', $tag_markup, $tag_match ) ) {
 			return null;
 		}
 
