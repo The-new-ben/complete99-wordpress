@@ -39,6 +39,164 @@ BOOTSTRAP_SNIPPET_KNOWN_ID = 5
 MIN_PACKAGE_UPLOAD_BYTES = 2 * 1024 * 1024
 MAX_PACKAGE_UPLOAD_BYTES = 32 * 1024 * 1024
 PACKAGE_UPLOAD_HEADROOM_BYTES = 64 * 1024
+CATALOG_PRODUCT_CODES = frozenset(
+    {
+        "product-tahini-500g",
+        "product-amba-500g",
+        "product-hot-sauce-60ml",
+        "product-pita-12x50g",
+        "product-aubergine-1kg",
+        "product-eggs-l-12",
+        "product-potato-white-1kg",
+        "product-tomato-1kg",
+        "product-cucumber-1kg",
+        "product-onion-dry-1kg",
+        "product-parsley-100g",
+        "product-chickpeas-dry-500g",
+        "product-beetroot-1kg",
+        "product-bulgur-fine-500g",
+        "product-couscous-1kg",
+        "product-chicken-breast-1kg",
+        "product-breadcrumbs-500g",
+        "product-ground-beef-1kg",
+        "product-tilapia-fillet-1kg",
+        "product-tomato-sauce-400g",
+        "product-rice-persian-1kg",
+        "product-beef-shank-1kg",
+        "product-hawayej-soup-100g",
+        "product-olive-oil-750ml",
+        "product-pickles-brine-320g",
+        "product-chicken-liver-1kg",
+    }
+)
+_CATALOG_CAUSES_BY_STAGE = {
+    "request": {
+        "complete99_live_catalog_confirmation_required",
+        "complete99_live_catalog_deployment_id",
+    },
+    "dependency": {"complete99_live_catalog_woocommerce_required"},
+    "registry": {"complete99_live_catalog_registry_invalid"},
+    "preflight": {
+        "complete99_live_catalog_unallowlisted_managed_product",
+        "complete99_live_catalog_product_binding_conflict",
+        "complete99_live_catalog_unowned_product_conflict",
+        "complete99_live_catalog_asset_binding_conflict",
+        "complete99_live_catalog_unowned_asset_conflict",
+        "complete99_live_catalog_query_failed",
+    },
+    "transaction": {
+        "complete99_live_catalog_transaction_driver",
+        "complete99_live_catalog_transaction_engine",
+        "complete99_live_catalog_lock_driver",
+        "complete99_live_catalog_locked",
+        "complete99_live_catalog_runtime_transaction_start",
+        "complete99_live_catalog_runtime_transaction_commit",
+    },
+    "configuration": {
+        "complete99_live_catalog_option_readback_failed",
+        "complete99_live_catalog_address_readback_failed",
+        "complete99_live_catalog_public_page_missing",
+        "complete99_live_catalog_native_shop_api_missing",
+        "complete99_live_catalog_native_shop_page_invalid",
+        "complete99_live_catalog_woocommerce_page_missing",
+        "complete99_live_catalog_cart_page_write_failed",
+        "complete99_live_catalog_cart_page_readback_failed",
+        "complete99_live_catalog_tax_api_missing",
+        "complete99_live_catalog_tax_rate_conflict",
+        "complete99_live_catalog_tax_rate_readback_failed",
+        "complete99_live_catalog_shipping_api_missing",
+        "complete99_live_catalog_pickup_binding_conflict",
+        "complete99_live_catalog_pickup_conflict",
+        "complete99_live_catalog_pickup_write_failed",
+        "complete99_live_catalog_pickup_binding_invalid",
+        "complete99_live_catalog_pickup_enable_failed",
+        "complete99_live_catalog_pickup_readback_failed",
+        "complete99_live_catalog_configuration_readback_failed",
+        "complete99_live_catalog_cart_or_pickup_readback_failed",
+    },
+    "taxonomy": {
+        "complete99_live_catalog_term_conflict",
+        "complete99_live_catalog_term_write_failed",
+    },
+    "attachment": {
+        "complete99_live_catalog_asset_readback_failed",
+        "complete99_live_catalog_asset_source_failed",
+        "complete99_live_catalog_asset_upload_failed",
+        "complete99_live_catalog_asset_upload_hash_failed",
+        "complete99_live_catalog_attachment_write_failed",
+        "complete99_live_catalog_attachment_metadata_failed",
+        "complete99_live_catalog_asset_binding_invalid",
+    },
+    "product": {
+        "complete99_live_catalog_product_type_failed",
+        "complete99_live_catalog_product_write_failed",
+        "complete99_live_catalog_initial_stock_failed",
+        "complete99_live_catalog_product_readback_failed",
+    },
+    "readback": {
+        "complete99_live_catalog_runtime_precommit_cache_flush",
+        "complete99_live_catalog_runtime_strict_readback",
+        "complete99_live_catalog_runtime_fresh_strict_readback",
+    },
+    "recovery": {
+        "complete99_live_catalog_recovery_cache",
+        "complete99_live_catalog_recovery_unknown",
+        "complete99_live_catalog_recovery_baseline",
+        "complete99_live_catalog_recovery_owner",
+        "complete99_live_catalog_recovery_marker",
+        "complete99_live_catalog_recovery_ambiguous",
+        "complete99_live_catalog_recovery_upload_path",
+        "complete99_live_catalog_recovery_upload_scan",
+        "complete99_live_catalog_recovery_upload_name",
+        "complete99_live_catalog_recovery_upload_entry",
+        "complete99_live_catalog_recovery_upload_read",
+        "complete99_live_catalog_recovery_uploads",
+        "complete99_live_catalog_recovery_file_scope",
+        "complete99_live_catalog_recovery_reference_query",
+        "complete99_live_catalog_recovery_journal_unknown",
+        "complete99_live_catalog_recovery_uploads_changed",
+        "complete99_live_catalog_recovery_baseline_missing",
+        "complete99_live_catalog_recovery_baseline_changed",
+        "complete99_live_catalog_recovery_file_ambiguous",
+        "complete99_live_catalog_recovery_file_referenced",
+        "complete99_live_catalog_recovery_delete_unavailable",
+        "complete99_live_catalog_recovery_delete_failed",
+        "complete99_live_catalog_recovery_cleanup_readback",
+        "complete99_live_catalog_runtime_recovery_marker_readback",
+        "complete99_live_catalog_runtime_postcommit_boundary",
+    },
+}
+CATALOG_CAUSE_STAGE = {
+    cause: stage
+    for stage, causes in _CATALOG_CAUSES_BY_STAGE.items()
+    for cause in causes
+}
+CATALOG_RUNTIME_MESSAGE_CAUSE = {
+    "The durable catalog recovery marker failed readback.": (
+        "complete99_live_catalog_runtime_recovery_marker_readback"
+    ),
+    "The catalog database transaction could not start.": (
+        "complete99_live_catalog_runtime_transaction_start"
+    ),
+    "The public catalog cache could not be flushed before strict transactional readback.": (
+        "complete99_live_catalog_runtime_precommit_cache_flush"
+    ),
+    "The public catalog failed strict readback.": (
+        "complete99_live_catalog_runtime_strict_readback"
+    ),
+    "The catalog database transaction could not commit.": (
+        "complete99_live_catalog_runtime_transaction_commit"
+    ),
+    "The committed catalog could not clear its recovery boundary.": (
+        "complete99_live_catalog_runtime_postcommit_boundary"
+    ),
+    "The committed public catalog failed fresh strict readback.": (
+        "complete99_live_catalog_runtime_fresh_strict_readback"
+    ),
+}
+CATALOG_RECOVERY_MESSAGE_PREFIX = (
+    "Catalog recovery is required after an unverified mutation boundary: "
+)
 
 
 class DeployError(RuntimeError):
@@ -311,8 +469,71 @@ class Client:
                     value = raw_data.get(key)
                     if isinstance(value, (bool, int, float, str)) or value is None:
                         safe_data[key] = value
+            cause_candidates: set[str] = set()
+            if code in CATALOG_CAUSE_STAGE:
+                cause_candidates.add(code)
+            product_candidates: set[str] = set()
+            if isinstance(raw_data, dict):
+                raw_cause = raw_data.get("catalog_cause_code")
+                if isinstance(raw_cause, str) and raw_cause in CATALOG_CAUSE_STAGE:
+                    cause_candidates.add(raw_cause)
+                raw_product = raw_data.get("catalog_product_code")
+                if isinstance(raw_product, str) and raw_product in CATALOG_PRODUCT_CODES:
+                    product_candidates.add(raw_product)
+            raw_message = parsed.get("message") if isinstance(parsed, dict) else None
+            if (
+                code.startswith("complete99_live_catalog_")
+                and isinstance(raw_message, str)
+                and raw_message == raw_message.strip()
+                and 1 <= len(raw_message) <= 512
+                and not any(ord(character) < 32 for character in raw_message)
+            ):
+                cause_match = re.match(
+                    r"\A(complete99_live_catalog_[a-z0-9_]{1,64})(?::|\Z)",
+                    raw_message,
+                )
+                if (
+                    cause_match is not None
+                    and cause_match.group(1) in CATALOG_CAUSE_STAGE
+                ):
+                    cause_candidates.add(cause_match.group(1))
+                runtime_cause = CATALOG_RUNTIME_MESSAGE_CAUSE.get(raw_message)
+                if runtime_cause is None and raw_message.startswith(
+                    CATALOG_RECOVERY_MESSAGE_PREFIX
+                ):
+                    runtime_cause = CATALOG_RUNTIME_MESSAGE_CAUSE.get(
+                        raw_message[len(CATALOG_RECOVERY_MESSAGE_PREFIX) :]
+                    )
+                if runtime_cause is not None:
+                    cause_candidates.add(runtime_cause)
+                product_candidates.update(
+                    CATALOG_PRODUCT_CODES.intersection(
+                        re.findall(
+                            r"(?<![a-z0-9-])product-[a-z0-9]+(?:-[a-z0-9]+)*(?![a-z0-9-])",
+                            raw_message,
+                        )
+                    )
+                )
+            if len(cause_candidates) == 1:
+                catalog_cause = cause_candidates.pop()
+                safe_data["catalog_cause_code"] = catalog_cause
+                safe_data["catalog_stage"] = CATALOG_CAUSE_STAGE[catalog_cause]
+            if len(product_candidates) == 1:
+                safe_data["catalog_product_code"] = product_candidates.pop()
+            error_message = f"{method} {path} failed with HTTP {status} ({code})"
+            diagnostics = " ".join(
+                f"{key}={safe_data[key]}"
+                for key in (
+                    "catalog_stage",
+                    "catalog_cause_code",
+                    "catalog_product_code",
+                )
+                if key in safe_data
+            )
+            if diagnostics:
+                error_message += f" [{diagnostics}]"
             raise HTTPDeployError(
-                f"{method} {path} failed with HTTP {status} ({code})",
+                error_message,
                 status=status,
                 code=str(code),
                 data=safe_data,

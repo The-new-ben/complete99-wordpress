@@ -136,9 +136,23 @@ class CatalogMaterializationError(DeployError):
     """A catalog phase failed and no automatic apply retry is allowed."""
 
     def __init__(self, phase: str, error: Exception) -> None:
+        diagnostic: dict[str, str] = {}
+        raw_data = getattr(error, "data", {})
+        if isinstance(raw_data, dict):
+            cause = raw_data.get("catalog_cause_code")
+            if isinstance(cause, str) and cause in DEPLOY.CATALOG_CAUSE_STAGE:
+                diagnostic["catalog_cause_code"] = cause
+                diagnostic["catalog_stage"] = DEPLOY.CATALOG_CAUSE_STAGE[cause]
+            product_code = raw_data.get("catalog_product_code")
+            if (
+                isinstance(product_code, str)
+                and product_code in DEPLOY.CATALOG_PRODUCT_CODES
+            ):
+                diagnostic["catalog_product_code"] = product_code
         super().__init__(f"The live catalog {phase} phase failed: {error}")
         self.phase = phase
         self.original_error = error
+        self.diagnostic = diagnostic
 
 
 def derive_bridge_token(app_password: str, deployment_id: str) -> str:
@@ -1504,6 +1518,8 @@ def main() -> int:
             "type": type(error).__name__,
             "message": _safe_error(error, [app_password, token]),
         }
+        if isinstance(error, CatalogMaterializationError) and error.diagnostic:
+            audit["error"]["diagnostic"] = error.diagnostic
         if snippet_id is not None:
             try:
                 audit["failure_bridge_inspect"] = bridge_call(

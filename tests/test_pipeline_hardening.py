@@ -461,6 +461,242 @@ class PipelineHardeningTests(unittest.TestCase):
             server.server_close()
             thread.join(timeout=3)
 
+    def test_http_errors_expose_only_bounded_catalog_failure_messages(self) -> None:
+        class CatalogFailureHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802
+                message = (
+                    "complete99_live_catalog_asset_upload_failed: "
+                    "The approved product image could not be imported: product-tahini-500g"
+                )
+                body = json.dumps(
+                    {
+                        "code": "complete99_live_catalog_apply_failed",
+                        "message": message,
+                        "data": {
+                            "status": 500,
+                            "catalog_stage": "secret_token",
+                            "catalog_cause_code": "complete99_live_catalog_secretvalue",
+                            "catalog_product_code": "product-secretvalue",
+                            "secret": "must-not-escape",
+                        },
+                    }
+                ).encode()
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *_args: object) -> None:
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), CatalogFailureHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = DEPLOY.Client(
+                f"http://127.0.0.1:{server.server_port}",
+                "deploy-user",
+                "application-password",
+                allow_local_http=True,
+                timeout=3,
+            )
+            with self.assertRaises(DEPLOY.HTTPDeployError) as caught:
+                client.request("GET", "/catalog-failure")
+            error = caught.exception
+            self.assertEqual(500, error.status)
+            self.assertEqual("complete99_live_catalog_apply_failed", error.code)
+            self.assertEqual(
+                "complete99_live_catalog_asset_upload_failed",
+                error.data["catalog_cause_code"],
+            )
+            self.assertEqual(
+                "product-tahini-500g",
+                error.data["catalog_product_code"],
+            )
+            self.assertEqual("attachment", error.data["catalog_stage"])
+            self.assertIn("product-tahini-500g", str(error))
+            self.assertNotIn("approved product image", str(error).lower())
+            self.assertNotIn("secret", error.data)
+            self.assertNotIn("must-not-escape", str(error))
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_http_errors_reject_catalog_messages_with_server_paths(self) -> None:
+        class UnsafeCatalogFailureHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802
+                body = json.dumps(
+                    {
+                        "code": "complete99_live_catalog_apply_failed",
+                        "message": "Failure in /home/example/public_html/wp-config.php",
+                        "data": {
+                            "status": 500,
+                            "catalog_stage": "secret_token",
+                            "catalog_cause_code": "complete99_live_catalog_secretvalue",
+                            "catalog_product_code": "product-secretvalue",
+                        },
+                    }
+                ).encode()
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *_args: object) -> None:
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), UnsafeCatalogFailureHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = DEPLOY.Client(
+                f"http://127.0.0.1:{server.server_port}",
+                "deploy-user",
+                "application-password",
+                allow_local_http=True,
+                timeout=3,
+            )
+            with self.assertRaises(DEPLOY.HTTPDeployError) as caught:
+                client.request("GET", "/catalog-failure")
+            error = caught.exception
+            self.assertNotIn("catalog_cause_code", error.data)
+            self.assertNotIn("catalog_product_code", error.data)
+            self.assertNotIn("catalog_stage", error.data)
+            self.assertNotIn("secretvalue", str(error))
+            self.assertNotIn("/home/example", str(error))
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_http_errors_map_only_exact_catalog_runtime_messages(self) -> None:
+        cases: dict[str, tuple[str, str]] = {}
+        for index, (message, cause) in enumerate(
+            DEPLOY.CATALOG_RUNTIME_MESSAGE_CAUSE.items()
+        ):
+            cases[f"/runtime-{index}"] = (message, cause)
+            cases[f"/recovery-{index}"] = (
+                DEPLOY.CATALOG_RECOVERY_MESSAGE_PREFIX + message,
+                cause,
+            )
+
+        class RuntimeCatalogFailureHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802
+                message, _cause = cases[self.path]
+                code = (
+                    "complete99_live_catalog_recovery_required"
+                    if self.path.startswith("/recovery-")
+                    else "complete99_live_catalog_apply_failed"
+                )
+                body = json.dumps(
+                    {
+                        "code": code,
+                        "message": message,
+                        "data": {
+                            "status": 500,
+                            "catalog_stage": "secret_token",
+                            "catalog_cause_code": "complete99_live_catalog_secretvalue",
+                            "catalog_product_code": "product-secretvalue",
+                        },
+                    }
+                ).encode()
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *_args: object) -> None:
+                return
+
+        server = ThreadingHTTPServer(
+            ("127.0.0.1", 0),
+            RuntimeCatalogFailureHandler,
+        )
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = DEPLOY.Client(
+                f"http://127.0.0.1:{server.server_port}",
+                "deploy-user",
+                "application-password",
+                allow_local_http=True,
+                timeout=3,
+            )
+            for path, (message, cause) in cases.items():
+                with self.subTest(path=path):
+                    with self.assertRaises(DEPLOY.HTTPDeployError) as caught:
+                        client.request("GET", path)
+                    error = caught.exception
+                    self.assertEqual(cause, error.data["catalog_cause_code"])
+                    self.assertEqual(
+                        DEPLOY.CATALOG_CAUSE_STAGE[cause],
+                        error.data["catalog_stage"],
+                    )
+                    self.assertNotIn("catalog_product_code", error.data)
+                    self.assertNotIn("secretvalue", str(error))
+                    self.assertNotIn(message, str(error))
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
+    def test_http_errors_drop_conflicting_catalog_diagnostics(self) -> None:
+        class ConflictingCatalogFailureHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:  # noqa: N802
+                body = json.dumps(
+                    {
+                        "code": "complete99_live_catalog_apply_failed",
+                        "message": (
+                            "complete99_live_catalog_asset_upload_failed: "
+                            "product-tahini-500g"
+                        ),
+                        "data": {
+                            "status": 500,
+                            "catalog_cause_code": "complete99_live_catalog_tax_api_missing",
+                            "catalog_product_code": "product-amba-500g",
+                        },
+                    }
+                ).encode()
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *_args: object) -> None:
+                return
+
+        server = ThreadingHTTPServer(
+            ("127.0.0.1", 0),
+            ConflictingCatalogFailureHandler,
+        )
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            client = DEPLOY.Client(
+                f"http://127.0.0.1:{server.server_port}",
+                "deploy-user",
+                "application-password",
+                allow_local_http=True,
+                timeout=3,
+            )
+            with self.assertRaises(DEPLOY.HTTPDeployError) as caught:
+                client.request("GET", "/conflict")
+            error = caught.exception
+            self.assertNotIn("catalog_cause_code", error.data)
+            self.assertNotIn("catalog_stage", error.data)
+            self.assertNotIn("catalog_product_code", error.data)
+            self.assertNotIn("product-tahini-500g", str(error))
+            self.assertNotIn("product-amba-500g", str(error))
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=3)
+
     def test_authenticated_probe_discovers_the_exact_owning_deployment(self) -> None:
         calls: list[tuple[str, object]] = []
 
