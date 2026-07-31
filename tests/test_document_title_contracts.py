@@ -94,6 +94,15 @@ function get_query_var($key, $default = '') {
         ? $GLOBALS['c99_query'][$key]
         : $default;
 }
+function wp_unslash($value) {
+    return $value;
+}
+function wp_parse_url($url, $component = -1) {
+    return -1 === $component ? parse_url($url) : parse_url($url, $component);
+}
+function home_url($path = '') {
+    return 'https://example.test/' . ltrim((string) $path, '/');
+}
 function get_option($key, $default = false) {
     return $default;
 }
@@ -126,15 +135,24 @@ class Complete99_Consumer {
     }
     public static function render_live_dish_page($dish, $lang) {}
     public static function render_not_found_page($lang) {}
+    public static function render_site_not_found_page($lang) {}
 }
 
 require __FRONTEND__;
 
-function c99_render_document($language, $slug, $not_found) {
-    $GLOBALS['c99_query'] = array(
-        'complete99_live_dish' => $slug,
-        'complete99_live_lang' => $language,
-    );
+function c99_render_document(
+    $language,
+    $slug,
+    $not_found,
+    $request_uri = '/'
+) {
+    $GLOBALS['c99_query'] = $slug
+        ? array(
+            'complete99_live_dish' => $slug,
+            'complete99_live_lang' => $language,
+        )
+        : array();
+    $_SERVER['REQUEST_URI'] = $request_uri;
     $GLOBALS['c99_is_404'] = $not_found;
     $GLOBALS['c99_core_title_active'] = true;
 
@@ -154,6 +172,8 @@ $documents = array(
     'en_live' => c99_render_document('en', 'sabich', false),
     'he_404' => c99_render_document('he', 'missing-dish', true),
     'en_404' => c99_render_document('en', 'missing-dish', true),
+    'he_generic_404' => c99_render_document('he', '', true, '/missing-page/'),
+    'en_generic_404' => c99_render_document('en', '', true, '/en/missing-page/'),
 );
 $result = array();
 foreach ($documents as $key => $html) {
@@ -194,6 +214,12 @@ echo json_encode(
         )
         self.assertEqual(["המנה לא נמצאה | קומפלט 99"], titles["he_404"])
         self.assertEqual(["Dish not found | Complete99"], titles["en_404"])
+        self.assertEqual(
+            ["העמוד לא נמצא | קומפלט 99"], titles["he_generic_404"]
+        )
+        self.assertEqual(
+            ["Page not found | Complete99"], titles["en_generic_404"]
+        )
         for case_titles in titles.values():
             self.assertEqual(1, len(case_titles))
             self.assertTrue(case_titles[0].strip())

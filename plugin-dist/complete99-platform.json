@@ -1,15 +1,15 @@
 {
   "author": "Complete99",
-  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.3.2.zip",
+  "download_url": "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main/plugin-dist/complete99-platform-1.3.3.zip",
   "homepage": "https://complete99.co.il/",
-  "last_updated": "2026-07-31 03:05:00",
+  "last_updated": "2026-07-31 03:51:00",
   "name": "Complete99 Platform",
   "requires": "6.4",
   "requires_php": "8.0",
   "sections": {
-    "changelog": "<h4>1.3.2</h4><ul><li>Ensured every plugin-owned public shell renders one escaped, non-empty document title independent of active-theme title support.</li><li>Rebuilt the public Hebrew and English experience for culinary consumers with food-first navigation, menu references and clear ordering paths.</li><li>Added a fail-closed pantry shop foundation that remains non-transactional until real products, stock, merchant, payment and fulfilment checks pass.</li><li>Added private WooCommerce order and inventory handoff infrastructure without activating worker assignments.</li></ul>"
+    "changelog": "<h4>1.3.3</h4><ul><li>Made Complete99 own every public 404 instead of falling through to active-theme copy.</li><li>Added deterministic Hebrew and English 404 language selection, titles, headings and recovery links.</li><li>Added explicit noindex and follow directives for every 404 response.</li><li>Preserved the dedicated missing-dish experience for menu routes.</li></ul>"
   },
   "slug": "complete99-platform",
   "tested": "7.0",
-  "version": "1.3.2"
+  "version": "1.3.3"
 }

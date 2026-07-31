@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-07-29
-Status: public consumer boundary locked, bilingual culinary release 1.3.2 in progress
+Status: public consumer boundary locked, bilingual culinary release 1.3.3 in progress
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
