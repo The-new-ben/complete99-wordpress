@@ -1,11 +1,11 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-01
-Release target: Complete99 Platform 1.3.10
+Release target: Complete99 Platform 1.3.11
 
-## Current 1.3.10 catalog boundary
+## Current 1.3.11 catalog boundary
 
-Release 1.3.10 supersedes the earlier evaluation-only pantry state described in
+Release 1.3.11 supersedes the earlier evaluation-only pantry state described in
 the historical sections below.
 
 - WooCommerce 10.9.4 is installed from the exact pinned official package.
@@ -15,6 +15,8 @@ the historical sections below.
 - Prices are owner-authorized opening retail prices informed by the bound market
   observations dated 2026-07-31.
 - The store and classic cart are public when the exact catalog receipt passes.
+- Pantry filters hide every nonmatching product card and keep the visible result
+  count and shareable URL filter in sync.
 - The receipt identity reads unfiltered WooCommerce edit values. A shopper can
   switch the cart between Hebrew and English without making the catalog appear
   changed or closing the pantry route.
@@ -51,7 +53,7 @@ suppliers, costs, campaigns and operating dashboards stay private. Their legacy
 seed records are migrated to private status and removed from public navigation,
 search ownership and sitemaps.
 
-No Complete99 worker role is installed or assigned by release 1.3.10. The private
+No Complete99 worker role is installed or assigned by release 1.3.11. The private
 commerce outbox reports `unassigned_infrastructure` until a later, separately
 approved operating decision.
 

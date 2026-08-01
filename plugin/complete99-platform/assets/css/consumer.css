@@ -1434,6 +1434,10 @@ body.c99-consumer-site {
 	flex-direction: column;
 }
 
+.c99-store-product-card[hidden] {
+	display: none !important;
+}
+
 .c99-store-product-card > figure {
 	margin: 0;
 }
