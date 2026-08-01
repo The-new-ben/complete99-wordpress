@@ -11,11 +11,11 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.3.7`. Production truth comes
+The source tree targets Complete99 Platform `1.3.11`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.3.7 provides:
+Release 1.3.11 provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
@@ -29,6 +29,10 @@ Release 1.3.7 provides:
 - durable product, price, image, taxonomy and dish-relation receipts;
 - a public bilingual store with filters, food-property badges, product links
   from dishes and ingredients, and an editable classic WooCommerce cart;
+- visually exact pantry filters whose visible cards, result count and URL state
+  remain synchronized;
+- catalog and stock receipt identity that remains stable when a customer changes
+  the cart language or removes an item;
 - local pickup from 99 Ibn Gabirol Street in Tel Aviv;
 - a signed private inventory synchronization route usable by Complete99 OS as
   soon as the catalog is verified;
