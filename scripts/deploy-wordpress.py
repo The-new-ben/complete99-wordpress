@@ -137,6 +137,8 @@ _CATALOG_CAUSES_BY_STAGE = {
     "readback": {
         "complete99_live_catalog_runtime_precommit_cache_flush",
         "complete99_live_catalog_runtime_postcommit_cache_flush",
+        "complete99_live_catalog_runtime_page_cache_purge",
+        "complete99_live_catalog_page_cache",
         "complete99_live_catalog_runtime_strict_readback",
         "complete99_live_catalog_strict_readback_receipt_missing",
         "complete99_live_catalog_strict_readback_registry_invalid",
@@ -156,6 +158,7 @@ _CATALOG_CAUSES_BY_STAGE = {
         "complete99_live_catalog_recovery_baseline",
         "complete99_live_catalog_recovery_owner",
         "complete99_live_catalog_recovery_marker",
+        "complete99_live_catalog_recovery_restore_failed",
         "complete99_live_catalog_recovery_ambiguous",
         "complete99_live_catalog_recovery_upload_path",
         "complete99_live_catalog_recovery_upload_scan",
@@ -195,6 +198,9 @@ CATALOG_RUNTIME_MESSAGE_CAUSE = {
     ),
     "The committed public catalog cache could not be flushed.": (
         "complete99_live_catalog_runtime_postcommit_cache_flush"
+    ),
+    "The committed public catalog page cache could not be purged.": (
+        "complete99_live_catalog_runtime_page_cache_purge"
     ),
     "The catalog database transaction could not commit.": (
         "complete99_live_catalog_runtime_transaction_commit"

@@ -865,6 +865,9 @@ def verify_catalog_apply(value: Any, expected_deployment_id: str | None = None) 
         raise DeployError("The live catalog receipt deployment ID is invalid")
     if expected_deployment_id is not None and deployment_id != expected_deployment_id:
         raise DeployError("The live catalog receipt belongs to a different deployment")
+    mutation_id = receipt.get("mutation_id")
+    if not isinstance(mutation_id, str) or not re.fullmatch(r"[A-Za-z0-9-]{16,64}", mutation_id):
+        raise DeployError("The live catalog receipt mutation ID is invalid")
     if type(receipt.get("product_count")) is not int or receipt["product_count"] != EXPECTED_PRODUCT_COUNT:
         raise DeployError("The live catalog receipt product count differs")
     if _verify_exact_product_ids(receipt.get("product_ids"), "receipt") != product_ids:
@@ -922,6 +925,33 @@ def verify_catalog_apply(value: Any, expected_deployment_id: str | None = None) 
         raise DeployError("The live catalog receipt owner is invalid")
     if not isinstance(receipt.get("materialized_at"), str) or not receipt["materialized_at"]:
         raise DeployError("The live catalog receipt timestamp is invalid")
+    page_cache = _require_dict(
+        response.get("page_cache_purge"),
+        "The live catalog page-cache purge receipt is invalid",
+    )
+    if set(page_cache) != {"upress", "litespeed", "attempts"}:
+        raise DeployError("The live catalog page-cache purge receipt differs")
+    upress = _require_dict(
+        page_cache.get("upress"),
+        "The live catalog UPress page-cache receipt is invalid",
+    )
+    litespeed = _require_dict(
+        page_cache.get("litespeed"),
+        "The live catalog LiteSpeed page-cache receipt is invalid",
+    )
+    if set(upress) != {"detected", "request_completed"} or set(litespeed) != {
+        "listener_detected",
+        "signal_sent",
+    }:
+        raise DeployError("The live catalog page-cache provider receipt differs")
+    if type(upress.get("detected")) is not bool or type(upress.get("request_completed")) is not bool:
+        raise DeployError("The live catalog UPress page-cache receipt has invalid flags")
+    if upress["detected"] and not upress["request_completed"]:
+        raise DeployError("The live catalog UPress page-cache purge was not completed")
+    if type(litespeed.get("listener_detected")) is not bool or litespeed.get("signal_sent") is not True:
+        raise DeployError("The live catalog LiteSpeed page-cache purge was not signalled")
+    if type(page_cache.get("attempts")) is not int or page_cache["attempts"] not in {1, 2}:
+        raise DeployError("The live catalog page-cache purge attempt count is invalid")
     return {
         "schema": CATALOG_STATUS_SCHEMA,
         "mode": "apply",
@@ -937,6 +967,8 @@ def verify_catalog_apply(value: Any, expected_deployment_id: str | None = None) 
         "configuration_digest": receipt["configuration_digest"],
         "initial_stock_digest": receipt["initial_stock_digest"],
         "deployment_id": deployment_id,
+        "mutation_id": mutation_id,
+        "page_cache_purge": page_cache,
     }
 
 
@@ -962,6 +994,9 @@ def verify_catalog_status(value: Any, expected_deployment_id: str | None = None)
         raise DeployError("The live catalog status deployment ID is invalid")
     if expected_deployment_id is not None and deployment_id != expected_deployment_id:
         raise DeployError("The live catalog status belongs to a different deployment")
+    mutation_id = receipt.get("mutation_id")
+    if not isinstance(mutation_id, str) or not re.fullmatch(r"[A-Za-z0-9-]{16,64}", mutation_id):
+        raise DeployError("The live catalog status mutation ID is invalid")
     binding_digest = _require_digest(
         receipt.get("bindings_digest"),
         "The live catalog status binding digest is invalid",
@@ -979,6 +1014,7 @@ def verify_catalog_status(value: Any, expected_deployment_id: str | None = None)
         "bindings_digest": binding_digest,
         "initial_stock_digest": initial_stock_digest,
         "deployment_id": deployment_id,
+        "mutation_id": mutation_id,
         "materialized_at": str(receipt.get("materialized_at", "")),
     }
 
@@ -1035,6 +1071,11 @@ def materialize_catalog(client: Any, deployment_id: str) -> dict[str, Any]:
         raise CatalogMaterializationError(
             "status",
             DeployError("The live catalog initial stock receipt changed after apply"),
+        )
+    if applied["mutation_id"] != status["mutation_id"]:
+        raise CatalogMaterializationError(
+            "status",
+            DeployError("The live catalog mutation identity changed after apply"),
         )
     return {"dry_run": dry_run, "apply": applied, "status": status}
 

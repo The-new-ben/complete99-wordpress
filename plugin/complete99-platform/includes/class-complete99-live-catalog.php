@@ -353,6 +353,7 @@ final class Complete99_Live_Catalog {
 						'product_count'   => self::EXPECTED_COUNT,
 						'product_ids'     => $recovery['status']['product_ids'],
 						'receipt'         => $receipt,
+						'page_cache_purge' => $recovery['page_cache_purge'],
 					);
 				}
 			}
@@ -492,7 +493,11 @@ final class Complete99_Live_Catalog {
 				}
 				throw new \RuntimeException( self::strict_readback_failure_message( $readback ) );
 			}
-			if ( ! self::clear_recovery_boundary( $marker ) ) {
+			$boundary_cleared = self::clear_recovery_boundary( $marker );
+			if ( self::is_error( $boundary_cleared ) ) {
+				throw new \RuntimeException( $boundary_cleared->get_error_code() . ': ' . $boundary_cleared->get_error_message() );
+			}
+			if ( true !== $boundary_cleared ) {
 				throw new \RuntimeException( 'The committed catalog could not clear its recovery boundary.' );
 			}
 			$readback = self::status( true );
@@ -502,6 +507,10 @@ final class Complete99_Live_Catalog {
 				}
 				throw new \RuntimeException( self::strict_readback_failure_message( $readback ) );
 			}
+			$page_cache_purge = self::purge_public_page_caches_with_retry();
+			if ( self::is_error( $page_cache_purge ) ) {
+				throw new \RuntimeException( 'The committed public catalog page cache could not be purged.' );
+			}
 			return array(
 				'schema'          => self::STATUS_SCHEMA,
 				'mode'            => 'apply',
@@ -510,6 +519,7 @@ final class Complete99_Live_Catalog {
 				'product_count'   => self::EXPECTED_COUNT,
 				'product_ids'     => $bindings,
 				'receipt'         => $receipt,
+				'page_cache_purge' => $page_cache_purge,
 			);
 		} catch ( \Throwable $error ) {
 			$rollback_verified = false;
@@ -525,9 +535,9 @@ final class Complete99_Live_Catalog {
 					return self::error( 'complete99_live_catalog_apply_failed', $error->getMessage(), 500 );
 				}
 				$failed_state = $transaction_started_once ? 'rollback_cleanup_failed' : 'transaction_start_cleanup_failed';
-				$failed_marker = self::transition_recovery_marker( $marker, $failed_state );
-				self::write_recovery_marker( $failed_marker );
-				self::flush_catalog_caches();
+				if ( ! self::restore_recovery_boundary( $marker, $failed_state ) ) {
+					return self::error( 'complete99_live_catalog_recovery_restore_failed', 'The rolled-back catalog recovery boundary could not be restored and verified.', 500 );
+				}
 				return self::error( 'complete99_live_catalog_recovery_required', $recovered->get_error_message(), 500 );
 			}
 			if ( ! $marker_written && ! $transaction_started_once ) {
@@ -535,9 +545,9 @@ final class Complete99_Live_Catalog {
 			}
 			if ( $marker_written ) {
 				$failed_state  = $committed ? 'postcommit_verification_failed' : ( $commit_attempted ? 'commit_unverified' : 'rollback_unverified' );
-				$failed_marker = self::transition_recovery_marker( $marker, $failed_state );
-				self::write_recovery_marker( $failed_marker );
-				self::flush_catalog_caches();
+				if ( ! self::restore_recovery_boundary( $marker, $failed_state ) ) {
+					return self::error( 'complete99_live_catalog_recovery_restore_failed', 'The catalog recovery boundary could not be restored and verified after a failed mutation check.', 500 );
+				}
 			}
 			return self::error( 'complete99_live_catalog_recovery_required', 'Catalog recovery is required after an unverified mutation boundary: ' . $error->getMessage(), 500 );
 		} finally {
@@ -994,6 +1004,8 @@ final class Complete99_Live_Catalog {
 			'woocommerce_out_of_stock_amount'     => '0',
 			'woocommerce_weight_unit'             => 'kg',
 			'woocommerce_dimension_unit'          => 'cm',
+			'woocommerce_coming_soon'             => 'no',
+			'woocommerce_store_pages_only'        => 'no',
 		);
 		foreach ( $options as $name => $value ) {
 			update_option( $name, $value, false );
@@ -1246,6 +1258,8 @@ final class Complete99_Live_Catalog {
 			'woocommerce_out_of_stock_amount',
 			'woocommerce_weight_unit',
 			'woocommerce_dimension_unit',
+			'woocommerce_coming_soon',
+			'woocommerce_store_pages_only',
 			'woocommerce_shop_page_id',
 			'woocommerce_terms_page_id',
 			'wp_page_for_privacy_policy',
@@ -1912,6 +1926,21 @@ final class Complete99_Live_Catalog {
 			&& hash_equals( (string) $marker['marker_digest'], (string) $stored['marker_digest'] );
 	}
 
+	private static function restore_recovery_boundary( $marker, $state ) {
+		$failed_marker = self::transition_recovery_marker( $marker, $state );
+		if ( ! self::recovery_marker_seal_is_valid( $failed_marker ) ) {
+			return false;
+		}
+		for ( $attempt = 0; $attempt < 2; $attempt++ ) {
+			$written = self::write_recovery_marker( $failed_marker );
+			$flushed = self::flush_catalog_caches();
+			if ( $written && $flushed && self::write_recovery_marker( $failed_marker ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private static function clear_recovery_marker() {
 		delete_option( self::OPTION_RECOVERY );
 		$missing = new \stdClass();
@@ -1925,8 +1954,9 @@ final class Complete99_Live_Catalog {
 		if ( self::flush_catalog_caches() ) {
 			return true;
 		}
-		self::write_recovery_marker( $marker );
-		self::flush_catalog_caches();
+		if ( ! self::restore_recovery_boundary( $marker, (string) ( $marker['state'] ?? 'materializing' ) ) ) {
+			return self::error( 'complete99_live_catalog_recovery_restore_failed', 'The catalog recovery boundary could not be restored after object-cache flush failure.', 500 );
+		}
 		return false;
 	}
 
@@ -1936,6 +1966,54 @@ final class Complete99_Live_Catalog {
 			return false;
 		}
 		return true;
+	}
+
+	private static function purge_public_page_caches_with_retry() {
+		$first = self::purge_public_page_caches();
+		if ( ! self::is_error( $first ) ) {
+			$first['attempts'] = 1;
+			return $first;
+		}
+		$second = self::purge_public_page_caches();
+		if ( ! self::is_error( $second ) ) {
+			$second['attempts'] = 2;
+			return $second;
+		}
+		return $second;
+	}
+
+	private static function purge_public_page_caches() {
+		$report = array(
+			'upress'    => array(
+				'detected'          => class_exists( '\\Upress\\EzCache\\Cache' ),
+				'request_completed' => false,
+			),
+			'litespeed' => array(
+				'listener_detected' => false !== has_action( 'litespeed_purge_all' ),
+				'signal_sent'       => false,
+			),
+		);
+		if ( $report['upress']['detected'] ) {
+			try {
+				if ( ! method_exists( '\\Upress\\EzCache\\Cache', 'instance' ) ) {
+					throw new \RuntimeException( 'instance' );
+				}
+				$cache = \Upress\EzCache\Cache::instance();
+				if ( ! is_object( $cache ) || ! method_exists( $cache, 'clear_cache' ) || false === $cache->clear_cache() ) {
+					throw new \RuntimeException( 'clear-cache' );
+				}
+				$report['upress']['request_completed'] = true;
+			} catch ( \Throwable $error ) {
+				return self::error( 'complete99_live_catalog_page_cache', 'The committed catalog UPress page-cache purge request failed.', 503 );
+			}
+		}
+		try {
+			do_action( 'litespeed_purge_all' );
+			$report['litespeed']['signal_sent'] = true;
+		} catch ( \Throwable $error ) {
+			return self::error( 'complete99_live_catalog_page_cache', 'The committed catalog LiteSpeed page-cache purge signal failed.', 503 );
+		}
+		return $report;
 	}
 
 	private static function recovery_baseline_matches( $marker, $bundle ) {
@@ -1959,13 +2037,18 @@ final class Complete99_Live_Catalog {
 		if ( self::is_error( $cleanup ) ) {
 			return $cleanup;
 		}
-		if ( ! self::clear_recovery_boundary( $marker ) ) {
+		$boundary_cleared = self::clear_recovery_boundary( $marker );
+		if ( self::is_error( $boundary_cleared ) ) {
+			return $boundary_cleared;
+		}
+		if ( true !== $boundary_cleared ) {
 			return self::error( 'complete99_live_catalog_recovery_marker', 'The rolled-back catalog recovery boundary could not be cleared durably.', 500 );
 		}
 		$matches = self::recovery_baseline_matches( $marker, $bundle );
 		if ( self::is_error( $matches ) || true !== $matches ) {
-			self::write_recovery_marker( $marker );
-			self::flush_catalog_caches();
+			if ( ! self::restore_recovery_boundary( $marker, (string) ( $marker['state'] ?? 'rollback_unverified' ) ) ) {
+				return self::error( 'complete99_live_catalog_recovery_restore_failed', 'The catalog baseline recovery boundary could not be restored and verified.', 500 );
+			}
 			return self::error( 'complete99_live_catalog_recovery_ambiguous', 'The catalog baseline changed while its recovery boundary was being cleared.', 409 );
 		}
 		return true;
@@ -1985,16 +2068,28 @@ final class Complete99_Live_Catalog {
 			if ( ! in_array( $marker['state'], array( 'materializing', 'commit_unverified', 'postcommit_verification_failed' ), true ) ) {
 				return self::error( 'complete99_live_catalog_recovery_ambiguous', 'A committed catalog is paired with an incompatible recovery state.', 409 );
 			}
-			if ( ! self::clear_recovery_boundary( $marker ) ) {
+			$boundary_cleared = self::clear_recovery_boundary( $marker );
+			if ( self::is_error( $boundary_cleared ) ) {
+				return $boundary_cleared;
+			}
+			if ( true !== $boundary_cleared ) {
 				return self::error( 'complete99_live_catalog_recovery_marker', 'The committed catalog recovery boundary could not be cleared durably.', 500 );
 			}
 			$fresh = self::status( true );
 			if ( ! self::readback_receipt_matches_marker( $fresh, $marker ) ) {
-				self::write_recovery_marker( $marker );
-				self::flush_catalog_caches();
+				if ( ! self::restore_recovery_boundary( $marker, 'postcommit_verification_failed' ) ) {
+					return self::error( 'complete99_live_catalog_recovery_restore_failed', 'The committed catalog recovery boundary could not be restored after fresh verification failed.', 500 );
+				}
 				return self::error( 'complete99_live_catalog_recovery_ambiguous', 'The committed catalog failed fresh verification after marker clearance.', 409 );
 			}
-			return array( 'committed' => true, 'status' => $fresh );
+			$page_cache_purge = self::purge_public_page_caches_with_retry();
+			if ( self::is_error( $page_cache_purge ) ) {
+				if ( ! self::restore_recovery_boundary( $marker, 'postcommit_verification_failed' ) ) {
+					return self::error( 'complete99_live_catalog_recovery_restore_failed', 'The committed catalog recovery boundary could not be restored and verified after page-cache failure.', 500 );
+				}
+				return $page_cache_purge;
+			}
+			return array( 'committed' => true, 'status' => $fresh, 'page_cache_purge' => $page_cache_purge );
 		}
 
 		if ( ! in_array( $marker['state'], array( 'materializing', 'commit_unverified', 'rollback_unverified', 'rollback_cleanup_failed', 'transaction_start_cleanup_failed' ), true ) ) {

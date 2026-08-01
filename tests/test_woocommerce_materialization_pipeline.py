@@ -37,6 +37,7 @@ DIGEST_B = "b" * 64
 DIGEST_C = "c" * 64
 DIGEST_D = "d" * 64
 TEST_DEPLOYMENT_ID = "c99-commerce-test-deployment"
+TEST_MUTATION_ID = "12345678-1234-1234-1234-123456789abc"
 
 
 def bridge_state() -> dict[str, Any]:
@@ -155,10 +156,16 @@ def apply_response(deployment_id: str = TEST_DEPLOYMENT_ID) -> dict[str, Any]:
         "ready": True,
         "product_count": COMMERCE.EXPECTED_PRODUCT_COUNT,
         "product_ids": bindings,
+        "page_cache_purge": {
+            "upress": {"detected": True, "request_completed": True},
+            "litespeed": {"listener_detected": True, "signal_sent": True},
+            "attempts": 1,
+        },
         "receipt": {
             "schema": COMMERCE.CATALOG_RECEIPT_SCHEMA,
             "status": "verified",
             "deployment_id": deployment_id,
+            "mutation_id": TEST_MUTATION_ID,
             "product_count": COMMERCE.EXPECTED_PRODUCT_COUNT,
             "registry_digest": DIGEST_A,
             "price_digest": DIGEST_B,
@@ -190,6 +197,7 @@ def status_response(deployment_id: str = TEST_DEPLOYMENT_ID) -> dict[str, Any]:
             "schema": COMMERCE.CATALOG_RECEIPT_SCHEMA,
             "status": "verified",
             "deployment_id": deployment_id,
+            "mutation_id": TEST_MUTATION_ID,
             "materialized_at": "2026-07-31T12:00:00Z",
             "bindings_digest": DIGEST_D,
             "initial_stock_digest": DIGEST_C,
@@ -632,6 +640,12 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
         client = CatalogClient()
         result = COMMERCE.materialize_catalog(client, TEST_DEPLOYMENT_ID)
         self.assertEqual(26, result["status"]["product_count"])
+        self.assertTrue(
+            result["apply"]["page_cache_purge"]["upress"]["request_completed"]
+        )
+        self.assertTrue(
+            result["apply"]["page_cache_purge"]["litespeed"]["signal_sent"]
+        )
         self.assertEqual(
             [
                 (
@@ -675,6 +689,30 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
             COMMERCE.materialize_catalog(client, TEST_DEPLOYMENT_ID)
         self.assertEqual("dry_run", raised.exception.phase)
         self.assertEqual(1, client.calls)
+
+    def test_catalog_status_must_match_the_apply_mutation_identity(self) -> None:
+        class MutationMismatchClient:
+            def __init__(self) -> None:
+                self.calls = 0
+
+            def request(self, method: str, path: str, payload=None, expected=(200, 201)):
+                self.calls += 1
+                if self.calls == 1:
+                    return 200, dry_run_response()
+                if self.calls == 2:
+                    return 200, apply_response()
+                if self.calls == 3:
+                    response = status_response()
+                    response["receipt"]["mutation_id"] = "abcdefab-cdef-abcd-efab-cdefabcdefab"
+                    return 200, response
+                raise AssertionError("unexpected extra request")
+
+        client = MutationMismatchClient()
+        with self.assertRaises(COMMERCE.CatalogMaterializationError) as raised:
+            COMMERCE.materialize_catalog(client, TEST_DEPLOYMENT_ID)
+        self.assertEqual("status", raised.exception.phase)
+        self.assertIn("mutation identity changed", str(raised.exception))
+        self.assertEqual(3, client.calls)
 
     def test_catalog_failure_keeps_only_validated_structured_diagnostics(self) -> None:
         self.assertEqual(

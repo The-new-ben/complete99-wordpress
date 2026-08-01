@@ -37,7 +37,7 @@ array is accepted for signed schema compatibility, counted toward the record
 limit, then discarded. Branch data is not stored or published until a verified
 consumer location contract is approved. Campaigns are private. The sync contract
 accepts an omitted or empty `campaigns` member for schema compatibility and
-rejects any nonempty value with HTTP 422. Unknown fields are dropped, record
+rejects any nonempty value with HTTP 422. Unknown fields are rejected, record
 counts and bytes are capped, and image names must use the owned `c99-` asset
 namespace.
 
@@ -50,6 +50,13 @@ accept price, currency, stock quantity or operational availability. The separate
 verified WooCommerce catalog owns ingredient-product prices, stock and cart
 state.
 
+The packaged WordPress menu is the approved presentation contract. A fresh
+synchronized model is reported as attested only when all 12 public slugs and
+every approved display field match that contract exactly. WordPress keeps
+the packaged order, filters, food badges and facets, and derives public section
+labels from the approved dish records. A refreshed timestamp alone cannot
+promote older or different consumer copy.
+
 An image-bearing menu item must carry an internal approved provenance and
 `approved_public_use` rights state. Public projections do not expose provenance
 or internal review wording. Selected dish and product images render as normal
@@ -60,15 +67,15 @@ other values fail with HTTP 400. Menu-item identifiers permanently own their
 sanitized canonical slugs, so a sync cannot silently rename an existing canonical
 or reassign it to another identifier.
 
-An accepted read model remains public for 24 hours from its verified WordPress
+An accepted read model remains current for 24 hours from its verified WordPress
 storage timestamp. Every individual menu item must also have been updated within
-that window. After either freshness limit expires, the catalog fails with HTTP
-503 and the live menu, dish routes, dynamic SEO ownership rows and dish sitemap
-entries all fail closed until a fresh signed sync is stored.
+that window. If either freshness limit expires, or if the synchronized display
+contract differs, public routes use the packaged approved menu while the sync
+status remains visible to the closed operational checks.
 
 ## Commerce boundary
 
-WooCommerce 10.9.4 is the product, stock and cart engine for release 1.3.8. The
+WooCommerce 10.9.4 is the product, stock and cart engine for release 1.3.9. The
 curated 26-product store and classic cart become public when the exact catalog
 receipt passes. Payment and electronic checkout remain closed until the
 separate controlled checkout gate passes. Administrators can later exercise

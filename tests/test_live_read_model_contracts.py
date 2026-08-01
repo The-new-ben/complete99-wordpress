@@ -350,15 +350,25 @@ class LiveReadModelContracts(unittest.TestCase):
             $c99_persisted_options['complete99_public_read_model'] ?? ''
         );
 
-        $item = c99_item('dish-a', 'dish-a');
-        $item['section_id'] = 'section-1';
-        $item['category_he'] = 'Hebrew category';
-        $item['category_en'] = 'Category';
-        $item['tag_he'] = 'Hebrew tag';
-        $item['tag_en'] = 'Tag';
-        $item['image_asset'] = 'c99-dish-a.webp';
-        $item['media_provenance'] = 'business_owned';
-        $item['media_rights_state'] = 'approved_public_use';
+        $approved_items = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
+        foreach ($approved_items as &$approved_item) {
+            $approved_item['verification_state'] = 'launch_ready';
+            $approved_item['updated_at'] = gmdate('c');
+            $approved_item['media_provenance'] = 'business_owned';
+            $approved_item['media_rights_state'] = 'approved_public_use';
+            $approved_item['vegetarian'] = in_array(
+                'vegetarian',
+                $approved_item['facets'] ?? array(),
+                true
+            );
+            unset(
+                $approved_item['facets'],
+                $approved_item['badge_codes'],
+                $approved_item['menu_evidence'],
+                $approved_item['availability']
+            );
+        }
+        unset($approved_item);
         $model = array(
             'schema' => 'complete99-public-read-model/v1',
             'version' => 'complete99-os-v42',
@@ -394,7 +404,7 @@ class LiveReadModelContracts(unittest.TestCase):
                     'published' => true,
                 ),
             ),
-            'items' => array($item),
+            'items' => $approved_items,
             'campaigns' => array(
                 array(
                     'id' => 'campaign-private',
@@ -444,10 +454,15 @@ class LiveReadModelContracts(unittest.TestCase):
                 "items",
                 "freshness",
                 "source",
+                "sync",
             },
             set(catalog),
         )
-        self.assertEqual("synced_read_model", catalog["source"])
+        self.assertEqual(
+            "wordpress_bundle_attested_by_synced_model", catalog["source"]
+        )
+        self.assertTrue(catalog["sync"]["attested"])
+        self.assertTrue(catalog["sync"]["controls_applied"])
         self.assertNotIn("campaigns", catalog)
         self.assertNotIn("branches", catalog)
         self.assertNotIn("digest", catalog)
@@ -510,6 +525,33 @@ class LiveReadModelContracts(unittest.TestCase):
             'updated_at' => gmdate('c', time() - Complete99_REST::PUBLIC_MODEL_TTL - 1),
             'items' => array($base),
         );
+        $approved_items = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
+        foreach ($approved_items as &$approved_item) {
+            $approved_item['verification_state'] = 'launch_ready';
+            $approved_item['updated_at'] = gmdate('c');
+            $approved_item['media_provenance'] = 'business_owned';
+            $approved_item['media_rights_state'] = 'approved_public_use';
+            $approved_item['vegetarian'] = in_array(
+                'vegetarian',
+                $approved_item['facets'] ?? array(),
+                true
+            );
+            unset(
+                $approved_item['facets'],
+                $approved_item['badge_codes'],
+                $approved_item['menu_evidence'],
+                $approved_item['availability']
+            );
+        }
+        unset($approved_item);
+        $approved = array(
+            'updated_at' => gmdate('c'),
+            'items' => $approved_items,
+        );
+        $changed_copy = $approved;
+        $changed_copy['items'][0]['description_en'] = 'Unapproved replacement copy.';
+        $held = $approved;
+        $held['items'][0]['published'] = false;
         $draft = $base;
         $draft['published'] = false;
         $string_false = $base;
@@ -542,7 +584,22 @@ class LiveReadModelContracts(unittest.TestCase):
             'unapproved_media' => Complete99_REST::is_public_item($unapproved_media, $fresh),
             'approved_media' => Complete99_REST::is_public_item($approved_media, $fresh),
             'indexable_count' => count(Complete99_REST::public_indexable_items($fresh)),
+            'indexable_source' => Complete99_REST::public_indexable_items($fresh)[0]['_complete99_source'] ?? '',
             'stale_indexable_count' => count(Complete99_REST::public_indexable_items($stale)),
+            'approved_indexable_count' => count(Complete99_REST::public_indexable_items($approved)),
+            'approved_indexable_source' => Complete99_REST::public_indexable_items($approved)[0]['_complete99_source'],
+            'approved_facets' => Complete99_REST::public_indexable_items($approved)[0]['facets'],
+            'approved_badges' => Complete99_REST::public_indexable_items($approved)[0]['badge_codes'],
+            'approved_sort' => Complete99_REST::public_indexable_items($approved)[0]['sort'],
+            'changed_copy_source' => Complete99_REST::public_indexable_items($changed_copy)[0]['_complete99_source'],
+            'held_count' => count(Complete99_REST::public_indexable_items($held)),
+            'held_contains_sabich' => !empty(array_filter(
+                Complete99_REST::public_indexable_items($held),
+                static function ($item) {
+                    return ($item['slug'] ?? '') === 'sabich';
+                }
+            )),
+            'held_source' => Complete99_REST::public_indexable_items($held)[0]['_complete99_source'],
         ));
         """
         )
@@ -558,7 +615,17 @@ class LiveReadModelContracts(unittest.TestCase):
                 "unapproved_media": False,
                 "approved_media": True,
                 "indexable_count": 1,
+                "indexable_source": "wordpress_bundle_with_synced_controls",
                 "stale_indexable_count": 12,
+                "approved_indexable_count": 12,
+                "approved_indexable_source": "wordpress_bundle_attested_by_synced_model",
+                "approved_facets": ["pita", "plate", "vegetarian"],
+                "approved_badges": ["pita", "vegetarian"],
+                "approved_sort": 10,
+                "changed_copy_source": "wordpress_bundle_with_synced_controls",
+                "held_count": 11,
+                "held_contains_sabich": False,
+                "held_source": "wordpress_bundle_with_synced_controls",
             },
             result,
         )
@@ -1217,10 +1284,12 @@ class LiveReadModelContracts(unittest.TestCase):
         self.assertEqual("complete99_sync_stale_model", result["stale"]["code"])
         self.assertEqual(409, result["stale"]["status"])
         self.assertEqual("wordpress_bundle", result["catalog"]["source"])
-        self.assertEqual("wordpress-bundle-2026-07-31", result["catalog"]["version"])
+        self.assertEqual("wordpress-bundle-2026-08-01-v1", result["catalog"]["version"])
         self.assertTrue(result["catalog"]["freshness"]["fallback_active"])
         self.assertFalse(result["catalog"]["freshness"]["fresh"])
-        self.assertEqual([], result["catalog"]["sections"])
+        self.assertFalse(result["catalog"]["sync"]["attested"])
+        self.assertFalse(result["catalog"]["sync"]["controls_applied"])
+        self.assertGreater(len(result["catalog"]["sections"]), 0)
         self.assertEqual(12, len(result["catalog"]["items"]))
         self.assertEqual(12, len(result["indexable"]))
         self.assertTrue(
