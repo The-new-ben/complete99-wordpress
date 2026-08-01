@@ -5,13 +5,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /*
- * Consumer menu references.
+ * Approved consumer menu presentation contract.
  *
  * These records describe dishes documented in the Complete99 food collection and the
  * verified external ordering menu. They deliberately omit price, stock,
- * allergens, nutrition, preparation claims and availability. Live operational
- * data from Complete99 OS replaces these references as soon as an approved
- * public read model contains menu items.
+ * allergens, nutrition and preparation claims. A fresh approved Complete99 OS
+ * model may control publication per slug, while WordPress retains this display
+ * copy, order, facets and food badges.
  */
 $c99_wolt_menu_evidence = array(
 	'provider'    => 'wolt',
@@ -48,8 +48,8 @@ return array(
 		'name_en'             => 'Beet Kubbeh',
 		'category_he'         => 'מהסירים',
 		'category_en'         => 'From the pots',
-		'description_he'      => 'מרק סלק חמוץ ומתוק עם קובה במילוי בשר. המחיר והזמינות משתנים לפי התפריט הנוכחי.',
-		'description_en'      => 'Sweet and sour beet soup with meat-filled kubbeh. Price and availability follow the current menu.',
+		'description_he'      => 'מרק סלק חמוץ ומתוק עם קובה במילוי בשר, קערה חמה ועשירה מהסירים.',
+		'description_en'      => 'Sweet and sour beet soup with meat-filled kubbeh, served as a warm, generous bowl from the pots.',
 		'tag_he'              => 'אוכל של בית',
 		'tag_en'              => 'Home cooking',
 		'facets'              => array( 'pots', 'meat' ),
@@ -88,8 +88,8 @@ return array(
 		'name_en'             => 'Shakshuka',
 		'category_he'         => 'מהמחבת',
 		'category_en'         => 'From the pan',
-		'description_he'      => 'רוטב עגבניות וביצים, בפיתה או בצלחת. התוספות מוצגות בתפריט ההזמנות הנוכחי.',
-		'description_en'      => 'Tomato sauce and eggs, in a pita or on a plate. Current options appear in the ordering menu.',
+		'description_he'      => 'רוטב עגבניות וביצים, בפיתה או בצלחת, עם תוספות לבחירה.',
+		'description_en'      => 'Tomato sauce and eggs, in a pita or on a plate, with a choice of additions.',
 		'tag_he'              => 'עגבניות וביצים',
 		'tag_en'              => 'Tomato and eggs',
 		'facets'              => array( 'pita', 'plate', 'vegetarian' ),
@@ -108,8 +108,8 @@ return array(
 		'name_en'             => 'Home-style Meatballs',
 		'category_he'         => 'אוכל ביתי',
 		'category_en'         => 'Home cooking',
-		'description_he'      => 'קציצות ברוטב עם תוספת חמה. פרטי המנה העדכניים מופיעים במסלול ההזמנה.',
-		'description_en'      => 'Meatballs in sauce with a warm side. Current plate details appear in the ordering route.',
+		'description_he'      => 'קציצות ברוטב ביתי, מוגשות עם תוספת חמה לבחירה.',
+		'description_en'      => 'Meatballs in a home-style sauce, served with a warm side of your choice.',
 		'tag_he'              => 'מהמטבח הביתי',
 		'tag_en'              => 'From the home kitchen',
 		'facets'              => array( 'pita', 'plate', 'meat' ),
@@ -128,8 +128,8 @@ return array(
 		'name_en'             => 'Fish Patties',
 		'category_he'         => 'אוכל ביתי',
 		'category_en'         => 'Home cooking',
-		'description_he'      => 'קציצות דגים ברוטב עגבניות. החריפות, המחיר והזמינות נבדקים בתפריט ההזמנות.',
-		'description_en'      => 'Fish patties in tomato sauce. Heat level, price and availability are checked in the ordering menu.',
+		'description_he'      => 'קציצות דגים ברוטב עגבניות, עם רמת חריפות לבחירה.',
+		'description_en'      => 'Fish patties in tomato sauce, with a choice of heat level.',
 		'tag_he'              => 'רוטב של בית',
 		'tag_en'              => 'A proper house sauce',
 		'facets'              => array( 'plate', 'fish' ),
@@ -188,8 +188,8 @@ return array(
 		'name_en'             => 'Couscous',
 		'category_he'         => 'מהסירים',
 		'category_en'         => 'From the pots',
-		'description_he'      => 'קוסקוס, ירקות ותבשיל משתנה. הגרסה והזמינות מופיעות בתפריט הנוכחי.',
-		'description_en'      => 'Couscous, vegetables and a changing stew. The current version and availability appear in the live menu.',
+		'description_he'      => 'קוסקוס אוורירי עם ירקות ותבשיל היום מהסיר.',
+		'description_en'      => 'Fluffy couscous with vegetables and the day’s stew from the pot.',
 		'tag_he'              => 'יום של קוסקוס',
 		'tag_en'              => 'A couscous kind of day',
 		'facets'              => array( 'pots', 'meat' ),
@@ -208,8 +208,8 @@ return array(
 		'name_en'             => 'Yemenite Beef Soup',
 		'category_he'         => 'מרק ביתי',
 		'category_en'         => 'Home-style soup',
-		'description_he'      => 'מרק בשר תימני עמוק ומחמם. זמינות הסיר נבדקת בתפריט ההזמנות.',
-		'description_en'      => 'A deep, warming Yemenite beef soup. Pot availability is checked in the ordering menu.',
+		'description_he'      => 'מרק בשר תימני עמוק ומחמם, עם בשר רך ותיבול עשיר.',
+		'description_en'      => 'A deep, warming Yemenite beef soup with tender meat and rich seasoning.',
 		'tag_he'              => 'סיר עמוק',
 		'tag_en'              => 'A deep, warming pot',
 		'facets'              => array( 'pots', 'meat' ),
@@ -248,8 +248,8 @@ return array(
 		'name_en'             => 'Chicken Liver',
 		'category_he'         => 'אוכל ביתי',
 		'category_en'         => 'Home cooking',
-		'description_he'      => 'מנה ביתית עם תוספת חמה. המחיר והזמינות מופיעים בתפריט ההזמנות.',
-		'description_en'      => 'A home-style plate with a warm side. Price and availability appear in the ordering menu.',
+		'description_he'      => 'כבד עוף בסגנון ביתי, מוגש עם תוספת חמה לבחירה.',
+		'description_en'      => 'Home-style chicken liver, served with a warm side of your choice.',
 		'tag_he'              => 'טעם עמוק',
 		'tag_en'              => 'Deep, comforting flavour',
 		'facets'              => array( 'plate', 'meat' ),

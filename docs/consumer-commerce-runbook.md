@@ -1,11 +1,11 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-07-31
-Release target: Complete99 Platform 1.3.8
+Release target: Complete99 Platform 1.3.9
 
-## Current 1.3.8 catalog boundary
+## Current 1.3.9 catalog boundary
 
-Release 1.3.8 supersedes the earlier evaluation-only pantry state described in
+Release 1.3.9 supersedes the earlier evaluation-only pantry state described in
 the historical sections below.
 
 - WooCommerce 10.9.4 is installed from the exact pinned official package.
@@ -23,6 +23,14 @@ the historical sections below.
 - The signed private OS inventory route depends on catalog readiness, not
   payment readiness.
 - Reapplying the catalog never resets operational stock.
+- Complete99 OS can refresh the public read model without replacing approved
+  consumer copy, ordering, filters or food badges. The synchronized source is
+  reported as attested only after its full 12-dish display contract matches this
+  release.
+- Catalog materialization sets native WooCommerce visibility to live and, after
+  the committed strict readback, clears and rechecks the recovery boundary,
+  then requires successful UPress and LiteSpeed page-cache purge receipts. A
+  purge failure restores the recovery boundary.
 
 Sections that discuss a held pantry, hidden evaluation products or full
 checkout acceptance remain historical evidence or requirements for the later
@@ -40,7 +48,7 @@ suppliers, costs, campaigns and operating dashboards stay private. Their legacy
 seed records are migrated to private status and removed from public navigation,
 search ownership and sitemaps.
 
-No Complete99 worker role is installed or assigned by release 1.3.8. The private
+No Complete99 worker role is installed or assigned by release 1.3.9. The private
 commerce outbox reports `unassigned_infrastructure` until a later, separately
 approved operating decision.
 
@@ -86,13 +94,14 @@ The Hebrew root and English `/en/` route use the same consumer hierarchy:
 9. Privacy, terms and accessibility
 
 The order action continues to the verified Wolt restaurant route for the
-selected language. WordPress does not copy Wolt prices or claim that an archived
-dish is currently available.
+selected language. WordPress does not copy Wolt prices or make unsupported
+availability claims.
 
-Archive food images are presented as archive references. A dish received from
-the signed public read model can display an image only when its provenance and
-public-use rights are approved. Signed menu data and every item expire after 24
-hours.
+Selected business-owned food images render as normal public dish media without
+an archive label, disclaimer or unusual treatment. A fresh signed model applies
+publication controls per dish only when provenance and public-use rights pass;
+the packaged WordPress contract remains the source of display copy, order,
+filters and food badges.
 
 ## Pantry state for 1.3.1
 

@@ -105,6 +105,37 @@ function absint($value) {{ return abs((int) $value); }}
 function wp_json_encode($value, $flags = 0) {{
     return json_encode($value, $flags | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
 }}
+$c99_runtime_options = array();
+$c99_option_write_failures = 0;
+$c99_cache_flush_failures = 0;
+function update_option($name, $value, $autoload = null) {{
+    global $c99_runtime_options, $c99_option_write_failures;
+    if ($c99_option_write_failures > 0) {{
+        $c99_option_write_failures--;
+        return false;
+    }}
+    $c99_runtime_options[$name] = $value;
+    return true;
+}}
+function delete_option($name) {{
+    global $c99_runtime_options;
+    unset($c99_runtime_options[$name]);
+    return true;
+}}
+function get_option($name, $default = false) {{
+    global $c99_runtime_options;
+    return array_key_exists($name, $c99_runtime_options)
+        ? $c99_runtime_options[$name]
+        : $default;
+}}
+function wp_cache_flush() {{
+    global $c99_cache_flush_failures;
+    if ($c99_cache_flush_failures > 0) {{
+        $c99_cache_flush_failures--;
+        return false;
+    }}
+    return true;
+}}
 class WP_Error {{
     private $code;
     private $message;
@@ -180,6 +211,36 @@ $strict_failure = new ReflectionMethod('Complete99_Live_Catalog', 'strict_readba
 $strict_failure->setAccessible(true);
 $receipt_matches = new ReflectionMethod('Complete99_Live_Catalog', 'readback_receipt_matches_marker');
 $receipt_matches->setAccessible(true);
+$seal_marker = new ReflectionMethod('Complete99_Live_Catalog', 'seal_recovery_marker');
+$seal_marker->setAccessible(true);
+$restore_marker = new ReflectionMethod('Complete99_Live_Catalog', 'restore_recovery_boundary');
+$restore_marker->setAccessible(true);
+$clear_boundary = new ReflectionMethod('Complete99_Live_Catalog', 'clear_recovery_boundary');
+$clear_boundary->setAccessible(true);
+$test_marker = $seal_marker->invoke(null, array(
+    'schema' => 'complete99-live-catalog-recovery/v2',
+    'state' => 'materializing',
+));
+$c99_option_write_failures = 1;
+$restored_after_retry = $restore_marker->invoke(
+    null,
+    $test_marker,
+    'postcommit_verification_failed'
+);
+$restored_marker = get_option('complete99_live_catalog_recovery_required', array());
+$c99_runtime_options = array();
+$c99_option_write_failures = 20;
+$persistent_restore_failure = $restore_marker->invoke(
+    null,
+    $test_marker,
+    'postcommit_verification_failed'
+);
+$c99_runtime_options = array(
+    'complete99_live_catalog_recovery_required' => $test_marker,
+);
+$c99_option_write_failures = 20;
+$c99_cache_flush_failures = 1;
+$clear_restore_failure = $clear_boundary->invoke(null, $test_marker);
 $matching_marker = array('mutation_id' => 'mutation-12345678', 'deployment_id' => 'deployment-12345678');
 $matching_readback = array(
     'ready' => true,
@@ -225,6 +286,14 @@ echo wp_json_encode(array(
             array('receipt' => array('deployment_id' => 'deployment-87654321'))
         ), $matching_marker),
     ),
+    'recovery_restore' => array(
+        'retry_succeeded' => $restored_after_retry,
+        'stored_state' => $restored_marker['state'] ?? '',
+        'persistent_failure_rejected' => !$persistent_restore_failure,
+        'clear_failure_code' => is_wp_error($clear_restore_failure)
+            ? $clear_restore_failure->get_error_code()
+            : '',
+    ),
 ));
 """
         completed = subprocess.run(
@@ -249,11 +318,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_3_8(self) -> None:
+    def test_release_version_is_exact_1_3_9(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.8$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.8' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.8' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.9$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.9' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.9' );", source)
 
     def test_runtime_bundle_has_exact_allowlist_and_price_map(self) -> None:
         products = self.bundle["products"]
@@ -553,6 +622,9 @@ echo wp_json_encode(array(
         recovery_helpers = self.live_catalog.split("private static function create_recovery_marker", 1)[
             1
         ].split("private static function query_ids", 1)[0]
+        page_cache_helper = self.live_catalog.split(
+            "private static function purge_public_page_caches_with_retry", 1
+        )[1].split("private static function recovery_baseline_matches", 1)[0]
         file_recovery = self.live_catalog.split("private static function catalog_upload_stems", 1)[
             1
         ].split("private static function canonicalize", 1)[0]
@@ -609,6 +681,20 @@ echo wp_json_encode(array(
         self.assertGreater(flush_position, start_position)
         self.assertLess(flush_position, strict_position)
         self.assertIn("'mutation_id'      => $marker['mutation_id']", materialize)
+        commit_position = materialize.index("self::transaction_statement( 'COMMIT' )")
+        page_purge_position = materialize.index(
+            "$page_cache_purge = self::purge_public_page_caches_with_retry();"
+        )
+        clear_boundary_position = materialize.index(
+            "self::clear_recovery_boundary( $marker )"
+        )
+        final_readback_position = materialize.index(
+            "$readback = self::status( true );", clear_boundary_position
+        )
+        self.assertLess(commit_position, clear_boundary_position)
+        self.assertLess(clear_boundary_position, final_readback_position)
+        self.assertLess(final_readback_position, page_purge_position)
+        self.assertIn("'page_cache_purge' => $page_cache_purge", materialize)
 
         self.assertIn("array( 'START TRANSACTION', 'COMMIT', 'ROLLBACK' )", transaction_helper)
         self.assertIn("$result = $wpdb->query( $statement );", transaction_helper)
@@ -634,6 +720,16 @@ echo wp_json_encode(array(
         self.assertIn("get_option( self::OPTION_RECOVERY, false )", recovery_helpers)
         self.assertIn("delete_option( self::OPTION_RECOVERY )", recovery_helpers)
         self.assertIn("wp_cache_flush()", recovery_helpers)
+        self.assertIn("self::purge_public_page_caches_with_retry()", recovery_helpers)
+        for marker in (
+            "\\Upress\\EzCache\\Cache::instance()",
+            "$cache->clear_cache()",
+            "has_action( 'litespeed_purge_all' )",
+            "do_action( 'litespeed_purge_all' )",
+            "complete99_live_catalog_page_cache",
+            "'attempts'",
+        ):
+            self.assertIn(marker, page_cache_helper)
         self.assertEqual(
             2,
             recovery_helpers.count("self::readback_receipt_matches_marker("),
@@ -670,6 +766,27 @@ echo wp_json_encode(array(
         ):
             self.assertIn(table, storage)
         self.assertIn("'innodb' !== strtolower", storage)
+
+    def test_recovery_boundary_restore_retries_and_rejects_failed_readback(self) -> None:
+        self.assertEqual(
+            {
+                "retry_succeeded": True,
+                "stored_state": "postcommit_verification_failed",
+                "persistent_failure_rejected": True,
+                "clear_failure_code": "complete99_live_catalog_recovery_restore_failed",
+            },
+            self.bundle["recovery_restore"],
+        )
+        self.assertIn(
+            "complete99_live_catalog_recovery_restore_failed",
+            self.live_catalog,
+        )
+        restore = self.live_catalog.split(
+            "private static function restore_recovery_boundary", 1
+        )[1].split("private static function clear_recovery_marker", 1)[0]
+        self.assertIn("for ( $attempt = 0; $attempt < 2; $attempt++ )", restore)
+        self.assertIn("self::write_recovery_marker( $failed_marker )", restore)
+        self.assertIn("self::flush_catalog_caches()", restore)
 
     def test_store_filters_badges_and_controls_are_accessible_and_safe(self) -> None:
         filters = self.consumer.split("private static function render_store_filters", 1)[1].split(
@@ -929,14 +1046,16 @@ echo wp_json_encode(array(
         self.assertTrue(all(row["published"] is True for row in menu))
 
         resolver = self.rest.split("public static function public_indexable_items", 1)[1].split(
-            "private static function synced_public_indexable_items", 1
+            "private static function public_catalog_contract", 1
         )[0]
         bundled = self.rest.split("private static function bundled_public_indexable_items", 1)[
             1
         ].split("public static function public_indexable_item_by_slug", 1)[0]
-        self.assertIn("self::synced_public_indexable_items( $model )", resolver)
-        self.assertIn("if ( empty( $items ) )", resolver)
-        self.assertIn("return self::bundled_public_indexable_items();", resolver)
+        self.assertIn("! self::is_public_model_fresh( $model )", resolver)
+        self.assertIn("return $bundled;", resolver)
+        self.assertIn("self::public_catalog_records_match( $synced_item, $item )", resolver)
+        self.assertIn("wordpress_bundle_attested_by_synced_model", resolver)
+        self.assertIn("wordpress_bundle_with_synced_controls", resolver)
         self.assertIn("data/consumer-menu.php", bundled)
         self.assertIn("'launch_ready'", bundled)
         self.assertIn("'business_owned'", bundled)
@@ -989,6 +1108,22 @@ echo wp_json_encode(array(
         )[1].split("private static function ensure_woocommerce_pages", 1)[0]
         self.assertNotIn("payment", ensure_configuration.lower())
         self.assertNotIn("gateway", ensure_configuration.lower())
+
+    def test_live_materializer_sets_native_woocommerce_visibility_live(self) -> None:
+        ensure_configuration = self.live_catalog.split(
+            "private static function ensure_store_configuration", 1
+        )[1].split("private static function ensure_woocommerce_pages", 1)[0]
+        snapshot = self.live_catalog.split(
+            "private static function store_configuration_snapshot", 1
+        )[1].split("private static function normalize_store_option_value", 1)[0]
+        for option in (
+            "woocommerce_coming_soon",
+            "woocommerce_store_pages_only",
+        ):
+            self.assertIn(f"'{option}'", ensure_configuration)
+            self.assertIn(f"'{option}'", snapshot)
+        self.assertIn("'woocommerce_coming_soon'             => 'no'", ensure_configuration)
+        self.assertIn("'woocommerce_store_pages_only'        => 'no'", ensure_configuration)
 
 
 if __name__ == "__main__":

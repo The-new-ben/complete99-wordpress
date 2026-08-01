@@ -11,8 +11,8 @@ final class Complete99_REST {
 	const NONCE_TTL        = 600;
 	const MAX_MODEL_ITEMS  = 500;
 	const PUBLIC_MODEL_TTL = 86400;
-	const BUNDLED_CATALOG_VERSION = 'wordpress-bundle-2026-07-31';
-	const BUNDLED_CATALOG_UPDATED_AT = '2026-07-31T00:00:00Z';
+	const BUNDLED_CATALOG_VERSION = 'wordpress-bundle-2026-08-01-v1';
+	const BUNDLED_CATALOG_UPDATED_AT = '2026-08-01T00:20:00Z';
 
 	public static function boot() {
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
@@ -666,33 +666,107 @@ final class Complete99_REST {
 		if ( null === $model ) {
 			$model = get_option( 'complete99_public_read_model', array() );
 		}
-		$items = self::synced_public_indexable_items( $model );
-		if ( empty( $items ) ) {
-			return self::bundled_public_indexable_items();
+		$bundled = self::bundled_public_indexable_items();
+		if ( ! is_array( $model ) || ! self::is_public_model_fresh( $model ) ) {
+			return $bundled;
 		}
-		foreach ( $items as &$item ) {
-			if ( is_array( $item ) && 'complete99_archive' === sanitize_key( (string) ( $item['media_provenance'] ?? '' ) ) ) {
-				$item['media_provenance'] = 'business_owned';
+		$records        = isset( $model['items'] ) && is_array( $model['items'] ) ? $model['items'] : array();
+		$synced_by_slug = array();
+		$synced_order   = array();
+		$exact_contract = true;
+		foreach ( $records as $item ) {
+			$slug = is_array( $item ) ? sanitize_title( (string) ( $item['slug'] ?? '' ) ) : '';
+			if ( '' === $slug || isset( $synced_by_slug[ $slug ] ) ) {
+				$exact_contract = false;
+				continue;
 			}
-			$item['_complete99_source'] = 'synced_read_model';
+			$synced_by_slug[ $slug ] = $item;
+			$synced_order[]           = $slug;
+		}
+		$bundled_order = array_map(
+			static function ( $item ) {
+				return sanitize_title( (string) ( $item['slug'] ?? '' ) );
+			},
+			$bundled
+		);
+		if ( $synced_order !== $bundled_order ) {
+			$exact_contract = false;
+		}
+		$items = array();
+		foreach ( $bundled as $item ) {
+			$slug = sanitize_title( (string) ( $item['slug'] ?? '' ) );
+			if ( ! isset( $synced_by_slug[ $slug ] ) ) {
+				$exact_contract = false;
+				continue;
+			}
+			$synced_item = $synced_by_slug[ $slug ];
+			if ( ! self::is_public_item( $synced_item, $model ) ) {
+				$exact_contract = false;
+				continue;
+			}
+			if ( ! self::public_catalog_records_match( $synced_item, $item ) ) {
+				$exact_contract = false;
+			}
+			$items[] = $item;
+		}
+		if ( count( $synced_by_slug ) !== count( $bundled ) || count( $items ) !== count( $bundled ) ) {
+			$exact_contract = false;
+		}
+		$source = $exact_contract ? 'wordpress_bundle_attested_by_synced_model' : 'wordpress_bundle_with_synced_controls';
+		foreach ( $items as &$item ) {
+			$item['_complete99_source'] = $source;
 		}
 		unset( $item );
 		return $items;
 	}
 
-	private static function synced_public_indexable_items( $model ) {
-		if ( ! is_array( $model ) || ! self::is_public_model_fresh( $model ) ) {
-			return array();
-		}
-		$records = isset( $model['items'] ) && is_array( $model['items'] ) ? $model['items'] : array();
-		return array_values(
-			array_filter(
-				$records,
-				static function ( $record ) use ( $model ) {
-					return self::is_public_item( $record, $model );
-				}
-			)
+	private static function public_catalog_contract( $records ) {
+		$keys     = array(
+			'name_he',
+			'name_en',
+			'category_he',
+			'category_en',
+			'description_he',
+			'description_en',
+			'tag_he',
+			'tag_en',
+			'image_asset',
+			'vegetarian',
 		);
+		$contract = array();
+		foreach ( is_array( $records ) ? $records : array() as $record ) {
+			if ( ! is_array( $record ) ) {
+				return array();
+			}
+			$slug = sanitize_title( (string) ( $record['slug'] ?? '' ) );
+			if ( '' === $slug || isset( $contract[ $slug ] ) ) {
+				return array();
+			}
+			$contract[ $slug ] = array();
+			foreach ( $keys as $key ) {
+				if ( 'image_asset' === $key ) {
+					$value = sanitize_file_name( (string) ( $record[ $key ] ?? '' ) );
+				} elseif ( 'vegetarian' === $key ) {
+					$value = true === ( $record[ $key ] ?? false );
+				} else {
+					$value = trim( (string) ( $record[ $key ] ?? '' ) );
+				}
+				$contract[ $slug ][ $key ] = $value;
+			}
+		}
+		ksort( $contract, SORT_STRING );
+		return $contract;
+	}
+
+	private static function public_catalog_records_match( $synced_item, $bundled_item ) {
+		$synced  = self::public_catalog_contract( array( $synced_item ) );
+		$bundled = self::public_catalog_contract( array( $bundled_item ) );
+		if ( empty( $synced ) || empty( $bundled ) ) {
+			return false;
+		}
+		$synced_digest  = hash( 'sha256', wp_json_encode( $synced, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
+		$bundled_digest = hash( 'sha256', wp_json_encode( $bundled, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
+		return hash_equals( $bundled_digest, $synced_digest );
 	}
 
 	private static function bundled_public_indexable_items() {
@@ -717,6 +791,7 @@ final class Complete99_REST {
 			$record['updated_at']                 = self::BUNDLED_CATALOG_UPDATED_AT;
 			$record['media_provenance']            = 'business_owned';
 			$record['media_rights_state']          = 'approved_public_use';
+			$record['vegetarian']                  = in_array( 'vegetarian', (array) ( $record['facets'] ?? array() ), true );
 			$record['_complete99_source']          = 'wordpress_bundle';
 			$items[]                               = $record;
 		}
@@ -758,16 +833,26 @@ final class Complete99_REST {
 		return $public;
 	}
 
-	private static function public_published_records( $model, $key, $allowed_keys ) {
-		$records = isset( $model[ $key ] ) && is_array( $model[ $key ] ) ? $model[ $key ] : array();
-		$public  = array();
-		foreach ( $records as $record ) {
-			if ( ! is_array( $record ) || true !== ( isset( $record['published'] ) ? $record['published'] : null ) ) {
+	private static function public_catalog_sections( $items ) {
+		$sections = array();
+		$seen     = array();
+		foreach ( is_array( $items ) ? $items : array() as $item ) {
+			$name_he = trim( (string) ( $item['category_he'] ?? '' ) );
+			$name_en = trim( (string) ( $item['category_en'] ?? '' ) );
+			if ( '' === $name_he || '' === $name_en ) {
 				continue;
 			}
-			$public[] = self::public_record_projection( $record, $allowed_keys );
+			$key = hash( 'sha256', $name_he . "\n" . $name_en );
+			if ( isset( $seen[ $key ] ) ) {
+				continue;
+			}
+			$seen[ $key ] = true;
+			$sections[]   = array(
+				'name_he' => $name_he,
+				'name_en' => $name_en,
+			);
 		}
-		return $public;
+		return $sections;
 	}
 
 	public static function public_catalog() {
@@ -777,8 +862,12 @@ final class Complete99_REST {
 		}
 		$freshness = self::model_freshness( $model );
 		$indexable = self::public_indexable_items( $model );
-		$source    = ! empty( $indexable ) ? (string) ( $indexable[0]['_complete99_source'] ?? 'wordpress_bundle' ) : 'wordpress_bundle';
-		$fallback  = 'wordpress_bundle' === $source;
+		$source    = ! empty( $indexable )
+			? (string) ( $indexable[0]['_complete99_source'] ?? 'wordpress_bundle' )
+			: ( self::is_public_model_fresh( $model ) ? 'wordpress_bundle_with_synced_controls' : 'wordpress_bundle' );
+		$attested  = 'wordpress_bundle_attested_by_synced_model' === $source;
+		$fallback  = ! $attested;
+		$model_is_fresh = self::is_public_model_fresh( $model );
 		$items = array_map(
 			static function ( $record ) {
 				return self::public_record_projection(
@@ -804,14 +893,16 @@ final class Complete99_REST {
 		return rest_ensure_response(
 			array(
 				'schema'     => isset( $model['schema'] ) ? (string) $model['schema'] : 'complete99-public-read-model/v1',
-				'version'    => $fallback ? self::BUNDLED_CATALOG_VERSION : ( isset( $model['version'] ) ? (string) $model['version'] : '' ),
-				'updated_at' => $fallback ? self::BUNDLED_CATALOG_UPDATED_AT : ( isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '' ),
+				'version'    => self::BUNDLED_CATALOG_VERSION,
+				'updated_at' => self::BUNDLED_CATALOG_UPDATED_AT,
 				'source'     => $source,
-				'sections'   => $fallback ? array() : self::public_published_records(
-					$model,
-					'sections',
-					array( 'name_he', 'name_en' )
+				'sync'       => array(
+					'attested'         => $attested,
+					'controls_applied' => $model_is_fresh,
+					'version'          => $model_is_fresh ? (string) ( $model['version'] ?? '' ) : '',
+					'updated_at'       => $model_is_fresh ? (string) ( $model['updated_at'] ?? '' ) : '',
 				),
+				'sections'   => self::public_catalog_sections( $indexable ),
 				'items'      => array_values( $items ),
 				'freshness'  => array_merge( $freshness, array( 'fallback_active' => $fallback ) ),
 			)

@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-07-31 23:15:00"
+RELEASE_LAST_UPDATED = "2026-08-01 00:20:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -222,6 +222,7 @@ def main() -> int:
                 "<li>Separated public catalog and cart readiness from the electronic payment launch gate.</li>"
                 "<li>Added exact WooCommerce dependency verification and fail-closed recovery for dependency and catalog materialization.</li>"
                 "<li>Normalized WooCommerce page option types across cache flushes so strict catalog readback stays deterministic.</li>"
+                "<li>Kept the approved WordPress presentation authoritative, applied synchronized publication controls per dish, set WooCommerce visibility to live and purged host page caches after commit.</li>"
                 "</ul>"
             )
         },
