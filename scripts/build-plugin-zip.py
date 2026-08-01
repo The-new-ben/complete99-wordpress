@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-01 00:20:00"
+RELEASE_LAST_UPDATED = "2026-08-01 01:20:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -216,6 +216,12 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Kept signed catalog identity independent of WooCommerce customer-language and session filters.</li>"
+                "<li>Kept the Hebrew and English pantry available after cart-language changes and item removal.</li>"
+                "<li>Read stock identity and immediate catalog verification from the raw WooCommerce edit context.</li>"
+                "</ul>"
+                "<h4>1.3.9</h4>"
                 "<ul>"
                 "<li>Published a bilingual, food-first pantry catalog with 26 linked ingredient products and opening stock.</li>"
                 "<li>Presented approved dish and product images normally without archive notices or unusual public treatment.</li>"

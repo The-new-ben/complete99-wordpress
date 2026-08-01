@@ -147,6 +147,79 @@ class WP_Error {{
     public function get_error_message() {{ return $this->message; }}
 }}
 function is_wp_error($value) {{ return $value instanceof WP_Error; }}
+class Complete99_Commerce {{
+    const PRODUCT_APPROVED = '_complete99_store_approved';
+    const STOCK_AUTHORITY = '_complete99_stock_authority';
+    const LABEL_REVIEWED = '_complete99_product_label_reviewed';
+    const ORIGIN_REVIEWED = '_complete99_product_origin_reviewed';
+    const CHECKOUT_ELIGIBLE = '_complete99_product_checkout_eligible';
+    const RIGHTS_REVIEWED = '_complete99_product_rights_reviewed';
+    const TAX_REVIEWED = '_complete99_product_tax_reviewed';
+    const MEDIA_PUBLIC_SAFE = '_complete99_media_public_safe';
+    const NAME_HE = '_complete99_product_name_he';
+    const NAME_EN = '_complete99_product_name_en';
+    const DESCRIPTION_HE = '_complete99_product_description_he';
+    const DESCRIPTION_EN = '_complete99_product_description_en';
+    const INGREDIENTS_HE = '_complete99_product_ingredients_he';
+    const INGREDIENTS_EN = '_complete99_product_ingredients_en';
+    const ALLERGENS_HE = '_complete99_product_allergens_he';
+    const ALLERGENS_EN = '_complete99_product_allergens_en';
+    const STORAGE_HE = '_complete99_product_storage_he';
+    const STORAGE_EN = '_complete99_product_storage_en';
+    const FULFILMENT_HE = '_complete99_product_fulfilment_he';
+    const FULFILMENT_EN = '_complete99_product_fulfilment_en';
+    const ORIGIN_HE = '_complete99_product_origin_he';
+    const ORIGIN_EN = '_complete99_product_origin_en';
+}}
+$c99_fake_language = 'he';
+$c99_fake_getter_contexts = array();
+class C99_Fake_Product {{
+    private function record($getter, $context) {{
+        global $c99_fake_getter_contexts;
+        $c99_fake_getter_contexts[$getter][] = $context;
+    }}
+    private function localized($context, $raw) {{
+        global $c99_fake_language;
+        return 'edit' === $context ? $raw : $raw . '-' . $c99_fake_language;
+    }}
+    public function is_type($type) {{ return 'simple' === $type; }}
+    public function get_image_id($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? 77 : 0; }}
+    public function get_sku($context = 'view') {{ $this->record(__FUNCTION__, $context); return $this->localized($context, 'product-amba-500g'); }}
+    public function get_name($context = 'view') {{ $this->record(__FUNCTION__, $context); return $this->localized($context, 'עמבה 500 גרם | Amba 500 g'); }}
+    public function get_price($context = 'view') {{ $this->record(__FUNCTION__, $context); return $this->localized($context, '14.90'); }}
+    public function get_regular_price($context = 'view') {{ $this->record(__FUNCTION__, $context); return $this->localized($context, '14.90'); }}
+    public function get_sale_price($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? '' : '1.00'; }}
+    public function get_weight($context = 'view') {{ $this->record(__FUNCTION__, $context); return $this->localized($context, '0.500'); }}
+    public function get_manage_stock($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context; }}
+    public function get_backorders($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? 'no' : 'yes'; }}
+    public function get_catalog_visibility($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? 'visible' : 'hidden'; }}
+    public function get_virtual($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' !== $context; }}
+    public function get_downloadable($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' !== $context; }}
+    public function get_tax_status($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? 'taxable' : 'none'; }}
+    public function get_category_ids($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? array(5) : array(6); }}
+    public function get_tag_ids($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? array(8) : array(9); }}
+    public function get_shipping_class_id($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? 10 : 11; }}
+    public function get_attributes($context = 'view') {{ $this->record(__FUNCTION__, $context); return 'edit' === $context ? array('raw') : array('localized'); }}
+}}
+function wc_get_product($product_id) {{ return 123 === (int) $product_id ? new C99_Fake_Product() : false; }}
+function get_post_type($post_id) {{ return 77 === (int) $post_id ? 'attachment' : 'product'; }}
+function get_attached_file($post_id, $unfiltered = false) {{ return __FILE__; }}
+function get_post_status($post_id) {{ return 'publish'; }}
+function get_post_meta($post_id, $key, $single = false) {{
+    if (77 === (int) $post_id) {{
+        $asset = array(
+            '_complete99_live_catalog_asset_managed' => 'yes',
+            '_complete99_live_catalog_asset_product_code' => 'product-amba-500g',
+            '_complete99_live_catalog_asset_source_sha256' => str_repeat('a', 64),
+            '_complete99_media_public_safe' => 'yes',
+        );
+        return $asset[$key] ?? '';
+    }}
+    if (123 === (int) $post_id && '_complete99_catalog_product_code' === $key) {{
+        return 'product-amba-500g';
+    }}
+    return 'fixture-' . $key;
+}}
 require '{live_catalog}';
 $method = new ReflectionMethod('Complete99_Live_Catalog', 'load_bundle');
 $method->setAccessible(true);
@@ -187,6 +260,17 @@ $normalize_option = new ReflectionMethod('Complete99_Live_Catalog', 'normalize_s
 $normalize_option->setAccessible(true);
 $digest_value = new ReflectionMethod('Complete99_Live_Catalog', 'digest');
 $digest_value->setAccessible(true);
+$product_identity = new ReflectionMethod('Complete99_Live_Catalog', 'product_identity');
+$product_identity->setAccessible(true);
+$c99_fake_language = 'he';
+$identity_he = $product_identity->invoke(null, 123, false);
+$c99_fake_language = 'en';
+$identity_en = $product_identity->invoke(null, 123, false);
+$identity_contexts = array();
+foreach ($c99_fake_getter_contexts as $getter => $contexts) {{
+    $identity_contexts[$getter] = array_values(array_unique($contexts));
+}}
+ksort($identity_contexts, SORT_STRING);
 $page_option_names = array(
     'woocommerce_shop_page_id',
     'woocommerce_terms_page_id',
@@ -252,6 +336,11 @@ echo wp_json_encode(array(
     'prices' => $bundle['price_registry'],
     'relations' => $bundle['relations'],
     'consumer_menu' => $consumer_menu,
+    'product_identity' => array(
+        'equal_across_languages' => $digest_value->invoke(null, $identity_he) === $digest_value->invoke(null, $identity_en),
+        'raw_name' => $identity_en['name'] ?? '',
+        'contexts' => $identity_contexts,
+    ),
     'normalization' => array(
         'page_int' => $normalize_option->invoke(null, 'woocommerce_cart_page_id', 123),
         'page_string' => $normalize_option->invoke(null, 'woocommerce_cart_page_id', '123'),
@@ -318,11 +407,82 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_3_9(self) -> None:
+    def test_release_version_is_exact_1_3_10(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.9$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.9' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.9' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.10$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.10' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.10' );", source)
+
+    def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
+        identity = self.live_catalog.split(
+            "private static function product_identity", 1
+        )[1].split("private static function receipt_contract_is_valid", 1)[0]
+        for getter in (
+            "get_image_id",
+            "get_sku",
+            "get_name",
+            "get_price",
+            "get_regular_price",
+            "get_sale_price",
+            "get_weight",
+            "get_manage_stock",
+            "get_backorders",
+            "get_catalog_visibility",
+            "get_virtual",
+            "get_downloadable",
+            "get_tax_status",
+            "get_category_ids",
+            "get_tag_ids",
+            "get_shipping_class_id",
+            "get_attributes",
+        ):
+            self.assertIn(f"{getter}( 'edit' )", identity)
+        self.assertNotIn("managing_stock()", identity)
+        self.assertNotIn("get_name()", identity)
+        runtime = self.bundle["product_identity"]
+        self.assertTrue(runtime["equal_across_languages"])
+        self.assertEqual("עמבה 500 גרם | Amba 500 g", runtime["raw_name"])
+        self.assertEqual(
+            {
+                getter: ["edit"]
+                for getter in (
+                    "get_attributes",
+                    "get_backorders",
+                    "get_catalog_visibility",
+                    "get_category_ids",
+                    "get_downloadable",
+                    "get_image_id",
+                    "get_manage_stock",
+                    "get_name",
+                    "get_price",
+                    "get_regular_price",
+                    "get_sale_price",
+                    "get_shipping_class_id",
+                    "get_sku",
+                    "get_tag_ids",
+                    "get_tax_status",
+                    "get_virtual",
+                    "get_weight",
+                )
+            },
+            runtime["contexts"],
+        )
+
+    def test_initial_stock_receipts_use_unfiltered_edit_context(self) -> None:
+        for old_call in (
+            "managing_stock()",
+            "get_stock_quantity()",
+            "get_stock_status()",
+            "get_backorders()",
+        ):
+            self.assertNotIn(old_call, self.live_catalog)
+        for raw_call in (
+            "get_manage_stock( 'edit' )",
+            "get_stock_quantity( 'edit' )",
+            "get_stock_status( 'edit' )",
+            "get_backorders( 'edit' )",
+        ):
+            self.assertGreaterEqual(self.live_catalog.count(raw_call), 2)
 
     def test_runtime_bundle_has_exact_allowlist_and_price_map(self) -> None:
         products = self.bundle["products"]
@@ -579,10 +739,10 @@ echo wp_json_encode(array(
             "$meta = array(", 1
         )[0]
         for marker in (
-            "$initial_stock_readback->managing_stock()",
-            "$initial_stock_readback->get_stock_quantity()",
-            "$initial_stock_readback->get_stock_status()",
-            "$initial_stock_readback->get_backorders()",
+            "$initial_stock_readback->get_manage_stock( 'edit' )",
+            "$initial_stock_readback->get_stock_quantity( 'edit' )",
+            "$initial_stock_readback->get_stock_status( 'edit' )",
+            "$initial_stock_readback->get_backorders( 'edit' )",
         ):
             self.assertIn(marker, readback)
         self.assertIn("self::META_STOCK_INITIALIZED                => 'yes'", ensure_product)
