@@ -3,7 +3,7 @@
  * Plugin Name: Complete99 Platform
  * Plugin URI:  https://complete99.co.il/
  * Description: Bilingual consumer food, culinary knowledge, commerce readiness and a secure bridge to Complete99 OS.
- * Version:     1.3.9
+ * Version:     1.3.10
  * Requires at least: 6.4
  * Requires PHP: 8.0
  * Author:      Complete99
@@ -14,8 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'COMPLETE99_PLATFORM_VERSION', '1.3.9' );
-define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.9' );
+define( 'COMPLETE99_PLATFORM_VERSION', '1.3.10' );
+define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.10' );
 define( 'COMPLETE99_PLATFORM_FILE', __FILE__ );
 define( 'COMPLETE99_PLATFORM_DIR', plugin_dir_path( __FILE__ ) );
 define( 'COMPLETE99_PLATFORM_URL', plugin_dir_url( __FILE__ ) );

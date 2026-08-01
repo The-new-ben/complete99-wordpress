@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
-Last updated: 2026-07-31
-Status: bilingual culinary release 1.3.9, 12 dishes and 26-product live store
+Last updated: 2026-08-01
+Status: bilingual culinary release 1.3.10, 12 dishes and 26-product live store
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -192,7 +192,7 @@ Release 1.3.1 creates contracts and checks, not worker assignments.
 
 ## 8. Store readiness
 
-WooCommerce is the commerce engine; a custom cart is not. Release 1.3.9 opens
+WooCommerce is the commerce engine; a custom cart is not. Release 1.3.10 opens
 the exact 26-product catalog, classic cart and local-pickup continuation. The
 electronic checkout remains closed until the payment-specific evidence below
 passes:

@@ -430,10 +430,10 @@ final class Complete99_Live_Catalog {
 				if ( $initialized_now ) {
 					$stock_readback = wc_get_product( $product_id );
 					$initial_stock_receipts[ $code ]['readback'] = array(
-						'managing_stock' => $stock_readback ? (bool) $stock_readback->managing_stock() : false,
-						'quantity'       => $stock_readback ? (int) $stock_readback->get_stock_quantity() : -1,
-						'status'         => $stock_readback ? (string) $stock_readback->get_stock_status() : '',
-						'backorders'     => $stock_readback ? (string) $stock_readback->get_backorders() : '',
+						'managing_stock' => $stock_readback ? (bool) $stock_readback->get_manage_stock( 'edit' ) : false,
+						'quantity'       => $stock_readback ? (int) $stock_readback->get_stock_quantity( 'edit' ) : -1,
+						'status'         => $stock_readback ? (string) $stock_readback->get_stock_status( 'edit' ) : '',
+						'backorders'     => $stock_readback ? (string) $stock_readback->get_backorders( 'edit' ) : '',
 					);
 				}
 				$identity          = self::product_identity( $product_id, true );
@@ -1500,10 +1500,10 @@ final class Complete99_Live_Catalog {
 			if ( $sets_initial_stock ) {
 				$initial_stock_readback = wc_get_product( $product_id );
 				if ( ! $initial_stock_readback
-					|| ! $initial_stock_readback->managing_stock()
-					|| 1 !== (int) $initial_stock_readback->get_stock_quantity()
-					|| 'instock' !== (string) $initial_stock_readback->get_stock_status()
-					|| 'no' !== (string) $initial_stock_readback->get_backorders() ) {
+					|| ! $initial_stock_readback->get_manage_stock( 'edit' )
+					|| 1 !== (int) $initial_stock_readback->get_stock_quantity( 'edit' )
+					|| 'instock' !== (string) $initial_stock_readback->get_stock_status( 'edit' )
+					|| 'no' !== (string) $initial_stock_readback->get_backorders( 'edit' ) ) {
 					return self::error( 'complete99_live_catalog_initial_stock_failed', 'The initial stock policy could not be read back exactly.', 500 );
 				}
 			}
@@ -1593,7 +1593,13 @@ final class Complete99_Live_Catalog {
 		if ( ! $product || ! $product->is_type( 'simple' ) ) {
 			return self::error( 'complete99_live_catalog_product_readback_failed', 'A product could not be read back as a simple product.', 500 );
 		}
-		$image_id = absint( $product->get_image_id() );
+		/*
+		 * Receipt identity must be independent of storefront language, customer
+		 * sessions and view filters. In particular, Complete99 localizes product
+		 * names for the cart through woocommerce_product_get_name. The edit
+		 * context reads the durable values that were signed during materialization.
+		 */
+		$image_id = absint( $product->get_image_id( 'edit' ) );
 		$product_code = (string) get_post_meta( $product_id, self::META_PRODUCT_CODE, true );
 		$file     = $image_id ? (string) get_attached_file( $image_id, true ) : '';
 		$file_sha = '';
@@ -1653,27 +1659,27 @@ final class Complete99_Live_Catalog {
 		return array(
 			'id'                 => absint( $product_id ),
 			'post_status'        => (string) get_post_status( $product_id ),
-			'sku'                => (string) $product->get_sku(),
-			'name'               => (string) $product->get_name(),
-			'price'              => (string) $product->get_price(),
-			'regular_price'      => (string) $product->get_regular_price(),
-			'sale_price'         => (string) $product->get_sale_price(),
-			'weight'             => (string) $product->get_weight(),
-			'managing_stock'     => (bool) $product->managing_stock(),
-			'backorders'         => (string) $product->get_backorders(),
-			'catalog_visibility' => (string) $product->get_catalog_visibility(),
-			'virtual'            => (bool) $product->get_virtual(),
-			'downloadable'       => (bool) $product->get_downloadable(),
-			'tax_status'         => (string) $product->get_tax_status(),
+			'sku'                => (string) $product->get_sku( 'edit' ),
+			'name'               => (string) $product->get_name( 'edit' ),
+			'price'              => (string) $product->get_price( 'edit' ),
+			'regular_price'      => (string) $product->get_regular_price( 'edit' ),
+			'sale_price'         => (string) $product->get_sale_price( 'edit' ),
+			'weight'             => (string) $product->get_weight( 'edit' ),
+			'managing_stock'     => (bool) $product->get_manage_stock( 'edit' ),
+			'backorders'         => (string) $product->get_backorders( 'edit' ),
+			'catalog_visibility' => (string) $product->get_catalog_visibility( 'edit' ),
+			'virtual'            => (bool) $product->get_virtual( 'edit' ),
+			'downloadable'       => (bool) $product->get_downloadable( 'edit' ),
+			'tax_status'         => (string) $product->get_tax_status( 'edit' ),
 			'image_id'           => $image_id,
 			'image_sha256'       => (string) get_post_meta( $image_id, self::META_ASSET_SHA, true ),
 			'image_managed'      => (string) get_post_meta( $image_id, self::META_ASSET_MANAGED, true ),
 			'image_product_code' => (string) get_post_meta( $image_id, self::META_ASSET_CODE, true ),
 			'image_public_safe'  => (string) get_post_meta( $image_id, Complete99_Commerce::MEDIA_PUBLIC_SAFE, true ),
-			'category_ids'       => array_map( 'absint', $product->get_category_ids() ),
-			'tag_ids'            => array_map( 'absint', $product->get_tag_ids() ),
-			'shipping_class_id'  => absint( $product->get_shipping_class_id() ),
-			'attributes'         => $product->get_attributes(),
+			'category_ids'       => array_map( 'absint', $product->get_category_ids( 'edit' ) ),
+			'tag_ids'            => array_map( 'absint', $product->get_tag_ids( 'edit' ) ),
+			'shipping_class_id'  => absint( $product->get_shipping_class_id( 'edit' ) ),
+			'attributes'         => $product->get_attributes( 'edit' ),
 			'meta'               => $meta,
 		);
 	}
