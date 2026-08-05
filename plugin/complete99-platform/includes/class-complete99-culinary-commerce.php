@@ -803,6 +803,9 @@ final class Complete99_Culinary_Commerce {
 				}
 				$cost_scenario = $cost_scenarios[ $record['landed_cost_scenario_id'] ];
 				$margin_scenario = $margin_scenarios[ $record['margin_scenario_id'] ];
+				if ( $record['market_id'] !== $cost_scenario['destination_market_id'] ) {
+					throw new RuntimeException( $path . '.destination_market' );
+				}
 				if ( 'approved' !== $cost_scenario['scenario_state']
 					|| $record['sku_id'] !== $cost_scenario['sku_id']
 					|| $record['currency_id'] !== $cost_scenario['currency_id']

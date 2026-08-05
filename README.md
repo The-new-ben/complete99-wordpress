@@ -78,7 +78,7 @@ required for inventory control.
 
 ```powershell
 python scripts/lint-php.py
-python -m unittest discover -s tests -v
+python -m pytest -q
 python scripts/secret-scan.py
 python scripts/build-plugin-zip.py --verify-reproducible
 python scripts/validate-package.py --dist plugin-dist

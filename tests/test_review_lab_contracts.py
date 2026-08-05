@@ -118,6 +118,31 @@ class ReviewLabContracts(unittest.TestCase):
         self.assertIn("בדיקות הקבלה", source)
         self.assertNotIn("\u2014", source)
 
+    def test_product_commerce_rendering_uses_precomputed_indexes(self):
+        source = REVIEW.read_text(encoding="utf-8")
+        product_loop_marker = "<?php foreach ( $graph_products as $graph_product ) : ?>"
+        product_loop = source.split(product_loop_marker, 1)[1].split(
+            "<?php endforeach; ?>", 1
+        )[0]
+
+        self.assertLess(
+            source.index("$variants_by_product = array();"),
+            source.index(product_loop_marker),
+        )
+        self.assertIn(
+            "$variants_by_product[ $variant_product_id ][] = $variant;", source
+        )
+        self.assertIn("$skus_by_variant[ $sku_variant_id ][] = $sku;", source)
+        self.assertIn(
+            "$observations_by_sku[ $observation_sku_id ][] = $observation;",
+            source,
+        )
+        self.assertIn("$variants_by_product[ $product_id ]", product_loop)
+        self.assertIn("$skus_by_variant[ $variant_id ]", product_loop)
+        self.assertIn("$observations_by_sku[ $sku_id ]", product_loop)
+        self.assertNotIn("array_filter(", product_loop)
+        self.assertNotIn("in_array(", product_loop)
+
 
 if __name__ == "__main__":
     unittest.main()

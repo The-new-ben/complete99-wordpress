@@ -244,6 +244,30 @@ final class Complete99_Review_Lab {
 		$graph_bundles = isset( $commerce_graph['bundles'] ) && is_array( $commerce_graph['bundles'] ) ? $commerce_graph['bundles'] : array();
 		$graph_connector_profiles = isset( $commerce_graph['connector_profiles'] ) && is_array( $commerce_graph['connector_profiles'] ) ? $commerce_graph['connector_profiles'] : array();
 		$graph_integration_consumers = isset( $commerce_graph['integration_consumers'] ) && is_array( $commerce_graph['integration_consumers'] ) ? $commerce_graph['integration_consumers'] : array();
+		$variants_by_product = array();
+		foreach ( $graph_variants as $variant ) {
+			$variant_product_id = isset( $variant['product_id'] ) ? (string) $variant['product_id'] : '';
+			if ( '' === $variant_product_id ) {
+				continue;
+			}
+			$variants_by_product[ $variant_product_id ][] = $variant;
+		}
+		$skus_by_variant = array();
+		foreach ( $graph_skus as $sku ) {
+			$sku_variant_id = isset( $sku['variant_id'] ) ? (string) $sku['variant_id'] : '';
+			if ( '' === $sku_variant_id ) {
+				continue;
+			}
+			$skus_by_variant[ $sku_variant_id ][] = $sku;
+		}
+		$observations_by_sku = array();
+		foreach ( $graph_observations as $observation ) {
+			$observation_sku_id = isset( $observation['sku_id'] ) ? (string) $observation['sku_id'] : '';
+			if ( '' === $observation_sku_id ) {
+				continue;
+			}
+			$observations_by_sku[ $observation_sku_id ][] = $observation;
+		}
 		$graph_active_offers = array_filter(
 			$graph_offers,
 			static function ( $offer ) {
@@ -310,44 +334,26 @@ final class Complete99_Review_Lab {
 					<?php foreach ( $graph_products as $graph_product ) : ?>
 						<?php
 						$product_id = isset( $graph_product['id'] ) ? (string) $graph_product['id'] : '';
-						$product_variants = array_filter(
-							$graph_variants,
-							static function ( $variant ) use ( $product_id ) {
-								return $product_id === ( isset( $variant['product_id'] ) ? $variant['product_id'] : '' );
+						$product_variants = isset( $variants_by_product[ $product_id ] ) ? $variants_by_product[ $product_id ] : array();
+						$product_sku_count = 0;
+						$product_observation_count = 0;
+						foreach ( $product_variants as $product_variant ) {
+							$variant_id = isset( $product_variant['id'] ) ? (string) $product_variant['id'] : '';
+							$variant_skus = isset( $skus_by_variant[ $variant_id ] ) ? $skus_by_variant[ $variant_id ] : array();
+							$product_sku_count += count( $variant_skus );
+							foreach ( $variant_skus as $variant_sku ) {
+								$sku_id = isset( $variant_sku['id'] ) ? (string) $variant_sku['id'] : '';
+								$product_observation_count += isset( $observations_by_sku[ $sku_id ] ) ? count( $observations_by_sku[ $sku_id ] ) : 0;
 							}
-						);
-						$variant_ids = array_map(
-							static function ( $variant ) {
-								return isset( $variant['id'] ) ? $variant['id'] : '';
-							},
-							$product_variants
-						);
-						$product_skus = array_filter(
-							$graph_skus,
-							static function ( $sku ) use ( $variant_ids ) {
-								return in_array( isset( $sku['variant_id'] ) ? $sku['variant_id'] : '', $variant_ids, true );
-							}
-						);
-						$sku_ids = array_map(
-							static function ( $sku ) {
-								return isset( $sku['id'] ) ? $sku['id'] : '';
-							},
-							$product_skus
-						);
-						$product_observations = array_filter(
-							$graph_observations,
-							static function ( $observation ) use ( $sku_ids ) {
-								return in_array( isset( $observation['sku_id'] ) ? $observation['sku_id'] : '', $sku_ids, true );
-							}
-						);
+						}
 						?>
 						<tr>
 							<td><strong><?php echo esc_html( self::local_name( $graph_product, 'name', $product_id ) ); ?></strong><div class="c99-review-code"><?php echo esc_html( $product_id ); ?></div></td>
 							<td class="c99-review-code"><?php echo esc_html( isset( $graph_product['knowledge_entity_id'] ) ? $graph_product['knowledge_entity_id'] : '' ); ?></td>
 							<td><?php echo esc_html( isset( $graph_product['state'] ) ? $graph_product['state'] : '' ); ?></td>
 							<td><?php echo esc_html( count( $product_variants ) ); ?></td>
-							<td><?php echo esc_html( count( $product_skus ) ); ?></td>
-							<td><?php echo esc_html( count( $product_observations ) ); ?></td>
+							<td><?php echo esc_html( $product_sku_count ); ?></td>
+							<td><?php echo esc_html( $product_observation_count ); ?></td>
 						</tr>
 					<?php endforeach; ?>
 					</tbody>

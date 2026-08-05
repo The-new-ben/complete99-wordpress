@@ -626,6 +626,20 @@ $mutations['different_landed_scenario_links'] = c99_mutation_result(
         $candidate['margin_scenarios'][0]['landed_cost_scenario_id'] = $secondary['id'];
     }
 );
+$same_currency_wrong_destination = $approved;
+$launch_market_offset = c99_record_offset($same_currency_wrong_destination['markets'], 'market-il-launch');
+$wrong_market = $same_currency_wrong_destination['markets'][$launch_market_offset];
+$wrong_market['id'] = 'market-il-wrong-destination';
+$wrong_market['label'] = array('he' => 'Wrong destination fixture', 'en' => 'Wrong destination fixture');
+$same_currency_wrong_destination['markets'][] = $wrong_market;
+$same_currency_wrong_destination['landed_cost_scenarios'][0]['destination_market_id'] = $wrong_market['id'];
+$mutations['same_currency_wrong_destination'] = c99_chain_validation_result($same_currency_wrong_destination);
+$wrong_destination_context = array(
+    'offer_market_id' => $same_currency_wrong_destination['channel_offers'][0]['market_id'],
+    'landed_destination_market_id' => $same_currency_wrong_destination['landed_cost_scenarios'][0]['destination_market_id'],
+    'offer_currency_id' => $same_currency_wrong_destination['channel_offers'][0]['currency_id'],
+    'destination_currency_id' => $wrong_market['currency_id'],
+);
 $mutations['unexplained_gross_to_net_gap'] = c99_mutation_result(
     $approved,
     function (&$candidate) { $candidate['margin_scenarios'][0]['revenue_adjustment_lines'][0]['amount_minor_signed'] = -1600; }
@@ -731,6 +745,7 @@ echo json_encode(
             'consumer' => $approved['integration_consumers'][c99_record_offset($approved['integration_consumers'], 'consumer-myshop-pos-adapter')],
         ),
         'mutations' => $mutations,
+        'wrong_destination_context' => $wrong_destination_context,
         'expired' => array(
             'validation' => $expired_validation,
             'status' => $expired_status,
@@ -1309,6 +1324,7 @@ def test_reusable_approved_chain_is_fully_coherent(
         ("margin_currency_mismatch", ".landed_cost_contract"),
         ("margin_rate_mismatch", ".margin_rate_decimal.formula"),
         ("different_landed_scenario_links", ".scenario_gate"),
+        ("same_currency_wrong_destination", ".destination_market"),
         ("unexplained_gross_to_net_gap", ".net_revenue_bridge"),
         ("reversed_validity_window", ".validity"),
         ("negative_modifier_effective_price", ".modifier_effective_price"),
@@ -1347,6 +1363,19 @@ def test_expired_active_offer_is_excluded_from_status_and_pos_projection(
     assert expired["pos"]["count"] == 0
     assert expired["pos"]["items"] == []
     assert expired["pos"]["next_cursor"] == ""
+
+
+def test_same_currency_destination_mutation_is_not_a_currency_failure(
+    approved_chain_payload: dict[str, Any],
+) -> None:
+    context = approved_chain_payload["wrong_destination_context"]
+    assert context["offer_market_id"] != context["landed_destination_market_id"]
+    assert context["offer_currency_id"] == context["destination_currency_id"]
+    result = approved_chain_payload["mutations"][
+        "same_currency_wrong_destination"
+    ]
+    assert result["valid"] is False
+    assert _error_path(result).endswith(".destination_market")
 
 
 def test_culinary_commerce_files_contain_no_em_dash_u2014() -> None:

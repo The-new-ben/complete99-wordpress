@@ -57,12 +57,18 @@ final class Complete99_REST {
 		$commerce_graph = $commerce_graph_loaded ? Complete99_Culinary_Commerce::status() : array();
 		$database_version = (string) get_option( 'complete99_platform_version', '' );
 		if ( Complete99_Platform::migration_failed()
-			|| COMPLETE99_PLATFORM_VERSION !== $database_version
-			|| ( $science_loaded && empty( $science['ready'] ) )
-			|| ( $commerce_graph_loaded && empty( $commerce_graph['ready'] ) ) ) {
+			|| COMPLETE99_PLATFORM_VERSION !== $database_version ) {
 			return new WP_Error(
 				'complete99_migration_incomplete',
 				'Complete99 is not ready because its database migration is incomplete.',
+				array( 'status' => 503 )
+			);
+		}
+		if ( ( $science_loaded && empty( $science['ready'] ) )
+			|| ( $commerce_graph_loaded && empty( $commerce_graph['ready'] ) ) ) {
+			return new WP_Error(
+				'complete99_culinary_graph_unavailable',
+				'Complete99 culinary data is temporarily unavailable.',
 				array( 'status' => 503 )
 			);
 		}
