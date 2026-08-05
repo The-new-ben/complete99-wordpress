@@ -658,6 +658,11 @@ class Complete99ContractTests(unittest.TestCase):
         )
         self.assertNotIn("build-plugin-zip.py", deploy)
         ci = (ROOT / ".github" / "workflows" / "wordpress-ci.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            "python -m pip install --disable-pip-version-check --no-input pytest==9.0.2",
+            ci,
+        )
+        self.assertIn("python -m pytest -q", ci)
         self.assertIn("verify-release-discipline.py", ci)
         self.assertIn("git diff --exit-code -- plugin-dist", ci)
         self.assertIn("git ls-files --others --exclude-standard -- plugin-dist", ci)
