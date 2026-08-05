@@ -51,8 +51,15 @@ final class Complete99_REST {
 	public static function health() {
 		$model = get_option( 'complete99_public_read_model', array() );
 		$freshness = self::model_freshness( $model );
+		$science_loaded = class_exists( 'Complete99_Culinary_Science', false );
+		$science        = $science_loaded ? Complete99_Culinary_Science::status() : array();
+		$commerce_graph_loaded = class_exists( 'Complete99_Culinary_Commerce', false );
+		$commerce_graph = $commerce_graph_loaded ? Complete99_Culinary_Commerce::status() : array();
 		$database_version = (string) get_option( 'complete99_platform_version', '' );
-		if ( Complete99_Platform::migration_failed() || COMPLETE99_PLATFORM_VERSION !== $database_version ) {
+		if ( Complete99_Platform::migration_failed()
+			|| COMPLETE99_PLATFORM_VERSION !== $database_version
+			|| ( $science_loaded && empty( $science['ready'] ) )
+			|| ( $commerce_graph_loaded && empty( $commerce_graph['ready'] ) ) ) {
 			return new WP_Error(
 				'complete99_migration_incomplete',
 				'Complete99 is not ready because its database migration is incomplete.',
@@ -75,6 +82,8 @@ final class Complete99_REST {
 					'expires_at' => $freshness['expires_at'],
 					'ttl_seconds' => self::PUBLIC_MODEL_TTL,
 				),
+				'culinary_science_ready' => $science_loaded && ! empty( $science['ready'] ),
+				'culinary_commerce_ready' => $commerce_graph_loaded && ! empty( $commerce_graph['ready'] ),
 			)
 		);
 	}
@@ -114,8 +123,54 @@ final class Complete99_REST {
 		return true;
 	}
 
+	/**
+	 * Verify a route-bound, consumer-scoped integration signature.
+	 *
+	 * A derived key prevents one adapter credential from authorizing another
+	 * consumer even though WordPress retains one protected root secret.
+	 */
+	public static function verify_scoped_integration_signature( WP_REST_Request $request, $scope, $consumer_id, $key_id ) {
+		$secret = (string) get_option( Complete99_Settings::OPTION_SECRET, '' );
+		if ( strlen( $secret ) < 32 ) {
+			return new WP_Error( 'complete99_integration_unconfigured', 'Integration authentication is not configured.', array( 'status' => 503 ) );
+		}
+		foreach ( array( 'scope' => $scope, 'consumer_id' => $consumer_id, 'key_id' => $key_id ) as $label => $value ) {
+			if ( ! is_string( $value ) || 1 !== preg_match( '/\A[a-z][a-z0-9._-]{2,99}\z/', $value ) ) {
+				return new WP_Error( 'complete99_integration_identity', 'The integration identity is invalid.', array( 'status' => 401, 'field' => $label ) );
+			}
+		}
+		$raw = (string) $request->get_body();
+		if ( '' === $raw || strlen( $raw ) > self::MAX_BODY_BYTES ) {
+			return new WP_Error( 'complete99_integration_size', 'The integration payload is empty or too large.', array( 'status' => 413 ) );
+		}
+		$timestamp = (string) $request->get_header( 'x-complete99-timestamp' );
+		$nonce = (string) $request->get_header( 'x-complete99-nonce' );
+		$signature = strtolower( (string) $request->get_header( 'x-complete99-signature' ) );
+		$header_key_id = (string) $request->get_header( 'x-complete99-key-id' );
+		if ( ! hash_equals( $key_id, $header_key_id ) ) {
+			return new WP_Error( 'complete99_integration_key', 'The integration key identity is invalid.', array( 'status' => 401 ) );
+		}
+		if ( ! ctype_digit( $timestamp ) || abs( time() - (int) $timestamp ) > self::MAX_CLOCK_SKEW ) {
+			return new WP_Error( 'complete99_integration_time', 'The integration timestamp is outside the accepted window.', array( 'status' => 401 ) );
+		}
+		if ( ! preg_match( '/^[A-Za-z0-9_-]{16,128}$/', $nonce ) || ! preg_match( '/^[a-f0-9]{64}$/', $signature ) ) {
+			return new WP_Error( 'complete99_integration_headers', 'The integration authentication headers are invalid.', array( 'status' => 401 ) );
+		}
+		$method = strtoupper( (string) $request->get_method() );
+		$route = '/' . ltrim( (string) $request->get_route(), '/' );
+		$canonical = implode( "\n", array( 'complete99-integration-signature/v1', $method, $route, $scope, $consumer_id, $key_id, $timestamp, $nonce, hash( 'sha256', $raw ) ) );
+		$derived_key = hash_hmac( 'sha256', "complete99-integration-key/v1\n" . $scope . "\n" . $consumer_id . "\n" . $key_id, $secret, true );
+		$expected = hash_hmac( 'sha256', $canonical, $derived_key );
+		if ( ! hash_equals( $expected, $signature ) ) {
+			return new WP_Error( 'complete99_integration_signature', 'The integration signature is invalid.', array( 'status' => 401 ) );
+		}
+		$nonce_key = 'c99_integration_' . substr( hash_hmac( 'sha256', $consumer_id . '|' . $key_id . '|' . $nonce, wp_salt( 'nonce' ) ), 0, 40 );
+		return self::reserve_sync_nonce( $nonce_key );
+	}
+
 	private static function reserve_sync_nonce( $nonce_key ) {
-		if ( ! self::acquire_sync_lock( 'nonce' ) ) {
+		$lock_scope = 'nonce-' . substr( hash( 'sha256', (string) $nonce_key ), 0, 24 );
+		if ( ! self::acquire_sync_lock( $lock_scope ) ) {
 			return new WP_Error( 'complete99_sync_lock', 'The sync receiver is busy. Retry with a new nonce.', array( 'status' => 503 ) );
 		}
 		try {
@@ -128,7 +183,7 @@ final class Complete99_REST {
 			}
 			return true;
 		} finally {
-			self::release_sync_lock( 'nonce' );
+			self::release_sync_lock( $lock_scope );
 		}
 	}
 

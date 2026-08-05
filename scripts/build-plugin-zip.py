@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-01 01:50:00"
+RELEASE_LAST_UPDATED = "2026-08-06 02:05:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -216,6 +216,12 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Added a source-bound bilingual culinary-science registry with a Japanese pilot, molecular measurements, topic-cluster ownership and fail-closed publication gates.</li>"
+                "<li>Added a modular commerce graph that separates products, variants, SKUs, market observations, supplier offers, channel offers, landed costs, margins and bundles.</li>"
+                "<li>Added an administrator review surface and a signed vendor-neutral POS catalog projection while preserving WooCommerce as catalog and stock authority.</li>"
+                "</ul>"
+                "<h4>1.3.11</h4>"
                 "<ul>"
                 "<li>Made pantry filters visually hide every nonmatching product card while keeping the result count and URL state synchronized.</li>"
                 "</ul>"

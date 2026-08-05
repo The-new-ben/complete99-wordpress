@@ -121,6 +121,12 @@ class Complete99_Evaluation_Catalog {{
 class Complete99_Inventory_Bridge {{
     public static function register_meta() {{}}
 }}
+class Complete99_Culinary_Science {{
+    public static function assert_invariants() {{ return true; }}
+}}
+class Complete99_Culinary_Commerce {{
+    public static function assert_invariants() {{ return true; }}
+}}
 
 class MigrationWpdbIdentityStub {{
     public $prefix = 'wp_';

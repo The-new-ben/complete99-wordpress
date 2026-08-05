@@ -20,7 +20,11 @@ final class Complete99_SEO_Registry {
 	}
 
 	public static function records() {
-		return array_merge( self::checked_in_records(), self::live_dish_records() );
+		$science = class_exists( 'Complete99_Culinary_Science', false )
+			&& is_callable( array( 'Complete99_Culinary_Science', 'seo_owner_records' ) )
+			? Complete99_Culinary_Science::seo_owner_records()
+			: array();
+		return array_merge( self::checked_in_records(), self::live_dish_records(), $science );
 	}
 
 	private static function checked_in_records() {

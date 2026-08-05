@@ -11,11 +11,11 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.3.11`. Production truth comes
+The source tree targets Complete99 Platform `1.3.12`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.3.11 provides:
+Release 1.3.12 provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
@@ -36,6 +36,13 @@ Release 1.3.11 provides:
 - local pickup from 99 Ibn Gabirol Street in Tel Aviv;
 - a signed private inventory synchronization route usable by Complete99 OS as
   soon as the catalog is verified;
+- a bilingual, source-bound culinary-science graph with 66 Japanese-pilot,
+  institutional, market, technique, ingredient, equipment and evidence entities;
+- a modular commerce graph that separates knowledge, products, variants, SKUs,
+  source-market observations, supplier offers, channel offers, landed cost,
+  margin and bundles;
+- administrator-only review endpoints and a signed, vendor-neutral POS catalog
+  projection that publishes only fully approved active offers;
 - deterministic deployment, exact package verification, fail-closed recovery
   markers and independent live acceptance.
 
