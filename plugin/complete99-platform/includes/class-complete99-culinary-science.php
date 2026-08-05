@@ -1,0 +1,1694 @@
+<?php
+
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+/**
+ * Source-bound culinary science, culture and market knowledge graph.
+ *
+ * The bundled registry is the reviewed WordPress-side source of truth for the
+ * first museum vertical slice. Public REST responses are strict projections.
+ * Supplier terms, costs, prompts, compliance workflow and commerce plans stay
+ * in the administrator-only editorial snapshot.
+ */
+final class Complete99_Culinary_Science {
+	const REGISTRY_SCHEMA = 'complete99-culinary-science-registry/v4';
+	const REST_NAMESPACE  = 'complete99/v1';
+	const DATA_FILE       = 'culinary-science-pilot.php';
+
+	private static $booted         = false;
+	private static $registry_cache = null;
+	private static $public_index_cache = array();
+
+	/**
+	 * Register REST routes without creating roles or public posts.
+	 */
+	public static function boot() {
+		if ( self::$booted ) {
+			return;
+		}
+		self::$booted = true;
+		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
+	}
+
+	/**
+	 * Register public read projections and a private editorial snapshot.
+	 */
+	public static function register_routes() {
+		$lang_args = array(
+			'lang' => array(
+				'default'           => 'he',
+				'sanitize_callback' => 'sanitize_key',
+				'validate_callback' => static function ( $value ) {
+					return in_array( (string) $value, array( 'he', 'en' ), true );
+				},
+			),
+		);
+		$collection_args = array_merge(
+			$lang_args,
+			array(
+				'cursor' => array(
+					'default'           => '',
+					'sanitize_callback' => 'sanitize_key',
+					'validate_callback' => static function ( $value ) {
+						return '' === (string) $value || 1 === preg_match( '/\A[a-z][a-z0-9-]{2,79}\z/', (string) $value );
+					},
+				),
+				'limit' => array(
+					'default'           => 50,
+					'sanitize_callback' => 'absint',
+					'validate_callback' => static function ( $value ) {
+						return is_numeric( $value ) && (int) $value >= 1 && (int) $value <= 100;
+					},
+				),
+				'type' => array(
+					'default'           => '',
+					'sanitize_callback' => 'sanitize_key',
+				),
+				'cluster_id' => array(
+					'default'           => '',
+					'sanitize_callback' => 'sanitize_key',
+				),
+			)
+		);
+
+		register_rest_route(
+			self::REST_NAMESPACE,
+			'/culinary-science',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'permission_callback' => '__return_true',
+				'callback'            => array( __CLASS__, 'rest_public_collection' ),
+				'args'                => $collection_args,
+			)
+		);
+		register_rest_route(
+			self::REST_NAMESPACE,
+			'/culinary-science/(?P<entity_id>[a-z][a-z0-9-]{2,79})',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'permission_callback' => '__return_true',
+				'callback'            => array( __CLASS__, 'rest_public_entity' ),
+				'args'                => array_merge(
+					$lang_args,
+					array(
+						'entity_id' => array(
+							'required'          => true,
+							'sanitize_callback' => 'sanitize_key',
+						),
+					)
+				),
+			)
+		);
+		register_rest_route(
+			self::REST_NAMESPACE,
+			'/editorial/culinary-science',
+			array(
+				'methods'             => WP_REST_Server::READABLE,
+				'permission_callback' => array( __CLASS__, 'can_view_editorial_snapshot' ),
+				'callback'            => array( __CLASS__, 'rest_editorial_snapshot' ),
+			)
+		);
+	}
+
+	public static function can_view_editorial_snapshot() {
+		return current_user_can( 'manage_options' );
+	}
+
+	/**
+	 * Load and validate the canonical bundled registry.
+	 *
+	 * @param bool $fresh Bypass the per-request cache.
+	 * @return array|WP_Error
+	 */
+	public static function registry( $fresh = false ) {
+		if ( ! $fresh && is_array( self::$registry_cache ) ) {
+			return self::$registry_cache;
+		}
+
+		$path = COMPLETE99_PLATFORM_DIR . 'data/' . self::DATA_FILE;
+		if ( ! is_readable( $path ) ) {
+			return new WP_Error( 'complete99_science_registry_missing', 'The culinary science registry is unavailable.' );
+		}
+
+		$registry = require $path;
+		$valid    = self::validate_registry( $registry );
+		if ( is_wp_error( $valid ) ) {
+			return $valid;
+		}
+
+		self::$registry_cache = $registry;
+		if ( $fresh ) {
+			self::$public_index_cache = array();
+		}
+		return self::$registry_cache;
+	}
+
+	/**
+	 * Strictly validate the ontology, evidence and exposure boundaries.
+	 *
+	 * @param mixed $registry Candidate registry.
+	 * @return true|WP_Error
+	 */
+	public static function validate_registry( $registry ) {
+		try {
+			self::assert_exact_keys(
+				$registry,
+				array( 'schema', 'version', 'generated_at', 'locales', 'surface_class', 'controlled_vocabulary', 'sources', 'entities' ),
+				'registry'
+			);
+			if ( self::REGISTRY_SCHEMA !== $registry['schema'] ) {
+				throw new RuntimeException( 'registry.schema' );
+			}
+			self::assert_identifier( $registry['version'], 'registry.version', 100 );
+			self::assert_date( $registry['generated_at'], 'registry.generated_at' );
+			self::assert_exact_list( $registry['locales'], array( 'he', 'en' ), 'registry.locales' );
+			self::assert_identifier( $registry['surface_class'], 'registry.surface_class', 80 );
+			self::assert_no_em_dash( $registry, 'registry' );
+
+			$vocabulary_keys = array(
+				'entity_types',
+				'surface_classes',
+				'index_policies',
+				'page_roles',
+				'intent_classes',
+				'profile_states',
+				'dimensions',
+				'evidence_classes',
+				'value_scopes',
+				'relation_types',
+				'commerce_states',
+				'asset_states',
+				'rights_states',
+				'source_types',
+				'allowed_attributes',
+				'attribution_states',
+				'confidence_levels',
+				'revenue_models',
+				'pricing_states',
+				'market_scopes',
+				'customer_segments',
+				'publication_states',
+				'route_modes',
+			);
+			self::assert_exact_keys( $registry['controlled_vocabulary'], $vocabulary_keys, 'registry.controlled_vocabulary' );
+			foreach ( $vocabulary_keys as $key ) {
+				self::assert_identifier_list( $registry['controlled_vocabulary'][ $key ], 'registry.controlled_vocabulary.' . $key, false );
+			}
+			if ( ! in_array( $registry['surface_class'], $registry['controlled_vocabulary']['surface_classes'], true ) ) {
+				throw new RuntimeException( 'registry.surface_class' );
+			}
+			self::assert_exact_list(
+				$registry['controlled_vocabulary']['dimensions'],
+				array( 'scientific', 'cultural', 'institutional', 'economic', 'structural' ),
+				'registry.controlled_vocabulary.dimensions'
+			);
+
+			self::assert_associative_array( $registry['sources'], 'registry.sources', false );
+			foreach ( $registry['sources'] as $source_id => $source ) {
+				self::assert_identifier( $source_id, 'registry.sources.key', 100 );
+				self::validate_source( $source_id, $source, $registry['controlled_vocabulary'] );
+			}
+
+			self::assert_list( $registry['entities'], 'registry.entities', false );
+			$entities_by_id = array();
+			$slugs          = array();
+			$canonical      = array();
+			$fact_ids       = array();
+			$relation_ids   = array();
+			$children_by_parent = array();
+			$query_owners   = array(
+				'he' => array(),
+				'en' => array(),
+			);
+			foreach ( $registry['entities'] as $offset => $entity ) {
+				$path = 'registry.entities.' . $offset;
+				self::validate_entity_shape( $entity, $path, $registry['controlled_vocabulary'], $registry['sources'] );
+				$id   = $entity['id'];
+				$slug = $entity['slug'];
+				if ( isset( $entities_by_id[ $id ] ) || isset( $slugs[ $slug ] ) ) {
+					throw new RuntimeException( $path . '.duplicate_identity' );
+				}
+				$entities_by_id[ $id ] = $entity;
+				$slugs[ $slug ]        = true;
+				if ( '' !== $entity['parent_id'] ) {
+					if ( ! isset( $children_by_parent[ $entity['parent_id'] ] ) ) {
+						$children_by_parent[ $entity['parent_id'] ] = array();
+					}
+					$children_by_parent[ $entity['parent_id'] ][] = $id;
+				}
+				foreach ( array( 'he', 'en' ) as $language ) {
+					$url = $entity['seo']['canonical_path'][ $language ];
+					$canonical_owner = $entity['seo']['owner_entity_id'];
+					if ( isset( $canonical[ $url ] ) && $canonical[ $url ] !== $canonical_owner ) {
+						throw new RuntimeException( $path . '.duplicate_canonical' );
+					}
+					$canonical[ $url ] = $canonical_owner;
+					foreach ( $entity['seo']['query_variants'][ $language ] as $query_variant ) {
+						$query_key = self::normalize_query( $query_variant );
+						if ( isset( $query_owners[ $language ][ $query_key ] ) && $query_owners[ $language ][ $query_key ] !== $canonical_owner ) {
+							throw new RuntimeException( $path . '.duplicate_query_owner.' . $language . '.' . $query_key );
+						}
+						$query_owners[ $language ][ $query_key ] = $canonical_owner;
+					}
+				}
+				foreach ( $entity['facts'] as $fact ) {
+					if ( isset( $fact_ids[ $fact['id'] ] ) ) {
+						throw new RuntimeException( $path . '.duplicate_fact_id' );
+					}
+					$fact_ids[ $fact['id'] ] = true;
+				}
+				foreach ( $entity['relations'] as $relation ) {
+					if ( isset( $relation_ids[ $relation['id'] ] ) ) {
+						throw new RuntimeException( $path . '.duplicate_relation_id' );
+					}
+					$relation_ids[ $relation['id'] ] = true;
+				}
+			}
+
+			foreach ( $entities_by_id as $entity_id => $entity ) {
+				self::validate_entity_graph( $entity, $entities_by_id, $children_by_parent, $registry['controlled_vocabulary'] );
+				self::assert_parent_chain_is_acyclic( $entity_id, $entities_by_id );
+			}
+		} catch ( Throwable $error ) {
+			return new WP_Error(
+				'complete99_science_registry_invalid',
+				'The culinary science registry failed its schema contract.',
+				array( 'path' => $error->getMessage() )
+			);
+		}
+
+		return true;
+	}
+
+	private static function validate_source( $source_id, $source, $vocabulary ) {
+		$path = 'registry.sources.' . $source_id;
+		self::assert_exact_keys( $source, array( 'type', 'publisher', 'title', 'url', 'published_at', 'retrieved_at' ), $path );
+		if ( ! in_array( $source['type'], $vocabulary['source_types'], true ) ) {
+			throw new RuntimeException( $path . '.type' );
+		}
+		self::assert_text( $source['publisher'], $path . '.publisher', 200 );
+		self::assert_text( $source['title'], $path . '.title', 300 );
+		if ( ! filter_var( $source['url'], FILTER_VALIDATE_URL ) || 0 !== strpos( $source['url'], 'https://' ) ) {
+			throw new RuntimeException( $path . '.url' );
+		}
+		self::assert_date( $source['published_at'], $path . '.published_at', true );
+		self::assert_date( $source['retrieved_at'], $path . '.retrieved_at' );
+	}
+
+	private static function validate_entity_shape( $entity, $path, $vocabulary, $sources ) {
+		self::assert_exact_keys(
+			$entity,
+			array( 'id', 'type', 'slug', 'parent_id', 'name', 'summary', 'surface_class', 'index_policy', 'publication', 'seo', 'profiles', 'facts', 'taxonomy', 'relations', 'commerce', 'visual', 'compliance', 'trust', 'review' ),
+			$path
+		);
+		self::assert_entity_id( $entity['id'], $path . '.id' );
+		if ( ! in_array( $entity['type'], $vocabulary['entity_types'], true ) ) {
+			throw new RuntimeException( $path . '.type' );
+		}
+		self::assert_slug( $entity['slug'], $path . '.slug' );
+		if ( '' !== $entity['parent_id'] ) {
+			self::assert_entity_id( $entity['parent_id'], $path . '.parent_id' );
+		}
+		self::assert_translation( $entity['name'], $path . '.name', 200 );
+		self::assert_translation( $entity['summary'], $path . '.summary', 1500 );
+		if ( ! in_array( $entity['surface_class'], $vocabulary['surface_classes'], true ) ) {
+			throw new RuntimeException( $path . '.surface_class' );
+		}
+		if ( ! in_array( $entity['index_policy'], $vocabulary['index_policies'], true ) ) {
+			throw new RuntimeException( $path . '.index_policy' );
+		}
+		self::validate_publication( $entity['publication'], $entity, $path . '.publication', $vocabulary );
+
+		self::validate_seo( $entity['seo'], $path . '.seo', $vocabulary );
+		self::assert_exact_keys( $entity['profiles'], $vocabulary['dimensions'], $path . '.profiles' );
+		self::assert_list( $entity['facts'], $path . '.facts', true );
+		$facts_by_id = array();
+		foreach ( $entity['facts'] as $offset => $fact ) {
+			self::validate_fact( $fact, $path . '.facts.' . $offset, $vocabulary, $sources );
+			if ( isset( $facts_by_id[ $fact['id'] ] ) ) {
+				throw new RuntimeException( $path . '.facts.duplicate' );
+			}
+			$facts_by_id[ $fact['id'] ] = $fact;
+		}
+		foreach ( $vocabulary['dimensions'] as $dimension ) {
+			$profile      = $entity['profiles'][ $dimension ];
+			$profile_path = $path . '.profiles.' . $dimension;
+			self::assert_exact_keys( $profile, array( 'state', 'summary', 'fact_ids' ), $profile_path );
+			if ( ! in_array( $profile['state'], $vocabulary['profile_states'], true ) ) {
+				throw new RuntimeException( $profile_path . '.state' );
+			}
+			self::assert_translation( $profile['summary'], $profile_path . '.summary', 1500 );
+			self::assert_identifier_list( $profile['fact_ids'], $profile_path . '.fact_ids', true );
+			foreach ( $profile['fact_ids'] as $fact_id ) {
+				if ( ! isset( $facts_by_id[ $fact_id ] ) || $dimension !== $facts_by_id[ $fact_id ]['dimension'] ) {
+					throw new RuntimeException( $profile_path . '.fact_reference' );
+				}
+			}
+			if ( 'source_backed' === $profile['state'] && empty( $profile['fact_ids'] ) ) {
+				throw new RuntimeException( $profile_path . '.source_backed_without_fact' );
+			}
+		}
+
+		self::validate_taxonomy( $entity['taxonomy'], $path . '.taxonomy', $vocabulary );
+		self::validate_relations( $entity['relations'], $path . '.relations', $vocabulary, $sources );
+		self::validate_commerce( $entity['commerce'], $path . '.commerce', $vocabulary );
+		self::validate_visual( $entity['visual'], $path . '.visual', $vocabulary );
+		self::validate_compliance( $entity['compliance'], $path . '.compliance', $sources );
+		self::validate_trust( $entity['trust'], $path . '.trust', $vocabulary );
+		self::validate_review( $entity['review'], $path . '.review' );
+
+		if ( 'public_discovery' === $entity['surface_class'] ) {
+			$public_facts = array_filter(
+				$entity['facts'],
+				static function ( $fact ) {
+					return true === $fact['public_safe'];
+				}
+			);
+			if ( empty( $public_facts ) || ! in_array( $entity['review']['status'], array( 'source_reviewed', 'verified' ), true ) ) {
+				throw new RuntimeException( $path . '.public_without_reviewed_evidence' );
+			}
+		}
+	}
+
+	private static function validate_publication( $publication, $entity, $path, $vocabulary ) {
+		self::assert_exact_keys( $publication, array( 'state', 'public_api', 'public_page', 'search_index', 'approved_at' ), $path );
+		if ( ! in_array( $publication['state'], $vocabulary['publication_states'], true ) ) {
+			throw new RuntimeException( $path . '.state' );
+		}
+		foreach ( array( 'public_api', 'public_page', 'search_index' ) as $flag ) {
+			if ( ! is_bool( $publication[ $flag ] ) ) {
+				throw new RuntimeException( $path . '.' . $flag );
+			}
+		}
+		self::assert_date( $publication['approved_at'], $path . '.approved_at', true );
+		if ( $publication['public_api'] || $publication['public_page'] || $publication['search_index'] ) {
+			if ( 'approved_public' !== $publication['state'] || '' === $publication['approved_at'] ) {
+				throw new RuntimeException( $path . '.exposure_without_approval' );
+			}
+		}
+		if ( 'approved_public' === $publication['state']
+			&& ( 'public_discovery' !== $entity['surface_class']
+				|| 'reviewed_bilingual' !== $entity['review']['language_status']
+				|| ! in_array( $entity['review']['status'], array( 'source_reviewed', 'verified' ), true )
+				|| 'approved' !== $entity['visual']['asset_state']
+				|| ! in_array( $entity['visual']['rights_state'], array( 'cleared_owned', 'cleared_generated', 'cleared_licensed' ), true )
+				|| '' === $entity['visual']['rights_receipt_digest']
+				|| 'pending_named_review' === $entity['trust']['attribution_state'] ) ) {
+			throw new RuntimeException( $path . '.approval_contract' );
+		}
+		if ( 'approved_public' === $publication['state'] && in_array( $entity['type'], array( 'dish', 'preparation' ), true ) && 'tested' !== $entity['review']['culinary_test_status'] ) {
+			throw new RuntimeException( $path . '.culinary_test_gate' );
+		}
+		if ( 'approved_public' === $publication['state'] ) {
+			foreach ( $entity['facts'] as $fact ) {
+				if ( $fact['public_safe'] && 'editorial_inference' === $fact['evidence_class'] ) {
+					throw new RuntimeException( $path . '.public_inference_gate' );
+				}
+			}
+		}
+		if ( $publication['search_index'] && 'index' !== $entity['index_policy'] ) {
+			throw new RuntimeException( $path . '.index_contract' );
+		}
+		if ( $publication['search_index'] && ! $publication['public_page'] ) {
+			throw new RuntimeException( $path . '.index_without_page' );
+		}
+	}
+
+	private static function validate_seo( $seo, $path, $vocabulary ) {
+		self::assert_exact_keys(
+			$seo,
+			array(
+				'page_role',
+				'route_mode',
+				'owner_entity_id',
+				'section_id',
+				'cluster_id',
+				'hub_entity_id',
+				'intent_classes',
+				'primary_intent',
+				'primary_keyword',
+				'query_variants',
+				'term_variants',
+				'semantic_entity_ids',
+				'protected_exclusions',
+				'protected_owner_ids',
+				'canonical_path',
+				'title',
+				'h1',
+				'meta_description',
+				'opening',
+				'schema_type',
+				'breadcrumb_entity_ids',
+				'visible_breadcrumbs',
+				'expected_child_ids',
+				'link_plan',
+			),
+			$path
+		);
+		if ( ! in_array( $seo['page_role'], $vocabulary['page_roles'], true ) ) {
+			throw new RuntimeException( $path . '.page_role' );
+		}
+		if ( ! in_array( $seo['route_mode'], $vocabulary['route_modes'], true ) ) {
+			throw new RuntimeException( $path . '.route_mode' );
+		}
+		self::assert_entity_id( $seo['owner_entity_id'], $path . '.owner_entity_id' );
+		if ( '' !== $seo['section_id'] ) {
+			self::assert_identifier( $seo['section_id'], $path . '.section_id', 100 );
+		}
+		if ( 'section' === $seo['route_mode'] && '' === $seo['section_id'] ) {
+			throw new RuntimeException( $path . '.section_id' );
+		}
+		if ( 'section' !== $seo['route_mode'] && '' !== $seo['section_id'] ) {
+			throw new RuntimeException( $path . '.unexpected_section_id' );
+		}
+		self::assert_identifier( $seo['cluster_id'], $path . '.cluster_id', 100 );
+		self::assert_entity_id( $seo['hub_entity_id'], $path . '.hub_entity_id' );
+		self::assert_identifier_list( $seo['intent_classes'], $path . '.intent_classes', false );
+		foreach ( $seo['intent_classes'] as $intent_class ) {
+			if ( ! in_array( $intent_class, $vocabulary['intent_classes'], true ) ) {
+				throw new RuntimeException( $path . '.intent_classes.value' );
+			}
+		}
+		self::assert_translation( $seo['primary_intent'], $path . '.primary_intent', 300 );
+		self::assert_translation( $seo['primary_keyword'], $path . '.primary_keyword', 160 );
+		self::assert_locale_lists( $seo['query_variants'], $path . '.query_variants', 30 );
+		if ( empty( $seo['query_variants']['he'] ) || empty( $seo['query_variants']['en'] ) ) {
+			throw new RuntimeException( $path . '.query_variants.empty' );
+		}
+		foreach ( array( 'he', 'en' ) as $language ) {
+			if ( self::normalize_query( $seo['query_variants'][ $language ][0] ) !== self::normalize_query( $seo['primary_keyword'][ $language ] ) ) {
+				throw new RuntimeException( $path . '.query_variants.primary_first.' . $language );
+			}
+		}
+		self::assert_locale_lists( $seo['term_variants'], $path . '.term_variants', 60 );
+		self::assert_identifier_list( $seo['semantic_entity_ids'], $path . '.semantic_entity_ids', true );
+		self::assert_locale_lists( $seo['protected_exclusions'], $path . '.protected_exclusions', 20 );
+		self::assert_identifier_list( $seo['protected_owner_ids'], $path . '.protected_owner_ids', true );
+		self::assert_translation( $seo['canonical_path'], $path . '.canonical_path', 300 );
+		if ( ! preg_match( '#^/(museum|traditions|dishes|ingredients|knowledge|store)/#', $seo['canonical_path']['he'] )
+			|| ! preg_match( '#^/en/(museum|traditions|dishes|ingredients|knowledge|store)/#', $seo['canonical_path']['en'] ) ) {
+			throw new RuntimeException( $path . '.canonical_path' );
+		}
+		self::assert_translation( $seo['title'], $path . '.title', 200 );
+		self::assert_translation( $seo['h1'], $path . '.h1', 200 );
+		self::assert_translation( $seo['meta_description'], $path . '.meta_description', 320 );
+		self::assert_translation( $seo['opening'], $path . '.opening', 1500 );
+		self::assert_identifier( $seo['schema_type'], $path . '.schema_type', 80 );
+		self::assert_identifier_list( $seo['breadcrumb_entity_ids'], $path . '.breadcrumb_entity_ids', false );
+		self::validate_visible_breadcrumbs( $seo['visible_breadcrumbs'], $path . '.visible_breadcrumbs' );
+		self::assert_identifier_list( $seo['expected_child_ids'], $path . '.expected_child_ids', true );
+		self::validate_link_plan( $seo['link_plan'], $path . '.link_plan', $vocabulary );
+	}
+
+	private static function validate_visible_breadcrumbs( $breadcrumbs, $path ) {
+		self::assert_list( $breadcrumbs, $path, false );
+		$keys = array();
+		foreach ( $breadcrumbs as $offset => $breadcrumb ) {
+			$item_path = $path . '.' . $offset;
+			self::assert_exact_keys( $breadcrumb, array( 'key', 'label', 'path' ), $item_path );
+			self::assert_identifier( $breadcrumb['key'], $item_path . '.key', 100 );
+			if ( isset( $keys[ $breadcrumb['key'] ] ) ) {
+				throw new RuntimeException( $item_path . '.duplicate' );
+			}
+			$keys[ $breadcrumb['key'] ] = true;
+			self::assert_translation( $breadcrumb['label'], $item_path . '.label', 200 );
+			self::assert_translation( $breadcrumb['path'], $item_path . '.path', 300 );
+			if ( 0 !== strpos( $breadcrumb['path']['he'], '/' ) || 0 !== strpos( $breadcrumb['path']['en'], '/en/' ) ) {
+				throw new RuntimeException( $item_path . '.path' );
+			}
+		}
+	}
+
+	private static function validate_link_plan( $links, $path, $vocabulary ) {
+		self::assert_list( $links, $path, true );
+		$seen = array();
+		foreach ( $links as $offset => $link ) {
+			$item_path = $path . '.' . $offset;
+			self::assert_exact_keys( $link, array( 'target_id', 'purpose', 'anchor', 'placement', 'required', 'public_safe', 'basis_relation_id', 'evidence_state' ), $item_path );
+			self::assert_entity_id( $link['target_id'], $item_path . '.target_id' );
+			self::assert_identifier( $link['purpose'], $item_path . '.purpose', 80 );
+			self::assert_translation( $link['anchor'], $item_path . '.anchor', 200 );
+			if ( ! in_array( $link['placement'], array( 'breadcrumb', 'body', 'related_module', 'commerce_module' ), true ) ) {
+				throw new RuntimeException( $item_path . '.placement' );
+			}
+			if ( ! is_bool( $link['required'] ) || ! is_bool( $link['public_safe'] ) ) {
+				throw new RuntimeException( $item_path . '.flags' );
+			}
+			if ( '' !== $link['basis_relation_id'] ) {
+				self::assert_identifier( $link['basis_relation_id'], $item_path . '.basis_relation_id', 120 );
+			}
+			if ( ! in_array( $link['evidence_state'], $vocabulary['confidence_levels'], true ) ) {
+				throw new RuntimeException( $item_path . '.evidence_state' );
+			}
+			$key = $link['placement'] . '|' . $link['purpose'] . '|' . $link['target_id'];
+			if ( isset( $seen[ $key ] ) ) {
+				throw new RuntimeException( $item_path . '.duplicate' );
+			}
+			$seen[ $key ] = true;
+		}
+	}
+
+	private static function validate_fact( $fact, $path, $vocabulary, $sources ) {
+		$allowed = array( 'id', 'dimension', 'statement', 'evidence_class', 'value_scope', 'source_ids', 'verified_at', 'observed_at', 'public_safe', 'measurement', 'scientific_measurements' );
+		self::assert_exact_keys( $fact, $allowed, $path );
+		self::assert_identifier( $fact['id'], $path . '.id', 120 );
+		if ( ! in_array( $fact['dimension'], $vocabulary['dimensions'], true ) ) {
+			throw new RuntimeException( $path . '.dimension' );
+		}
+		self::assert_translation( $fact['statement'], $path . '.statement', 1600 );
+		if ( ! in_array( $fact['evidence_class'], $vocabulary['evidence_classes'], true ) ) {
+			throw new RuntimeException( $path . '.evidence_class' );
+		}
+		if ( ! in_array( $fact['value_scope'], $vocabulary['value_scopes'], true ) ) {
+			throw new RuntimeException( $path . '.value_scope' );
+		}
+		self::assert_identifier_list( $fact['source_ids'], $path . '.source_ids', false );
+		foreach ( $fact['source_ids'] as $source_id ) {
+			if ( ! isset( $sources[ $source_id ] ) ) {
+				throw new RuntimeException( $path . '.unknown_source' );
+			}
+		}
+		self::assert_date( $fact['verified_at'], $path . '.verified_at' );
+		self::assert_datetime( $fact['observed_at'], $path . '.observed_at', true );
+		if ( '' !== $fact['observed_at'] && $fact['verified_at'] < substr( $fact['observed_at'], 0, 10 ) ) {
+			throw new RuntimeException( $path . '.verified_before_observation' );
+		}
+		if ( ! is_bool( $fact['public_safe'] ) ) {
+			throw new RuntimeException( $path . '.public_safe' );
+		}
+		if ( 'market_observation' === $fact['evidence_class'] && '' === $fact['observed_at'] ) {
+			throw new RuntimeException( $path . '.market_observation_without_time' );
+		}
+		if ( ! is_array( $fact['measurement'] ) ) {
+			throw new RuntimeException( $path . '.measurement' );
+		}
+		if ( ! empty( $fact['measurement'] ) ) {
+			self::validate_measurement( $fact['measurement'], $path . '.measurement' );
+			if ( 'economic' !== $fact['dimension'] || 'market_observation' !== $fact['evidence_class'] ) {
+				throw new RuntimeException( $path . '.measurement_scope' );
+			}
+			if ( '' === $fact['observed_at'] || $fact['measurement']['observed_at'] !== $fact['observed_at'] ) {
+				throw new RuntimeException( $path . '.measurement_observation_time' );
+			}
+		}
+		self::validate_scientific_measurements( $fact['scientific_measurements'], $path . '.scientific_measurements', $vocabulary, $sources );
+		if ( ! empty( $fact['scientific_measurements'] ) && 'scientific' !== $fact['dimension'] ) {
+			throw new RuntimeException( $path . '.scientific_measurement_scope' );
+		}
+	}
+
+	private static function validate_scientific_measurements( $measurements, $path, $vocabulary, $sources ) {
+		self::assert_list( $measurements, $path, true );
+		$seen = array();
+		foreach ( $measurements as $offset => $measurement ) {
+			$item_path = $path . '.' . $offset;
+			self::assert_exact_keys(
+				$measurement,
+				array( 'id', 'property', 'kind', 'low', 'high', 'value', 'unit', 'method', 'specimen_scope', 'conditions', 'confidence', 'source_ids', 'measured_at' ),
+				$item_path
+			);
+			self::assert_identifier( $measurement['id'], $item_path . '.id', 120 );
+			if ( isset( $seen[ $measurement['id'] ] ) ) {
+				throw new RuntimeException( $item_path . '.duplicate' );
+			}
+			$seen[ $measurement['id'] ] = true;
+			self::assert_identifier( $measurement['property'], $item_path . '.property', 100 );
+			if ( ! in_array( $measurement['kind'], array( 'point', 'range' ), true ) ) {
+				throw new RuntimeException( $item_path . '.kind' );
+			}
+			foreach ( array( 'low', 'high', 'value' ) as $numeric_key ) {
+				if ( null !== $measurement[ $numeric_key ] && ! is_numeric( $measurement[ $numeric_key ] ) ) {
+					throw new RuntimeException( $item_path . '.' . $numeric_key );
+				}
+			}
+			if ( 'point' === $measurement['kind'] && null === $measurement['value'] ) {
+				throw new RuntimeException( $item_path . '.point' );
+			}
+			if ( 'range' === $measurement['kind']
+				&& ( null === $measurement['low'] || null === $measurement['high'] || (float) $measurement['low'] > (float) $measurement['high'] ) ) {
+				throw new RuntimeException( $item_path . '.range' );
+			}
+			self::assert_text( $measurement['unit'], $item_path . '.unit', 80 );
+			self::assert_text( $measurement['method'], $item_path . '.method', 500 );
+			if ( ! in_array( $measurement['specimen_scope'], array( 'literature_context', 'recipe_batch', 'supplier_specification', 'lot_measurement' ), true ) ) {
+				throw new RuntimeException( $item_path . '.specimen_scope' );
+			}
+			self::assert_associative_array( $measurement['conditions'], $item_path . '.conditions', true );
+			foreach ( $measurement['conditions'] as $condition => $condition_value ) {
+				self::assert_identifier( $condition, $item_path . '.conditions.key', 80 );
+				self::assert_text( $condition_value, $item_path . '.conditions.' . $condition, 200 );
+			}
+			if ( ! in_array( $measurement['confidence'], $vocabulary['confidence_levels'], true ) ) {
+				throw new RuntimeException( $item_path . '.confidence' );
+			}
+			self::assert_identifier_list( $measurement['source_ids'], $item_path . '.source_ids', false );
+			foreach ( $measurement['source_ids'] as $source_id ) {
+				if ( ! isset( $sources[ $source_id ] ) ) {
+					throw new RuntimeException( $item_path . '.unknown_source' );
+				}
+			}
+			self::assert_datetime( $measurement['measured_at'], $item_path . '.measured_at', true );
+		}
+	}
+
+	private static function validate_measurement( $measurement, $path ) {
+		self::assert_exact_keys(
+			$measurement,
+			array( 'kind', 'low', 'high', 'value', 'currency', 'unit', 'basis', 'tax_status', 'shipping_status', 'observed_at', 'source_url', 'sample_size', 'comparability', 'capture_method', 'snapshot_digest', 'line_items' ),
+			$path
+		);
+		if ( ! in_array( $measurement['kind'], array( 'point', 'range' ), true ) ) {
+			throw new RuntimeException( $path . '.kind' );
+		}
+		foreach ( array( 'low', 'high', 'value' ) as $key ) {
+			if ( null !== $measurement[ $key ] && ( ! is_numeric( $measurement[ $key ] ) || (float) $measurement[ $key ] < 0 ) ) {
+				throw new RuntimeException( $path . '.' . $key );
+			}
+		}
+		if ( 'range' === $measurement['kind']
+			&& ( null === $measurement['low'] || null === $measurement['high'] || (float) $measurement['low'] > (float) $measurement['high'] ) ) {
+			throw new RuntimeException( $path . '.range' );
+		}
+		if ( 'point' === $measurement['kind'] && null === $measurement['value'] ) {
+			throw new RuntimeException( $path . '.point' );
+		}
+		if ( ! preg_match( '/^[A-Z]{3}$/', $measurement['currency'] ) ) {
+			throw new RuntimeException( $path . '.currency' );
+		}
+		self::assert_text( $measurement['unit'], $path . '.unit', 100 );
+		self::assert_text( $measurement['basis'], $path . '.basis', 300 );
+		if ( ! in_array( $measurement['tax_status'], array( 'included', 'excluded', 'unknown' ), true )
+			|| ! in_array( $measurement['shipping_status'], array( 'included', 'excluded', 'unknown' ), true ) ) {
+			throw new RuntimeException( $path . '.commercial_scope' );
+		}
+		self::assert_datetime( $measurement['observed_at'], $path . '.observed_at' );
+		if ( ! filter_var( $measurement['source_url'], FILTER_VALIDATE_URL ) || 0 !== strpos( $measurement['source_url'], 'https://' ) ) {
+			throw new RuntimeException( $path . '.source_url' );
+		}
+		if ( ! is_int( $measurement['sample_size'] ) || $measurement['sample_size'] < 1 ) {
+			throw new RuntimeException( $path . '.sample_size' );
+		}
+		if ( ! in_array( $measurement['comparability'], array( 'like_for_like', 'partially_comparable', 'non_comparable' ), true ) ) {
+			throw new RuntimeException( $path . '.comparability' );
+		}
+		self::assert_identifier( $measurement['capture_method'], $path . '.capture_method', 100 );
+		if ( '' !== $measurement['snapshot_digest'] && ! preg_match( '/^[a-f0-9]{64}$/', $measurement['snapshot_digest'] ) ) {
+			throw new RuntimeException( $path . '.snapshot_digest' );
+		}
+		self::assert_list( $measurement['line_items'], $path . '.line_items', false );
+		if ( count( $measurement['line_items'] ) !== $measurement['sample_size'] ) {
+			throw new RuntimeException( $path . '.sample_size_mismatch' );
+		}
+		foreach ( $measurement['line_items'] as $offset => $line_item ) {
+			$line_path = $path . '.line_items.' . $offset;
+			self::assert_exact_keys( $line_item, array( 'name', 'price', 'currency', 'tax_status', 'availability', 'source_url', 'attributes' ), $line_path );
+			self::assert_text( $line_item['name'], $line_path . '.name', 300 );
+			if ( ! is_numeric( $line_item['price'] ) || (float) $line_item['price'] < 0 ) {
+				throw new RuntimeException( $line_path . '.price' );
+			}
+			if ( $line_item['currency'] !== $measurement['currency'] ) {
+				throw new RuntimeException( $line_path . '.currency' );
+			}
+			if ( ! in_array( $line_item['tax_status'], array( 'included', 'excluded', 'unknown' ), true ) ) {
+				throw new RuntimeException( $line_path . '.tax_status' );
+			}
+			self::assert_identifier( $line_item['availability'], $line_path . '.availability', 80 );
+			if ( ! filter_var( $line_item['source_url'], FILTER_VALIDATE_URL ) || 0 !== strpos( $line_item['source_url'], 'https://' ) ) {
+				throw new RuntimeException( $line_path . '.source_url' );
+			}
+			self::assert_associative_array( $line_item['attributes'], $line_path . '.attributes', false );
+			foreach ( $line_item['attributes'] as $attribute => $attribute_value ) {
+				self::assert_identifier( $attribute, $line_path . '.attributes.key', 80 );
+				self::assert_text( $attribute_value, $line_path . '.attributes.' . $attribute, 200 );
+			}
+		}
+	}
+
+	private static function validate_taxonomy( $taxonomy, $path, $vocabulary ) {
+		self::assert_exact_keys( $taxonomy, array( 'category_path', 'attributes', 'tags', 'public_category_path', 'public_attribute_keys', 'public_tags' ), $path );
+		self::assert_identifier_list( $taxonomy['category_path'], $path . '.category_path', false );
+		self::assert_associative_array( $taxonomy['attributes'], $path . '.attributes', true );
+		foreach ( $taxonomy['attributes'] as $attribute => $values ) {
+			if ( ! in_array( $attribute, $vocabulary['allowed_attributes'], true ) ) {
+				throw new RuntimeException( $path . '.unknown_attribute' );
+			}
+			self::assert_identifier_list( $values, $path . '.attributes.' . $attribute, false );
+		}
+		self::assert_identifier_list( $taxonomy['tags'], $path . '.tags', true );
+		self::assert_identifier_list( $taxonomy['public_category_path'], $path . '.public_category_path', true );
+		self::assert_identifier_list( $taxonomy['public_attribute_keys'], $path . '.public_attribute_keys', true );
+		self::assert_identifier_list( $taxonomy['public_tags'], $path . '.public_tags', true );
+		if ( ! empty( array_diff( $taxonomy['public_category_path'], $taxonomy['category_path'] ) )
+			|| ! empty( array_diff( $taxonomy['public_attribute_keys'], array_keys( $taxonomy['attributes'] ) ) )
+			|| ! empty( array_diff( $taxonomy['public_tags'], $taxonomy['tags'] ) ) ) {
+			throw new RuntimeException( $path . '.public_allowlist' );
+		}
+	}
+
+	private static function validate_relations( $relations, $path, $vocabulary, $sources ) {
+		self::assert_list( $relations, $path, true );
+		$seen = array();
+		foreach ( $relations as $offset => $relation ) {
+			$item_path = $path . '.' . $offset;
+			self::assert_exact_keys( $relation, array( 'id', 'type', 'target_id', 'public_safe', 'note', 'evidence_class', 'source_ids', 'valid_from', 'valid_to', 'confidence' ), $item_path );
+			self::assert_identifier( $relation['id'], $item_path . '.id', 120 );
+			if ( ! in_array( $relation['type'], $vocabulary['relation_types'], true ) ) {
+				throw new RuntimeException( $item_path . '.type' );
+			}
+			self::assert_entity_id( $relation['target_id'], $item_path . '.target_id' );
+			if ( ! is_bool( $relation['public_safe'] ) ) {
+				throw new RuntimeException( $item_path . '.public_safe' );
+			}
+			self::assert_translation( $relation['note'], $item_path . '.note', 500 );
+			if ( ! in_array( $relation['evidence_class'], $vocabulary['evidence_classes'], true ) ) {
+				throw new RuntimeException( $item_path . '.evidence_class' );
+			}
+			self::assert_identifier_list( $relation['source_ids'], $item_path . '.source_ids', true );
+			foreach ( $relation['source_ids'] as $source_id ) {
+				if ( ! isset( $sources[ $source_id ] ) ) {
+					throw new RuntimeException( $item_path . '.unknown_source' );
+				}
+			}
+			self::assert_date( $relation['valid_from'], $item_path . '.valid_from' );
+			self::assert_date( $relation['valid_to'], $item_path . '.valid_to', true );
+			if ( '' !== $relation['valid_to'] && $relation['valid_to'] < $relation['valid_from'] ) {
+				throw new RuntimeException( $item_path . '.validity_window' );
+			}
+			if ( ! in_array( $relation['confidence'], $vocabulary['confidence_levels'], true ) ) {
+				throw new RuntimeException( $item_path . '.confidence' );
+			}
+			if ( $relation['public_safe'] && ( empty( $relation['source_ids'] ) || 'pending' === $relation['confidence'] ) ) {
+				throw new RuntimeException( $item_path . '.public_without_evidence' );
+			}
+			$key = $relation['type'] . '|' . $relation['target_id'];
+			if ( isset( $seen[ $key ] ) ) {
+				throw new RuntimeException( $item_path . '.duplicate' );
+			}
+			$seen[ $key ] = true;
+		}
+	}
+
+	private static function validate_commerce( $commerce, $path, $vocabulary ) {
+		self::assert_exact_keys( $commerce, array( 'state', 'woo_product_code', 'public_offer_allowed', 'product_copy', 'cross_sell_ids', 'up_sell_ids', 'business_model' ), $path );
+		if ( ! in_array( $commerce['state'], $vocabulary['commerce_states'], true ) ) {
+			throw new RuntimeException( $path . '.state' );
+		}
+		if ( '' !== $commerce['woo_product_code'] ) {
+			self::assert_identifier( $commerce['woo_product_code'], $path . '.woo_product_code', 100 );
+		}
+		if ( ! is_bool( $commerce['public_offer_allowed'] ) ) {
+			throw new RuntimeException( $path . '.public_offer_allowed' );
+		}
+		self::assert_translation( $commerce['product_copy'], $path . '.product_copy', 3000 );
+		self::assert_identifier_list( $commerce['cross_sell_ids'], $path . '.cross_sell_ids', true );
+		self::assert_identifier_list( $commerce['up_sell_ids'], $path . '.up_sell_ids', true );
+		self::validate_business_model( $commerce['business_model'], $path . '.business_model', $vocabulary );
+		if ( $commerce['public_offer_allowed'] && ( 'active_offer' !== $commerce['state'] || '' === $commerce['woo_product_code'] ) ) {
+			throw new RuntimeException( $path . '.offer_without_verified_sku' );
+		}
+		if ( in_array( $commerce['state'], array( 'verified_sku', 'active_offer' ), true ) && '' === $commerce['woo_product_code'] ) {
+			throw new RuntimeException( $path . '.sku_without_product_code' );
+		}
+		if ( ! in_array( $commerce['state'], array( 'verified_sku', 'active_offer' ), true ) && '' !== $commerce['woo_product_code'] ) {
+			throw new RuntimeException( $path . '.held_with_product_code' );
+		}
+		if ( 'active_offer' === $commerce['state'] && 'approved_sell_price' !== $commerce['business_model']['pricing_state'] ) {
+			throw new RuntimeException( $path . '.active_without_approved_price' );
+		}
+	}
+
+	private static function validate_business_model( $model, $path, $vocabulary ) {
+		self::assert_exact_keys(
+			$model,
+			array( 'revenue_models', 'customer_segments', 'value_proposition', 'pricing_state', 'market_scope', 'observation_entity_ids', 'margin_scenario' ),
+			$path
+		);
+		self::assert_identifier_list( $model['revenue_models'], $path . '.revenue_models', false );
+		foreach ( $model['revenue_models'] as $revenue_model ) {
+			if ( ! in_array( $revenue_model, $vocabulary['revenue_models'], true ) ) {
+				throw new RuntimeException( $path . '.revenue_models.value' );
+			}
+		}
+		self::assert_identifier_list( $model['customer_segments'], $path . '.customer_segments', false );
+		foreach ( $model['customer_segments'] as $segment ) {
+			if ( ! in_array( $segment, $vocabulary['customer_segments'], true ) ) {
+				throw new RuntimeException( $path . '.customer_segments.value' );
+			}
+		}
+		self::assert_translation( $model['value_proposition'], $path . '.value_proposition', 1200 );
+		if ( ! in_array( $model['pricing_state'], $vocabulary['pricing_states'], true ) ) {
+			throw new RuntimeException( $path . '.pricing_state' );
+		}
+		if ( ! in_array( $model['market_scope'], $vocabulary['market_scopes'], true ) ) {
+			throw new RuntimeException( $path . '.market_scope' );
+		}
+		self::assert_identifier_list( $model['observation_entity_ids'], $path . '.observation_entity_ids', true );
+		self::validate_margin_scenario( $model['margin_scenario'], $path . '.margin_scenario', $vocabulary );
+	}
+
+	private static function validate_margin_scenario( $scenario, $path, $vocabulary ) {
+		self::assert_exact_keys(
+			$scenario,
+			array( 'currency', 'landed_cost_low', 'landed_cost_high', 'retail_price_low', 'retail_price_high', 'gross_margin_low', 'gross_margin_high', 'basis', 'confidence', 'reviewed_at' ),
+			$path
+		);
+		if ( '' !== $scenario['currency'] && ! preg_match( '/^[A-Z]{3}$/', $scenario['currency'] ) ) {
+			throw new RuntimeException( $path . '.currency' );
+		}
+		foreach ( array( 'landed_cost_low', 'landed_cost_high', 'retail_price_low', 'retail_price_high', 'gross_margin_low', 'gross_margin_high' ) as $key ) {
+			if ( null !== $scenario[ $key ] && ( ! is_numeric( $scenario[ $key ] ) || (float) $scenario[ $key ] < 0 ) ) {
+				throw new RuntimeException( $path . '.' . $key );
+			}
+		}
+		if ( null !== $scenario['landed_cost_low'] && null !== $scenario['landed_cost_high'] && (float) $scenario['landed_cost_low'] > (float) $scenario['landed_cost_high'] ) {
+			throw new RuntimeException( $path . '.landed_cost_range' );
+		}
+		if ( null !== $scenario['retail_price_low'] && null !== $scenario['retail_price_high'] && (float) $scenario['retail_price_low'] > (float) $scenario['retail_price_high'] ) {
+			throw new RuntimeException( $path . '.retail_price_range' );
+		}
+		foreach ( array( 'gross_margin_low', 'gross_margin_high' ) as $key ) {
+			if ( null !== $scenario[ $key ] && (float) $scenario[ $key ] > 1 ) {
+				throw new RuntimeException( $path . '.' . $key );
+			}
+		}
+		if ( null !== $scenario['gross_margin_low'] && null !== $scenario['gross_margin_high'] && (float) $scenario['gross_margin_low'] > (float) $scenario['gross_margin_high'] ) {
+			throw new RuntimeException( $path . '.gross_margin_range' );
+		}
+		self::assert_translation( $scenario['basis'], $path . '.basis', 1200 );
+		if ( ! in_array( $scenario['confidence'], $vocabulary['confidence_levels'], true ) ) {
+			throw new RuntimeException( $path . '.confidence' );
+		}
+		self::assert_date( $scenario['reviewed_at'], $path . '.reviewed_at', true );
+	}
+
+	private static function validate_visual( $visual, $path, $vocabulary ) {
+		self::assert_exact_keys( $visual, array( 'asset_state', 'prompt_en', 'negative_prompt_en', 'ratios', 'shot_list', 'rights_method', 'rights_state', 'rights_receipt_digest' ), $path );
+		if ( ! in_array( $visual['asset_state'], $vocabulary['asset_states'], true ) ) {
+			throw new RuntimeException( $path . '.asset_state' );
+		}
+		self::assert_text( $visual['prompt_en'], $path . '.prompt_en', 3000, 40 );
+		self::assert_text( $visual['negative_prompt_en'], $path . '.negative_prompt_en', 1000, 10 );
+		self::assert_exact_list( $visual['ratios'], array( '1:1', '4:5', '4:3', '16:9' ), $path . '.ratios' );
+		self::assert_text_list( $visual['shot_list'], $path . '.shot_list', false, 20 );
+		self::assert_identifier( $visual['rights_method'], $path . '.rights_method', 100 );
+		if ( ! in_array( $visual['rights_state'], $vocabulary['rights_states'], true ) ) {
+			throw new RuntimeException( $path . '.rights_state' );
+		}
+		if ( '' !== $visual['rights_receipt_digest'] && 1 !== preg_match( '/\Asha256:[a-f0-9]{64}\z/', $visual['rights_receipt_digest'] ) ) {
+			throw new RuntimeException( $path . '.rights_receipt_digest' );
+		}
+		if ( in_array( $visual['rights_state'], array( 'cleared_owned', 'cleared_generated', 'cleared_licensed' ), true ) && '' === $visual['rights_receipt_digest'] ) {
+			throw new RuntimeException( $path . '.cleared_without_receipt' );
+		}
+		if ( 'approved' === $visual['asset_state']
+			&& ! in_array( $visual['rights_state'], array( 'cleared_owned', 'cleared_generated', 'cleared_licensed' ), true ) ) {
+			throw new RuntimeException( $path . '.approved_without_cleared_rights' );
+		}
+	}
+
+	private static function validate_compliance( $notes, $path, $sources ) {
+		self::assert_list( $notes, $path, true );
+		foreach ( $notes as $offset => $record ) {
+			$item_path = $path . '.' . $offset;
+			self::assert_exact_keys( $record, array( 'code', 'note', 'public_safe', 'source_ids' ), $item_path );
+			self::assert_identifier( $record['code'], $item_path . '.code', 100 );
+			self::assert_translation( $record['note'], $item_path . '.note', 1200 );
+			foreach ( array( 'he', 'en' ) as $language ) {
+				if ( 0 !== strpos( $record['note'][ $language ], '[COMPLIANCE_NOTE:' )
+					|| ']' !== substr( $record['note'][ $language ], -1 ) ) {
+					throw new RuntimeException( $item_path . '.note_format' );
+				}
+			}
+			if ( ! is_bool( $record['public_safe'] ) ) {
+				throw new RuntimeException( $item_path . '.public_safe' );
+			}
+			self::assert_identifier_list( $record['source_ids'], $item_path . '.source_ids', true );
+			if ( $record['public_safe'] && empty( $record['source_ids'] ) ) {
+				throw new RuntimeException( $item_path . '.public_without_source' );
+			}
+			foreach ( $record['source_ids'] as $source_id ) {
+				if ( ! isset( $sources[ $source_id ] ) ) {
+					throw new RuntimeException( $item_path . '.unknown_source' );
+				}
+			}
+		}
+	}
+
+	private static function validate_trust( $trust, $path, $vocabulary ) {
+		self::assert_exact_keys(
+			$trust,
+			array( 'attribution_state', 'research_method', 'user_purpose', 'commercial_purpose', 'correction_path', 'substantive_updated_at', 'next_review_trigger' ),
+			$path
+		);
+		if ( ! in_array( $trust['attribution_state'], $vocabulary['attribution_states'], true ) ) {
+			throw new RuntimeException( $path . '.attribution_state' );
+		}
+		self::assert_translation( $trust['research_method'], $path . '.research_method', 900 );
+		self::assert_translation( $trust['user_purpose'], $path . '.user_purpose', 500 );
+		self::assert_translation( $trust['commercial_purpose'], $path . '.commercial_purpose', 500 );
+		self::assert_translation( $trust['correction_path'], $path . '.correction_path', 200 );
+		if ( '/contact/' !== $trust['correction_path']['he'] || '/en/contact/' !== $trust['correction_path']['en'] ) {
+			throw new RuntimeException( $path . '.correction_path' );
+		}
+		self::assert_date( $trust['substantive_updated_at'], $path . '.substantive_updated_at' );
+		self::assert_translation( $trust['next_review_trigger'], $path . '.next_review_trigger', 700 );
+	}
+
+	private static function validate_review( $review, $path ) {
+		self::assert_exact_keys( $review, array( 'status', 'reviewed_at', 'next_review_at', 'language_status', 'culinary_test_status' ), $path );
+		if ( ! in_array( $review['status'], array( 'research_draft', 'source_reviewed', 'verified' ), true ) ) {
+			throw new RuntimeException( $path . '.status' );
+		}
+		self::assert_date( $review['reviewed_at'], $path . '.reviewed_at' );
+		self::assert_date( $review['next_review_at'], $path . '.next_review_at' );
+		if ( $review['next_review_at'] < $review['reviewed_at'] ) {
+			throw new RuntimeException( $path . '.review_window' );
+		}
+		if ( ! in_array( $review['language_status'], array( 'draft_bilingual', 'reviewed_bilingual' ), true )
+			|| ! in_array( $review['culinary_test_status'], array( 'not_applicable', 'pending', 'tested' ), true ) ) {
+			throw new RuntimeException( $path . '.review_state' );
+		}
+	}
+
+	private static function validate_entity_graph( $entity, $entities_by_id, $children_by_parent, $vocabulary ) {
+		$path = 'registry.entities.' . $entity['id'];
+		$public_entity = self::is_public_entity( $entity );
+		if ( '' !== $entity['parent_id'] && ! isset( $entities_by_id[ $entity['parent_id'] ] ) ) {
+			throw new RuntimeException( $path . '.unknown_parent' );
+		}
+		if ( $public_entity && '' !== $entity['parent_id'] && ! self::is_public_entity( $entities_by_id[ $entity['parent_id'] ] ) ) {
+			throw new RuntimeException( $path . '.public_parent_private' );
+		}
+		$references = array();
+		foreach ( $entity['relations'] as $relation ) {
+			$references[] = $relation['target_id'];
+			if ( $public_entity && true === $relation['public_safe'] ) {
+				$target = isset( $entities_by_id[ $relation['target_id'] ] ) ? $entities_by_id[ $relation['target_id'] ] : null;
+				if ( ! is_array( $target ) || ! self::is_public_entity( $target ) ) {
+					throw new RuntimeException( $path . '.public_relation_private_target' );
+				}
+			}
+		}
+		$references = array_merge(
+			$references,
+			$entity['commerce']['cross_sell_ids'],
+			$entity['commerce']['up_sell_ids'],
+			$entity['commerce']['business_model']['observation_entity_ids']
+		);
+		foreach ( $references as $reference ) {
+			if ( $reference === $entity['id'] || ! isset( $entities_by_id[ $reference ] ) ) {
+				throw new RuntimeException( $path . '.unresolved_relation' );
+			}
+		}
+		foreach ( $entity['commerce']['business_model']['observation_entity_ids'] as $observation_id ) {
+			$observation = $entities_by_id[ $observation_id ];
+			if ( ! in_array( $observation['type'], array( 'retail_listing', 'market_observation' ), true ) ) {
+				throw new RuntimeException( $path . '.observation_type' );
+			}
+			$subjects = array( $observation['parent_id'] );
+			foreach ( $observation['relations'] as $relation ) {
+				$subjects[] = $relation['target_id'];
+			}
+			if ( ! in_array( $entity['id'], $subjects, true ) ) {
+				throw new RuntimeException( $path . '.observation_subject' );
+			}
+		}
+
+		$hub_id = $entity['seo']['hub_entity_id'];
+		if ( ! isset( $entities_by_id[ $hub_id ] )
+			|| 'pillar' !== $entities_by_id[ $hub_id ]['seo']['page_role']
+			|| $entity['seo']['cluster_id'] !== $entities_by_id[ $hub_id ]['seo']['cluster_id'] ) {
+			throw new RuntimeException( $path . '.hub_contract' );
+		}
+		if ( $public_entity && ! self::is_public_entity( $entities_by_id[ $hub_id ] ) ) {
+			throw new RuntimeException( $path . '.public_hub_private' );
+		}
+		if ( 'pillar' === $entity['seo']['page_role'] && $entity['id'] !== $hub_id ) {
+			throw new RuntimeException( $path . '.pillar_identity' );
+		}
+
+		$owner_id = $entity['seo']['owner_entity_id'];
+		if ( ! isset( $entities_by_id[ $owner_id ] ) ) {
+			throw new RuntimeException( $path . '.unknown_seo_owner' );
+		}
+		if ( $public_entity && ! self::is_public_entity( $entities_by_id[ $owner_id ] ) ) {
+			throw new RuntimeException( $path . '.public_owner_private' );
+		}
+		if ( 'section' === $entity['seo']['route_mode'] ) {
+			if ( $owner_id === $entity['id'] || 'standalone' !== $entities_by_id[ $owner_id ]['seo']['route_mode']
+				|| $entity['seo']['canonical_path'] !== $entities_by_id[ $owner_id ]['seo']['canonical_path']
+				|| $entity['seo']['visible_breadcrumbs'] !== $entities_by_id[ $owner_id ]['seo']['visible_breadcrumbs'] ) {
+				throw new RuntimeException( $path . '.section_owner_contract' );
+			}
+		} elseif ( $owner_id !== $entity['id'] ) {
+			throw new RuntimeException( $path . '.standalone_owner_contract' );
+		}
+
+		$breadcrumb = self::entity_parent_chain( $entity['id'], $entities_by_id );
+		if ( $breadcrumb !== array_values( $entity['seo']['breadcrumb_entity_ids'] ) ) {
+			throw new RuntimeException( $path . '.breadcrumb_contract' );
+		}
+		if ( $public_entity ) {
+			foreach ( $breadcrumb as $breadcrumb_id ) {
+				if ( ! self::is_public_entity( $entities_by_id[ $breadcrumb_id ] ) ) {
+					throw new RuntimeException( $path . '.public_breadcrumb_private' );
+				}
+			}
+		}
+
+		$children = isset( $children_by_parent[ $entity['id'] ] ) ? $children_by_parent[ $entity['id'] ] : array();
+		if ( $children !== array_values( $entity['seo']['expected_child_ids'] ) ) {
+			throw new RuntimeException( $path . '.expected_children_contract' );
+		}
+
+		foreach ( $entity['seo']['semantic_entity_ids'] as $semantic_id ) {
+			if ( $semantic_id === $entity['id'] || ! isset( $entities_by_id[ $semantic_id ] ) ) {
+				throw new RuntimeException( $path . '.semantic_entity_reference' );
+			}
+			if ( $public_entity && ! self::is_public_entity( $entities_by_id[ $semantic_id ] ) ) {
+				throw new RuntimeException( $path . '.public_semantic_private' );
+			}
+		}
+		$relation_ids = array();
+		foreach ( $entity['relations'] as $relation ) {
+			$relation_ids[ $relation['id'] ] = true;
+		}
+		foreach ( $entity['seo']['link_plan'] as $link ) {
+			if ( ! isset( $entities_by_id[ $link['target_id'] ] ) || $link['target_id'] === $entity['id'] ) {
+				throw new RuntimeException( $path . '.link_plan_target' );
+			}
+			if ( '' !== $link['basis_relation_id'] && ! isset( $relation_ids[ $link['basis_relation_id'] ] ) ) {
+				throw new RuntimeException( $path . '.link_plan_relation' );
+			}
+			if ( $public_entity && $link['public_safe'] ) {
+				$target = $entities_by_id[ $link['target_id'] ];
+				if ( ! self::is_public_entity( $target ) ) {
+					throw new RuntimeException( $path . '.public_link_private_target' );
+				}
+			}
+		}
+		if ( 'pillar' !== $entity['seo']['page_role'] && '' === $entity['parent_id'] ) {
+			throw new RuntimeException( $path . '.orphan_owner' );
+		}
+
+		if ( 'market_observation' === $entity['type'] ) {
+			$measurements = array_filter(
+				$entity['facts'],
+				static function ( $fact ) {
+					return 'economic' === $fact['dimension'] && ! empty( $fact['measurement'] );
+				}
+			);
+			if ( empty( $measurements ) || 'editorial_draft' !== $entity['surface_class'] ) {
+				throw new RuntimeException( $path . '.market_observation_contract' );
+			}
+		}
+	}
+
+	private static function entity_parent_chain( $entity_id, $entities_by_id ) {
+		$chain  = array();
+		$cursor = $entity_id;
+		while ( '' !== $cursor ) {
+			array_unshift( $chain, $cursor );
+			$cursor = isset( $entities_by_id[ $cursor ] ) ? $entities_by_id[ $cursor ]['parent_id'] : '';
+		}
+		return $chain;
+	}
+
+	private static function assert_parent_chain_is_acyclic( $entity_id, $entities_by_id ) {
+		$seen   = array();
+		$cursor = $entity_id;
+		while ( '' !== $cursor ) {
+			if ( isset( $seen[ $cursor ] ) ) {
+				throw new RuntimeException( 'registry.parent_cycle.' . $entity_id );
+			}
+			$seen[ $cursor ] = true;
+			$cursor          = isset( $entities_by_id[ $cursor ] ) ? $entities_by_id[ $cursor ]['parent_id'] : '';
+		}
+	}
+
+	/**
+	 * Fail a migration checkpoint if the bundled ontology drifts.
+	 */
+	public static function assert_invariants() {
+		$registry = self::registry( true );
+		if ( is_wp_error( $registry ) ) {
+			throw new RuntimeException( 'culinary-science-registry-invariants' );
+		}
+		return true;
+	}
+
+	/**
+	 * Return a bounded health summary with no editorial details.
+	 */
+	public static function status() {
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return array(
+				'ready'         => false,
+				'version'       => '',
+				'entity_count'  => 0,
+				'public_count'  => 0,
+				'cluster_count' => 0,
+				'digest'        => '',
+			);
+		}
+		$public = self::public_entities( $registry );
+		$clusters = array();
+		foreach ( $registry['entities'] as $entity ) {
+			$clusters[ $entity['seo']['cluster_id'] ] = true;
+		}
+		return array(
+			'ready'         => true,
+			'version'       => $registry['version'],
+			'entity_count'  => count( $registry['entities'] ),
+			'public_count'  => count( $public ),
+			'cluster_count' => count( $clusters ),
+			'digest'        => self::registry_digest( $registry ),
+		);
+	}
+
+	public static function rest_public_collection( WP_REST_Request $request ) {
+		$lang     = self::request_language( $request );
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return $registry;
+		}
+		$type = sanitize_key( (string) $request->get_param( 'type' ) );
+		$cluster_id = sanitize_key( (string) $request->get_param( 'cluster_id' ) );
+		$cursor = sanitize_key( (string) $request->get_param( 'cursor' ) );
+		$requested_limit = $request->get_param( 'limit' );
+		$limit = null === $requested_limit || '' === $requested_limit
+			? 50
+			: max( 1, min( 100, absint( $requested_limit ) ) );
+		$matching = array_values(
+			array_filter(
+				self::public_entities( $registry ),
+				static function ( $entity ) use ( $type, $cluster_id, $cursor ) {
+					return ( '' === $type || $type === $entity['type'] )
+						&& ( '' === $cluster_id || $cluster_id === $entity['seo']['cluster_id'] )
+						&& ( '' === $cursor || strcmp( $entity['id'], $cursor ) > 0 );
+				}
+			)
+		);
+		usort(
+			$matching,
+			static function ( $left, $right ) {
+				return strcmp( $left['id'], $right['id'] );
+			}
+		);
+		$page = array_slice( $matching, 0, $limit );
+		$entities = array();
+		foreach ( $page as $entity ) {
+			$entities[] = self::public_projection( $entity, $registry, $lang );
+		}
+		$next_cursor = count( $matching ) > count( $page ) && ! empty( $page )
+			? $page[ count( $page ) - 1 ]['id']
+			: '';
+		return rest_ensure_response(
+			array(
+				'schema'       => 'complete99-culinary-science-public/v2',
+				'version'      => $registry['version'],
+				'generated_at' => $registry['generated_at'],
+				'language'     => $lang,
+				'count'        => count( $entities ),
+				'next_cursor'  => $next_cursor,
+				'filters'      => array( 'type' => $type, 'cluster_id' => $cluster_id ),
+				'entities'     => $entities,
+			)
+		);
+	}
+
+	public static function rest_public_entity( WP_REST_Request $request ) {
+		$lang      = self::request_language( $request );
+		$entity_id = (string) $request->get_param( 'entity_id' );
+		$registry  = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return $registry;
+		}
+		foreach ( self::public_entities( $registry ) as $entity ) {
+			if ( hash_equals( $entity['id'], $entity_id ) ) {
+				return rest_ensure_response(
+					array(
+						'schema'   => 'complete99-culinary-science-entity/v2',
+						'version'  => $registry['version'],
+						'language' => $lang,
+						'entity'   => self::public_projection( $entity, $registry, $lang ),
+					)
+				);
+			}
+		}
+		return new WP_Error( 'complete99_science_entity_not_found', 'The requested public culinary entity was not found.', array( 'status' => 404 ) );
+	}
+
+	public static function rest_editorial_snapshot() {
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return $registry;
+		}
+		return rest_ensure_response(
+			array(
+				'schema'   => 'complete99-culinary-science-editorial/v2',
+				'digest'   => self::registry_digest( $registry ),
+				'registry' => $registry,
+			)
+		);
+	}
+
+	/**
+	 * Full private registry for the capability-gated WordPress review lab.
+	 */
+	public static function editorial_snapshot() {
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return array();
+		}
+		return array(
+			'digest'   => self::registry_digest( $registry ),
+			'registry' => $registry,
+		);
+	}
+
+	/**
+	 * Export standalone planned and approved owners into the global SEO ledger.
+	 * Section entities remain query concepts of their owning page and do not
+	 * create duplicate canonical rows.
+	 */
+	public static function seo_owner_records() {
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return array();
+		}
+		$records = array();
+		foreach ( $registry['entities'] as $entity ) {
+			if ( 'standalone' !== $entity['seo']['route_mode'] ) {
+				continue;
+			}
+			foreach ( array( 'he', 'en' ) as $language ) {
+				$secondary = array_slice( $entity['seo']['query_variants'][ $language ], 1 );
+				$records[] = array(
+					'language'                   => $language,
+					'translation_key'            => 'science-' . $entity['id'],
+					'primary_intent'             => $entity['seo']['primary_keyword'][ $language ],
+					'canonical_path'             => $entity['seo']['canonical_path'][ $language ],
+					'secondary_queries'          => empty( $secondary ) ? $entity['seo']['primary_keyword'][ $language ] : implode( '; ', $secondary ),
+					'prohibited_competing_pages' => implode( '; ', $entity['seo']['protected_exclusions'][ $language ] ),
+					'evidence_gate'              => 'reviewed_bilingual; approved_public; public_page; publication evidence and rights gates',
+					'publication_status'         => 'approved_public' === $entity['publication']['state'] ? 'approved' : 'planned-private',
+				);
+			}
+		}
+		return $records;
+	}
+
+	private static function public_entities( $registry ) {
+		return array_values( self::public_entity_index( $registry ) );
+	}
+
+	private static function public_entity_index( $registry ) {
+		$key = isset( $registry['version'] ) ? (string) $registry['version'] : 'unknown';
+		if ( isset( self::$public_index_cache[ $key ] ) ) {
+			return self::$public_index_cache[ $key ];
+		}
+		$index = array();
+		foreach ( $registry['entities'] as $entity ) {
+			if ( ! self::is_public_entity( $entity ) ) {
+				continue;
+			}
+			$index[ $entity['id'] ] = $entity;
+		}
+		self::$public_index_cache[ $key ] = $index;
+		return $index;
+	}
+
+	private static function is_public_entity( $entity ) {
+		if ( 'public_discovery' !== $entity['surface_class']
+			|| 'approved_public' !== $entity['publication']['state']
+			|| true !== $entity['publication']['public_api']
+			|| true !== $entity['publication']['public_page']
+			|| 'reviewed_bilingual' !== $entity['review']['language_status']
+			|| ! in_array( $entity['review']['status'], array( 'source_reviewed', 'verified' ), true )
+			|| 'approved' !== $entity['visual']['asset_state']
+			|| ! in_array( $entity['visual']['rights_state'], array( 'cleared_owned', 'cleared_generated', 'cleared_licensed' ), true )
+			|| '' === $entity['visual']['rights_receipt_digest']
+			|| 'pending_named_review' === $entity['trust']['attribution_state']
+			|| ( in_array( $entity['type'], array( 'dish', 'preparation' ), true ) && 'tested' !== $entity['review']['culinary_test_status'] ) ) {
+			return false;
+		}
+		$has_public_fact = false;
+		foreach ( $entity['facts'] as $fact ) {
+			if ( ! $fact['public_safe'] ) {
+				continue;
+			}
+			$has_public_fact = true;
+			if ( 'editorial_inference' === $fact['evidence_class'] ) {
+				return false;
+			}
+		}
+		return $has_public_fact;
+	}
+
+	private static function public_projection( $entity, $registry, $lang ) {
+		$public_facts = array();
+		$public_fact_ids = array();
+		$source_ids   = array();
+		foreach ( $entity['facts'] as $fact ) {
+			if ( true !== $fact['public_safe'] ) {
+				continue;
+			}
+			$public_fact_ids[] = $fact['id'];
+			$public_facts[] = array(
+				'id'             => $fact['id'],
+				'dimension'      => $fact['dimension'],
+				'statement'      => $fact['statement'][ $lang ],
+				'evidence_class' => $fact['evidence_class'],
+				'value_scope'     => $fact['value_scope'],
+				'source_ids'     => $fact['source_ids'],
+				'verified_at'    => $fact['verified_at'],
+				'observed_at'    => $fact['observed_at'],
+				'measurement'    => $fact['measurement'],
+				'scientific_measurements' => $fact['scientific_measurements'],
+			);
+			$source_ids = array_merge( $source_ids, $fact['source_ids'] );
+		}
+		$relations = array();
+		foreach ( $entity['relations'] as $relation ) {
+			if ( true !== $relation['public_safe'] ) {
+				continue;
+			}
+			$relations[] = array(
+				'id'             => $relation['id'],
+				'type'           => $relation['type'],
+				'target_id'      => $relation['target_id'],
+				'note'           => $relation['note'][ $lang ],
+				'evidence_class' => $relation['evidence_class'],
+				'source_ids'     => $relation['source_ids'],
+				'valid_from'     => $relation['valid_from'],
+				'valid_to'       => $relation['valid_to'],
+				'confidence'     => $relation['confidence'],
+			);
+			$source_ids = array_merge( $source_ids, $relation['source_ids'] );
+		}
+		$safety = array();
+		foreach ( $entity['compliance'] as $record ) {
+			if ( true !== $record['public_safe'] ) {
+				continue;
+			}
+			$safety[]  = $record['note'][ $lang ];
+			$source_ids = array_merge( $source_ids, $record['source_ids'] );
+		}
+		$profiles = array();
+		foreach ( $entity['profiles'] as $dimension => $profile ) {
+			$profile_public_fact_ids = array_values( array_intersect( $profile['fact_ids'], $public_fact_ids ) );
+			if ( 'source_backed' !== $profile['state'] || empty( $profile_public_fact_ids ) ) {
+				continue;
+			}
+			$profiles[ $dimension ] = array(
+				'state'    => $profile['state'],
+				'summary'  => $profile['summary'][ $lang ],
+				'fact_ids' => $profile_public_fact_ids,
+			);
+		}
+		$public_attributes = array();
+		foreach ( $entity['taxonomy']['public_attribute_keys'] as $attribute_key ) {
+			$public_attributes[ $attribute_key ] = $entity['taxonomy']['attributes'][ $attribute_key ];
+		}
+		$public_taxonomy = array(
+			'category_path' => $entity['taxonomy']['public_category_path'],
+			'attributes'    => $public_attributes,
+			'tags'          => $entity['taxonomy']['public_tags'],
+		);
+		$sources = array();
+		foreach ( array_values( array_unique( $source_ids ) ) as $source_id ) {
+			if ( ! isset( $registry['sources'][ $source_id ] ) ) {
+				continue;
+			}
+			$source = $registry['sources'][ $source_id ];
+			$sources[] = array(
+				'id'           => $source_id,
+				'type'         => $source['type'],
+				'publisher'    => $source['publisher'],
+				'title'        => $source['title'],
+				'url'          => $source['url'],
+				'published_at' => $source['published_at'],
+				'retrieved_at' => $source['retrieved_at'],
+			);
+		}
+		$internal_links = self::public_internal_links( $entity, $registry, $lang );
+
+		return array(
+			'id'           => $entity['id'],
+			'type'         => $entity['type'],
+			'slug'         => $entity['slug'],
+			'parent_id'    => $entity['parent_id'],
+			'name'         => $entity['name'][ $lang ],
+			'summary'      => $entity['summary'][ $lang ],
+			'index_policy' => $entity['index_policy'],
+			'seo'          => array(
+				'page_role'         => $entity['seo']['page_role'],
+				'route_mode'        => $entity['seo']['route_mode'],
+				'owner_entity_id'   => $entity['seo']['owner_entity_id'],
+				'section_id'        => $entity['seo']['section_id'],
+				'cluster_id'        => $entity['seo']['cluster_id'],
+				'hub_entity_id'     => $entity['seo']['hub_entity_id'],
+				'intent_classes'    => $entity['seo']['intent_classes'],
+				'primary_intent'     => $entity['seo']['primary_intent'][ $lang ],
+				'primary_keyword'    => $entity['seo']['primary_keyword'][ $lang ],
+				'query_variants'     => $entity['seo']['query_variants'][ $lang ],
+				'term_variants'      => $entity['seo']['term_variants'][ $lang ],
+				'semantic_entity_ids'=> $entity['seo']['semantic_entity_ids'],
+				'canonical_path'     => $entity['seo']['canonical_path'][ $lang ],
+				'title'              => $entity['seo']['title'][ $lang ],
+				'h1'                 => $entity['seo']['h1'][ $lang ],
+				'meta_description'   => $entity['seo']['meta_description'][ $lang ],
+				'opening'            => $entity['seo']['opening'][ $lang ],
+				'schema_type'        => $entity['seo']['schema_type'],
+				'breadcrumb_entity_ids' => $entity['seo']['breadcrumb_entity_ids'],
+				'visible_breadcrumbs' => array_map(
+					static function ( $breadcrumb ) use ( $lang ) {
+						return array( 'key' => $breadcrumb['key'], 'label' => $breadcrumb['label'][ $lang ], 'path' => $breadcrumb['path'][ $lang ] );
+					},
+					$entity['seo']['visible_breadcrumbs']
+				),
+			),
+			'profiles'     => $profiles,
+			'facts'        => $public_facts,
+			'taxonomy'     => $public_taxonomy,
+			'relations'    => $relations,
+			'internal_links' => $internal_links,
+			'safety_notes' => $safety,
+			'sources'      => $sources,
+			'trust'        => array(
+				'research_method'       => $entity['trust']['research_method'][ $lang ],
+				'correction_path'       => $entity['trust']['correction_path'][ $lang ],
+				'substantive_updated_at'=> $entity['trust']['substantive_updated_at'],
+				'next_review_trigger'   => $entity['trust']['next_review_trigger'][ $lang ],
+			),
+			'reviewed_at'  => $entity['review']['reviewed_at'],
+		);
+	}
+
+	private static function public_internal_links( $entity, $registry, $lang ) {
+		$public_by_id = self::public_entity_index( $registry );
+		$links = array();
+		$seen  = array();
+		$add   = static function ( $target_id, $location, $relationship, $context = '' ) use ( &$links, &$seen, $public_by_id, $lang ) {
+			if ( ! isset( $public_by_id[ $target_id ] ) ) {
+				return;
+			}
+			$key = $location . '|' . $relationship . '|' . $target_id;
+			if ( isset( $seen[ $key ] ) ) {
+				return;
+			}
+			$target = $public_by_id[ $target_id ];
+			$url = $target['seo']['canonical_path'][ $lang ];
+			if ( 'section' === $target['seo']['route_mode'] && '' !== $target['seo']['section_id'] ) {
+				$url .= '#' . rawurlencode( $target['seo']['section_id'] );
+			}
+			$seen[ $key ] = true;
+			$links[] = array(
+				'target_id'    => $target_id,
+				'url'          => $url,
+				'anchor'       => '' !== $context ? $context : $target['name'][ $lang ],
+				'location'     => $location,
+				'relationship' => $relationship,
+				'context'      => $context,
+			);
+		};
+
+		foreach ( $entity['seo']['link_plan'] as $link ) {
+			if ( true === $link['public_safe'] ) {
+				$add( $link['target_id'], $link['placement'], $link['purpose'], $link['anchor'][ $lang ] );
+			}
+		}
+		return $links;
+	}
+
+	private static function request_language( $request ) {
+		$lang = sanitize_key( (string) $request->get_param( 'lang' ) );
+		return in_array( $lang, array( 'he', 'en' ), true ) ? $lang : 'he';
+	}
+
+	private static function registry_digest( $registry ) {
+		$canonical = self::canonical_value( $registry );
+		$flags     = defined( 'JSON_UNESCAPED_UNICODE' ) ? JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES : 0;
+		return hash( 'sha256', wp_json_encode( $canonical, $flags ) );
+	}
+
+	private static function canonical_value( $value ) {
+		if ( ! is_array( $value ) ) {
+			return $value;
+		}
+		if ( self::is_list( $value ) ) {
+			return array_map( array( __CLASS__, 'canonical_value' ), $value );
+		}
+		ksort( $value, SORT_STRING );
+		foreach ( $value as $key => $item ) {
+			$value[ $key ] = self::canonical_value( $item );
+		}
+		return $value;
+	}
+
+	private static function normalize_query( $value ) {
+		$value = trim( preg_replace( '/\s+/u', ' ', (string) $value ) );
+		return function_exists( 'mb_strtolower' ) ? mb_strtolower( $value, 'UTF-8' ) : strtolower( $value );
+	}
+
+	private static function assert_no_em_dash( $value, $path ) {
+		if ( is_array( $value ) ) {
+			foreach ( $value as $key => $item ) {
+				self::assert_no_em_dash( $item, $path . '.' . $key );
+			}
+			return;
+		}
+		if ( is_string( $value ) && false !== strpos( $value, "\xE2\x80\x94" ) ) {
+			throw new RuntimeException( $path . '.em_dash' );
+		}
+	}
+
+	private static function assert_translation( $value, $path, $maximum ) {
+		self::assert_exact_keys( $value, array( 'he', 'en' ), $path );
+		self::assert_text( $value['he'], $path . '.he', $maximum );
+		self::assert_text( $value['en'], $path . '.en', $maximum );
+	}
+
+	private static function assert_locale_lists( $value, $path, $maximum_items ) {
+		self::assert_exact_keys( $value, array( 'he', 'en' ), $path );
+		foreach ( array( 'he', 'en' ) as $language ) {
+			self::assert_text_list( $value[ $language ], $path . '.' . $language, true, $maximum_items );
+		}
+	}
+
+	private static function assert_text_list( $value, $path, $allow_empty, $maximum_items ) {
+		self::assert_list( $value, $path, $allow_empty );
+		if ( count( $value ) > $maximum_items ) {
+			throw new RuntimeException( $path . '.too_many' );
+		}
+		foreach ( $value as $offset => $item ) {
+			self::assert_text( $item, $path . '.' . $offset, 300 );
+		}
+	}
+
+	private static function assert_identifier_list( $value, $path, $allow_empty ) {
+		self::assert_list( $value, $path, $allow_empty );
+		$seen = array();
+		foreach ( $value as $offset => $item ) {
+			self::assert_identifier( $item, $path . '.' . $offset, 120 );
+			if ( isset( $seen[ $item ] ) ) {
+				throw new RuntimeException( $path . '.duplicate' );
+			}
+			$seen[ $item ] = true;
+		}
+	}
+
+	private static function assert_entity_id( $value, $path ) {
+		if ( ! is_string( $value ) || ! preg_match( '/^[a-z][a-z0-9-]{2,79}$/', $value ) ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_slug( $value, $path ) {
+		if ( ! is_string( $value ) || ! preg_match( '/^[a-z][a-z0-9-]{1,79}$/', $value ) ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_identifier( $value, $path, $maximum ) {
+		if ( ! is_string( $value ) || strlen( $value ) > $maximum || ! preg_match( '/^[a-zA-Z][a-zA-Z0-9_.:-]*$/', $value ) ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_text( $value, $path, $maximum, $minimum = 1 ) {
+		if ( ! is_string( $value ) ) {
+			throw new RuntimeException( $path );
+		}
+		$length = function_exists( 'mb_strlen' ) ? mb_strlen( trim( $value ), 'UTF-8' ) : strlen( trim( $value ) );
+		if ( $length < $minimum || $length > $maximum ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_date( $value, $path, $allow_empty = false ) {
+		if ( $allow_empty && '' === $value ) {
+			return;
+		}
+		$date = is_string( $value ) ? DateTimeImmutable::createFromFormat( '!Y-m-d', $value, new DateTimeZone( 'UTC' ) ) : false;
+		$errors = DateTimeImmutable::getLastErrors();
+		if ( false === $date || ( is_array( $errors ) && ( $errors['warning_count'] || $errors['error_count'] ) ) || $date->format( 'Y-m-d' ) !== $value ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_datetime( $value, $path, $allow_empty = false ) {
+		if ( $allow_empty && '' === $value ) {
+			return;
+		}
+		if ( ! is_string( $value ) || ! preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/', $value ) ) {
+			throw new RuntimeException( $path );
+		}
+		$date = DateTimeImmutable::createFromFormat( DateTimeInterface::ATOM, $value );
+		$errors = DateTimeImmutable::getLastErrors();
+		if ( false === $date || ( is_array( $errors ) && ( $errors['warning_count'] || $errors['error_count'] ) ) ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_exact_keys( $value, $expected, $path ) {
+		self::assert_associative_array( $value, $path, false );
+		$actual = array_keys( $value );
+		sort( $actual, SORT_STRING );
+		$expected = array_values( $expected );
+		sort( $expected, SORT_STRING );
+		if ( $actual !== $expected ) {
+			throw new RuntimeException( $path . '.keys' );
+		}
+	}
+
+	private static function assert_exact_list( $value, $expected, $path ) {
+		self::assert_list( $value, $path, false );
+		if ( array_values( $value ) !== array_values( $expected ) ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_associative_array( $value, $path, $allow_empty ) {
+		if ( ! is_array( $value ) || ( ! $allow_empty && empty( $value ) ) || ( ! empty( $value ) && self::is_list( $value ) ) ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_list( $value, $path, $allow_empty ) {
+		if ( ! is_array( $value ) || ( ! $allow_empty && empty( $value ) ) || ! self::is_list( $value ) ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function is_list( $value ) {
+		if ( function_exists( 'array_is_list' ) ) {
+			return array_is_list( $value );
+		}
+		return is_array( $value ) && ( empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 ) );
+	}
+}

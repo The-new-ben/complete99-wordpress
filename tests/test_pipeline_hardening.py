@@ -358,7 +358,7 @@ class PipelineHardeningTests(unittest.TestCase):
         self,
     ) -> None:
         metadata, _, raw = DEPLOY.load_artifact((ROOT / "plugin-dist").resolve())
-        self.assertEqual("1.3.11", metadata["version"])
+        self.assertEqual("1.3.12", metadata["version"])
 
         ceiling = DEPLOY.package_upload_ceiling(len(raw))
         self.assertEqual(

@@ -407,11 +407,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_3_11(self) -> None:
+    def test_release_version_is_exact_1_3_12(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.11$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.11' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.11' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.3\.12$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.3.12' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.3.12' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(

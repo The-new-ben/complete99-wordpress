@@ -39,6 +39,18 @@ final class Complete99_Review_Lab {
 		$product_bundle = self::load_data_file( 'catalog-product-seeds.php' );
 		$asset_bundle = self::load_data_file( 'generated-asset-manifest.php' );
 		$connectors = self::load_data_file( 'order-connectors.php' );
+		$science_snapshot = class_exists( 'Complete99_Culinary_Science', false )
+			? Complete99_Culinary_Science::editorial_snapshot()
+			: array();
+		$science_registry = isset( $science_snapshot['registry'] ) && is_array( $science_snapshot['registry'] )
+			? $science_snapshot['registry']
+			: array();
+		$culinary_commerce_snapshot = class_exists( 'Complete99_Culinary_Commerce', false )
+			? Complete99_Culinary_Commerce::editorial_snapshot()
+			: array();
+		$culinary_commerce_registry = isset( $culinary_commerce_snapshot['registry'] ) && is_array( $culinary_commerce_snapshot['registry'] )
+			? $culinary_commerce_snapshot['registry']
+			: array();
 
 		$dishes = isset( $dish_bundle['dishes'] ) && is_array( $dish_bundle['dishes'] )
 			? array_slice( $dish_bundle['dishes'], 0, 100 )
@@ -76,6 +88,24 @@ final class Complete99_Review_Lab {
 			'connectors'       => is_array( $connectors ) ? array_slice( $connectors, 0, 20, true ) : array(),
 			'commerce'         => self::commerce_readiness(),
 			'evaluation_catalog' => self::evaluation_catalog_status(),
+			'culinary_science' => array(
+				'digest'   => isset( $science_snapshot['digest'] ) ? (string) $science_snapshot['digest'] : '',
+				'version'  => isset( $science_registry['version'] ) ? (string) $science_registry['version'] : '',
+				'sources'  => isset( $science_registry['sources'] ) && is_array( $science_registry['sources'] ) ? $science_registry['sources'] : array(),
+				'entities' => isset( $science_registry['entities'] ) && is_array( $science_registry['entities'] ) ? array_slice( $science_registry['entities'], 0, 500 ) : array(),
+			),
+			'culinary_commerce_graph' => array(
+				'digest'              => isset( $culinary_commerce_snapshot['digest'] ) ? (string) $culinary_commerce_snapshot['digest'] : '',
+				'version'             => isset( $culinary_commerce_registry['version'] ) ? (string) $culinary_commerce_registry['version'] : '',
+				'products'            => isset( $culinary_commerce_registry['products'] ) && is_array( $culinary_commerce_registry['products'] ) ? array_slice( $culinary_commerce_registry['products'], 0, 500 ) : array(),
+				'variants'            => isset( $culinary_commerce_registry['variants'] ) && is_array( $culinary_commerce_registry['variants'] ) ? array_slice( $culinary_commerce_registry['variants'], 0, 500 ) : array(),
+				'skus'                => isset( $culinary_commerce_registry['skus'] ) && is_array( $culinary_commerce_registry['skus'] ) ? array_slice( $culinary_commerce_registry['skus'], 0, 500 ) : array(),
+				'observations'        => isset( $culinary_commerce_registry['market_observations'] ) && is_array( $culinary_commerce_registry['market_observations'] ) ? array_slice( $culinary_commerce_registry['market_observations'], 0, 500 ) : array(),
+				'channel_offers'      => isset( $culinary_commerce_registry['channel_offers'] ) && is_array( $culinary_commerce_registry['channel_offers'] ) ? array_slice( $culinary_commerce_registry['channel_offers'], 0, 500 ) : array(),
+				'bundles'             => isset( $culinary_commerce_registry['bundles'] ) && is_array( $culinary_commerce_registry['bundles'] ) ? array_slice( $culinary_commerce_registry['bundles'], 0, 200 ) : array(),
+				'connector_profiles'  => isset( $culinary_commerce_registry['connector_profiles'] ) && is_array( $culinary_commerce_registry['connector_profiles'] ) ? array_slice( $culinary_commerce_registry['connector_profiles'], 0, 50 ) : array(),
+				'integration_consumers' => isset( $culinary_commerce_registry['integration_consumers'] ) && is_array( $culinary_commerce_registry['integration_consumers'] ) ? array_slice( $culinary_commerce_registry['integration_consumers'], 0, 100 ) : array(),
+			),
 		);
 	}
 
@@ -196,6 +226,54 @@ final class Complete99_Review_Lab {
 		$missing = isset( $commerce['missing'] ) && is_array( $commerce['missing'] )
 			? array_slice( array_map( 'sanitize_key', $commerce['missing'] ), 0, 100 )
 			: array();
+		$science = isset( $snapshot['culinary_science'] ) && is_array( $snapshot['culinary_science'] ) ? $snapshot['culinary_science'] : array();
+		$science_entities = isset( $science['entities'] ) && is_array( $science['entities'] ) ? $science['entities'] : array();
+		$science_sources = isset( $science['sources'] ) && is_array( $science['sources'] ) ? $science['sources'] : array();
+		$science_price_records = array_filter(
+			$science_entities,
+			static function ( $entity ) {
+				return in_array( isset( $entity['type'] ) ? $entity['type'] : '', array( 'retail_listing', 'market_observation' ), true );
+			}
+		);
+		$commerce_graph = isset( $snapshot['culinary_commerce_graph'] ) && is_array( $snapshot['culinary_commerce_graph'] ) ? $snapshot['culinary_commerce_graph'] : array();
+		$graph_products = isset( $commerce_graph['products'] ) && is_array( $commerce_graph['products'] ) ? $commerce_graph['products'] : array();
+		$graph_variants = isset( $commerce_graph['variants'] ) && is_array( $commerce_graph['variants'] ) ? $commerce_graph['variants'] : array();
+		$graph_skus = isset( $commerce_graph['skus'] ) && is_array( $commerce_graph['skus'] ) ? $commerce_graph['skus'] : array();
+		$graph_observations = isset( $commerce_graph['observations'] ) && is_array( $commerce_graph['observations'] ) ? $commerce_graph['observations'] : array();
+		$graph_offers = isset( $commerce_graph['channel_offers'] ) && is_array( $commerce_graph['channel_offers'] ) ? $commerce_graph['channel_offers'] : array();
+		$graph_bundles = isset( $commerce_graph['bundles'] ) && is_array( $commerce_graph['bundles'] ) ? $commerce_graph['bundles'] : array();
+		$graph_connector_profiles = isset( $commerce_graph['connector_profiles'] ) && is_array( $commerce_graph['connector_profiles'] ) ? $commerce_graph['connector_profiles'] : array();
+		$graph_integration_consumers = isset( $commerce_graph['integration_consumers'] ) && is_array( $commerce_graph['integration_consumers'] ) ? $commerce_graph['integration_consumers'] : array();
+		$variants_by_product = array();
+		foreach ( $graph_variants as $variant ) {
+			$variant_product_id = isset( $variant['product_id'] ) ? (string) $variant['product_id'] : '';
+			if ( '' === $variant_product_id ) {
+				continue;
+			}
+			$variants_by_product[ $variant_product_id ][] = $variant;
+		}
+		$skus_by_variant = array();
+		foreach ( $graph_skus as $sku ) {
+			$sku_variant_id = isset( $sku['variant_id'] ) ? (string) $sku['variant_id'] : '';
+			if ( '' === $sku_variant_id ) {
+				continue;
+			}
+			$skus_by_variant[ $sku_variant_id ][] = $sku;
+		}
+		$observations_by_sku = array();
+		foreach ( $graph_observations as $observation ) {
+			$observation_sku_id = isset( $observation['sku_id'] ) ? (string) $observation['sku_id'] : '';
+			if ( '' === $observation_sku_id ) {
+				continue;
+			}
+			$observations_by_sku[ $observation_sku_id ][] = $observation;
+		}
+		$graph_active_offers = array_filter(
+			$graph_offers,
+			static function ( $offer ) {
+				return 'active' === ( isset( $offer['state'] ) ? $offer['state'] : '' );
+			}
+		);
 		?>
 		<div class="wrap c99-review-lab" dir="rtl">
 			<style>
@@ -236,7 +314,95 @@ final class Complete99_Review_Lab {
 				<div class="c99-review-card"><strong>מרכיבים פרטיים שנשמרו</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $evaluation_materialized['ingredient_count'] ?? 0 ) ); ?></span></div>
 				<div class="c99-review-card"><strong>תכניות פרטיות שנשמרו</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $evaluation_materialized['product_plan_count'] ?? 0 ) ); ?></span></div>
 				<div class="c99-review-card"><strong>חנות ציבורית</strong><span class="c99-review-number"><?php self::badge( ! empty( $commerce['ready'] ), 'מוכנה', 'בבדיקות קבלה' ); ?></span></div>
+				<div class="c99-review-card"><strong>ישויות קולינריה ומדע</strong><span class="c99-review-number"><?php echo esc_html( count( $science_entities ) ); ?></span></div>
+				<div class="c99-review-card"><strong>מקורות מחקר ושוק</strong><span class="c99-review-number"><?php echo esc_html( count( $science_sources ) ); ?></span></div>
+				<div class="c99-review-card"><strong>תצפיות מחיר מדויקות</strong><span class="c99-review-number"><?php echo esc_html( count( $science_price_records ) ); ?></span></div>
+				<div class="c99-review-card"><strong>מוצרי קטלוג מופרדים</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_products ) ); ?></span></div>
+				<div class="c99-review-card"><strong>וריאנטים ו־SKU</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_variants ) . ' / ' . count( $graph_skus ) ); ?></span></div>
+				<div class="c99-review-card"><strong>תצפיות שוק מנורמלות</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_observations ) ); ?></span></div>
+				<div class="c99-review-card"><strong>חבילות מסחר מתוכננות</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_bundles ) ); ?></span></div>
+				<div class="c99-review-card"><strong>הצעות ערוץ פעילות</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_active_offers ) ); ?></span></div>
+				<div class="c99-review-card"><strong>מחברי קופות וצרכני API</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_connector_profiles ) . ' / ' . count( $graph_integration_consumers ) ); ?></span></div>
 			</div>
+
+			<section class="c99-review-section">
+				<h2>גרף מסחרי מודולרי</h2>
+				<p class="c99-review-note">כאן יש הפרדה מלאה בין ידע, מוצר, וריאנט, SKU, תצפית מחיר והצעת מכירה. תצפית מחיר בחו״ל אינה הופכת להצעת מכירה בישראל. הצעה יכולה להפוך לפעילה רק לאחר SKU מאומת, מס, עלות נחיתה, מרווח, מלאי ואישור ערוץ.</p>
+				<table class="widefat striped c99-review-table">
+					<thead><tr><th>מוצר</th><th>ישות ידע</th><th>מצב</th><th>וריאנטים</th><th>SKU</th><th>תצפיות</th></tr></thead>
+					<tbody>
+					<?php foreach ( $graph_products as $graph_product ) : ?>
+						<?php
+						$product_id = isset( $graph_product['id'] ) ? (string) $graph_product['id'] : '';
+						$product_variants = isset( $variants_by_product[ $product_id ] ) ? $variants_by_product[ $product_id ] : array();
+						$product_sku_count = 0;
+						$product_observation_count = 0;
+						foreach ( $product_variants as $product_variant ) {
+							$variant_id = isset( $product_variant['id'] ) ? (string) $product_variant['id'] : '';
+							$variant_skus = isset( $skus_by_variant[ $variant_id ] ) ? $skus_by_variant[ $variant_id ] : array();
+							$product_sku_count += count( $variant_skus );
+							foreach ( $variant_skus as $variant_sku ) {
+								$sku_id = isset( $variant_sku['id'] ) ? (string) $variant_sku['id'] : '';
+								$product_observation_count += isset( $observations_by_sku[ $sku_id ] ) ? count( $observations_by_sku[ $sku_id ] ) : 0;
+							}
+						}
+						?>
+						<tr>
+							<td><strong><?php echo esc_html( self::local_name( $graph_product, 'name', $product_id ) ); ?></strong><div class="c99-review-code"><?php echo esc_html( $product_id ); ?></div></td>
+							<td class="c99-review-code"><?php echo esc_html( isset( $graph_product['knowledge_entity_id'] ) ? $graph_product['knowledge_entity_id'] : '' ); ?></td>
+							<td><?php echo esc_html( isset( $graph_product['state'] ) ? $graph_product['state'] : '' ); ?></td>
+							<td><?php echo esc_html( count( $product_variants ) ); ?></td>
+							<td><?php echo esc_html( $product_sku_count ); ?></td>
+							<td><?php echo esc_html( $product_observation_count ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</section>
+
+			<section class="c99-review-section">
+				<h2>מחברי קופות וצרכני API</h2>
+				<p class="c99-review-note">כל מתאם מקבל גבול ערוצים ושווקים מוגדר. הפעלה דורשת חוזה ספק מאומת, מזהה מפתח ייעודי וחתימה הקשורה לנתיב ולצרכן.</p>
+				<table class="widefat striped c99-review-table">
+					<thead><tr><th>צרכן</th><th>מחבר</th><th>מזהה מפתח</th><th>ערוצים</th><th>מצב</th></tr></thead>
+					<tbody>
+					<?php foreach ( $graph_integration_consumers as $consumer ) : ?>
+						<tr>
+							<td class="c99-review-code"><?php echo esc_html( isset( $consumer['id'] ) ? $consumer['id'] : '' ); ?></td>
+							<td class="c99-review-code"><?php echo esc_html( isset( $consumer['connector_profile_id'] ) ? $consumer['connector_profile_id'] : '' ); ?></td>
+							<td class="c99-review-code"><?php echo esc_html( isset( $consumer['key_id'] ) ? $consumer['key_id'] : '' ); ?></td>
+							<td class="c99-review-code"><?php echo esc_html( implode( ', ', isset( $consumer['channel_ids'] ) && is_array( $consumer['channel_ids'] ) ? $consumer['channel_ids'] : array() ) ); ?></td>
+							<td><?php echo esc_html( isset( $consumer['state'] ) ? $consumer['state'] : '' ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</section>
+
+			<section class="c99-review-section">
+				<h2>מוזיאון המדע, SEO ומודל עסקי</h2>
+				<p class="c99-review-note">זהו גרף המחקר הפרטי. עמוד ציבורי נוצר רק לאחר אישור דו-לשוני, ראיות, זכויות ושער פרסום. המחירים כאן הם תצפיות מקור מתוארכות ולא מחיר מכירה בישראל.</p>
+				<table class="widefat striped c99-review-table">
+					<thead><tr><th>ישות</th><th>סוג ותפקיד</th><th>בעל SEO ונתיב</th><th>תמחור ומוניטיזציה</th><th>פרסום</th></tr></thead>
+					<tbody>
+					<?php foreach ( $science_entities as $entity ) : ?>
+						<?php
+						$seo = isset( $entity['seo'] ) && is_array( $entity['seo'] ) ? $entity['seo'] : array();
+						$commerce_plan = isset( $entity['commerce'] ) && is_array( $entity['commerce'] ) ? $entity['commerce'] : array();
+						$business = isset( $commerce_plan['business_model'] ) && is_array( $commerce_plan['business_model'] ) ? $commerce_plan['business_model'] : array();
+						$publication = isset( $entity['publication'] ) && is_array( $entity['publication'] ) ? $entity['publication'] : array();
+						?>
+						<tr>
+							<td><strong><?php echo esc_html( self::local_name( $entity, 'name', isset( $entity['id'] ) ? $entity['id'] : '' ) ); ?></strong><div class="c99-review-code"><?php echo esc_html( isset( $entity['id'] ) ? $entity['id'] : '' ); ?></div></td>
+							<td><code><?php echo esc_html( isset( $entity['type'] ) ? $entity['type'] : '' ); ?></code><br><?php echo esc_html( isset( $seo['page_role'] ) ? $seo['page_role'] : '' ); ?> / <?php echo esc_html( isset( $seo['route_mode'] ) ? $seo['route_mode'] : '' ); ?></td>
+							<td><div class="c99-review-code"><?php echo esc_html( isset( $seo['owner_entity_id'] ) ? $seo['owner_entity_id'] : '' ); ?></div><div class="c99-review-code"><?php echo esc_html( self::local_name( $seo, 'canonical_path' ) ); ?></div></td>
+							<td><?php echo esc_html( isset( $business['pricing_state'] ) ? $business['pricing_state'] : '' ); ?><br><small><?php echo esc_html( implode( ', ', isset( $business['revenue_models'] ) && is_array( $business['revenue_models'] ) ? $business['revenue_models'] : array() ) ); ?></small><div class="c99-review-code"><?php echo esc_html( implode( ', ', isset( $business['observation_entity_ids'] ) && is_array( $business['observation_entity_ids'] ) ? $business['observation_entity_ids'] : array() ) ); ?></div></td>
+							<td><?php self::badge( 'approved_public' === ( isset( $publication['state'] ) ? $publication['state'] : '' ), 'מאושר לציבור', 'פרטי לבדיקה' ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</section>
 
 			<section class="c99-review-section">
 				<h2>מנות ועץ מרכיבים</h2>

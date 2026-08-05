@@ -2,28 +2,36 @@
 
 ## Product boundary
 
-Complete99 has a strict public and private split.
+Complete99 has one authoritative WordPress and WooCommerce platform with a
+strict public and private surface split.
 
 1. **Public WordPress site**: a bilingual culinary consumer website for food,
    dishes, ingredients, traditions, practical guides, the restaurant story,
    contact information, ordering continuation and a held pantry.
-2. **Private Complete99 OS on Sites**: operating infrastructure for inventory,
-   orders, suppliers, costs, tasks, campaigns, workers and future device
-   adapters. It is not marketed through the consumer website.
-3. **Signed public read-model bridge**: the private system may send only
-   explicitly allowed consumer-safe dish fields to WordPress. The payload is
-   signed; WordPress rejects stale timestamps, reused nonces, invalid signatures,
-   oversized data and unknown fields. Campaigns are rejected because they remain
-   private. WordPress keeps publication, verification and media-rights evidence
-   internally, then returns only a separate consumer-safe field projection from
-   the public catalog endpoint.
+2. **Private WordPress control plane**: WooCommerce owns catalog identity, stock,
+   carts and orders. The plugin owns the versioned culinary graph, evidence,
+   publication gates, market observations, supplier and landed-cost models,
+   margin scenarios, bundles and connector contracts. These surfaces require an
+   administrator capability or a scoped signed request and are never public SEO
+   targets.
+3. **Connected clients and adapters**: the touch kiosk, POS, mobile application,
+   kitchen tools, operations screens and campaign services consume versioned
+   WordPress projections or submit narrowly scoped mutations. They may cache a
+   projection for resilience, but they are not an independent catalog or stock
+   source of truth. A vendor adapter is bound only after its exact contract,
+   authentication, idempotency and retry behavior are verified.
+4. **Consumer projection**: WordPress publishes only explicitly approved public
+   fields. It rejects stale timestamps, reused nonces, invalid signatures,
+   oversized data and unknown fields. Private costs, workflow state, image
+   prompts and compliance review remain outside that projection.
 
-Raw camera streams, telemetry, employee data, supplier costs, private production
-specifications, tokens and social credentials do not belong in WordPress.
+Large raw media streams may use purpose-built storage, and credentials stay in
+server-side secret stores. WordPress retains the canonical entity identity,
+evidence reference, authorization state and publication decision.
 
-Release 1.3.1 does not install or assign Complete99 worker roles. The role
-definitions remain dormant code. Commerce order, refund, fulfilment and stock
-events use an unassigned private outbox until a later operating decision.
+Release 1.3.12 installs infrastructure only and does not install or assign
+Complete99 worker roles. Commerce order, refund, fulfilment and stock events use
+an unassigned private outbox until a later operating decision.
 
 ## WordPress content model
 
@@ -49,6 +57,60 @@ The signed sync boundary still accepts a `branches` array so the private system
 does not need an immediate schema change. WordPress counts those records toward
 the payload limit, then discards them. It does not store or publish branch data
 until a verified consumer location contract is approved.
+
+## Culinary knowledge and SEO graph
+
+The culinary-science registry models every record as an independently addressed
+entity. Cuisine, category, dish, preparation, ingredient, molecule, technique,
+equipment, institution, market, supplier, restaurant, chef, source and market
+observation can therefore be expanded without copying a whole page template.
+Each entity carries bilingual identity, five evidence profiles, atomic facts,
+relations, commerce intent, visual instructions, compliance notes, review state
+and publication state.
+
+SEO ownership is declared before publication. A cuisine pillar owns its topic
+cluster. Standalone spokes own one canonical path and section spokes resolve to
+one declared owner. Query variants, multilingual term variants, semantic entity
+links, protected exclusions, expected children, breadcrumbs and contextual link
+plans are validated as one graph. Duplicate query owners, broken parents,
+cycles, unresolved links and conflicting canonical owners fail the registry.
+
+The public API is a projection, never the source registry. An entity enters that
+projection only when it has reviewed bilingual content, reviewed evidence, at
+least one public-safe fact, approved media, cleared rights with a SHA-256 receipt,
+acceptable attribution and, for food preparations, a completed culinary test.
+Public relations, parent chains, hubs, semantic links and breadcrumbs may target
+only other public entities. Public taxonomy is emitted from explicit category,
+attribute and tag allowlists. Prompts, cost plans and private evidence remain in
+the administrator surface.
+
+## Commerce and monetization graph
+
+Knowledge does not become a sellable item by implication. The commerce registry
+keeps these identities and decisions separate:
+
+`knowledge entity -> product -> variant -> SKU -> supplier offer -> landed cost -> margin scenario -> channel offer`
+
+Market observations remain dated evidence and cannot become Israeli selling
+prices by themselves. Approved offers require a verified SKU, cleared compliance,
+retained source evidence, a supplier quote, an exact currency conversion, fully
+evidenced cost lines, an approved tax state, an exact gross-to-net bridge and a
+computed contribution margin. Cross-sell, upsell and bundle edges are separate
+records with their own evidence and lifecycle state.
+
+Money is stored in integer minor units. Decimal quantities and exchange rates are
+canonical strings with explicit direction and rounding. This avoids floating
+point drift and lets another country add its own market, currency, seller, tax
+zone, locale, channel and supplier terms without changing the product identity.
+Only an effective active offer can enter a channel projection, and the POS route
+then rechecks the live WooCommerce SKU, publication status, currency, price,
+stock, purchasability and image before returning it.
+
+The bundled Japanese pilot is the migration and contract seed for this model.
+International expansion must preserve the same versioned schemas, stable IDs,
+digests and validation gates when records move into partitioned database storage
+and persistent caches. WordPress and WooCommerce remain the authority through
+that storage transition.
 
 ## Identity and language
 

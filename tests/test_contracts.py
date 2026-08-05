@@ -430,6 +430,33 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("'complete99_migration_incomplete'", health)
         self.assertIn("'database_version'=> $database_version", health)
 
+    def test_health_separates_migration_and_culinary_graph_failures(self) -> None:
+        health = (
+            PLUGIN / "includes" / "class-complete99-rest.php"
+        ).read_text(encoding="utf-8")
+        health_method = health.split("public static function health()", 1)[1].split(
+            "public static function verify_sync_signature", 1
+        )[0]
+        graph_gate_start = health_method.index("if ( ( $science_loaded")
+        response_start = health_method.index("return rest_ensure_response")
+        migration_gate = health_method[:graph_gate_start]
+        graph_gate = health_method[graph_gate_start:response_start]
+
+        self.assertIn("Complete99_Platform::migration_failed()", migration_gate)
+        self.assertIn("COMPLETE99_PLATFORM_VERSION !== $database_version", migration_gate)
+        self.assertIn("'complete99_migration_incomplete'", migration_gate)
+        self.assertNotIn("empty( $science['ready'] )", migration_gate)
+        self.assertNotIn("empty( $commerce_graph['ready'] )", migration_gate)
+
+        self.assertIn("empty( $science['ready'] )", graph_gate)
+        self.assertIn("empty( $commerce_graph['ready'] )", graph_gate)
+        self.assertIn("'complete99_culinary_graph_unavailable'", graph_gate)
+        self.assertIn(
+            "'Complete99 culinary data is temporarily unavailable.'", graph_gate
+        )
+        self.assertNotIn("'complete99_migration_incomplete'", graph_gate)
+        self.assertNotIn("database migration", graph_gate)
+
     def test_client_rejects_redirects_without_forwarding_authorization(self) -> None:
         class Collector(BaseHTTPRequestHandler):
             authorization_seen = False
@@ -658,6 +685,11 @@ class Complete99ContractTests(unittest.TestCase):
         )
         self.assertNotIn("build-plugin-zip.py", deploy)
         ci = (ROOT / ".github" / "workflows" / "wordpress-ci.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            "python -m pip install --disable-pip-version-check --no-input pytest==9.0.2",
+            ci,
+        )
+        self.assertIn("python -m pytest -q", ci)
         self.assertIn("verify-release-discipline.py", ci)
         self.assertIn("git diff --exit-code -- plugin-dist", ci)
         self.assertIn("git ls-files --others --exclude-standard -- plugin-dist", ci)
