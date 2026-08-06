@@ -45,6 +45,8 @@ final class Complete99_Platform {
 		Complete99_Review_Lab::boot();
 		Complete99_Frontend::boot();
 		Complete99_Live_Dish_Sitemap_Provider::boot();
+		Complete99_Culinary_Museum_Frontend::boot();
+		Complete99_Culinary_Museum_Sitemap_Provider::boot();
 		Complete99_SEO_Registry::boot();
 	}
 

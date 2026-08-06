@@ -390,6 +390,7 @@ final class Complete99_Culinary_Science {
 		}
 		if ( 'approved_public' === $publication['state']
 			&& ( 'public_discovery' !== $entity['surface_class']
+				|| 'private' === $entity['seo']['route_mode']
 				|| 'reviewed_bilingual' !== $entity['review']['language_status']
 				|| ! in_array( $entity['review']['status'], array( 'source_reviewed', 'verified' ), true )
 				|| 'approved' !== $entity['visual']['asset_state']
@@ -410,6 +411,9 @@ final class Complete99_Culinary_Science {
 		}
 		if ( $publication['search_index'] && 'index' !== $entity['index_policy'] ) {
 			throw new RuntimeException( $path . '.index_contract' );
+		}
+		if ( $publication['search_index'] && 'standalone' !== $entity['seo']['route_mode'] ) {
+			throw new RuntimeException( $path . '.index_route_contract' );
 		}
 		if ( $publication['search_index'] && ! $publication['public_page'] ) {
 			throw new RuntimeException( $path . '.index_without_page' );
@@ -1208,7 +1212,7 @@ final class Complete99_Culinary_Science {
 			: '';
 		return rest_ensure_response(
 			array(
-				'schema'       => 'complete99-culinary-science-public/v2',
+				'schema'       => 'complete99-culinary-science-public/v3',
 				'version'      => $registry['version'],
 				'generated_at' => $registry['generated_at'],
 				'language'     => $lang,
@@ -1231,7 +1235,7 @@ final class Complete99_Culinary_Science {
 			if ( hash_equals( $entity['id'], $entity_id ) ) {
 				return rest_ensure_response(
 					array(
-						'schema'   => 'complete99-culinary-science-entity/v2',
+						'schema'   => 'complete99-culinary-science-entity/v3',
 						'version'  => $registry['version'],
 						'language' => $lang,
 						'entity'   => self::public_projection( $entity, $registry, $lang ),
@@ -1327,6 +1331,7 @@ final class Complete99_Culinary_Science {
 			|| 'approved_public' !== $entity['publication']['state']
 			|| true !== $entity['publication']['public_api']
 			|| true !== $entity['publication']['public_page']
+			|| 'private' === $entity['seo']['route_mode']
 			|| 'reviewed_bilingual' !== $entity['review']['language_status']
 			|| ! in_array( $entity['review']['status'], array( 'source_reviewed', 'verified' ), true )
 			|| 'approved' !== $entity['visual']['asset_state']
@@ -1334,6 +1339,10 @@ final class Complete99_Culinary_Science {
 			|| '' === $entity['visual']['rights_receipt_digest']
 			|| 'pending_named_review' === $entity['trust']['attribution_state']
 			|| ( in_array( $entity['type'], array( 'dish', 'preparation' ), true ) && 'tested' !== $entity['review']['culinary_test_status'] ) ) {
+			return false;
+		}
+		if ( true === $entity['publication']['search_index']
+			&& ( 'index' !== $entity['index_policy'] || 'standalone' !== $entity['seo']['route_mode'] ) ) {
 			return false;
 		}
 		$has_public_fact = false;
@@ -1347,6 +1356,137 @@ final class Complete99_Culinary_Science {
 			}
 		}
 		return $has_public_fact;
+	}
+
+	/**
+	 * Resolve an exact approved canonical path to a projection-only page bundle.
+	 *
+	 * @param string $path Absolute-path portion of the request URI.
+	 * @return array
+	 */
+	public static function public_page_bundle_for_path( $path ) {
+		$path = (string) $path;
+		if ( ! preg_match( '#^/(?:[a-z0-9-]+/)*$#', $path ) ) {
+			return array();
+		}
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return array();
+		}
+		foreach ( self::public_entity_index( $registry ) as $entity ) {
+			if ( 'standalone' !== $entity['seo']['route_mode'] ) {
+				continue;
+			}
+			foreach ( array( 'he', 'en' ) as $lang ) {
+				if ( hash_equals( $entity['seo']['canonical_path'][ $lang ], $path ) ) {
+					return self::build_public_page_bundle( $entity, $registry, $lang );
+				}
+			}
+		}
+		return array();
+	}
+
+	/**
+	 * Resolve an approved entity or owned section to its standalone page bundle.
+	 *
+	 * @param string $entity_id Entity identifier.
+	 * @param string $lang      he or en.
+	 * @return array
+	 */
+	public static function public_page_bundle_for_id( $entity_id, $lang = 'he' ) {
+		$lang = in_array( $lang, array( 'he', 'en' ), true ) ? $lang : 'he';
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return array();
+		}
+		$public = self::public_entity_index( $registry );
+		if ( ! isset( $public[ $entity_id ] ) ) {
+			return array();
+		}
+		$owner_id = $public[ $entity_id ]['seo']['owner_entity_id'];
+		if ( ! isset( $public[ $owner_id ] ) || 'standalone' !== $public[ $owner_id ]['seo']['route_mode'] ) {
+			return array();
+		}
+		return self::build_public_page_bundle( $public[ $owner_id ], $registry, $lang );
+	}
+
+	/**
+	 * Return sitemap-safe standalone projections only.
+	 *
+	 * @param string $lang Optional he or en filter.
+	 * @return array
+	 */
+	public static function public_indexable_page_projections( $lang = '' ) {
+		$languages = in_array( $lang, array( 'he', 'en' ), true ) ? array( $lang ) : array( 'he', 'en' );
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return array();
+		}
+		$records = array();
+		foreach ( self::public_entity_index( $registry ) as $entity ) {
+			if ( 'standalone' !== $entity['seo']['route_mode']
+				|| true !== $entity['publication']['search_index']
+				|| 'index' !== $entity['index_policy'] ) {
+				continue;
+			}
+			foreach ( $languages as $language ) {
+				$projection = self::public_projection( $entity, $registry, $language );
+				$records[] = array(
+					'language'      => $language,
+					'canonical_url' => home_url( $entity['seo']['canonical_path'][ $language ] ),
+					'lastmod'       => $entity['trust']['substantive_updated_at'],
+					'entity'        => $projection,
+				);
+			}
+		}
+		return $records;
+	}
+
+	/**
+	 * Return the public museum root projection when its gates are open.
+	 *
+	 * @param string $lang he or en.
+	 * @return array
+	 */
+	public static function public_museum_root_projection( $lang = 'he' ) {
+		$lang = in_array( $lang, array( 'he', 'en' ), true ) ? $lang : 'he';
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return array();
+		}
+		$public = self::public_entity_index( $registry );
+		return isset( $public['museum-culinary-science'] )
+			? self::public_projection( $public['museum-culinary-science'], $registry, $lang )
+			: array();
+	}
+
+	private static function build_public_page_bundle( $owner, $registry, $lang ) {
+		$sections = array();
+		foreach ( self::public_entity_index( $registry ) as $candidate ) {
+			if ( 'section' === $candidate['seo']['route_mode']
+				&& $owner['id'] === $candidate['seo']['owner_entity_id'] ) {
+				$sections[] = self::public_projection( $candidate, $registry, $lang );
+			}
+		}
+		usort(
+			$sections,
+			static function ( $left, $right ) {
+				return strcmp( $left['id'], $right['id'] );
+			}
+		);
+		$he_url = home_url( $owner['seo']['canonical_path']['he'] );
+		$en_url = home_url( $owner['seo']['canonical_path']['en'] );
+		return array(
+			'schema'         => 'complete99-culinary-science-page-bundle/v1',
+			'version'        => $registry['version'],
+			'language'       => $lang,
+			'entity'         => self::public_projection( $owner, $registry, $lang ),
+			'sections'       => $sections,
+			'canonical_path' => $owner['seo']['canonical_path'][ $lang ],
+			'canonical_url'  => 'he' === $lang ? $he_url : $en_url,
+			'alternates'     => array( 'he' => $he_url, 'en' => $en_url, 'x-default' => $he_url ),
+			'indexable'      => true === $owner['publication']['search_index'] && 'index' === $owner['index_policy'],
+		);
 	}
 
 	private static function public_projection( $entity, $registry, $lang ) {
@@ -1437,6 +1577,22 @@ final class Complete99_Culinary_Science {
 		}
 		$internal_links = self::public_internal_links( $entity, $registry, $lang );
 
+		$asset_slug = preg_replace( '/[^a-z0-9-]/', '', (string) $entity['slug'] );
+		$asset_stem = 'c99-science-' . $asset_slug . '-v01';
+		$asset_base = defined( 'COMPLETE99_PLATFORM_URL' ) ? COMPLETE99_PLATFORM_URL : '';
+		$visual = array(
+			'url'      => $asset_base . 'assets/images/science/' . rawurlencode( $asset_stem . '.webp' ),
+			'avif_url' => $asset_base . 'assets/images/science/' . rawurlencode( $asset_stem . '.avif' ),
+			'alt'      => $entity['name'][ $lang ],
+			'width'    => 1536,
+			'height'   => 1024,
+		);
+		$market_context = array();
+		if ( class_exists( 'Complete99_Culinary_Commerce' )
+			&& method_exists( 'Complete99_Culinary_Commerce', 'public_market_context_for_science_entity' ) ) {
+			$market_context = Complete99_Culinary_Commerce::public_market_context_for_science_entity( $entity['id'], $lang );
+		}
+
 		return array(
 			'id'           => $entity['id'],
 			'type'         => $entity['type'],
@@ -1445,6 +1601,7 @@ final class Complete99_Culinary_Science {
 			'name'         => $entity['name'][ $lang ],
 			'summary'      => $entity['summary'][ $lang ],
 			'index_policy' => $entity['index_policy'],
+			'search_index' => true === $entity['publication']['search_index'],
 			'seo'          => array(
 				'page_role'         => $entity['seo']['page_role'],
 				'route_mode'        => $entity['seo']['route_mode'],
@@ -1477,6 +1634,8 @@ final class Complete99_Culinary_Science {
 			'taxonomy'     => $public_taxonomy,
 			'relations'    => $relations,
 			'internal_links' => $internal_links,
+			'visual'       => $visual,
+			'market_context' => is_array( $market_context ) ? $market_context : array(),
 			'safety_notes' => $safety,
 			'sources'      => $sources,
 			'trust'        => array(

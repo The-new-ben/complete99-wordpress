@@ -1026,6 +1026,103 @@ final class Complete99_Culinary_Commerce {
 		return array( 'digest' => self::registry_digest( $registry ), 'registry' => $registry );
 	}
 
+	/**
+	 * Return public-safe source-market evidence for one culinary-science entity.
+	 *
+	 * This projection is deliberately separate from supplier offers, landed
+	 * costs, margins, WooCommerce identity and channel offers. Its amounts are
+	 * dated observations in the source market and are not Israeli sell prices.
+	 *
+	 * @param string $science_entity_id Culinary-science entity identifier.
+	 * @param string $lang              Requested public language, he or en.
+	 * @return array
+	 */
+	public static function public_market_context_for_science_entity( $science_entity_id, $lang = 'he' ) {
+		if ( ! is_string( $science_entity_id )
+			|| 1 !== preg_match( '/\A[a-z0-9][a-z0-9._:-]*\z/', $science_entity_id ) ) {
+			return array();
+		}
+
+		$registry = self::registry();
+		if ( self::is_error( $registry ) ) {
+			return array();
+		}
+
+		$language  = is_string( $lang ) && 'en' === strtolower( $lang ) ? 'en' : 'he';
+		$products  = self::index_records( $registry['products'], 'id', 'products' );
+		$variants  = self::index_records( $registry['variants'], 'id', 'variants' );
+		$skus      = self::index_records( $registry['skus'], 'id', 'skus' );
+		$sellers   = self::index_records( $registry['sellers'], 'id', 'sellers' );
+		$markets   = self::index_records( $registry['markets'], 'id', 'markets' );
+		$currencies = self::index_records( $registry['currencies'], 'id', 'currencies' );
+		$artifacts = self::index_records( $registry['evidence_artifacts'], 'id', 'evidence_artifacts' );
+		$rows      = array();
+		$scope_note = 'en' === $language
+			? 'Dated evidence from the named source market in its original currency. Complete99 retail prices are presented in the store.'
+			: 'תצפית מתועדת מהשוק הנקוב ובמטבע המקור. מחירי Complete99 לצרכן מוצגים בחנות.';
+
+		foreach ( $registry['market_observations'] as $observation ) {
+			if ( 'recorded' !== $observation['state']
+				|| ! isset( $skus[ $observation['sku_id'] ], $sellers[ $observation['seller_id'] ], $markets[ $observation['market_id'] ], $currencies[ $observation['currency_id'] ], $artifacts[ $observation['evidence_artifact_id'] ] ) ) {
+				continue;
+			}
+
+			$sku      = $skus[ $observation['sku_id'] ];
+			$variant  = isset( $variants[ $sku['variant_id'] ] ) ? $variants[ $sku['variant_id'] ] : null;
+			$product  = is_array( $variant ) && isset( $products[ $variant['product_id'] ] ) ? $products[ $variant['product_id'] ] : null;
+			$market   = $markets[ $observation['market_id'] ];
+			$artifact = $artifacts[ $observation['evidence_artifact_id'] ];
+			if ( ! is_array( $product )
+				|| $science_entity_id !== $product['knowledge_entity_id']
+				|| 'research_candidate' !== $product['state']
+				|| 'research_candidate' !== $variant['state']
+				|| 'research_candidate' !== $sku['state']
+				|| 'source_price_observation' !== $market['purpose']
+				|| 'source_observation' !== $market['state']
+				|| ! in_array( $artifact['verification_state'], array( 'source_reviewed', 'snapshot_retained' ), true ) ) {
+				continue;
+			}
+
+			$currency     = $currencies[ $observation['currency_id'] ];
+			$product_name = self::localized_text( $product['name'], $language );
+			$variant_name = self::localized_text( $variant['name'], $language );
+			$label        = $product_name === $variant_name ? $product_name : $product_name . ', ' . $variant_name;
+			$normalization = $observation['normalization'];
+			$normalized_unit = $normalization['normalized_unit_code'];
+			if ( '1' !== $normalization['normalized_quantity_decimal'] ) {
+				$normalized_unit = $normalization['normalized_quantity_decimal'] . ' ' . $normalized_unit;
+			}
+
+			$rows[] = array(
+				'label'             => $label,
+				'amount'            => self::minor_amount_string( $observation['amount_minor'], $currency['minor_unit_digits'] ),
+				'currency'          => $currency['code'],
+				'normalized_amount' => null === $normalization['normalized_amount_minor']
+					? null
+					: self::minor_amount_string( $normalization['normalized_amount_minor'], $currency['minor_unit_digits'] ),
+				'normalized_unit'   => $normalized_unit,
+				'market'            => self::localized_text( $market['label'], $language ),
+				'seller'            => self::localized_text( $sellers[ $observation['seller_id'] ]['name'], $language ),
+				'observed_at'       => $observation['observed_at'],
+				'availability'      => $observation['availability_state'],
+				'comparability'     => $observation['comparability'],
+				'tax_state'         => $observation['tax_state'],
+				'shipping_state'    => $observation['shipping_state'],
+				'source_url'        => $artifact['source_url'],
+				'scope_note'        => $scope_note,
+			);
+		}
+
+		usort(
+			$rows,
+			static function ( $left, $right ) {
+				$date_compare = strcmp( $right['observed_at'], $left['observed_at'] );
+				return 0 !== $date_compare ? $date_compare : strcmp( $left['label'], $right['label'] );
+			}
+		);
+		return $rows;
+	}
+
 	public static function rest_editorial_snapshot() {
 		$snapshot = self::editorial_snapshot();
 		if ( empty( $snapshot ) ) {
@@ -1231,6 +1328,26 @@ final class Complete99_Culinary_Commerce {
 			$value[ $key ] = self::canonical_value( $item );
 		}
 		return $value;
+	}
+
+	private static function localized_text( $value, $language ) {
+		if ( ! is_array( $value ) ) {
+			return '';
+		}
+		if ( isset( $value[ $language ] ) && is_string( $value[ $language ] ) && '' !== trim( $value[ $language ] ) ) {
+			return $value[ $language ];
+		}
+		$fallback = 'en' === $language ? 'he' : 'en';
+		return isset( $value[ $fallback ] ) && is_string( $value[ $fallback ] ) ? $value[ $fallback ] : '';
+	}
+
+	private static function minor_amount_string( $minor_amount, $minor_unit_digits ) {
+		$digits = (int) $minor_unit_digits;
+		if ( 0 === $digits ) {
+			return (string) $minor_amount;
+		}
+		$factor = self::power_of_ten( $digits, 'public_market_context.currency_precision' );
+		return (string) intdiv( $minor_amount, $factor ) . '.' . str_pad( (string) ( $minor_amount % $factor ), $digits, '0', STR_PAD_LEFT );
 	}
 
 	private static function assert_normalization( $value, $path ) {

@@ -11,11 +11,11 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.3.12`. Production truth comes
+The source tree targets Complete99 Platform `1.3.13`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.3.12 provides:
+Release 1.3.13 provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
@@ -43,6 +43,11 @@ Release 1.3.12 provides:
   margin and bundles;
 - administrator-only review endpoints and a signed, vendor-neutral POS catalog
   projection that publishes only fully approved active offers;
+- a bilingual, projection-only Culinary Science Museum preview with exact
+  canonical routes, breadcrumbs, citations, generated AVIF/WebP assets and
+  source-market observations for the first reviewed Japanese entities;
+- an explicit `noindex,follow` gate for the museum preview until long-form
+  editorial review is approved, with sitemap exclusion enforced independently;
 - deterministic deployment, exact package verification, fail-closed recovery
   markers and independent live acceptance.
 
