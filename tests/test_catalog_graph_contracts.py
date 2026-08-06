@@ -210,6 +210,9 @@ echo json_encode(array(
     'ingredient_good' => Complete99_Catalog_Graph::sanitize_ingredient_code(
         'ingredient-aubergine'
     ),
+    'equipment_good' => Complete99_Catalog_Graph::sanitize_ingredient_code(
+        'equipment-wasabi-grater'
+    ),
     'ingredient_bad' => Complete99_Catalog_Graph::sanitize_ingredient_code(
         'component-aubergine'
     ),
@@ -242,6 +245,7 @@ echo json_encode(array(
         self.assertEqual("menu-reference-sabich", result["dish_good"])
         self.assertEqual("", result["dish_bad"])
         self.assertEqual("ingredient-aubergine", result["ingredient_good"])
+        self.assertEqual("equipment-wasabi-grater", result["equipment_good"])
         self.assertEqual("", result["ingredient_bad"])
         self.assertEqual([], result["list_bad"])
 

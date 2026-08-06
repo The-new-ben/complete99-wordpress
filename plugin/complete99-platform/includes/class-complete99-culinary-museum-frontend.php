@@ -370,11 +370,14 @@ final class Complete99_Culinary_Museum_Frontend {
 		$height  = isset( $visual['height'] ) ? max( 1, absint( $visual['height'] ) ) : 1024;
 		$loading = $priority ? 'eager' : 'lazy';
 		$avif    = ! empty( $visual['avif_url'] ) ? self::safe_visual_url( $visual['avif_url'] ) : '';
+		$sizes   = $priority
+			? '(max-width: 680px) calc(100vw - 40px), (max-width: 920px) calc(100vw - 56px), 52vw'
+			: '(max-width: 680px) calc(100vw - 40px), (max-width: 920px) calc(100vw - 56px), 760px';
 		?>
 		<figure class="c99-museum-visual">
 			<picture>
-				<?php if ( '' !== $avif ) : ?><source srcset="<?php echo esc_url( $avif ); ?>" type="image/avif" /><?php endif; ?>
-				<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" loading="<?php echo esc_attr( $loading ); ?>" decoding="async"<?php echo $priority ? ' fetchpriority="high"' : ''; ?> />
+				<?php if ( '' !== $avif ) : ?><source srcset="<?php echo esc_url( $avif ); ?>" sizes="<?php echo esc_attr( $sizes ); ?>" type="image/avif" /><?php endif; ?>
+				<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" sizes="<?php echo esc_attr( $sizes ); ?>" loading="<?php echo esc_attr( $loading ); ?>" decoding="async"<?php echo $priority ? ' fetchpriority="high"' : ''; ?> />
 			</picture>
 			<?php if ( ! empty( $visual['caption'] ) ) : ?><figcaption><?php echo esc_html( $visual['caption'] ); ?></figcaption><?php endif; ?>
 		</figure>
@@ -387,7 +390,7 @@ final class Complete99_Culinary_Museum_Frontend {
 			return;
 		}
 		$lang = self::$bundle['language'];
-		$tag  = 3 === $heading_level ? 'h3' : 'h2';
+		$tag  = 4 <= $heading_level ? 'h4' : ( 3 === $heading_level ? 'h3' : 'h2' );
 		?>
 		<section class="c99-museum-section c99-museum-profiles" aria-labelledby="c99-museum-profiles-<?php echo esc_attr( $entity['id'] ); ?>">
 			<<?php echo esc_attr( $tag ); ?> id="c99-museum-profiles-<?php echo esc_attr( $entity['id'] ); ?>"><?php echo esc_html( 'he' === $lang ? 'חמש זוויות להבנת הנושא' : 'Five lenses on the subject' ); ?></<?php echo esc_attr( $tag ); ?>>
@@ -410,7 +413,7 @@ final class Complete99_Culinary_Museum_Frontend {
 		}
 		$lang        = self::$bundle['language'];
 		$source_map  = self::source_number_map( $entity );
-		$heading_tag = 3 === $heading_level ? 'h3' : 'h2';
+		$heading_tag = 4 <= $heading_level ? 'h4' : ( 3 === $heading_level ? 'h3' : 'h2' );
 		?>
 		<section class="c99-museum-section c99-museum-evidence" aria-labelledby="c99-museum-facts-<?php echo esc_attr( $entity['id'] ); ?>">
 			<<?php echo esc_attr( $heading_tag ); ?> id="c99-museum-facts-<?php echo esc_attr( $entity['id'] ); ?>"><?php echo esc_html( 'he' === $lang ? 'מה ידוע ומה נמדד' : 'What is known and measured' ); ?></<?php echo esc_attr( $heading_tag ); ?>>
@@ -461,8 +464,8 @@ final class Complete99_Culinary_Museum_Frontend {
 		?>
 		<section class="c99-museum-section c99-museum-map" aria-labelledby="c99-museum-map-title">
 			<div class="c99-museum-section-heading">
-				<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מרכזי תוכן וענפי ידע' : 'Hubs and spokes' ); ?></p>
-				<h2 id="c99-museum-map-title"><?php echo esc_html( $is_he ? 'מפת הידע של הנושא' : 'The subject knowledge map' ); ?></h2>
+				<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מסלולים להמשך' : 'Ways to explore' ); ?></p>
+				<h2 id="c99-museum-map-title"><?php echo esc_html( $is_he ? 'לגלות את הנושא' : 'Explore the topic' ); ?></h2>
 			</div>
 			<div class="c99-museum-section-stack">
 				<?php foreach ( $sections as $section ) : ?>
@@ -473,9 +476,9 @@ final class Complete99_Culinary_Museum_Frontend {
 							<p><?php echo esc_html( $section['summary'] ); ?></p>
 						</div>
 						<?php self::render_visual( $section ); ?>
-						<?php self::render_facts( $section, 3 ); ?>
-						<?php self::render_connections( $section, 3 ); ?>
-						<?php self::render_sources( $section, 3 ); ?>
+						<?php self::render_facts( $section, 4 ); ?>
+						<?php self::render_connections( $section, 4 ); ?>
+						<?php self::render_sources( $section, 4 ); ?>
 					</section>
 				<?php endforeach; ?>
 			</div>
@@ -490,7 +493,7 @@ final class Complete99_Culinary_Museum_Frontend {
 			return;
 		}
 		$lang        = self::$bundle['language'];
-		$tag         = 3 === $heading_level ? 'h3' : 'h2';
+		$tag         = 4 <= $heading_level ? 'h4' : ( 3 === $heading_level ? 'h3' : 'h2' );
 		$source_map  = self::source_number_map( $entity );
 		$target_urls = array();
 		foreach ( $links as $link ) {
@@ -520,7 +523,7 @@ final class Complete99_Culinary_Museum_Frontend {
 						<article>
 							<p class="c99-museum-card-label"><?php echo esc_html( self::relationship_label( $relation['type'], $lang ) ); ?></p>
 							<p><?php echo esc_html( $relation['note'] ); ?><?php self::render_source_markers( $relation['source_ids'], $source_map, $entity['id'] ); ?></p>
-							<?php if ( ! empty( $target_urls[ $relation['target_id'] ] ) ) : ?><a class="c99-museum-source-link" href="<?php echo esc_url( $target_urls[ $relation['target_id'] ] ); ?>"><?php echo esc_html( 'he' === $lang ? 'לישות המקושרת' : 'Open connected entity' ); ?></a><?php endif; ?>
+							<?php if ( ! empty( $target_urls[ $relation['target_id'] ] ) ) : ?><a class="c99-museum-source-link" href="<?php echo esc_url( $target_urls[ $relation['target_id'] ] ); ?>"><?php echo esc_html( 'he' === $lang ? 'לנושא הקשור' : 'Explore the related topic' ); ?></a><?php endif; ?>
 						</article>
 					<?php endforeach; ?>
 				</div>
@@ -602,8 +605,8 @@ final class Complete99_Culinary_Museum_Frontend {
 		$is_he = 'he' === self::$bundle['language'];
 		?>
 		<section class="c99-museum-side-card c99-museum-taxonomy" aria-labelledby="c99-museum-taxonomy-title">
-			<p class="c99-museum-card-label"><?php echo esc_html( $is_he ? 'טקסונומיה' : 'Taxonomy' ); ?></p>
-			<h2 id="c99-museum-taxonomy-title"><?php echo esc_html( $is_he ? 'איך הישות מסודרת' : 'How this entity is organized' ); ?></h2>
+			<p class="c99-museum-card-label"><?php echo esc_html( $is_he ? 'נושאים ומאפיינים' : 'Topics and characteristics' ); ?></p>
+			<h2 id="c99-museum-taxonomy-title"><?php echo esc_html( $is_he ? 'ההקשר הקולינרי במבט אחד' : 'Culinary context at a glance' ); ?></h2>
 			<?php if ( ! empty( $taxonomy['category_path'] ) ) : ?><p class="c99-museum-category-path"><?php echo esc_html( implode( ' / ', array_map( array( __CLASS__, 'machine_label' ), $taxonomy['category_path'] ) ) ); ?></p><?php endif; ?>
 			<?php if ( ! empty( $taxonomy['attributes'] ) ) : ?>
 				<dl><?php foreach ( $taxonomy['attributes'] as $key => $values ) : ?><div><dt><?php echo esc_html( self::machine_label( $key ) ); ?></dt><dd><?php echo esc_html( implode( ', ', array_map( array( __CLASS__, 'machine_label' ), $values ) ) ); ?></dd></div><?php endforeach; ?></dl>
@@ -652,7 +655,7 @@ final class Complete99_Culinary_Museum_Frontend {
 			return;
 		}
 		$lang = self::$bundle['language'];
-		$tag  = 3 === $heading_level ? 'h3' : 'h2';
+		$tag  = 4 <= $heading_level ? 'h4' : ( 3 === $heading_level ? 'h3' : 'h2' );
 		?>
 		<section class="c99-museum-section c99-museum-sources" aria-labelledby="c99-museum-sources-<?php echo esc_attr( $entity['id'] ); ?>">
 			<<?php echo esc_attr( $tag ); ?> id="c99-museum-sources-<?php echo esc_attr( $entity['id'] ); ?>"><?php echo esc_html( 'he' === $lang ? 'מקורות וציטוטים' : 'Sources and citations' ); ?></<?php echo esc_attr( $tag ); ?>>
@@ -671,11 +674,12 @@ final class Complete99_Culinary_Museum_Frontend {
 	}
 
 	private static function render_source_markers( $source_ids, $source_map, $entity_id ) {
+		$source_label = 'he' === self::$bundle['language'] ? 'מקור ' : 'Source ';
 		foreach ( $source_ids as $source_id ) {
 			if ( ! isset( $source_map[ $source_id ] ) ) {
 				continue;
 			}
-			echo ' <sup class="c99-museum-citation"><a href="#c99-source-' . esc_attr( sanitize_html_class( $entity_id . '-' . $source_id ) ) . '" aria-label="' . esc_attr( 'Source ' . $source_map[ $source_id ] ) . '">[' . esc_html( $source_map[ $source_id ] ) . ']</a></sup>';
+			echo ' <sup class="c99-museum-citation"><a href="#c99-source-' . esc_attr( sanitize_html_class( $entity_id . '-' . $source_id ) ) . '" aria-label="' . esc_attr( $source_label . $source_map[ $source_id ] ) . '">[' . esc_html( $source_map[ $source_id ] ) . ']</a></sup>';
 		}
 	}
 
@@ -713,20 +717,32 @@ final class Complete99_Culinary_Museum_Frontend {
 			}
 		}
 		$citations = array_values( array_unique( $citations ) );
+		$organization_id = home_url( '/' ) . '#organization';
+		$website_id      = home_url( '/' ) . '#website';
+		$page_id         = $bundle['canonical_url'] . '#webpage';
+		$language        = 'he' === $bundle['language'] ? 'he-IL' : 'en';
 		$page = array(
 			'@type'            => $page_type,
-			'@id'              => $bundle['canonical_url'] . '#webpage',
+			'@id'              => $page_id,
 			'url'              => $bundle['canonical_url'],
 			'name'             => isset( $entity['seo']['title'] ) ? $entity['seo']['title'] : $entity['name'],
 			'headline'         => isset( $entity['seo']['h1'] ) ? $entity['seo']['h1'] : $entity['name'],
 			'description'      => $description,
-			'inLanguage'       => 'he' === $bundle['language'] ? 'he-IL' : 'en',
+			'inLanguage'       => $language,
 			'isAccessibleForFree' => true,
-			'isPartOf'         => array( '@id' => home_url( '/' ) . '#website' ),
+			'isPartOf'         => array( '@id' => $website_id ),
 			'breadcrumb'       => array( '@id' => $bundle['canonical_url'] . '#breadcrumb' ),
 			'citation'         => $citations,
 			'dateModified'     => $entity['trust']['substantive_updated_at'],
 		);
+		if ( 'Article' === $page_type ) {
+			$page['author']    = array( '@id' => $organization_id );
+			$page['publisher'] = array( '@id' => $organization_id );
+			$published_at      = isset( $entity['reviewed_at'] ) ? (string) $entity['reviewed_at'] : '';
+			if ( preg_match( '/^\d{4}-\d{2}-\d{2}$/', $published_at ) ) {
+				$page['datePublished'] = $published_at;
+			}
+		}
 		$image = self::visual_url( isset( $entity['visual'] ) ? $entity['visual'] : array() );
 		if ( '' !== $image ) {
 			$page['primaryImageOfPage'] = array( '@type' => 'ImageObject', 'url' => $image );
@@ -739,24 +755,81 @@ final class Complete99_Culinary_Museum_Frontend {
 				'description' => $entity['summary'],
 			);
 		}
+		$owned_entities = array();
+		foreach ( $bundle['sections'] as $section ) {
+			$section_schema_type = isset( $section['seo']['schema_type'] ) ? (string) $section['seo']['schema_type'] : '';
+			if ( ! in_array( $section_schema_type, array( 'ChemicalSubstance', 'DefinedTerm', 'CollectionPage' ), true ) ) {
+				continue;
+			}
+			$section_fragment = isset( $section['seo']['section_id'] ) ? (string) $section['seo']['section_id'] : (string) $section['slug'];
+			$section_fragment = sanitize_html_class( $section_fragment );
+			if ( '' === $section_fragment ) {
+				continue;
+			}
+			$section_url       = $bundle['canonical_url'] . '#' . $section_fragment;
+			$section_citations = array();
+			foreach ( isset( $section['sources'] ) && is_array( $section['sources'] ) ? $section['sources'] : array() as $source ) {
+				$source_url = self::external_url( isset( $source['url'] ) ? $source['url'] : '' );
+				if ( '' !== $source_url ) {
+					$section_citations[] = $source_url;
+				}
+			}
+			$owned_entity = array(
+				'@type'       => $section_schema_type,
+				'@id'         => $section_url,
+				'url'         => $section_url,
+				'name'        => $section['name'],
+				'description' => $section['summary'],
+				'inLanguage'  => $language,
+				'isPartOf'    => array( '@id' => $page_id ),
+			);
+			if ( ! empty( $section_citations ) ) {
+				$owned_entity['citation'] = array_values( array_unique( $section_citations ) );
+			}
+			$owned_entities[] = $owned_entity;
+		}
+		if ( ! empty( $owned_entities ) ) {
+			$owned_entity_references = array_map(
+				static function ( $owned_entity ) {
+					return array( '@id' => $owned_entity['@id'] );
+				},
+				$owned_entities
+			);
+			if ( empty( $page['mainEntity'] ) ) {
+				$page['mainEntity'] = $owned_entity_references;
+			}
+			if ( 'Article' === $page_type ) {
+				$page['about'] = $owned_entity_references;
+			}
+		}
+
+		$graph = array(
+			array(
+				'@type' => 'Organization',
+				'@id'   => $organization_id,
+				'url'   => home_url( '/' ),
+				'name'  => 'Complete99',
+			),
+			array(
+				'@type'       => 'WebSite',
+				'@id'         => $website_id,
+				'url'         => home_url( '/' ),
+				'name'        => 'Complete99',
+				'inLanguage'  => array( 'he-IL', 'en' ),
+				'publisher'   => array( '@id' => $organization_id ),
+			),
+			$page,
+			array(
+				'@type'           => 'BreadcrumbList',
+				'@id'             => $bundle['canonical_url'] . '#breadcrumb',
+				'itemListElement' => $breadcrumbs,
+			),
+		);
+		$graph = array_merge( $graph, $owned_entities );
 
 		return array(
 			'@context' => 'https://schema.org',
-			'@graph'   => array(
-				array(
-					'@type'       => 'WebSite',
-					'@id'         => home_url( '/' ) . '#website',
-					'url'         => home_url( '/' ),
-					'name'        => 'Complete99',
-					'inLanguage'  => array( 'he-IL', 'en' ),
-				),
-				$page,
-				array(
-					'@type'           => 'BreadcrumbList',
-					'@id'             => $bundle['canonical_url'] . '#breadcrumb',
-					'itemListElement' => $breadcrumbs,
-				),
-			),
+			'@graph'   => $graph,
 		);
 	}
 
@@ -977,7 +1050,7 @@ final class Complete99_Culinary_Museum_Frontend {
 		);
 		return isset( $labels[ $type ] )
 			? $labels[ $type ][ 'he' === $lang ? 0 : 1 ]
-			: ( 'he' === $lang ? 'ישות קולינרית' : self::machine_label( $type ) );
+			: ( 'he' === $lang ? 'פריט קולינרי' : self::machine_label( $type ) );
 	}
 
 	private static function relationship_label( $value, $lang ) {
@@ -996,7 +1069,7 @@ final class Complete99_Culinary_Museum_Frontend {
 			'specified-by'      => array( 'מוגדר על ידי', 'Specified by' ),
 			'certified-by'      => array( 'מאושר על ידי', 'Certified by' ),
 			'recognized-in'     => array( 'מוכר במסגרת', 'Recognized in' ),
-			'recognizes'        => array( 'מכיר בישות', 'Recognizes' ),
+			'recognizes'        => array( 'מכיר ב', 'Recognizes' ),
 			'complements'       => array( 'משלים', 'Complements' ),
 			'substitutes'       => array( 'חלופה עבור', 'Substitutes' ),
 			'upgrades-to'       => array( 'משתדרג אל', 'Upgrades to' ),
@@ -1056,13 +1129,14 @@ final class Complete99_Culinary_Museum_Frontend {
 			'world-cuisines' => array( 'מטבחי עולם', 'World cuisines' ),
 			'culinary-museum' => array( 'מוזיאון קולינרי', 'Culinary museum' ),
 			'culinary-science' => array( 'מדע הקולינריה', 'Culinary science' ),
-			'knowledge-graph' => array( 'גרף ידע', 'Knowledge graph' ),
-			'topic-clusters' => array( 'אשכולות נושא', 'Topic clusters' ),
-			'topic-cluster' => array( 'אשכול נושא', 'Topic cluster' ),
+			'knowledge-graph' => array( 'ידע מקושר', 'Connected knowledge' ),
+			'topic-clusters' => array( 'נושאים קשורים', 'Related topics' ),
+			'topic-cluster' => array( 'נושא קשור', 'Related topic' ),
 			'japanese-cuisine' => array( 'מטבח יפני', 'Japanese cuisine' ),
 			'japanese-heritage' => array( 'מורשת יפנית', 'Japanese heritage' ),
 			'japanese-culinary-techniques' => array( 'טכניקות קולינריות יפניות', 'Japanese culinary techniques' ),
 			'japanese-premium-ingredients' => array( 'חומרי גלם יפניים מובחרים', 'Japanese premium ingredients' ),
+			'japanese-professional-equipment' => array( 'ציוד יפני מקצועי', 'Professional Japanese equipment' ),
 			'japanese-food-science' => array( 'מדע האוכל היפני', 'Japanese food science' ),
 			'japan' => array( 'יפן', 'Japan' ),
 			'washoku' => array( 'וואשוקו', 'Washoku' ),
@@ -1102,13 +1176,25 @@ final class Complete99_Culinary_Museum_Frontend {
 			'koji-fermentation' => array( 'התססת קוג׳י', 'Koji fermentation' ),
 			'koji-saccharification-in-alcohol' => array( 'סכריפיקציית קוג׳י באלכוהול', 'Koji saccharification in alcohol' ),
 			'kioke-wooden-barrel' => array( 'חבית עץ קיוקה', 'Kioke wooden barrel' ),
-			'verify-sku-label' => array( 'לפי תווית המוצר', 'Verify SKU label' ),
+			'verify-sku-label' => array( 'יש לבדוק את תווית המוצר', 'Check the product label' ),
 			'product-label-required' => array( 'נדרשת תווית מוצר', 'Product label required' ),
 			'refrigerated-perishable' => array( 'מתכלה בקירור', 'Refrigerated perishable' ),
 			'volatile-pungency' => array( 'חריפות נדיפה', 'Volatile pungency' ),
 			'fresh-aromatics' => array( 'ארומטים טריים', 'Fresh aromatics' ),
 			'fresh-rhizome' => array( 'קנה שורש טרי', 'Fresh rhizome' ),
 			'wasabi' => array( 'וואסבי', 'Wasabi' ),
+			'fresh-wasabi' => array( 'וואסבי טרי', 'Fresh wasabi' ),
+			'aroma-and-pungency' => array( 'ארומה וחריפות', 'Aroma and pungency' ),
+			'isothiocyanates' => array( 'איזותיוציאנטים', 'Isothiocyanates' ),
+			'isothiocyanate' => array( 'איזותיוציאנט', 'Isothiocyanate' ),
+			'professional-equipment' => array( 'ציוד מקצועי', 'Professional equipment' ),
+			'japanese-tools' => array( 'כלים יפניים', 'Japanese tools' ),
+			'wasabi-tools' => array( 'כלים לוואסבי', 'Wasabi tools' ),
+			'graters' => array( 'מגררות', 'Graters' ),
+			'fresh-wasabi-preparation' => array( 'הכנת וואסבי טרי', 'Fresh wasabi preparation' ),
+			'wasabi-grater' => array( 'מגררת וואסבי', 'Wasabi grater' ),
+			'oroshi' => array( 'אורושי', 'Oroshi' ),
+			'hagane-zame' => array( 'הגאנה-זאמה', 'Hagane-zame' ),
 			'aromatic-citrus' => array( 'הדרי ארומטי', 'Aromatic citrus' ),
 			'umami-synergy' => array( 'סינרגיית אומאמי', 'Umami synergy' ),
 			'fermentation' => array( 'התססה', 'Fermentation' ),

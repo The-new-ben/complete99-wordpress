@@ -88,12 +88,12 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
         cls.assets = cls.manifest["assets"]
         cls.live_product_codes = load_live_product_codes()
 
-    def test_manifest_covers_exactly_54_source_and_delivery_pairs(self):
+    def test_manifest_covers_exactly_56_source_and_delivery_pairs(self):
         self.assertEqual(
             "complete99-generated-asset-manifest/v1", self.manifest["schema"]
         )
         self.assertEqual("2026-08-06", self.manifest["reviewed_at"])
-        self.assertEqual(54, len(self.assets))
+        self.assertEqual(56, len(self.assets))
 
         source_names = {asset["source_filename"] for asset in self.assets}
         delivery_names = {asset["filename"] for asset in self.assets}
@@ -180,15 +180,26 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
                         asset["presentation_scope"],
                     )
 
-        self.assertEqual(30, len(public_product_codes))
+        self.assertEqual(32, len(public_product_codes))
         self.assertEqual(self.live_product_codes, public_product_codes)
 
         by_stable_slug = {asset["stable_slug"]: asset for asset in self.assets}
-        for stable_slug in ("kioke-shoyu-500ml", "kito-yuzu-juice-100ml"):
+        for stable_slug in (
+            "kioke-shoyu-500ml",
+            "kito-yuzu-juice-100ml",
+            "fresh-japanese-wasabi-250g",
+            "hagane-zame-pro-large",
+        ):
             with self.subTest(asset=stable_slug):
                 asset = by_stable_slug[stable_slug]
                 self.assertTrue(asset["prompt_en"].strip())
                 self.assertTrue(asset["negative_prompt_en"].strip())
+                if stable_slug in {
+                    "fresh-japanese-wasabi-250g",
+                    "hagane-zame-pro-large",
+                }:
+                    self.assertNotIn("evaluation", asset["filename"])
+                    self.assertNotIn("evaluation", asset["source_filename"])
 
     def test_manifest_has_no_local_paths_sessions_or_em_dash(self):
         source = MANIFEST.read_text(encoding="utf-8")

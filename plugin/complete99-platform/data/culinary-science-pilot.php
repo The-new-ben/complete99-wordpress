@@ -121,7 +121,7 @@ $c99_entity = static function ( $config ) use ( $c99_text, $c99_profiles ) {
 		'retail_price_high'=> null,
 		'gross_margin_low' => null,
 		'gross_margin_high'=> null,
-		'basis'            => $c99_text( 'טרם נבנה תרחיש מרווח מאומת. יש להשלים מחיר מקור, שילוח, מכס, מע״מ, פחת, אריזה ועלות טיפול לפני אישור מחיר מכירה.', 'No verified margin scenario exists yet. Source price, freight, customs, VAT, shrinkage, packaging and handling must be completed before a sell price is approved.' ),
+		'basis'            => $c99_text( 'טרם נבנה תרחיש מרווח מאומת. יש להשלים מחיר מקור, שילוח, מכס, מע״מ, פחת, אריזה ועלות טיפול לפני אישור רווחיות.', 'No verified margin scenario exists yet. Source price, freight, customs, VAT, shrinkage, packaging and handling must be completed before profitability is approved.' ),
 		'confidence'       => 'pending',
 		'reviewed_at'      => '',
 	);
@@ -326,6 +326,14 @@ $sources = array(
 		'url'          => 'https://www.jstage.jst.go.jp/article/jsbbs/73/3/73_22080/_html/-char/en',
 		'published_at' => '2023-10-17',
 		'retrieved_at' => '2026-08-05',
+	),
+	'yamamoto-haganezame-spec' => array(
+		'type'         => 'official_business',
+		'publisher'    => 'Yamamoto Foods Co., Ltd.',
+		'title'        => 'Hagane-zame wasabi grater specifications',
+		'url'          => 'https://www.yamamotofoods.co.jp/haganezame/jp/spec/',
+		'published_at' => '',
+		'retrieved_at' => '2026-08-06',
 	),
 	'yuzu-aroma-2009' => array(
 		'type'         => 'peer_reviewed_paper',
@@ -630,10 +638,10 @@ $entities[] = $c99_entity(
 		'secondary_keywords' => array( 'he' => array( 'אנציקלופדיה קולינרית מדעית' ), 'en' => array( 'culinary science encyclopedia' ) ), 'schema_type' => 'CollectionPage',
 		'facts' => array( $c99_fact( 'fact-museum-graph-role', 'structural', 'Complete99 מפרסם בשער הזה פרופילים קולינריים דו-לשוניים שבהם עובדות, הקשר מדעי ומקורות מוצגים יחד.', 'Complete99 publishes bilingual culinary profiles in this gateway, presenting facts, scientific context and sources together.', 'official_source', 'entity', array( 'complete99-public-site' ) ) ),
 		'profiles' => $c99_profiles( array(
-			'scientific' => $c99_profile( 'pending_evidence', 'המרכז המדעי נבנה מצברי עובדות ומדידות ברמת ישות.', 'The science layer is built from entity-level facts and measurements.' ),
+			'scientific' => $c99_profile( 'pending_evidence', 'המרכז המדעי נבנה מעובדות ומדידות הקשורות לחומר גלם, מנה, כלי או תהליך מסוימים.', 'The science layer is built from facts and measurements tied to a specific ingredient, dish, tool or process.' ),
 			'cultural' => $c99_profile( 'pending_evidence', 'כל תרבות נשמרת כאשכול עצמאי בתוך אותו שער.', 'Each culture remains an independent cluster within the same gateway.' ),
-			'institutional' => $c99_profile( 'pending_evidence', 'מוסדות, מדריכים ותקנים נשמרים כישויות עצמאיות.', 'Institutions, guides and standards remain independent entities.' ),
-			'economic' => $c99_profile( 'pending_evidence', 'המסחר מחובר לידע דרך SKU ותצפיות מחיר נפרדים.', 'Commerce connects to knowledge through separate SKU and price observations.' ),
+			'institutional' => $c99_profile( 'pending_evidence', 'לכל מוסד, מדריך ותקן יש תיאור ומקורות משלו.', 'Each institution, guide and standard has its own description and sources.' ),
+			'economic' => $c99_profile( 'pending_evidence', 'כאשר מוצר מוצע למכירה, מחיר החנות הנוכחי נשמר בנפרד מדוגמאות מחיר כלליות מן השוק.', 'When a product is offered for sale, its current store price remains separate from general market-price examples.' ),
 			'structural' => $c99_profile( 'source_backed', 'מסלולי העיון מחברים בין מטבח, חומר גלם, מחקר ומקור כדי שקל להמשיך מן השאלה אל התשובה הבאה.', 'Discovery paths connect cuisine, ingredient, research and source so readers can move naturally from one question to the next.', array( 'fact-museum-graph-role' ) ),
 		) ),
 		'categories' => array( 'culinary-museum' ), 'attributes' => array(), 'tags' => array( 'culinary-science', 'knowledge-graph', 'topic-clusters' ),
@@ -665,7 +673,7 @@ $entities[] = $c99_entity(
 				'cultural' => $c99_profile( 'source_backed', 'המסגרת התרבותית מבוססת על תיאור אונסקו ומחייבת פירוק להקשרים אזוריים.', 'The cultural framework is grounded in UNESCO and must be decomposed into regional contexts.', array( 'fact-washoku-unesco-framework' ) ),
 				'institutional' => $c99_profile( 'pending_evidence', 'מוסדות יפניים ובינלאומיים מקושרים כישויות נפרדות עם תאריך בדיקה.', 'Japanese and international institutions are linked as separate entities with review dates.' ),
 				'economic' => $c99_profile( 'not_applicable', 'אין מחיר אחד למטבח; הכלכלה נמדדת ברמת חומר, מנה, ציוד ושוק.', 'A cuisine has no single price; economics is measured at ingredient, dish, equipment and market level.' ),
-				'structural' => $c99_profile( 'source_backed', 'ישות שורש המחברת את כל שכבות הפיילוט היפני.', 'Root entity connecting all layers of the Japanese pilot.', array( 'fact-washoku-graph-root' ) ),
+				'structural' => $c99_profile( 'source_backed', 'נקודת פתיחה המחברת מסורות, מנות, חומרי גלם, שיטות, כלים ומקומות ברחבי המטבח היפני.', 'A starting point connecting traditions, dishes, ingredients, methods, tools and places across Japanese cuisine.', array( 'fact-washoku-graph-root' ) ),
 			)
 		),
 		'categories' => array( 'world-cuisines', 'japan', 'washoku' ),
@@ -698,10 +706,10 @@ $c99_topic_hub = static function ( $id, $slug, $name, $summary, $keyword, $sourc
 		'secondary_keywords' => array( 'he' => array( $name['he'] ), 'en' => array( $name['en'] ) ),
 		'schema_type' => 'CollectionPage',
 		'facts' => array(
-			$c99_fact( $fact_id, 'structural', 'העמוד מרכז ישויות בעלות כוונות חיפוש נפרדות ומוביל אליהן באמצעות קישורים הקשריים ופירורי לחם.', 'This page groups entities with distinct search intents and leads to them through contextual links and breadcrumbs.', 'editorial_inference', 'entity', $source_ids ),
+			$c99_fact( $fact_id, 'structural', 'המדור מרכז נושאים קשורים ומוביל ביניהם באמצעות הקשר קולינרי ברור.', 'This section groups related subjects and connects them through clear culinary context.', 'editorial_inference', 'entity', $source_ids ),
 		),
 		'profiles' => $c99_profiles( array(
-			'structural' => $c99_profile( 'source_backed', 'זהו צומת ניווט וידע. כל עמוד בן שומר בעלות על משימה נפרדת ואינו מתחרה בביטוי הראשי של מטבח העל.', 'This is a navigation and knowledge node. Each child page owns a distinct task and does not compete for the cuisine hub head intent.', array( $fact_id ) ),
+			'structural' => $c99_profile( 'source_backed', 'המדור עוזר לעבור מן התמונה הרחבה אל מנות, חומרי גלם, כלים ושיטות קשורים, תוך שמירה על ההקשר של כל נושא.', 'This section helps readers move from the broader picture to related dishes, ingredients, tools and methods while preserving each topic context.', array( $fact_id ) ),
 		) ),
 		'categories' => array( 'culinary-museum', 'japanese-cuisine', $slug ),
 		'attributes' => array( 'pa_origin' => array( 'japan' ) ),
@@ -749,10 +757,10 @@ $entities[] = $c99_topic_hub(
 $entities[] = $c99_topic_hub(
 	'hub-japanese-equipment',
 	'japanese-professional-equipment',
-	$c99_text( 'ציוד מטבח יפני מקצועי', 'Professional Japanese kitchen equipment' ),
-	$c99_text( 'מרכז הציוד מחבר כלי עבודה, חומר, מידות, דרגת איכות, תחזוקה, טכניקה וראיות מחיר, ומפריד בין מדריך בחירה לבין הצעת מוצר פעילה.', 'The equipment hub connects tools, materials, dimensions, quality grade, maintenance, technique and price evidence while separating selection guidance from an active offer.' ),
-	$c99_text( 'ציוד מטבח יפני מקצועי', 'professional Japanese kitchen equipment' ),
-	array( 'kappabashi-official' ),
+	$c99_text( 'כלי מטבח יפניים להכנה מדויקת', 'Japanese culinary tools for precise preparation' ),
+	$c99_text( 'מרכז הכלים עוזר לבחור כלי יפני לפי הפעולה הקולינרית, החומר, המידה, התחזוקה ומפרט הדגם, ומחבר כל כלי לחומרי הגלם ולטכניקות המתאימים לו.', 'The tools hub helps culinary consumers choose a Japanese tool by preparation task, material, size, care and model specification, then connects each tool to suitable ingredients and techniques.' ),
+	$c99_text( 'כלי מטבח יפניים', 'Japanese culinary tools' ),
+	array( 'kappabashi-official', 'yamamoto-haganezame-spec' ),
 	'cuisine-japanese-washoku',
 	'category',
 	array( 'informational', 'commercial' )
@@ -1077,14 +1085,14 @@ $entities[] = $c99_entity(
 		'secondary_keywords' => array( 'he' => array( 'סויה בחבית עץ', 'שויו הונג׳וזו' ), 'en' => array( 'wood barrel soy sauce', 'honjozo shoyu' ) ),
 		'schema_type' => 'DefinedTerm',
 		'facts' => array(
-			$c99_fact( 'fact-shoyu-jas-category', 'structural', 'JAS 1703 מספק מסגרת תקנית לסיווג שויו, אך אינו הופך תיאור קטגוריה למפרט של SKU מסוים.', 'JAS 1703 provides a classification framework for shoyu but does not turn a category description into a specification for a particular SKU.', 'regulatory_standard', 'category', array( 'jas-shoyu-1703' ) ),
+			$c99_fact( 'fact-shoyu-jas-category', 'structural', 'JAS 1703 מספק מסגרת תקנית לסיווג שויו, אך אינו הופך תיאור קטגוריה למפרט של מוצר מסוים.', 'JAS 1703 provides a classification framework for shoyu but does not turn a category description into a specification for a particular product.', 'regulatory_standard', 'category', array( 'jas-shoyu-1703' ) ),
 			$c99_fact( 'fact-shoyu-fermentation', 'scientific', 'בתהליך מסורתי, אנזימי קוג׳י מפרקים חלבונים ועמילנים, ומיקרואורגניזמים תורמים חומצות ותרכובות ארומה.', 'In traditional production, koji enzymes break down proteins and starches, while microorganisms contribute acids and aroma compounds.', 'official_source', 'technique_context', array( 'maff-fermented-foods' ) ),
-			$c99_fact( 'fact-shoyu-institutional-basis', 'institutional', 'מסגרת JAS והדוגמה המתועדת של יצרן קיוקה נשמרות כישויות מקור נפרדות, בלי לטעון להסמכת SKU או לקשר מסחרי עם Complete99.', 'The JAS framework and the documented kioke producer example remain separate source entities, without claiming SKU certification or a Complete99 commercial relationship.', 'official_source', 'entity', array( 'jas-shoyu-1703', 'yamaroku-about' ) ),
+			$c99_fact( 'fact-shoyu-institutional-basis', 'institutional', 'מסגרת JAS והדוגמה המתועדת של יצרן קיוקה מוצגות בנפרד, בלי לטעון שהן מאשרות מוצר מסוים המוצע למכירה.', 'The JAS framework and the documented kioke producer example are presented separately, without claiming that either certifies a particular product offered for sale.', 'official_source', 'entity', array( 'jas-shoyu-1703', 'yamaroku-about' ) ),
 		),
 		'profiles' => $c99_profiles( array(
 			'scientific' => $c99_profile( 'source_backed', 'הפרופיל המדעי מתאר אנזימים והתססה; מספרים שייכים למוצר ולאצווה.', 'The scientific profile describes enzymes and fermentation; numbers belong to a product and lot.', array( 'fact-shoyu-fermentation' ) ),
 			'cultural' => $c99_profile( 'pending_evidence', 'היסטוריית החבית תישען על יצרן ומקור מתועדים.', 'Barrel history will rely on documented producer and source evidence.' ),
-			'institutional' => $c99_profile( 'source_backed', 'הישות מקושרת לתקן JAS וליצרן דוגמה נפרד, בלי לטעון לקשר מסחרי.', 'The entity links to the JAS standard and a separate example producer without claiming a commercial relationship.', array( 'fact-shoyu-institutional-basis' ) ),
+			'institutional' => $c99_profile( 'source_backed', 'ההסבר מקשר לתקן JAS וליצרן דוגמה נפרד, בלי לטעון לקשר מסחרי.', 'The explanation links to the JAS standard and a separate example producer without claiming a commercial relationship.', array( 'fact-shoyu-institutional-basis' ) ),
 			'economic' => $c99_profile( 'pending_evidence', 'השוואת מחיר תכלול נפח, חנקן כולל, זמן, כלי, יבוא והובלה.', 'Price comparison will include volume, total nitrogen, time, vessel, import and shipping.' ),
 			'structural' => $c99_profile( 'source_backed', 'סיווג JAS עוזר להבין את סוג השויו, אך פרטי גיל, מליחות ואלרגנים נבדקים בתווית של המוצר שנבחר.', 'JAS classification helps explain the shoyu type, while age, salinity and allergens are checked on the selected product label.', array( 'fact-shoyu-jas-category' ) ),
 		) ),
@@ -1105,7 +1113,7 @@ $entities[] = $c99_entity(
 		'cross_sell_ids' => array( 'ingredient-fresh-wasabi', 'ingredient-yakinori', 'preparation-sushi-shari' ),
 		'prompt_en' => 'Artisanal Japanese soy sauce flowing into dark stoneware, deep ruby-brown highlights, authentic cedar kioke softly out of focus, whole soybeans and roasted wheat presented as source materials, dramatic side light, macro commercial detail, unbranded vessel.',
 		'compliance' => array(
-			$c99_compliance( 'shoyu-label-and-lot', 'סויה, חיטה, מלח, גיל, pH ודרגת איכות יוצגו רק לפי תווית ומסמכי SKU בפועל.', 'Soy, wheat, salt, age, pH and grade are displayed only from the actual SKU label and documentation.', array( 'jas-shoyu-1703', 'israel-food-import' ) ),
+			$c99_compliance( 'shoyu-label-and-lot', 'סויה, חיטה, מלח, גיל, pH ודרגת איכות יוצגו רק לפי תווית המוצר ומסמכי האצווה בפועל.', 'Soy, wheat, salt, age, pH and grade are displayed only from the actual product label and lot documentation.', array( 'jas-shoyu-1703', 'israel-food-import' ) ),
 		),
 	)
 );
@@ -1160,11 +1168,15 @@ $entities[] = $c99_entity(
 		'attributes' => array( 'pa_origin' => array( 'product-specific' ), 'pa_species' => array( 'eutrema-japonicum-product-specific' ), 'pa_storage_type' => array( 'refrigerated-perishable' ), 'pa_flavor_profile' => array( 'volatile-pungency' ) ),
 		'tags' => array( 'wasabi', 'aitc', 'myrosinase', 'fresh-rhizome' ),
 		'relations' => array(
-			$c99_relation( 'contains', 'molecule-allyl-isothiocyanate', 'AITC הוא חלק מהקשר החריפות לאחר גרירה.', 'AITC is part of the pungency context after grating.' ),
+			$c99_relation( 'contains', 'molecule-allyl-isothiocyanate', 'AITC הוא חלק מהקשר החריפות לאחר גרירה.', 'AITC is part of the pungency context after grating.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ),
+			$c99_relation( 'references', 'guide-wasabi-aitc', 'מדריך AITC מסביר את המדע שמאחורי חריפות הוואסבי.', 'The AITC guide explains the science behind wasabi pungency.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ),
+			$c99_relation( 'complements', 'equipment-wasabi-grater', 'מגררת ייעודית מסייעת להכנת קנה שורש טרי, ויש לבדוק את החומר והמידות של כל דגם.', 'A dedicated grater helps prepare a fresh rhizome, and each model should be checked for its material and dimensions.', true, array( 'yamamoto-haganezame-spec' ), 'official_source' ),
 			$c99_relation( 'complements', 'dish-edomae-nigiri', 'וואסבי טרי יכול להשתלב במפת ניגירי.', 'Fresh wasabi can participate in a nigiri map.' ),
 		),
-		'commerce_state' => 'supplier_onboarding',
-		'pricing_state' => 'source_price_observed', 'observation_entity_ids' => array( 'listing-fresh-japanese-wasabi-250g-20260806' ),
+		'commerce_state' => 'active_offer',
+		'woo_product_code' => 'product-fresh-japanese-wasabi-250g',
+		'public_offer_allowed' => true,
+		'pricing_state' => 'approved_sell_price', 'observation_entity_ids' => array( 'listing-fresh-japanese-wasabi-250g-20260806' ),
 		'cross_sell_ids' => array( 'equipment-wasabi-grater', 'ingredient-kioke-shoyu' ),
 		'prompt_en' => 'Fresh whole Eutrema japonicum rhizome with stems attached, freshly grated pale-green wasabi on a fine unbranded grater, crisp fibrous cut surface, cool dark stone background, controlled macro commercial lighting, accurate scale and natural moisture.',
 		'compliance' => array( $c99_compliance( 'wasabi-no-safety-substitute', 'חריפות וואסבי אינה תחליף לקירור, בקרת טפילים או היגיינה של דג נא, ואין להציג אותה כהבטחה רפואית.', 'Wasabi pungency is not a substitute for refrigeration, parasite control or raw-fish hygiene and must not be presented as a medical promise.', array( 'wasabi-itc-2023' ) ) ),
@@ -1234,7 +1246,7 @@ $entities[] = $c99_entity(
 	array(
 		'id' => 'ingredient-hon-mirin', 'type' => 'ingredient', 'slug' => 'hon-mirin', 'parent_id' => 'cuisine-japanese-washoku',
 		'name' => $c99_text( 'הון מירין', 'Hon mirin' ),
-		'summary' => $c99_text( 'הון מירין הוא תיבול אלכוהולי מתוק המיוצר מאורז דביק, קוג׳י ואלכוהול באמצעות סכריפיקציה והבשלה. אין לתאר את התהליך כתסיסה אלכוהולית כללית. סוכר ו-ABV יגיעו מהתווית או מה-COA של ה-SKU.', 'Hon mirin is a sweet alcoholic seasoning made from glutinous rice, koji and alcohol through saccharification and maturation. The process should not be described as generic alcoholic fermentation. Sugar and ABV must come from the SKU label or COA.' ),
+		'summary' => $c99_text( 'הון מירין הוא תיבול אלכוהולי מתוק המיוצר מאורז דביק, קוג׳י ואלכוהול באמצעות סכריפיקציה והבשלה. אין לתאר את התהליך כתסיסה אלכוהולית כללית. סוכר ו-ABV יגיעו מתווית המוצר או מתעודת אנליזה של האצווה.', 'Hon mirin is a sweet alcoholic seasoning made from glutinous rice, koji and alcohol through saccharification and maturation. The process should not be described as generic alcoholic fermentation. Sugar and ABV must come from the product label or the lot certificate of analysis.' ),
 		'seo_group' => 'ingredients', 'primary_intent' => $c99_text( 'להבין הון מירין, תהליך ושימוש', 'Understand hon mirin, process and use' ),
 		'primary_keyword' => $c99_text( 'הון מירין יפני', 'Japanese hon mirin' ), 'secondary_keywords' => array( 'he' => array( 'מירין אמיתי', 'מירין עם קוג׳י' ), 'en' => array( 'real mirin', 'koji mirin' ) ), 'schema_type' => 'DefinedTerm',
 		'facts' => array(
@@ -1301,7 +1313,7 @@ $entities[] = $c99_entity( array(
 $entities[] = $c99_entity( array(
 	'id' => 'molecule-allyl-isothiocyanate', 'type' => 'molecule', 'slug' => 'allyl-isothiocyanate', 'parent_id' => 'ingredient-fresh-wasabi',
 	'name' => $c99_text( 'אליל איזותיוציאנט, AITC', 'Allyl isothiocyanate, AITC' ),
-	'summary' => $c99_text( 'AITC הוא תרכובת נדיפה התורמת לחריפות האופיינית לאחר פגיעה ברקמת וואסבי. ריכוזים משתנים ולכן הישות מתארת מנגנון ולא מפרט כמותי גנרי.', 'AITC is a volatile compound contributing to characteristic pungency after wasabi tissue is disrupted. Concentrations vary, so the entity describes a mechanism rather than a generic quantitative specification.' ),
+	'summary' => $c99_text( 'AITC הוא תרכובת נדיפה התורמת לחריפות האופיינית לאחר פגיעה ברקמת וואסבי. הריכוזים משתנים, ולכן ההסבר מתמקד במנגנון ואינו מציג מספר גנרי לכל מוצר.', 'AITC is a volatile compound contributing to characteristic pungency after wasabi tissue is disrupted. Concentrations vary, so the explanation focuses on the mechanism rather than assigning one generic number to every product.' ),
 	'seo_group' => 'science', 'primary_intent' => $c99_text( 'להבין AITC וחריפות וואסבי', 'Understand AITC and wasabi pungency' ), 'primary_keyword' => $c99_text( 'AITC בוואסבי', 'AITC in wasabi' ),
 	'secondary_keywords' => array( 'he' => array( 'איזותיוציאנטים', 'חריפות נדיפה' ), 'en' => array( 'isothiocyanates', 'volatile pungency' ) ), 'schema_type' => 'ChemicalSubstance',
 	'facts' => array( $c99_fact( 'fact-aitc-wasabi-variation', 'scientific', 'AITC ותרכובות קשורות משתנים בין גנוטיפים, איברי צמח ותנאי עונה.', 'AITC and related compounds vary among genotypes, plant organs and seasonal conditions.', 'peer_reviewed_context', 'category', array( 'wasabi-itc-2023' ) ) ),
@@ -1310,10 +1322,13 @@ $entities[] = $c99_entity( array(
 		'cultural' => $c99_profile( 'not_applicable', 'התרכובת מקבלת הקשר דרך שימוש בוואסבי.', 'The compound receives context through wasabi use.' ),
 		'institutional' => $c99_profile( 'pending_evidence', 'שיטות בדיקה ומעבדות ייקשרו בעת הצורך.', 'Test methods and laboratories will link when needed.' ),
 		'economic' => $c99_profile( 'not_applicable', 'מחיר נמדד בקנה השורש או במוצר, לא במולקולה.', 'Price is measured in rhizome or product, not molecule.' ),
-		'structural' => $c99_profile( 'pending_evidence', 'הישות מחברת וואסבי, גרירה וחישה.', 'The entity connects wasabi, grating and perception.' ),
+		'structural' => $c99_profile( 'pending_evidence', 'ההסבר מחבר בין וואסבי, גרירה ותפיסת החריפות.', 'The explanation connects wasabi, grating and perceived pungency.' ),
 	) ),
 	'categories' => array( 'culinary-science', 'aroma-and-pungency', 'isothiocyanates' ), 'attributes' => array( 'pa_flavor_profile' => array( 'volatile-pungency' ) ), 'tags' => array( 'aitc', 'wasabi', 'isothiocyanate' ),
-	'relations' => array( $c99_relation( 'part_of', 'ingredient-fresh-wasabi', 'AITC ממופה בהקשר של וואסבי טרי.', 'AITC is mapped in the context of fresh wasabi.' ) ),
+	'relations' => array(
+		$c99_relation( 'part_of', 'ingredient-fresh-wasabi', 'AITC מוסבר בהקשר של וואסבי טרי.', 'AITC is explained in the context of fresh wasabi.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ),
+		$c99_relation( 'part_of', 'guide-wasabi-aitc', 'AITC מוסבר במדריך על חריפות וואסבי לצד חומר הגלם ותהליך הגרירה.', 'AITC is explained in the wasabi pungency guide alongside the ingredient and grating process.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ),
+	),
 	'prompt_en' => 'Culinary science visualization of allyl isothiocyanate emerging from freshly grated wasabi, precise molecular model, cool vapor-like motion, dark stone and pale green botanical texture, no medical iconography, no text.'
 ) );
 
@@ -1462,7 +1477,7 @@ $entities[] = $c99_entity( array(
 	'seo_group' => 'equipment', 'primary_intent' => $c99_text( 'לבחור מגררת וואסבי טרי', 'Choose a fresh wasabi grater' ), 'primary_keyword' => $c99_text( 'מגררת וואסבי', 'wasabi grater' ),
 	'secondary_keywords' => array( 'he' => array( 'אורושי לוואסבי', 'Hagane-zame' ), 'en' => array( 'oroshi wasabi tool', 'Hagane-zame grater' ) ), 'schema_type' => 'DefinedTerm',
 	'facts' => array(
-		$c99_fact( 'fact-wasabi-grater-material-boundary', 'structural', 'רשומת Hagane-zame שנבדקה מתארת כלי פלדת אל-חלד במידות שונות; החומר והמידה שייכים לווריאנט המדויק.', 'The reviewed Hagane-zame listing describes a stainless steel tool in multiple sizes; material and dimensions belong to the exact variant.', 'official_source', 'supplier_specification', array( 'hagane-zame-large-listing-2026' ) ),
+		$c99_fact( 'fact-wasabi-grater-material-boundary', 'structural', 'דף המפרט הרשמי של Yamamoto מזהה את Hagane-zame כמגררת וואסבי מפלדת אל-חלד ומפריד בין מפרטי הדגמים. חומר ומידה שייכים לדגם המדויק.', 'Yamamoto Foods identifies Hagane-zame as a stainless-steel wasabi grater and separates specifications by model. Material and dimensions belong to the exact model.', 'official_source', 'supplier_specification', array( 'yamamoto-haganezame-spec' ) ),
 	),
 	'profiles' => $c99_profiles( array(
 		'scientific' => $c99_profile( 'pending_evidence', 'השפעת משטח וזמן גרירה על מרקם ונדיפי חריפות דורשת מבחן מוצר.', 'The effect of surface and grating time on texture and pungent volatiles requires product testing.' ),
@@ -1472,8 +1487,13 @@ $entities[] = $c99_entity( array(
 		'structural' => $c99_profile( 'source_backed', 'הכלי מקושר לווריאנט מדויק ולא לתווית חומר שגויה.', 'The tool links to an exact variant rather than an incorrect material label.', array( 'fact-wasabi-grater-material-boundary' ) ),
 	) ),
 	'categories' => array( 'professional-equipment', 'japanese-tools', 'wasabi-tools', 'graters' ), 'attributes' => array( 'pa_material' => array( 'product-specific' ), 'pa_equipment_required' => array( 'fresh-wasabi-preparation' ) ), 'tags' => array( 'wasabi-grater', 'oroshi', 'hagane-zame', 'fresh-wasabi' ),
-	'relations' => array( $c99_relation( 'used_in', 'ingredient-fresh-wasabi', 'הכלי משלים הכנה של קנה שורש טרי.', 'The tool supports preparation of a fresh rhizome.', true, array( 'hagane-zame-large-listing-2026', 'wasabi-itc-2023' ), 'official_source' ) ),
-	'commerce_state' => 'supplier_onboarding', 'pricing_state' => 'source_price_observed', 'observation_entity_ids' => array( 'listing-hagane-zame-large-20260806' ),
+	'relations' => array(
+		$c99_relation( 'used_in', 'ingredient-fresh-wasabi', 'הכלי משלים הכנה של קנה שורש טרי.', 'The tool supports preparation of a fresh rhizome.', true, array( 'yamamoto-haganezame-spec', 'wasabi-itc-2023' ), 'official_source' ),
+		$c99_relation( 'references', 'guide-wasabi-aitc', 'מדריך החריפות מספק את ההקשר המדעי להכנת וואסבי טרי.', 'The pungency guide provides the scientific context for preparing fresh wasabi.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ),
+	),
+	'commerce_state' => 'active_offer', 'pricing_state' => 'approved_sell_price', 'observation_entity_ids' => array( 'listing-hagane-zame-large-20260806' ),
+	'woo_product_code' => 'product-hagane-zame-large',
+	'public_offer_allowed' => true,
 	'cross_sell_ids' => array( 'ingredient-fresh-wasabi' ),
 	'prompt_en' => 'Commercial studio product photograph of an unbranded stainless steel wasabi grater with fine textured surface, fresh wasabi rhizome and bamboo brush arranged safely beside it, macro raking light, accurate metal texture, neutral background, no sharkskin implication, no text.',
 ) );
@@ -1545,13 +1565,13 @@ $entities[] = $c99_entity( array(
 	'summary' => $c99_text( 'מדריך המדע מרכז את הקשר בין גלוטמט, IMP והרצפטור T1R1/T1R3. הוא מבחין בין מנגנון הנתמך במחקר, תפיסת טעם ותכולה שנמדדה במוצר או באצווה.', 'This science guide connects glutamate, IMP and the T1R1/T1R3 receptor. It separates a research-supported mechanism, perceived taste and content measured in a product or lot.' ),
 	'seo_group' => 'knowledge', 'primary_intent' => $c99_text( 'להבין כיצד גלוטמט ו-IMP יוצרים סינרגיית אומאמי', 'Understand how glutamate and IMP create umami synergy' ), 'primary_keyword' => $c99_text( 'סינרגיית אומאמי גלוטמט IMP', 'glutamate IMP umami synergy' ),
 	'secondary_keywords' => array( 'he' => array( 'רצפטור T1R1 T1R3', 'מדע האומאמי' ), 'en' => array( 'T1R1 T1R3 receptor', 'umami science' ) ), 'schema_type' => 'Article',
-	'facts' => array( $c99_fact( 'fact-umami-guide-mechanism', 'scientific', 'המחקר מציע מנגנון שבו נוקלאוטידים מייצבים מצב פעיל של הרצפטור ומגבירים תגובה לגלוטמט; זו תמיכה במודל מולקולרי ולא מדידת טעם של SKU.', 'The study proposes a mechanism in which nucleotides stabilize an active receptor state and enhance response to glutamate; this supports a molecular model and is not a SKU taste measurement.', 'peer_reviewed_context', 'category', array( 'umami-receptor-2009' ) ) ),
+	'facts' => array( $c99_fact( 'fact-umami-guide-mechanism', 'scientific', 'המחקר מציע מנגנון שבו נוקלאוטידים מייצבים מצב פעיל של הרצפטור ומגבירים תגובה לגלוטמט; זו תמיכה במודל מולקולרי ולא מדידת טעם של מוצר או אצווה מסוימים.', 'The study proposes a mechanism in which nucleotides stabilize an active receptor state and enhance response to glutamate; this supports a molecular model and is not a taste measurement for a particular product or lot.', 'peer_reviewed_context', 'category', array( 'umami-receptor-2009' ) ) ),
 	'profiles' => $c99_profiles( array(
 		'scientific' => $c99_profile( 'source_backed', 'המנגנון מנוסח כתמיכה מחקרית ולא כוודאות מוחלטת לכל מזון.', 'The mechanism is phrased as research support rather than absolute certainty for every food.', array( 'fact-umami-guide-mechanism' ) ),
 		'cultural' => $c99_profile( 'pending_evidence', 'היסטוריית המונח תטופל בנפרד מן המנגנון.', 'The history of the term will be handled separately from the mechanism.' ),
 		'institutional' => $c99_profile( 'pending_evidence', 'חוקרים ומוסדות יתווספו כרשומות ייחוס.', 'Researchers and institutions will be added as reference records.' ),
 		'economic' => $c99_profile( 'pending_evidence', 'יישום מסחרי יתחבר להרכב מוצר בדוק ולשימוש קולינרי.', 'Commercial use will connect to tested product composition and culinary application.' ),
-		'structural' => $c99_profile( 'pending_evidence', 'העמוד הוא בעל הכוונה הראשי למונחי גלוטמט ו-IMP.', 'The page is the primary intent owner for glutamate and IMP terms.' ),
+		'structural' => $c99_profile( 'pending_evidence', 'המדריך מרכז את הקשר בין גלוטמט, IMP, תפיסת אומאמי והמחקר התומך.', 'The guide brings together glutamate, IMP, perceived umami and the supporting research.' ),
 	) ),
 	'categories' => array( 'knowledge', 'food-science', 'taste', 'umami' ), 'attributes' => array( 'pa_flavor_profile' => array( 'umami' ) ), 'tags' => array( 'umami', 'glutamate', 'imp', 't1r1-t1r3' ),
 	'relations' => array( $c99_relation( 'contains', 'molecule-l-glutamate', 'גלוטמט הוא ישות משנה במדריך.', 'Glutamate is a subject entity in the guide.', true, array( 'umami-receptor-2009' ), 'peer_reviewed_context' ), $c99_relation( 'contains', 'molecule-inosine-monophosphate', 'IMP הוא ישות משנה במדריך.', 'IMP is a subject entity in the guide.', true, array( 'umami-receptor-2009' ), 'peer_reviewed_context' ) ),
@@ -1565,7 +1585,10 @@ $entities[] = $c99_entity( array(
 	'summary' => $c99_text( 'המדריך מסביר כיצד גרירת קנה השורש והמערכת האנזימטית קשורות ליצירת איזותיוציאנטים נדיפים, ובפרט AITC. הוא אינו הופך חריפות להבטחת בריאות או לבקרת בטיחות מזון.', 'The guide explains how rhizome grating and the enzyme system relate to volatile isothiocyanates, particularly AITC. It does not turn pungency into a health promise or food-safety control.' ),
 	'seo_group' => 'knowledge', 'primary_intent' => $c99_text( 'להבין AITC וחריפות של וואסבי טרי', 'Understand AITC and fresh wasabi pungency' ), 'primary_keyword' => $c99_text( 'AITC וחריפות וואסבי', 'AITC wasabi pungency' ),
 	'secondary_keywords' => array( 'he' => array( 'אליל איזותיוציאנט', 'מדע וואסבי' ), 'en' => array( 'allyl isothiocyanate', 'wasabi pungency science' ) ), 'schema_type' => 'Article',
-	'facts' => array( $c99_fact( 'fact-wasabi-guide-itc', 'scientific', 'המחקר מראה שונות גנטית ועונתית בהרכב איזותיוציאנטים בוואסבי, ולכן אין לייחס ריכוז AITC קבוע לקנה שורש ללא מדידה.', 'Research shows genetic and seasonal variation in wasabi isothiocyanate composition, so a fixed AITC concentration must not be assigned to a rhizome without measurement.', 'peer_reviewed_context', 'category', array( 'wasabi-itc-2023' ) ) ),
+	'facts' => array(
+		$c99_fact( 'fact-wasabi-guide-itc', 'scientific', 'המחקר מראה שונות גנטית ועונתית בהרכב איזותיוציאנטים בוואסבי, ולכן אין לייחס ריכוז AITC קבוע לקנה שורש ללא מדידה.', 'Research shows genetic and seasonal variation in wasabi isothiocyanate composition, so a fixed AITC concentration must not be assigned to a rhizome without measurement.', 'peer_reviewed_context', 'category', array( 'wasabi-itc-2023' ) ),
+		$c99_fact( 'fact-wasabi-guide-enzyme-system', 'scientific', 'כאשר רקמת וואסבי נפגעת, המערכת האנזימטית ממירה גלוקוזינולטים לאיזותיוציאנטים. זהו הסבר מנגנוני, לא מדידת ריכוז של מוצר או אצווה.', 'When wasabi tissue is disrupted, its enzyme system converts glucosinolates into isothiocyanates. This is a mechanism explanation, not a concentration measurement for a product or lot.', 'peer_reviewed_context', 'technique_context', array( 'wasabi-itc-2023' ) ),
+	),
 	'profiles' => $c99_profiles( array(
 		'scientific' => $c99_profile( 'source_backed', 'השונות היא חלק מרכזי מן ההסבר ולא הערת שוליים.', 'Variation is central to the explanation rather than a footnote.', array( 'fact-wasabi-guide-itc' ) ),
 		'cultural' => $c99_profile( 'pending_evidence', 'שיטות גרירה מסורתיות ייוחסו למקורות נפרדים.', 'Traditional grating methods will be attributed to separate sources.' ),
@@ -1574,7 +1597,11 @@ $entities[] = $c99_entity( array(
 		'structural' => $c99_profile( 'pending_evidence', 'המדריך מחבר מולקולה, חומר גלם, כלי ותהליך.', 'The guide connects molecule, ingredient, tool and process.' ),
 	) ),
 	'categories' => array( 'knowledge', 'food-science', 'aroma-and-pungency', 'wasabi' ), 'attributes' => array( 'pa_flavor_profile' => array( 'volatile-pungency' ) ), 'tags' => array( 'aitc', 'wasabi', 'isothiocyanates', 'myrosinase' ),
-	'relations' => array( $c99_relation( 'contains', 'molecule-allyl-isothiocyanate', 'AITC הוא ישות משנה במדריך.', 'AITC is a subject entity in the guide.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ), $c99_relation( 'references', 'ingredient-fresh-wasabi', 'החומר מחובר להקשר מין, עונה ואצווה.', 'The ingredient connects to species, season and lot context.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ) ),
+	'relations' => array(
+		$c99_relation( 'contains', 'molecule-allyl-isothiocyanate', 'AITC הוא איזותיוציאנט נדיף שנבחן בהקשר של חריפות וואסבי.', 'AITC is a volatile isothiocyanate examined in the context of wasabi pungency.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ),
+		$c99_relation( 'references', 'ingredient-fresh-wasabi', 'החומר מחובר להקשר מין, עונה ואצווה.', 'The ingredient connects to species, season and lot context.', true, array( 'wasabi-itc-2023' ), 'peer_reviewed_context' ),
+		$c99_relation( 'references', 'equipment-wasabi-grater', 'מדריך הכלי מחבר את מנגנון החריפות לפעולת גרירת קנה השורש.', 'The tool guide connects the pungency mechanism to grating the rhizome.', true, array( 'yamamoto-haganezame-spec', 'wasabi-itc-2023' ), 'official_source' ),
+	),
 	'revenue_models' => array( 'education', 'content_to_commerce' ), 'customer_segments' => array( 'culinary_consumers', 'professional_chefs', 'research_readers' ),
 	'prompt_en' => 'Culinary science photograph of a freshly grated wasabi rhizome beside a clean molecular visualization of AITC, cool macro lighting, visible fibrous texture and natural moisture, no medical symbols, labels or claims.',
 ) );
@@ -2330,6 +2357,7 @@ unset( $entity );
 $public_pilot_ids = array(
 	'museum-culinary-science',
 	'cuisine-japanese-washoku',
+	'hub-japanese-equipment',
 	'hub-japanese-ingredients',
 	'hub-japanese-techniques',
 	'hub-japanese-food-science',
@@ -2341,22 +2369,29 @@ $public_pilot_ids = array(
 	'ingredient-hon-mirin',
 	'preparation-ichiban-dashi',
 	'guide-umami-synergy',
+	'guide-wasabi-aitc',
+	'molecule-allyl-isothiocyanate',
+	'equipment-wasabi-grater',
 );
 $public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
 $public_semantic_allowlists = array(
 	'museum-culinary-science' => array( 'cuisine-japanese-washoku' ),
-	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'guide-umami-synergy' ),
+	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'guide-wasabi-aitc', 'equipment-wasabi-grater' ),
+	'hub-japanese-equipment' => array( 'cuisine-japanese-washoku', 'equipment-wasabi-grater', 'ingredient-fresh-wasabi', 'guide-wasabi-aitc' ),
 	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
 	'hub-japanese-techniques' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'hub-japanese-food-science' ),
-	'hub-japanese-food-science' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'ingredient-kombu', 'ingredient-katsuobushi' ),
+	'hub-japanese-food-science' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'guide-wasabi-aitc', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-fresh-wasabi' ),
 	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'preparation-ichiban-dashi', 'guide-umami-synergy' ),
 	'ingredient-katsuobushi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kombu', 'preparation-ichiban-dashi', 'guide-umami-synergy' ),
 	'ingredient-kioke-shoyu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
-	'ingredient-fresh-wasabi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-kito-yuzu' ),
+	'ingredient-fresh-wasabi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'hub-japanese-equipment', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'equipment-wasabi-grater', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-kito-yuzu' ),
 	'ingredient-kito-yuzu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-hon-mirin' ),
 	'ingredient-hon-mirin' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kioke-shoyu', 'ingredient-kito-yuzu' ),
 	'preparation-ichiban-dashi' => array( 'cuisine-japanese-washoku', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'guide-umami-synergy' ),
 	'guide-umami-synergy' => array( 'cuisine-japanese-washoku', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'preparation-ichiban-dashi' ),
+	'guide-wasabi-aitc' => array( 'cuisine-japanese-washoku', 'hub-japanese-food-science', 'ingredient-fresh-wasabi', 'molecule-allyl-isothiocyanate', 'equipment-wasabi-grater' ),
+	'molecule-allyl-isothiocyanate' => array( 'guide-wasabi-aitc', 'ingredient-fresh-wasabi' ),
+	'equipment-wasabi-grater' => array( 'hub-japanese-equipment', 'ingredient-fresh-wasabi', 'guide-wasabi-aitc' ),
 );
 $public_asset_receipts = array(
 	'museum-culinary-science' => 'sha256:ee2441315d9c03074bbe88bba7408e66e06323a4906d1c5310574028d970f18b',
@@ -2369,9 +2404,13 @@ $public_asset_receipts = array(
 	'ingredient-kito-yuzu' => 'sha256:e058ebfece1033d37f2835678a961f4bfbf7fbe988b960036d23f12bf83b2464',
 	'hub-japanese-food-science' => 'sha256:41affd1d16f01e9aeb418d05139d0df6aad5bee4c02df88473ea2c33c516c49b',
 	'hub-japanese-techniques' => 'sha256:2eda7710abfa5ce35e1634fecdf69a57efdf3875638889c217bba804d44027b4',
+	'hub-japanese-equipment' => 'sha256:1c36efbad8d50150c0147bb1064bba40abf60feb7ed036cdca9dcabbb6e80b12',
 	'ingredient-hon-mirin' => 'sha256:c8808bebd8f92d7ebfd4b78d3ab3853ebff56fbe00e8d98c3433db75d4de97d0',
 	'preparation-ichiban-dashi' => 'sha256:28eb6c05cec30ba9f4fb986c12afc31b8dd9c3cf2c90a3ec2a25400482a847e2',
 	'guide-umami-synergy' => 'sha256:cff653805e2e90b3ee4d565cdfdd21c8ac4e13782441860bd81a98516d1c7cd5',
+	'guide-wasabi-aitc' => 'sha256:a74f67aaab227256031f2b0bd477bee76562b36ddf072338ccca69d1b894918c',
+	'molecule-allyl-isothiocyanate' => 'sha256:87fdf5927fd72ba282e97d72c948d87213f02fbdef2dd4a13ce607f042084ae6',
+	'equipment-wasabi-grater' => 'sha256:be0f4f831f58efc4ab6b6c74fa1979aaa4797bf9e4f1be51a19b2afe6d9a1757',
 );
 
 $ingredient_hub_offset = $entity_offsets['hub-japanese-ingredients'];
@@ -2393,12 +2432,24 @@ $entities[ $techniques_hub_offset ]['facts'][0]['evidence_class'] = 'official_so
 $entities[ $techniques_hub_offset ]['facts'][0]['source_ids'] = array( 'maff-edomae', 'maff-fermented-foods' );
 $entities[ $techniques_hub_offset ]['facts'][0]['public_safe'] = true;
 
+$equipment_hub_offset = $entity_offsets['hub-japanese-equipment'];
+$entities[ $equipment_hub_offset ]['facts'][0]['statement'] = $c99_text(
+	'האתר הרשמי של קפאבשי מתאר אזור המתמחה בכלי מטבח, ודף Yamamoto הרשמי מפריד את מפרטי Hagane-zame לפי דגם. לכן כדאי להשוות את השימוש המיועד ואת הדגם המדויק ולא להתייחס לכל הכלים היפניים כזהים.',
+	'The official Kappabashi site describes a district specializing in kitchenware, and Yamamoto Foods separates Hagane-zame specifications by model. Compare intended use and the exact model rather than treating Japanese tools as interchangeable.'
+);
+$entities[ $equipment_hub_offset ]['facts'][0]['evidence_class'] = 'official_source';
+$entities[ $equipment_hub_offset ]['facts'][0]['source_ids'] = array( 'kappabashi-official', 'yamamoto-haganezame-spec' );
+$entities[ $equipment_hub_offset ]['facts'][0]['public_safe'] = true;
+
 $public_meta_descriptions = array(
 	'hub-japanese-food-science' => $c99_text( 'מדע המזון היפני: אומאמי, גלוטמט, IMP, קוג׳י, התססה, דאשי ומדידות, עם מקורות וקשרים למנות ולחומרי גלם.', 'Japanese food science: umami, glutamate, IMP, koji, fermentation, dashi and measurements, with sources and links to ingredients and dishes.' ),
 	'hub-japanese-techniques' => $c99_text( 'טכניקות בישול יפניות: דאשי, אורז, חיתוך, קוג׳י והתססה במפת ידע שמפרידה חומר, זמן, טמפרטורה, כלי ותוצאה.', 'Japanese culinary techniques: dashi, rice, cutting, koji and fermentation in a knowledge map separating material, time, temperature, tool and result.' ),
+	'hub-japanese-equipment' => $c99_text( 'כלי מטבח יפניים להכנה מדויקת: בחירה לפי פעולה, חומר, מידה, תחזוקה ומפרט דגם, עם קישורים לחומרי גלם ולטכניקות מתאימות.', 'Japanese culinary tools for precise preparation: choose by task, material, size, care and model specification, with links to suitable ingredients and techniques.' ),
 	'preparation-ichiban-dashi' => $c99_text( 'איצ׳יבאן דאשי מקומבו וקצואובושי: עקרונות מיצוי, סינרגיית גלוטמט ו-IMP, אלרגן דגים וקישורים לחומרי הגלם.', 'Ichiban dashi from kombu and katsuobushi: extraction principles, glutamate and IMP synergy, fish allergen context and ingredient links.' ),
 	'ingredient-hon-mirin' => $c99_text( 'מהו הון מירין יפני: אורז דביק, קוג׳י, סכריפיקציה, הבשלה, אלכוהול וההבדל מתיבול בסגנון מירין, עם מקורות.', 'What Japanese hon mirin is: glutinous rice, koji, saccharification, maturation, alcohol and the boundary from mirin-style seasoning, with sources.' ),
 	'guide-umami-synergy' => $c99_text( 'סינרגיית אומאמי בין גלוטמט ל-IMP: מנגנון T1R1/T1R3, ההבדל בין מחקר למדידת מוצר וקשרים לדאשי, קומבו וקצואובושי.', 'Glutamate and IMP umami synergy: the T1R1/T1R3 mechanism, research versus product measurement, and links to dashi, kombu and katsuobushi.' ),
+	'guide-wasabi-aitc' => $c99_text( 'AITC וחריפות וואסבי טרי: המערכת האנזימטית, שונות בין זנים ועונות, והקשר בין קנה השורש, המולקולה וכלי הגרירה.', 'AITC and fresh wasabi pungency: the enzyme system, genetic and seasonal variation, and links among the rhizome, molecule and grating tool.' ),
+	'equipment-wasabi-grater' => $c99_text( 'מדריך מגררת וואסבי: תפקיד הכלי, חומר, מידות ומפרטי דגם, עם קישור לוואסבי טרי ולמדע החריפות.', 'Wasabi grater guide: tool purpose, material, dimensions and model specifications, linked to fresh wasabi and pungency science.' ),
 );
 foreach ( $public_meta_descriptions as $public_meta_entity_id => $public_meta_description ) {
 	$entities[ $entity_offsets[ $public_meta_entity_id ] ]['seo']['meta_description'] = $public_meta_description;
@@ -2468,7 +2519,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v4',
-	'version'       => 'japanese-pilot-2026.08.06.v7',
+	'version'       => 'japanese-pilot-2026.08.06.v8',
 	'generated_at'  => '2026-08-06',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',

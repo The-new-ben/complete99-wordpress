@@ -58,5 +58,7 @@ return array(
 		'product-honkarebushi-200g'  => '219.00',
 		'product-yamaroku-tsurubishio-500ml' => '149.00',
 		'product-kito-yuzu-juice-100ml' => '64.00',
+		'product-fresh-japanese-wasabi-250g' => '399.00',
+		'product-hagane-zame-large' => '699.00',
 	),
 );

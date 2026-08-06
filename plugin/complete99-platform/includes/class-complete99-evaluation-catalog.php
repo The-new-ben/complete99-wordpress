@@ -18,7 +18,7 @@ final class Complete99_Evaluation_Catalog {
 	const RECEIPT_SCHEMA  = 'complete99-evaluation-catalog-receipt/v1';
 	const STATUS_SCHEMA   = 'complete99-evaluation-catalog-status/v1';
 	const OPTION_RECEIPT  = 'complete99_evaluation_catalog_receipt';
-	const EXPECTED_SEED_COUNT = 30;
+	const EXPECTED_SEED_COUNT = 32;
 	const MODE_AUTO         = 'auto';
 	const MODE_PRIVATE_ONLY = 'private_only';
 
@@ -35,6 +35,7 @@ final class Complete99_Evaluation_Catalog {
 	const META_PRICE_SCOPE            = '_complete99_evaluation_price_scope';
 	const META_STOCK_SCOPE            = '_complete99_evaluation_stock_scope';
 	const META_CLASSIFICATION         = '_complete99_evaluation_classification';
+	const META_PRODUCT_KIND           = '_complete99_product_kind';
 	const META_SALE_STATE             = '_complete99_evaluation_sale_state';
 	const META_PUBLIC_SALE            = '_complete99_evaluation_public_sale_eligible';
 	const META_REGISTRY_DIGEST        = '_complete99_evaluation_registry_digest';
@@ -83,6 +84,7 @@ final class Complete99_Evaluation_Catalog {
 			self::META_PRICE_SCOPE       => array( 'string', array( __CLASS__, 'sanitize_identifier' ) ),
 			self::META_STOCK_SCOPE       => array( 'string', array( __CLASS__, 'sanitize_identifier' ) ),
 			self::META_CLASSIFICATION    => array( 'string', array( __CLASS__, 'sanitize_identifier' ) ),
+			self::META_PRODUCT_KIND      => array( 'string', array( __CLASS__, 'sanitize_identifier' ) ),
 			self::META_SALE_STATE        => array( 'string', array( __CLASS__, 'sanitize_identifier' ) ),
 			self::META_PUBLIC_SALE       => array( 'string', array( __CLASS__, 'sanitize_yes_no' ) ),
 			self::META_REGISTRY_DIGEST   => array( 'string', array( __CLASS__, 'sanitize_digest' ) ),
@@ -133,7 +135,7 @@ final class Complete99_Evaluation_Catalog {
 	}
 
 	/**
-	 * Return a canonical ingredient code or an empty fail-closed value.
+	 * Return a canonical culinary knowledge entity code or an empty fail-closed value.
 	 *
 	 * @param mixed $value Candidate value.
 	 * @return string
@@ -141,7 +143,7 @@ final class Complete99_Evaluation_Catalog {
 	public static function sanitize_ingredient_code( $value ) {
 		return is_string( $value )
 			&& strlen( $value ) <= 160
-			&& 1 === preg_match( '/\Aingredient-[a-z0-9]+(?:-[a-z0-9]+)*\z/', $value )
+			&& 1 === preg_match( '/\A(?:ingredient|equipment)-[a-z0-9]+(?:-[a-z0-9]+)*\z/', $value )
 				? $value
 				: '';
 	}
@@ -316,6 +318,13 @@ final class Complete99_Evaluation_Catalog {
 				$trusted_domains[] = self::base_domain( (string) parse_url( $url, PHP_URL_HOST ) );
 			}
 			$trusted_domains = array_values( array_unique( $trusted_domains ) );
+			$fx_source_url = isset( $registry['market_transparency_sources']['bank_of_israel_fx'] )
+				? (string) $registry['market_transparency_sources']['bank_of_israel_fx']
+				: '';
+			if ( '' === $fx_source_url
+				|| 'boi.org.il' !== self::base_domain( (string) parse_url( $fx_source_url, PHP_URL_HOST ) ) ) {
+				throw new \UnexpectedValueException( 'registry.market_transparency_sources.bank_of_israel_fx must identify the Bank of Israel.' );
+			}
 
 			self::assert_associative_array(
 				$registry['classification_rules'],
@@ -363,6 +372,7 @@ final class Complete99_Evaluation_Catalog {
 					$path,
 					$registry['registry_reviewed_at'],
 					$trusted_domains,
+					$fx_source_url,
 					$classification_rules
 				);
 				if ( isset( $product_codes[ $product['product_code'] ] ) ) {
@@ -794,13 +804,14 @@ final class Complete99_Evaluation_Catalog {
 			&& function_exists( 'wc_get_product' );
 	}
 
-	private static function validate_product( $product, $path, $registry_reviewed_at, $trusted_domains, $rules ) {
+	private static function validate_product( $product, $path, $registry_reviewed_at, $trusted_domains, $fx_source_url, $rules ) {
 		self::assert_exact_keys(
 			$product,
 			array(
 				'schema',
 				'product_code',
 				'ingredient_code',
+				'product_kind',
 				'name',
 				'brand_reference',
 				'gtin',
@@ -824,6 +835,7 @@ final class Complete99_Evaluation_Catalog {
 				'allergen_statement',
 				'nutrition_panel',
 				'kosher_certificate',
+				'equipment_specification',
 				'image_asset',
 				'image_state',
 				'regulatory_attention_codes',
@@ -835,6 +847,13 @@ final class Complete99_Evaluation_Catalog {
 		self::assert_same( self::PRODUCT_SCHEMA, $product['schema'], $path . '.schema' );
 		self::assert_product_code( $product['product_code'], $path . '.product_code' );
 		self::assert_ingredient_code( $product['ingredient_code'], $path . '.ingredient_code' );
+		if ( ! in_array( $product['product_kind'], array( 'food', 'equipment' ), true ) ) {
+			throw new \UnexpectedValueException( $path . '.product_kind is invalid.' );
+		}
+		$expected_entity_prefix = 'equipment' === $product['product_kind'] ? 'equipment-' : 'ingredient-';
+		if ( 0 !== strpos( $product['ingredient_code'], $expected_entity_prefix ) ) {
+			throw new \UnexpectedValueException( $path . '.ingredient_code does not match product_kind.' );
+		}
 		self::assert_bilingual_text( $product['name'], $path . '.name', 300 );
 		self::assert_text( $product['brand_reference'], $path . '.brand_reference', false, 300 );
 		self::assert_same( '', $product['gtin'], $path . '.gtin' );
@@ -860,6 +879,8 @@ final class Complete99_Evaluation_Catalog {
 				'range_low_ils',
 				'range_high_ils',
 				'price_scope',
+				'source_price',
+				'fx_conversion',
 			),
 			$path . '.market_observation'
 		);
@@ -886,6 +907,55 @@ final class Complete99_Evaluation_Catalog {
 			$observation['price_scope'],
 			$path . '.market_observation.price_scope'
 		);
+		if ( empty( $observation['source_price'] ) xor empty( $observation['fx_conversion'] ) ) {
+			throw new \UnexpectedValueException( $path . '.market_observation source and FX evidence must be paired.' );
+		}
+		if ( ! empty( $observation['source_price'] ) ) {
+			self::assert_exact_keys(
+				$observation['source_price'],
+				array( 'amount', 'currency', 'tax_state', 'availability_state' ),
+				$path . '.market_observation.source_price'
+			);
+			$source_amount = self::assert_price( $observation['source_price']['amount'], $path . '.market_observation.source_price.amount' );
+			if ( ! in_array( $observation['source_price']['currency'], array( 'GBP', 'JPY' ), true ) ) {
+				throw new \UnexpectedValueException( $path . '.market_observation.source_price.currency is invalid.' );
+			}
+			self::assert_identifier( $observation['source_price']['tax_state'], $path . '.market_observation.source_price.tax_state' );
+			self::assert_identifier( $observation['source_price']['availability_state'], $path . '.market_observation.source_price.availability_state' );
+
+			self::assert_exact_keys(
+				$observation['fx_conversion'],
+				array( 'rate', 'basis', 'source_url', 'rate_date', 'checked_at', 'converted_amount_ils', 'formula' ),
+				$path . '.market_observation.fx_conversion'
+			);
+			$fx_rate = self::assert_positive_decimal( $observation['fx_conversion']['rate'], $path . '.market_observation.fx_conversion.rate', 6 );
+			if ( ! in_array( $observation['fx_conversion']['basis'], array( 'ILS_per_GBP', 'ILS_per_100_JPY' ), true ) ) {
+				throw new \UnexpectedValueException( $path . '.market_observation.fx_conversion.basis is invalid.' );
+			}
+			self::assert_https_url( $observation['fx_conversion']['source_url'], $path . '.market_observation.fx_conversion.source_url' );
+			if ( $fx_source_url !== (string) $observation['fx_conversion']['source_url'] ) {
+				throw new \UnexpectedValueException( $path . '.market_observation.fx_conversion.source_url is not the designated Bank of Israel source.' );
+			}
+			self::assert_date( $observation['fx_conversion']['checked_at'], $path . '.market_observation.fx_conversion.checked_at' );
+			self::assert_date( $observation['fx_conversion']['rate_date'], $path . '.market_observation.fx_conversion.rate_date' );
+			if ( $observation['fx_conversion']['rate_date'] > $observation['fx_conversion']['checked_at']
+				|| $observation['fx_conversion']['checked_at'] > $registry_reviewed_at ) {
+				throw new \UnexpectedValueException( $path . '.market_observation.fx_conversion dates are not chronologically valid.' );
+			}
+			$converted = self::assert_price( $observation['fx_conversion']['converted_amount_ils'], $path . '.market_observation.fx_conversion.converted_amount_ils' );
+			if ( 0.005 <= abs( $converted - $observed ) ) {
+				throw new \UnexpectedValueException( $path . '.market_observation FX result differs from observed_price_ils.' );
+			}
+			$calculated = 'GBP' === $observation['source_price']['currency'] && 'ILS_per_GBP' === $observation['fx_conversion']['basis']
+				? $source_amount * $fx_rate
+				: ( 'JPY' === $observation['source_price']['currency'] && 'ILS_per_100_JPY' === $observation['fx_conversion']['basis']
+					? ( $source_amount / 100 ) * $fx_rate
+					: -1 );
+			if ( 0 > $calculated || 0.005 <= abs( round( $calculated, 2 ) - $converted ) ) {
+				throw new \UnexpectedValueException( $path . '.market_observation FX basis or calculation is invalid.' );
+			}
+			self::assert_text( $observation['fx_conversion']['formula'], $path . '.market_observation.fx_conversion.formula', false, 500 );
+		}
 
 		self::assert_exact_keys(
 			$product['normalized_market_price'],
@@ -913,26 +983,25 @@ final class Complete99_Evaluation_Catalog {
 		self::assert_same( null, $product['target_margin_percent'], $path . '.target_margin_percent' );
 		self::assert_same( null, $product['waste_factor_percent'], $path . '.waste_factor_percent' );
 
-		self::assert_pending_status(
-			$product['ingredient_statement'],
-			'supplier_label_required',
-			$path . '.ingredient_statement'
-		);
-		self::assert_pending_status(
-			$product['allergen_statement'],
-			'supplier_label_required',
-			$path . '.allergen_statement'
-		);
-		self::assert_pending_status(
-			$product['nutrition_panel'],
-			'supplier_label_required',
-			$path . '.nutrition_panel'
-		);
-		self::assert_pending_status(
-			$product['kosher_certificate'],
-			'supplier_document_required',
-			$path . '.kosher_certificate'
-		);
+		if ( 'food' === $product['product_kind'] ) {
+			self::assert_pending_status( $product['ingredient_statement'], 'supplier_label_required', $path . '.ingredient_statement' );
+			self::assert_pending_status( $product['allergen_statement'], 'supplier_label_required', $path . '.allergen_statement' );
+			self::assert_pending_status( $product['nutrition_panel'], 'supplier_label_required', $path . '.nutrition_panel' );
+			self::assert_pending_status( $product['kosher_certificate'], 'supplier_document_required', $path . '.kosher_certificate' );
+			self::assert_same( null, $product['equipment_specification'], $path . '.equipment_specification' );
+		} else {
+			foreach ( array( 'ingredient_statement', 'allergen_statement', 'nutrition_panel', 'kosher_certificate' ) as $food_field ) {
+				self::assert_same( null, $product[ $food_field ], $path . '.' . $food_field );
+			}
+			self::assert_exact_keys(
+				$product['equipment_specification'],
+				array( 'model', 'material', 'dimensions', 'care', 'safety' ),
+				$path . '.equipment_specification'
+			);
+			foreach ( array( 'model', 'material', 'dimensions', 'care', 'safety' ) as $equipment_field ) {
+				self::assert_bilingual_text( $product['equipment_specification'][ $equipment_field ], $path . '.equipment_specification.' . $equipment_field, 800 );
+			}
+		}
 		if ( '' === $product['image_asset'] ) {
 			self::assert_same(
 				'evaluation_asset_pending_binding',
@@ -1354,10 +1423,17 @@ final class Complete99_Evaluation_Catalog {
 				'_complete99_product_unit'         => $seed['package_label']['en'],
 				'_complete99_product_price'        => self::price_string( $seed['evaluation_price_ils'], 'evaluation price' ),
 				'_complete99_product_currency'     => 'ILS',
+				'_complete99_product_kind'         => $seed['product_kind'],
 				'_complete99_product_stock_source' => 'evaluation_only',
 				'_complete99_product_rights'       => 'pending',
 			)
 		);
+		if ( 'equipment' === $seed['product_kind'] ) {
+			foreach ( array( 'model', 'material', 'dimensions', 'care', 'safety' ) as $equipment_field ) {
+				$meta[ '_complete99_product_' . $equipment_field . '_he' ] = $seed['equipment_specification'][ $equipment_field ]['he'];
+				$meta[ '_complete99_product_' . $equipment_field . '_en' ] = $seed['equipment_specification'][ $equipment_field ]['en'];
+			}
+		}
 		$stored = self::store_and_verify_meta( $post_id, $meta );
 		if ( self::is_error( $stored ) ) {
 			return $stored;
@@ -1458,6 +1534,7 @@ final class Complete99_Evaluation_Catalog {
 			self::META_PRICE_SCOPE       => 'private_benchmark_only',
 			self::META_STOCK_SCOPE       => 'private_evaluation_only',
 			self::META_CLASSIFICATION    => $seed['classification'],
+			self::META_PRODUCT_KIND      => $seed['product_kind'],
 			self::META_SALE_STATE        => 'held_until_acceptance',
 			self::META_PUBLIC_SALE       => 'no',
 			self::META_REGISTRY_DIGEST   => $registry_digest,
@@ -1592,6 +1669,22 @@ final class Complete99_Evaluation_Catalog {
 			|| $number > 1000000
 			|| abs( ( $number * 100 ) - round( $number * 100 ) ) > 0.000001 ) {
 			throw new \UnexpectedValueException( $path . ' must be a positive price with at most two decimals.' );
+		}
+		return $number;
+	}
+
+	private static function assert_positive_decimal( $value, $path, $maximum_decimals ) {
+		$maximum_decimals = abs( (int) $maximum_decimals );
+		if ( ! is_string( $value )
+			|| 1 > $maximum_decimals
+			|| 8 < $maximum_decimals
+			|| 1 !== preg_match( '/\A(?:0|[1-9][0-9]{0,6})(?:\.[0-9]{1,' . $maximum_decimals . '})?\z/', $value )
+			|| ! is_numeric( $value ) ) {
+			throw new \UnexpectedValueException( $path . ' must be a bounded positive decimal.' );
+		}
+		$number = (float) $value;
+		if ( ! is_finite( $number ) || 0 >= $number || 1000000 < $number ) {
+			throw new \UnexpectedValueException( $path . ' must be a bounded positive decimal.' );
 		}
 		return $number;
 	}

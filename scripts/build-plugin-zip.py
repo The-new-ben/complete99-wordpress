@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 07:47:22"
+RELEASE_LAST_UPDATED = "2026-08-06 08:44:26"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,13 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the bilingual culinary store from 30 to 32 owner-authorized products with fresh Japanese wasabi and professional stainless-steel wasabi preparation equipment.</li>"
+                "<li>Added typed food and equipment product contracts, type-specific facts, public rendering, Product schema, exact prices, opening stock and reciprocal science links.</li>"
+                "<li>Published a source-led bilingual wasabi, AITC and preparation cluster with dedicated visual assets while preserving its noindex long-form review gate.</li>"
+                "<li>Separated dated source-market observations, owner-authorized retail prices and private margin scenarios so public commerce remains truthful and operationally useful.</li>"
+                "</ul>"
+                "<h4>1.5.1</h4>"
                 "<ul>"
                 "<li>Localized the complete culinary-museum entity and relationship vocabularies in Hebrew and English, including preparation, guide and contextual related-item labels.</li>"
                 "<li>Localized the current public Japanese taxonomy, evidence classes and knowledge-map terminology while preserving scientific abbreviations.</li>"

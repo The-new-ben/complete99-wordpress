@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -18,23 +19,29 @@ BUILDER = ROOT / "scripts" / "build-plugin-zip.py"
 PUBLIC_IDS = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
+    "hub-japanese-equipment",
     "hub-japanese-food-science",
     "hub-japanese-ingredients",
     "hub-japanese-techniques",
     "guide-umami-synergy",
+    "guide-wasabi-aitc",
     "ingredient-kombu",
     "ingredient-katsuobushi",
     "ingredient-kioke-shoyu",
     "ingredient-fresh-wasabi",
     "ingredient-kito-yuzu",
     "ingredient-hon-mirin",
+    "molecule-allyl-isothiocyanate",
     "preparation-ichiban-dashi",
+    "equipment-wasabi-grater",
 }
 PUBLIC_OFFER_CODES = {
     "ingredient-kombu": "product-rishiri-kombu-100g",
     "ingredient-katsuobushi": "product-honkarebushi-200g",
     "ingredient-kioke-shoyu": "product-yamaroku-tsurubishio-500ml",
+    "ingredient-fresh-wasabi": "product-fresh-japanese-wasabi-250g",
     "ingredient-kito-yuzu": "product-kito-yuzu-juice-100ml",
+    "equipment-wasabi-grater": "product-hagane-zame-large",
 }
 PUBLIC_PROJECTION_KEYS = {
     "id",
@@ -140,7 +147,11 @@ $paths = array(
     '/knowledge/ichiban-dashi/',
     '/en/knowledge/ichiban-dashi/',
     '/knowledge/umami-synergy-glutamate-imp/',
-    '/en/knowledge/umami-synergy-glutamate-imp/'
+    '/en/knowledge/umami-synergy-glutamate-imp/',
+    '/knowledge/wasabi-aitc-pungency/',
+    '/en/knowledge/wasabi-aitc-pungency/',
+    '/knowledge/wasabi-grater-guide/',
+    '/en/knowledge/wasabi-grater-guide/'
 );
 $bundles = array();
 foreach ($paths as $path) {{
@@ -184,14 +195,14 @@ def test_exact_reviewed_public_cohort_and_noindex_boundary(pilot_payload: dict) 
 
 def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict) -> None:
     assert pilot_payload["invalid"] == []
-    assert len(pilot_payload["bundles"]) == 20
+    assert len(pilot_payload["bundles"]) == 24
     public_standalone = {
         entity["id"]
         for entity in pilot_payload["registry"]["entities"]
         if entity["publication"]["public_page"]
         and entity["seo"]["route_mode"] == "standalone"
     }
-    assert len(public_standalone) == 10
+    assert len(public_standalone) == 12
     assert len(pilot_payload["bundles"]) == 2 * len(public_standalone)
     for path, bundle in pilot_payload["bundles"].items():
         assert bundle["canonical_path"] == path
@@ -226,7 +237,72 @@ def _mapping_keys(value: object) -> set[str]:
     return keys
 
 
-def test_public_projections_expose_only_four_safe_offer_references(
+def _public_copy_strings(projection: dict) -> list[str]:
+    strings = [projection.get("name", ""), projection.get("summary", "")]
+    strings.extend(
+        profile.get("summary", "")
+        for profile in projection.get("profiles", {}).values()
+    )
+    strings.extend(fact.get("statement", "") for fact in projection.get("facts", []))
+    strings.extend(
+        relation.get("note", "") for relation in projection.get("relations", [])
+    )
+    for link in projection.get("internal_links", []):
+        strings.extend((link.get("anchor", ""), link.get("context", "")))
+    for observation in projection.get("market_context", []):
+        strings.extend(
+            (observation.get("label", ""), observation.get("scope_note", ""))
+        )
+    offer = projection.get("offer", {})
+    if isinstance(offer, dict):
+        strings.append(offer.get("label", ""))
+    strings.extend(projection.get("safety_notes", []))
+    trust = projection.get("trust", {})
+    strings.extend(
+        (trust.get("research_method", ""), trust.get("next_review_trigger", ""))
+    )
+    return strings
+
+
+def test_public_copy_does_not_expose_internal_delivery_or_seo_jargon(
+    pilot_payload: dict,
+) -> None:
+    forbidden = (
+        "head intent",
+        "intent owner",
+        "search intent",
+        "pilot",
+        "project",
+        "sku",
+        "mapped",
+        "taxonomy",
+        "knowledge graph",
+        "topic cluster",
+        "hubs and spokes",
+        "\u05e4\u05d9\u05d9\u05dc\u05d5\u05d8",
+        "\u05e4\u05e8\u05d5\u05d9\u05e7\u05d8",
+        "\u05db\u05d5\u05d5\u05e0\u05ea \u05d7\u05d9\u05e4\u05d5\u05e9",
+        "\u05d1\u05e2\u05dc \u05d4\u05db\u05d5\u05d5\u05e0\u05d4",
+        "\u05d4\u05d9\u05e9\u05d5\u05ea",
+        "\u05d9\u05e9\u05d5\u05d9\u05d5\u05ea",
+        "\u05de\u05de\u05d5\u05e4\u05d4",
+    )
+    for path, bundle in pilot_payload["bundles"].items():
+        for projection in (bundle["entity"], *bundle["sections"]):
+            public_copy = "\n".join(_public_copy_strings(projection)).casefold()
+            for marker in forbidden:
+                assert marker.casefold() not in public_copy, (
+                    path,
+                    projection["id"],
+                    marker,
+                )
+            assert re.search(r"\b(?:entity|entities)\b", public_copy) is None, (
+                path,
+                projection["id"],
+            )
+
+
+def test_public_projections_expose_only_approved_safe_offer_references(
     pilot_payload: dict,
 ) -> None:
     seen: dict[tuple[str, str], dict] = {}
@@ -256,14 +332,16 @@ def test_public_projections_expose_only_four_safe_offer_references(
         assert offer["label"].strip()
 
 
-def test_cuisine_owns_the_three_public_pilot_sections(pilot_payload: dict) -> None:
+def test_cuisine_owns_the_four_public_pilot_sections(pilot_payload: dict) -> None:
     cuisine = pilot_payload["bundles"]["/museum/japanese-culinary-science/"]
     assert [section["id"] for section in cuisine["sections"]] == [
+        "hub-japanese-equipment",
         "hub-japanese-food-science",
         "hub-japanese-ingredients",
         "hub-japanese-techniques",
     ]
     expected_section_ids = {
+        "hub-japanese-equipment": "japanese-professional-equipment",
         "hub-japanese-food-science": "japanese-food-science",
         "hub-japanese-ingredients": "japanese-premium-ingredients",
         "hub-japanese-techniques": "japanese-culinary-techniques",
@@ -272,6 +350,20 @@ def test_cuisine_owns_the_three_public_pilot_sections(pilot_payload: dict) -> No
         assert section["seo"]["route_mode"] == "section"
         assert section["seo"]["owner_entity_id"] == "cuisine-japanese-washoku"
         assert section["seo"]["section_id"] == expected_section_ids[section["id"]]
+
+
+def test_wasabi_guide_owns_the_aitc_molecule_section(pilot_payload: dict) -> None:
+    guide = pilot_payload["bundles"]["/knowledge/wasabi-aitc-pungency/"]
+    assert [section["id"] for section in guide["sections"]] == [
+        "molecule-allyl-isothiocyanate"
+    ]
+    molecule = guide["sections"][0]
+    assert molecule["seo"]["route_mode"] == "section"
+    assert molecule["seo"]["owner_entity_id"] == "guide-wasabi-aitc"
+    assert molecule["seo"]["section_id"] == "allyl-isothiocyanate"
+    assert molecule["seo"]["canonical_path"] == guide["entity"]["seo"][
+        "canonical_path"
+    ]
 
 
 def test_every_public_projection_has_a_digest_matched_generated_asset(
@@ -316,4 +408,46 @@ def test_public_claims_are_cited_and_source_corrections_are_retained(
     )
     assert sources["kito-yuzu-juice-720ml-listing-2026"]["url"].endswith(
         "000000000199?category_page_id=ichiban"
+    )
+
+
+def test_wasabi_slice_uses_official_sources_and_independently_gated_offers(
+    pilot_payload: dict,
+) -> None:
+    registry = pilot_payload["registry"]
+    sources = registry["sources"]
+    by_id = {entity["id"]: entity for entity in registry["entities"]}
+
+    yamamoto = sources["yamamoto-haganezame-spec"]
+    assert yamamoto["type"] == "official_business"
+    assert yamamoto["publisher"] == "Yamamoto Foods Co., Ltd."
+    assert yamamoto["url"] == (
+        "https://www.yamamotofoods.co.jp/haganezame/jp/spec/"
+    )
+
+    wasabi = by_id["ingredient-fresh-wasabi"]
+    grater = by_id["equipment-wasabi-grater"]
+    assert wasabi["commerce"]["woo_product_code"] == (
+        "product-fresh-japanese-wasabi-250g"
+    )
+    assert grater["commerce"]["woo_product_code"] == "product-hagane-zame-large"
+    for entity in (wasabi, grater):
+        assert entity["commerce"]["public_offer_allowed"] is True
+        assert entity["commerce"]["state"] == "active_offer"
+        assert entity["commerce"]["business_model"]["pricing_state"] == (
+            "approved_sell_price"
+        )
+
+    grater_fact_sources = {
+        source_id
+        for fact in grater["facts"]
+        if fact["public_safe"]
+        for source_id in fact["source_ids"]
+    }
+    assert "yamamoto-haganezame-spec" in grater_fact_sources
+    assert any(
+        relation["target_id"] == "equipment-wasabi-grater"
+        and relation["public_safe"]
+        and "yamamoto-haganezame-spec" in relation["source_ids"]
+        for relation in wasabi["relations"]
     )

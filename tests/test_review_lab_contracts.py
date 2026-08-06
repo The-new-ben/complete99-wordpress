@@ -56,15 +56,15 @@ class ReviewLabContracts(unittest.TestCase):
                             'valid' => true,
                             'status' => 'accepted',
                             'mode' => 'private_only',
-                            'seed_count' => 30,
-                            'ingredient_count' => 30,
-                            'product_plan_count' => 30,
+                            'seed_count' => 32,
+                            'ingredient_count' => 32,
+                            'product_plan_count' => 32,
                             'woo_product_count' => 0,
                             'woo_materialized' => false,
                         ),
                         'materialized' => array(
-                            'ingredient_count' => 30,
-                            'product_plan_count' => 30,
+                            'ingredient_count' => 32,
+                            'product_plan_count' => 32,
                         ),
                     );
                 }}
@@ -76,8 +76,8 @@ class ReviewLabContracts(unittest.TestCase):
         snapshot = json.loads(payload)
         self.assertEqual("complete99-review-lab/v1", snapshot["schema"])
         self.assertEqual(12, len(snapshot["dishes"]))
-        self.assertEqual(30, len(snapshot["products"]))
-        self.assertEqual(54, len(snapshot["assets"]))
+        self.assertEqual(32, len(snapshot["products"]))
+        self.assertEqual(56, len(snapshot["assets"]))
         self.assertEqual(11, len(snapshot["guides"]))
         self.assertGreaterEqual(len(snapshot["ingredient_codes"]), 10)
         self.assertLessEqual(len(snapshot["dishes"]), 100)
@@ -88,11 +88,11 @@ class ReviewLabContracts(unittest.TestCase):
         self.assertTrue(snapshot["evaluation_catalog"]["ready"])
         self.assertTrue(snapshot["evaluation_catalog"]["receipt"]["valid"])
         self.assertEqual(
-            30,
+            32,
             snapshot["evaluation_catalog"]["materialized"]["ingredient_count"],
         )
         self.assertEqual(
-            30,
+            32,
             snapshot["evaluation_catalog"]["materialized"]["product_plan_count"],
         )
         self.assertNotIn(

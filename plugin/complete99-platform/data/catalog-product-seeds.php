@@ -37,6 +37,11 @@ $c99_classification_rules = array(
 		'temperature_zone' => 'cold_chain_pending',
 		'required_gates'   => array( 'approved_food_supplier', 'batch_traceability', 'cold_chain', 'temperature_log', 'label', 'allergens', 'kosher_document', 'packaging', 'returns', 'procurement_price', 'waste_factor', 'margin' ),
 	),
+	'professional_equipment' => array(
+		'resale_candidate' => true,
+		'temperature_zone' => 'non_food_equipment',
+		'required_gates'   => array( 'supplier', 'model', 'material', 'dimensions', 'care', 'safety', 'food_contact', 'tax', 'media', 'shipping', 'returns', 'procurement_price', 'margin' ),
+	),
 );
 
 $c99_product = static function (
@@ -59,14 +64,35 @@ $c99_product = static function (
 	$source_updated_at,
 	$linked_dish_ids = array(),
 	$attention_codes = array(),
-	$checked_at = '2026-07-31'
+	$checked_at = '2026-07-31',
+	$product_kind = 'food',
+	$source_price_evidence = array(),
+	$equipment_specification = null
 ) use ( $c99_classification_rules ) {
 	$rules = $c99_classification_rules[ $classification ];
+	$product_kind = 'equipment' === $product_kind ? 'equipment' : 'food';
+	$market_observation = array(
+		'source_provider'    => $source_provider,
+		'source_url'         => $source_url,
+		'checked_at'         => $checked_at,
+		'source_updated_at'  => $source_updated_at,
+		'observed_price_ils' => (float) $observed_price,
+		'range_low_ils'      => (float) $observed_low,
+		'range_high_ils'     => (float) $observed_high,
+		'price_scope'        => 'consumer_retail_observation',
+		'source_price'       => array(),
+		'fx_conversion'      => array(),
+	);
+	if ( isset( $source_price_evidence['source_price'], $source_price_evidence['fx_conversion'] ) ) {
+		$market_observation['source_price']  = $source_price_evidence['source_price'];
+		$market_observation['fx_conversion'] = $source_price_evidence['fx_conversion'];
+	}
 
 	return array(
 		'schema'                     => 'complete99-catalog-product-seed/v1',
 		'product_code'               => $product_code,
 		'ingredient_code'            => $ingredient_code,
+		'product_kind'               => $product_kind,
 		'name'                       => array( 'he' => $name_he, 'en' => $name_en ),
 		'brand_reference'            => $brand,
 		'gtin'                       => '',
@@ -74,16 +100,7 @@ $c99_product = static function (
 		'package_label'              => array( 'he' => $package_he, 'en' => $package_en ),
 		'classification'             => $classification,
 		'temperature_zone'           => $rules['temperature_zone'],
-		'market_observation'         => array(
-			'source_provider'    => $source_provider,
-			'source_url'         => $source_url,
-			'checked_at'         => $checked_at,
-			'source_updated_at'  => $source_updated_at,
-			'observed_price_ils' => (float) $observed_price,
-			'range_low_ils'      => (float) $observed_low,
-			'range_high_ils'     => (float) $observed_high,
-			'price_scope'        => 'consumer_retail_observation',
-		),
+		'market_observation'         => $market_observation,
 		'normalized_market_price'    => array( 'amount' => (float) $normalized_amount, 'unit' => $normalized_unit ),
 		'evaluation_price_ils'       => (float) $evaluation_price,
 		'evaluation_price_scope'     => 'private_benchmark_only',
@@ -95,10 +112,11 @@ $c99_product = static function (
 		'procurement_cost_ils'       => null,
 		'target_margin_percent'      => null,
 		'waste_factor_percent'       => null,
-		'ingredient_statement'       => array( 'status' => 'supplier_label_required' ),
-		'allergen_statement'         => array( 'status' => 'supplier_label_required' ),
-		'nutrition_panel'            => array( 'status' => 'supplier_label_required' ),
-		'kosher_certificate'         => array( 'status' => 'supplier_document_required' ),
+		'ingredient_statement'       => 'food' === $product_kind ? array( 'status' => 'supplier_label_required' ) : null,
+		'allergen_statement'         => 'food' === $product_kind ? array( 'status' => 'supplier_label_required' ) : null,
+		'nutrition_panel'            => 'food' === $product_kind ? array( 'status' => 'supplier_label_required' ) : null,
+		'kosher_certificate'         => 'food' === $product_kind ? array( 'status' => 'supplier_document_required' ) : null,
+		'equipment_specification'    => 'equipment' === $product_kind ? $equipment_specification : null,
 		'image_asset'                => '',
 		'image_state'                => 'evaluation_asset_pending_binding',
 		'regulatory_attention_codes' => array_values( $attention_codes ),
@@ -262,6 +280,57 @@ $c99_products = array(
 		'packaged_shelf_stable', '100 מ״ל', '100 ml', 13.69, 13.69, 64.00, 136.90, 'ILS_per_litre_source_conversion', 64.00,
 		'https://shop.ogonnomura.jp/view/item/000000000364', 'ogon_no_mura_direct', '2026-08-06', array(), array( 'import_label_review', 'processed_gi_representation_review', 'refrigerate_after_opening' ), '2026-08-06'
 	),
+	$c99_product(
+		'product-fresh-japanese-wasabi-250g', 'ingredient-fresh-wasabi', 'קני שורש וואסבי יפני טרי 250 גרם', 'Fresh Japanese wasabi rhizomes 250 g', 'The Wasabi Company market benchmark',
+		'chilled_or_frozen_sensitive', '250 גרם', '250 g', 252.81, 252.81, 252.81, 1011.24, 'ILS_per_kg_source_conversion', 399.00,
+		'https://www.thewasabicompany.co.uk/products/fresh-japanese-wasabi-250g', 'the_wasabi_company', '2026-08-06', array(), array( 'cold_chain_review', 'phytosanitary_import_review', 'variable_rhizome_size', 'supplier_availability_not_public_inventory' ), '2026-08-06', 'food',
+		array(
+			'source_price'  => array(
+				'amount'             => '62.50',
+				'currency'           => 'GBP',
+				'tax_state'          => 'included',
+				'availability_state' => 'out_of_stock_at_observation',
+			),
+			'fx_conversion' => array(
+				'rate'                 => '4.0450',
+				'basis'                => 'ILS_per_GBP',
+				'source_url'           => 'https://www.boi.org.il/roles/markets/exchangerates/',
+				'rate_date'            => '2026-08-05',
+				'checked_at'           => '2026-08-06',
+				'converted_amount_ils' => '252.81',
+				'formula'              => 'GBP 62.50 multiplied by ILS 4.0450 per GBP equals ILS 252.8125, rounded to ILS 252.81.',
+			),
+		)
+	),
+	$c99_product(
+		'product-hagane-zame-large', 'equipment-wasabi-grater', 'מגררת וואסבי Yamamoto Hagane-zame Pro גדולה', 'Yamamoto Hagane-zame Pro large wasabi grater', 'Yamamoto Foods official benchmark',
+		'professional_equipment', 'יחידה אחת, דגם Pro גדול', 'One Pro large grater', 324.79, 324.79, 324.79, 324.79, 'ILS_per_item_source_conversion', 699.00,
+		'https://www.yamamotofoods.co.jp/haganezame/jp/spec/', 'yamamoto_foods_official', '2026-08-06', array(), array( 'food_contact_material_review', 'sharp_surface_handling', 'official_japan_price', 'domestic_japan_shipping_only' ), '2026-08-06', 'equipment',
+		array(
+			'source_price'  => array(
+				'amount'             => '17050',
+				'currency'           => 'JPY',
+				'tax_state'          => 'included',
+				'availability_state' => 'official_purchase_methods_listed',
+			),
+			'fx_conversion' => array(
+				'rate'                 => '1.9049',
+				'basis'                => 'ILS_per_100_JPY',
+				'source_url'           => 'https://www.boi.org.il/roles/markets/exchangerates/',
+				'rate_date'            => '2026-08-05',
+				'checked_at'           => '2026-08-06',
+				'converted_amount_ils' => '324.79',
+				'formula'              => 'JPY 17,050 divided by 100 and multiplied by ILS 1.9049 per JPY 100 equals ILS 324.78545, rounded to ILS 324.79.',
+			),
+		),
+		array(
+			'model'      => array( 'he' => 'Hagane-zame Pro, דגם גדול', 'en' => 'Hagane-zame Pro, large model' ),
+			'material'   => array( 'he' => 'פלדת אל-חלד', 'en' => 'Stainless steel' ),
+			'dimensions' => array( 'he' => 'גוף 26.0 על 11.0 על 0.1 ס״מ; משטח גירור 16.0 על 11.0 ס״מ; משקל כ-156 גרם.', 'en' => 'Body 26.0 by 11.0 by 0.1 cm; grating surface 16.0 by 11.0 cm; approximately 156 g.' ),
+			'care'       => array( 'he' => 'לאחר השימוש לשטוף במים, להבריש בעדינות בכמה כיוונים, לספוג את המים ולייבש לפני אחסון. היצרן מציין התאמה למדיח כלים.', 'en' => 'After use, rinse with water, brush gently in several directions, blot away moisture and dry before storage. The maker states that dishwasher cleaning is supported.' ),
+			'safety'     => array( 'he' => 'משטח הגירור חד. יש לאחוז בידית, להרחיק אצבעות מהשיניים ולנקות במברשת במקום ביד חשופה.', 'en' => 'The grating surface is sharp. Hold the handle, keep fingers clear of the teeth and clean with a brush rather than a bare hand.' ),
+		)
+	),
 );
 
 $c99_candidate_relations = array(
@@ -334,6 +403,8 @@ $c99_evaluation_image_bindings = array(
 	'product-honkarebushi-200g'  => 'c99-ingredient-katsuobushi-evaluation-v01.webp',
 	'product-yamaroku-tsurubishio-500ml' => 'c99-ingredient-kioke-shoyu-evaluation-v01.webp',
 	'product-kito-yuzu-juice-100ml' => 'c99-ingredient-kito-yuzu-juice-evaluation-v01.webp',
+	'product-fresh-japanese-wasabi-250g' => 'c99-ingredient-fresh-wasabi-250g-v01.webp',
+	'product-hagane-zame-large' => 'c99-equipment-hagane-zame-pro-v01.webp',
 );
 
 foreach ( $c99_products as &$c99_seed_product ) {
@@ -374,6 +445,8 @@ return array(
 		'yamaroku_direct'             => 'https://yama-roku.net/product',
 		'ogon_no_mura_direct'         => 'https://shop.ogonnomura.jp/view/item/000000000364',
 		'japanese_taste'             => 'https://int.japanesetaste.com/',
+		'the_wasabi_company'          => 'https://www.thewasabicompany.co.uk/',
+		'yamamoto_foods_official'     => 'https://www.yamamotofoods.co.jp/haganezame/jp/spec/',
 	),
 	'classification_rules'         => $c99_classification_rules,
 	'products'                     => $c99_products,

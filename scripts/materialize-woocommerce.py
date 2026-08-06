@@ -53,7 +53,7 @@ BRIDGE_SOURCE_HEADER = "COMPLETE99_WOOCOMMERCE_BRIDGE_SOURCE_V1"
 CATALOG_ROUTE = "/wp-json/complete99/v1/store/catalog-materialization"
 CATALOG_STATUS_SCHEMA = "complete99-live-catalog-status/v1"
 CATALOG_RECEIPT_SCHEMA = "complete99-live-catalog-receipt/v1"
-EXPECTED_PRODUCT_COUNT = 30
+EXPECTED_PRODUCT_COUNT = 32
 EXPECTED_PRODUCT_CODES = (
     "product-tahini-500g",
     "product-amba-500g",
@@ -85,6 +85,8 @@ EXPECTED_PRODUCT_CODES = (
     "product-honkarebushi-200g",
     "product-yamaroku-tsurubishio-500ml",
     "product-kito-yuzu-juice-100ml",
+    "product-fresh-japanese-wasabi-250g",
+    "product-hagane-zame-large",
 )
 EXPECTED_ILS_PRICES = {
     "product-tahini-500g": "11.00",
@@ -117,6 +119,8 @@ EXPECTED_ILS_PRICES = {
     "product-honkarebushi-200g": "219.00",
     "product-yamaroku-tsurubishio-500ml": "149.00",
     "product-kito-yuzu-juice-100ml": "64.00",
+    "product-fresh-japanese-wasabi-250g": "399.00",
+    "product-hagane-zame-large": "699.00",
 }
 
 

@@ -497,8 +497,8 @@ final class Complete99_Frontend {
 		$description = wp_strip_all_tags( $post->post_excerpt );
 		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
 			$description = 'he' === $lang
-				? 'מוצרי המזווה של קומפלט 99 עם מחיר, משקל, רכיבים, אלרגנים, מלאי ותנאי איסוף או משלוח.'
-				: 'Complete99 pantry goods with price, weight, ingredients, allergens, stock and pickup or delivery terms.';
+				? 'חומרי גלם וציוד למטבח של קומפלט 99 עם מחיר, מפרט, מלאי ותנאי איסוף או משלוח.'
+				: 'Complete99 food ingredients and kitchen equipment with price, specifications, stock and pickup or delivery terms.';
 			$product_ids = Complete99_Commerce::storefront_product_ids();
 			$product     = ! empty( $product_ids ) && function_exists( 'wc_get_product' ) ? wc_get_product( $product_ids[0] ) : false;
 			if ( $product ) {
@@ -796,8 +796,8 @@ final class Complete99_Frontend {
 		$page_description = wp_strip_all_tags( $post->post_excerpt );
 		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
 			$page_description = 'he' === $lang
-				? 'מוצרי המזווה של קומפלט 99 עם מחיר, מלאי, רכיבים, אחסון והוספה לסל.'
-				: 'Complete99 pantry goods with price, stock, ingredients, storage and add-to-cart.';
+				? 'חומרי גלם וציוד למטבח של קומפלט 99 עם מחיר, מפרט, מלאי והוספה לסל.'
+				: 'Complete99 food ingredients and kitchen equipment with price, specifications, stock and add-to-cart.';
 		}
 		$graph   = array(
 			self::food_business_schema( $lang ),
@@ -896,12 +896,49 @@ final class Complete99_Frontend {
 		$ingredients = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::INGREDIENTS_HE : Complete99_Commerce::INGREDIENTS_EN, true );
 		$allergens   = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::ALLERGENS_HE : Complete99_Commerce::ALLERGENS_EN, true );
 		$storage     = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::STORAGE_HE : Complete99_Commerce::STORAGE_EN, true );
+		$fulfilment  = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::FULFILMENT_HE : Complete99_Commerce::FULFILMENT_EN, true );
+		$product_kind = sanitize_key( (string) get_post_meta( $product_id, '_complete99_product_kind', true ) );
+		$product_kind = 'equipment' === $product_kind ? 'equipment' : 'food';
+		$is_equipment = 'equipment' === $product_kind;
+		$model        = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_model_he' : '_complete99_product_model_en', true );
+		$material     = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_material_he' : '_complete99_product_material_en', true );
+		$dimensions   = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_dimensions_he' : '_complete99_product_dimensions_en', true );
+		$care         = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_care_he' : '_complete99_product_care_en', true );
+		$safety       = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_safety_he' : '_complete99_product_safety_en', true );
+		$format       = (string) get_post_meta( $product_id, $is_he ? '_complete99_live_catalog_package_he' : '_complete99_live_catalog_package_en', true );
 		$product_code= (string) get_post_meta( $product_id, '_complete99_catalog_product_code', true );
 		$image       = wp_get_attachment_image_url( $product->get_image_id(), 'full' );
 		$unit_codes  = array( 'kg' => 'KGM', 'g' => 'GRM', 'lbs' => 'LBR', 'oz' => 'ONZ' );
 		$weight_unit = (string) get_option( 'woocommerce_weight_unit', 'kg' );
 		if ( '' === trim( $name ) || '' === trim( $description ) || '' === trim( $product_code ) || ! $image ) {
 			return null;
+		}
+		$property_rows = $is_equipment
+			? array(
+				array( $is_he ? 'סוג מוצר' : 'Product kind', $is_he ? 'ציוד' : 'Equipment' ),
+				array( $is_he ? 'דגם או פורמט' : 'Model or format', '' !== trim( $model ) ? $model : $format ),
+				array( $is_he ? 'חומר' : 'Material', $material ),
+				array( $is_he ? 'מידות' : 'Dimensions', $dimensions ),
+				array( $is_he ? 'טיפול ותחזוקה' : 'Care', $care ),
+				array( $is_he ? 'בטיחות' : 'Safety', $safety ),
+				array( $is_he ? 'מסירה ואיסוף' : 'Fulfilment', $fulfilment ),
+			)
+			: array(
+				array( $is_he ? 'רכיבים' : 'Ingredients', $ingredients ),
+				array( $is_he ? 'אלרגנים' : 'Allergens', $allergens ),
+				array( $is_he ? 'אחסון' : 'Storage', $storage ),
+				array( $is_he ? 'איסוף עצמי' : 'Pickup', $fulfilment ),
+			);
+		$additional_properties = array();
+		foreach ( $property_rows as $property_row ) {
+			if ( '' === trim( (string) $property_row[1] ) ) {
+				continue;
+			}
+			$additional_properties[] = array(
+				'@type' => 'PropertyValue',
+				'name'  => $property_row[0],
+				'value' => $property_row[1],
+			);
 		}
 		$schema = array(
 			'@type'              => 'Product',
@@ -916,11 +953,7 @@ final class Complete99_Frontend {
 				'value'    => (float) $product->get_weight(),
 				'unitCode' => $unit_codes[ $weight_unit ] ?? strtoupper( $weight_unit ),
 			),
-			'additionalProperty' => array(
-				array( '@type' => 'PropertyValue', 'name' => $is_he ? 'רכיבים' : 'Ingredients', 'value' => $ingredients ),
-				array( '@type' => 'PropertyValue', 'name' => $is_he ? 'אלרגנים' : 'Allergens', 'value' => $allergens ),
-				array( '@type' => 'PropertyValue', 'name' => $is_he ? 'אחסון' : 'Storage', 'value' => $storage ),
-			),
+			'additionalProperty' => $additional_properties,
 			'offers'             => array(
 				'@type'         => 'Offer',
 				'url'           => $store_url . '#c99-product-code-' . sanitize_html_class( $product_code ),

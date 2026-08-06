@@ -1118,8 +1118,8 @@ return array(
 					array(
 						'חנות המזווה',
 						array(
-							'המזווה מציג 30 מוצרים עם תמונה, מחיר, כמות נטו, רכיבים, אלרגנים, אחסון ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
-							'סליקה אלקטרונית תיפתח לאחר חיבור ספק הסליקה. עד אז הסל משמש להכנת ההזמנה, והאישור הסופי נעשה בשיחה עם קומפלט 99 לאחר בדיקת המלאי ותנאי הקבלה.',
+							'המזווה מציג 32 מוצרי קולינריה עם תמונה, מחיר, מפרט שמתאים לסוג המוצר ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
+							'לאחר הכנת הסל, האישור הסופי נעשה בשיחה עם קומפלט 99 לאחר בדיקת המלאי ותנאי הקבלה.',
 						)
 					),
 					array(
@@ -1143,7 +1143,7 @@ return array(
 					array(
 						'Two ordering routes',
 						array(
-							'Pantry goods and ingredients are selected on this site and added to its cart. Price, stock and pickup are checked again before the order is confirmed.',
+							'Culinary pantry goods and preparation equipment are selected on this site and added to its cart. Price, stock and pickup are checked again before the order is confirmed.',
 							'Prepared dishes are ordered through Wolt. Account data, payment, delivery, cancellation and refund on that route are governed by the information and terms shown by Wolt during the transaction.',
 						)
 					),
@@ -1157,8 +1157,8 @@ return array(
 					array(
 						'The pantry shop',
 						array(
-							'The pantry presents 30 products with an image, price, net quantity, ingredients, allergens, storage and stock. Products can be added to the cart, quantities changed and items removed.',
-							'Electronic payment will open after the payment provider is connected. Until then, the cart prepares the order and final confirmation takes place in a call with Complete99 after stock and fulfilment are checked.',
+							'The pantry presents 32 culinary products with an image, price, type-specific details and stock. Products can be added to the cart, quantities changed and items removed.',
+							'After the cart is prepared, final confirmation takes place in a call with Complete99 after stock and fulfilment are checked.',
 						)
 					),
 					array(
