@@ -11,9 +11,13 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.6.0`. Production truth comes
+The source tree targets Complete99 Platform `1.6.1`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.6.1 is the live-acceptance accessibility hotfix for the store. It
+expands the consumer breadcrumb and cart-status links to the project's strict
+44 by 44 CSS-pixel target while preserving the 1.6.0 catalog and science data.
 
 Release 1.6.0 extends the consumer store and Japanese science pilot with a
 complete fresh-wasabi vertical slice. It adds typed food and equipment product

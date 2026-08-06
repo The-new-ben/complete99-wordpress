@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.6.0
+Release target: Complete99 Platform 1.6.1
 
 ## Automated gates
 
@@ -13,7 +13,9 @@ Release target: Complete99 Platform 1.6.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.6.0 and its versioned package URL.
+- The public update manifest matches version 1.6.1 and its versioned package URL.
+- Consumer breadcrumb and live cart-status links expose a minimum 44 by 44
+  CSS-pixel target.
 - An exactly equivalent read-model retry repeats all public cache purges,
   reports `write_changed=false`, and can recover after a prior purge failure.
 - A fresh model with older or changed dish copy falls back to the packaged menu;

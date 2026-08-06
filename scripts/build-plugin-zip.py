@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 08:44:26"
+RELEASE_LAST_UPDATED = "2026-08-06 10:24:49"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,11 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the consumer breadcrumb and live cart-status links to the 44 by 44 CSS-pixel acceptance target.</li>"
+                "<li>Added release contracts for both corrected targets after live desktop, mobile and 200 percent zoom acceptance.</li>"
+                "</ul>"
+                "<h4>1.6.0</h4>"
                 "<ul>"
                 "<li>Expanded the bilingual culinary store from 30 to 32 owner-authorized products with fresh Japanese wasabi and professional stainless-steel wasabi preparation equipment.</li>"
                 "<li>Added typed food and equipment product contracts, type-specific facts, public rendering, Product schema, exact prices, opening stock and reciprocal science links.</li>"
