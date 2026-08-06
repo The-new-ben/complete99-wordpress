@@ -29,7 +29,7 @@ Large raw media streams may use purpose-built storage, and credentials stay in
 server-side secret stores. WordPress retains the canonical entity identity,
 evidence reference, authorization state and publication decision.
 
-Release 1.6.0 installs infrastructure only and does not install or assign
+Release 1.10.0 installs infrastructure only and does not install or assign
 Complete99 worker roles. Commerce order, refund, fulfilment and stock events use
 an unassigned private outbox until a later operating decision.
 
@@ -47,6 +47,7 @@ an unassigned private outbox until a later operating decision.
 | `c99_case_study` | Private unless a later consumer purpose is approved |
 | `c99_team_member` | Private unless a consumer-facing profile is permissioned |
 | `c99_product_plan` | Private product preparation record, never a storefront product |
+| `c99_entity_dossier` | Private commercial decision overlay with retained revisions, never a public entity or offer |
 | WooCommerce `product` | A real purchasable pantry item after all commerce gates pass |
 
 Legacy taxonomies for institutional and operating records remain private. Public
@@ -111,6 +112,36 @@ International expansion must preserve the same versioned schemas, stable IDs,
 digests and validation gates when records move into partitioned database storage
 and persistent caches. WordPress and WooCommerce remain the authority through
 that storage transition.
+
+## Private Entity Studio
+
+Release 1.10.0 adds Entity Studio inside WordPress as a copy-on-write commercial
+overlay. It joins stable science, catalog and commerce identities without
+rewriting their checked-in facts. Each dossier keeps pricing applicability,
+commercial role, offer type, market, channel, currency, planned price, evidence
+references, proposed cross-sells and up-sells, bilingual value propositions,
+bilingual price rationale and a private note.
+
+The post type is private, non-queryable, excluded from search and absent from
+the public WordPress REST surface. Access requires `manage_options`; no new role
+is created. A subject-scoped source digest and expected revision reject stale
+writes. Source changes require an explicit rebase into draft. Post, metadata and
+read-back verification run in one database transaction under a site-scoped
+write lock. Rollback clears post and metadata caches. Revision history binds
+payload, stable identity, record kind, workflow transition and prior digests.
+Removed-source dossiers remain available through a direct private audit read and
+an administrator orphan list.
+
+The private REST collection is paged and capped at 100 subjects per response.
+Observation identifiers fail closed on cross-registry collisions. Entity Studio
+cannot create or update a WooCommerce product, price, stock quantity, cart,
+order, public page, sitemap entry or active channel offer.
+
+The current price-basis coverage is 41 of 41 product identities: 36 unchanged
+public WooCommerce prices and five private draft planning prices. This coverage
+is not a statement that 41 products are public or available. The five plans
+create zero active offers, carry no verified supplier or landed-cost claim and
+do not enter the active POS projection. Payment remains disabled.
 
 ## Identity and language
 

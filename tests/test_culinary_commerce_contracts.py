@@ -23,7 +23,7 @@ SCIENCE_DATA = PLUGIN / "data" / "culinary-science-pilot.php"
 COMMERCE_DATA = PLUGIN / "data" / "culinary-commerce-pilot.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-commerce-registry/v2"
-EXPECTED_VERSION = "japanese-commerce-pilot-2026.08.06.v3"
+EXPECTED_VERSION = "japanese-commerce-pilot-2026.08.06.v4"
 EXPECTED_COUNTS = {
     "countries": 4,
     "currencies": 4,
@@ -40,7 +40,7 @@ EXPECTED_COUNTS = {
     "supplier_offers": 0,
     "evidence_artifacts": 10,
     "market_observations": 10,
-    "channel_offers": 0,
+    "channel_offers": 5,
     "landed_cost_scenarios": 0,
     "margin_scenarios": 0,
     "bundles": 3,
@@ -511,7 +511,7 @@ function c99_build_approved_chain($registry) {
         'review_at' => $valid_until,
     );
 
-    $registry['channel_offers'][] = array(
+    array_unshift($registry['channel_offers'], array(
         'id' => $offer_id,
         'sku_id' => $sku_id,
         'market_id' => $market_id,
@@ -550,7 +550,7 @@ function c99_build_approved_chain($registry) {
             'availability' => 'in_stock',
             'version' => 1,
         ),
-    );
+    ));
     return $registry;
 }
 
@@ -855,6 +855,35 @@ def test_pilot_counts_are_stable_and_every_sale_offer_is_closed(
     assert registry["supplier_offers"] == []
     assert registry["landed_cost_scenarios"] == []
     assert registry["margin_scenarios"] == []
+
+
+def test_private_draft_prices_cover_every_non_live_commerce_candidate(
+    commerce_payload: dict[str, Any],
+) -> None:
+    registry = commerce_payload["registry"]
+    expected = {
+        "sku-honkarebushi-belly-200g": 21900,
+        "sku-fukumitsuya-hon-mirin-3y-720ml": 24900,
+        "sku-fukumitsuya-hon-mirin-10y-720ml": 34900,
+        "sku-kito-yuzu-juice-720ml": 19900,
+        "sku-umezawa-hangiri-36cm": 64900,
+    }
+    offers = {offer["sku_id"]: offer for offer in registry["channel_offers"]}
+
+    assert set(offers) == set(expected)
+    for sku_id, price_minor in expected.items():
+        offer = offers[sku_id]
+        assert offer["price_minor"] == price_minor
+        assert offer["state"] == "draft"
+        assert offer["market_id"] == "market-il-launch"
+        assert offer["channel_id"] == "channel-woo-web-il"
+        assert offer["currency_id"] == "currency-ils"
+        assert offer["tax_state"] == "review_required"
+        assert offer["stock_policy"] == "research_only"
+        assert offer["woo_product_code"] == ""
+        assert offer["landed_cost_scenario_id"] == ""
+        assert offer["margin_scenario_id"] == ""
+        assert offer["evidence_artifact_ids"]
 
 
 def test_product_variant_sku_and_observation_are_separate_identity_layers(

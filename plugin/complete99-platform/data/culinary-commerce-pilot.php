@@ -431,9 +431,54 @@ $bundle_component = static function ( $sku_id ) {
 	);
 };
 
+$draft_channel_offer = static function ( $key, $sku_id, $price_minor, $evidence_artifact_id, $category_he, $category_en, $subcategory_he, $subcategory_en, $food_tags, $allergens = array() ) use ( $c99_commerce_text ) {
+	return array(
+		'id'                      => 'offer-plan-' . $key . '-il-web-v1',
+		'sku_id'                  => $sku_id,
+		'market_id'               => 'market-il-launch',
+		'channel_id'              => 'channel-woo-web-il',
+		'customer_segment'         => 'consumer',
+		'price_tier'              => 'owner-authorized-planning',
+		'price_basis'             => 'gross_tax_inclusive',
+		'currency_id'             => 'currency-ils',
+		'price_minor'             => $price_minor,
+		'tax_state'               => 'review_required',
+		'minimum_quantity'        => '1',
+		'stock_policy'            => 'research_only',
+		'fulfillment_policy'      => 'supplier_onboarding_required',
+		'state'                   => 'draft',
+		'approved_at'             => '',
+		'approved_by'             => '',
+		'woo_product_code'        => '',
+		'landed_cost_scenario_id' => '',
+		'margin_scenario_id'      => '',
+		'evidence_artifact_ids'   => array( $evidence_artifact_id ),
+		'valid_from'              => '',
+		'valid_until'             => '',
+		'kiosk_projection'        => array(
+			'category'     => $c99_commerce_text( $category_he, $category_en ),
+			'subcategory'  => $c99_commerce_text( $subcategory_he, $subcategory_en ),
+			'image_url'    => '',
+			'food_tags'    => $food_tags,
+			'allergens'    => $allergens,
+			'modifiers'    => array(),
+			'availability' => 'held',
+			'version'      => 1,
+		),
+	);
+};
+
+$draft_channel_offers = array(
+	$draft_channel_offer( 'honkarebushi-belly-200g', 'sku-honkarebushi-belly-200g', 21900, 'evidence-honkarebushi-belly-200g-20260806', 'המזווה היפני', 'Japanese pantry', 'קצואובושי ודאשי', 'Katsuobushi and dashi', array( 'umami', 'dashi', 'smoked-fish' ), array( 'fish' ) ),
+	$draft_channel_offer( 'fukumitsuya-hon-mirin-3y-720ml', 'sku-fukumitsuya-hon-mirin-3y-720ml', 24900, 'evidence-fukumitsuya-hon-mirin-3y-720ml-20260806', 'המזווה היפני', 'Japanese pantry', 'מירין ותיבול', 'Mirin and seasoning', array( 'mirin', 'fermentation', 'aged-seasoning' ) ),
+	$draft_channel_offer( 'fukumitsuya-hon-mirin-10y-720ml', 'sku-fukumitsuya-hon-mirin-10y-720ml', 34900, 'evidence-fukumitsuya-hon-mirin-10y-720ml-20260806', 'המזווה היפני', 'Japanese pantry', 'מירין ותיבול', 'Mirin and seasoning', array( 'mirin', 'fermentation', 'reserve' ) ),
+	$draft_channel_offer( 'kito-yuzu-juice-720ml', 'sku-kito-yuzu-juice-720ml', 19900, 'evidence-kito-yuzu-juice-720ml-20260806', 'המזווה היפני', 'Japanese pantry', 'יוזו והדרים', 'Yuzu and citrus', array( 'yuzu', 'citrus', 'seasoning' ) ),
+	$draft_channel_offer( 'umezawa-hangiri-36cm', 'sku-umezawa-hangiri-36cm', 64900, 'evidence-umezawa-hangiri-36cm-20260806', 'ציוד מקצועי', 'Professional equipment', 'כלי אורז וסושי', 'Rice and sushi tools', array( 'hangiri', 'sushi', 'rice-tools' ) ),
+);
+
 return array(
 	'schema'                     => 'complete99-culinary-commerce-registry/v2',
-	'version'                    => 'japanese-commerce-pilot-2026.08.06.v3',
+	'version'                    => 'japanese-commerce-pilot-2026.08.06.v4',
 	'generated_at'               => '2026-08-06',
 	'knowledge_registry_version' => 'japanese-pilot-2026.08.06.v10',
 	'controlled_vocabulary'      => array(
@@ -528,7 +573,7 @@ return array(
 	'supplier_offers'            => array(),
 	'evidence_artifacts'         => $evidence_artifacts,
 	'market_observations'        => $market_observations,
-	'channel_offers'             => array(),
+	'channel_offers'             => $draft_channel_offers,
 	'landed_cost_scenarios'      => array(),
 	'margin_scenarios'           => array(),
 	'bundles'                    => array(

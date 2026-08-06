@@ -42,6 +42,7 @@ final class Complete99_Platform {
 		Complete99_Inventory_Bridge::boot();
 		Complete99_Culinary_Science::boot();
 		Complete99_Culinary_Commerce::boot();
+		Complete99_Entity_Studio::boot();
 		Complete99_Review_Lab::boot();
 		Complete99_Frontend::boot();
 		Complete99_Live_Dish_Sitemap_Provider::boot();
@@ -332,6 +333,9 @@ final class Complete99_Platform {
 			Complete99_Content::register_rewrites();
 			Complete99_Leads::register_post_type();
 			Complete99_Commerce::register_product_planning_type();
+			if ( class_exists( 'Complete99_Entity_Studio', false ) ) {
+				Complete99_Entity_Studio::register_post_type();
+			}
 			Complete99_Catalog_Graph::register_meta();
 			Complete99_Evaluation_Catalog::register_meta();
 			Complete99_Inventory_Bridge::register_meta();
@@ -348,6 +352,9 @@ final class Complete99_Platform {
 			self::assert_evaluation_catalog_invariants();
 			Complete99_Culinary_Science::assert_invariants();
 			Complete99_Culinary_Commerce::assert_invariants();
+			if ( class_exists( 'Complete99_Entity_Studio', false ) ) {
+				Complete99_Entity_Studio::assert_invariants();
+			}
 			update_option( 'complete99_platform_version', COMPLETE99_PLATFORM_VERSION, false );
 			if ( '' === trim( (string) $stored_deployment_id ) ) {
 				update_option( 'complete99_last_deployment_id', $deployment_id, false );

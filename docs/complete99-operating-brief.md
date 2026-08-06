@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-06
-Status: release 1.9.0 live, 12 dishes, 36 public products and 22 public Japanese science entities across 17 page owners per language
+Status: source release target 1.10.0, with 12 dishes, 36 unchanged public products, five private draft planning offers and 22 public Japanese science entities across 17 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -177,7 +177,13 @@ errors.
 
 ## 7. Infrastructure without imposed roles
 
-Release 1.9.0 creates contracts and checks, not worker assignments.
+Release 1.10.0 creates contracts and checks, not worker assignments.
+
+- The private Entity Studio is an administrator-only WordPress tool backed by
+  the existing culinary-science, authorized catalog and commerce registries.
+- It creates no new role and does not assign workers, reviewers or operators.
+- Its dossiers remain private and cannot become public pages or active offers
+  through the Studio.
 
 - WordPress keeps consumer publishing and commerce readiness metadata.
 - WooCommerce is the product, cart and stock authority. It becomes the payment
@@ -220,6 +226,10 @@ the exact 36-product catalog, classic cart and local-pickup continuation. The
 electronic checkout remains closed until the payment-specific evidence below
 passes:
 
+Release 1.10.0 does not change that public catalog, cart or route surface. It
+adds five private draft planning offers and zero active offers. Payment remains
+disabled.
+
 - merchant identity and contact details;
 - payment provider and live-account verification;
 - exact supplier-label, online allergen and applicable country-of-origin
@@ -251,6 +261,14 @@ dried rice koji, ILS 109 for 20 g Chouhaku-kin starter culture and ILS 119 for
 one 50 to 60 g Dutch-grown fresh wasabi rhizome. These are authorized opening
 retail prices informed by the dated market observations. They are not claims
 about supplier cost or achieved margin.
+
+Release 1.10.0 extends private planning coverage to all 41 product identities.
+The five new private plans are ILS 219 for 200 g Honkarebushi belly, ILS 249
+for 720 ml three-year Fukumitsuya hon mirin, ILS 349 for 720 ml ten-year
+Fukumitsuya hon mirin, ILS 199 for 720 ml Kito yuzu juice and ILS 649 for a
+36 cm Umezawa hangiri. They remain draft planning values. They are not live
+offers, supplier quotations, landed costs, achieved margins or availability
+claims.
 
 ## 9. Integrations and future hardware
 
