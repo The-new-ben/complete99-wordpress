@@ -20,7 +20,16 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v4"
-EXPECTED_VERSION = "japanese-pilot-2026.08.06.v4"
+EXPECTED_VERSION = "japanese-pilot-2026.08.06.v5"
+EXPECTED_PUBLIC_PILOT = {
+    "museum-culinary-science",
+    "cuisine-japanese-washoku",
+    "hub-japanese-ingredients",
+    "ingredient-kombu",
+    "ingredient-kioke-shoyu",
+    "ingredient-fresh-wasabi",
+    "ingredient-kito-yuzu",
+}
 EXPECTED_CLUSTERS = {
     "cluster-culinary-science-museum",
     "cluster-global-culinary-institutions",
@@ -361,31 +370,32 @@ function c99_projection($entity, $registry) {
 
 $mutations = array();
 
-$approved_without_rights = $registry;
-$approved_without_rights['entities'][0]['visual']['asset_state'] = 'approved';
+    $visual_mutation_offset = 2;
+    $approved_without_rights = $registry;
+    $approved_without_rights['entities'][$visual_mutation_offset]['visual']['asset_state'] = 'approved';
 $mutations['approved_without_cleared_rights'] = c99_validation_result(
     $approved_without_rights
 );
 
 $cleared_without_receipt = $registry;
-$cleared_without_receipt['entities'][0]['visual']['rights_state'] =
+    $cleared_without_receipt['entities'][$visual_mutation_offset]['visual']['rights_state'] =
     'cleared_generated';
 $mutations['cleared_without_receipt'] = c99_validation_result(
     $cleared_without_receipt
 );
 
 $malformed_receipt = $registry;
-$malformed_receipt['entities'][0]['visual']['rights_receipt_digest'] =
+    $malformed_receipt['entities'][$visual_mutation_offset]['visual']['rights_receipt_digest'] =
     'sha256:not-a-valid-receipt';
 $mutations['malformed_rights_receipt'] = c99_validation_result(
     $malformed_receipt
 );
 
 $approved_with_receipt = $registry;
-$approved_with_receipt['entities'][0]['visual']['asset_state'] = 'approved';
-$approved_with_receipt['entities'][0]['visual']['rights_state'] =
+    $approved_with_receipt['entities'][$visual_mutation_offset]['visual']['asset_state'] = 'approved';
+    $approved_with_receipt['entities'][$visual_mutation_offset]['visual']['rights_state'] =
     'cleared_generated';
-$approved_with_receipt['entities'][0]['visual']['rights_receipt_digest'] =
+    $approved_with_receipt['entities'][$visual_mutation_offset]['visual']['rights_receipt_digest'] =
     'sha256:' . str_repeat('b', 64);
 $mutations['approved_with_receipt'] = c99_validation_result(
     $approved_with_receipt
@@ -428,12 +438,11 @@ $graph_errors['private_parent'] = c99_graph_result(
 
 $relation_case = c99_public_index($registry);
 $relation_target_id = '';
-foreach ($relation_case[$graph_source_id]['relations'] as $relation) {
-    if ($relation['public_safe']) {
+    foreach ($relation_case[$graph_source_id]['relations'] as $relation) {
         $relation_target_id = $relation['target_id'];
         break;
     }
-}
+    $relation_case[$graph_source_id]['relations'][0]['public_safe'] = true;
 $relation_case[$relation_target_id] = c99_private_entity(
     $relation_case[$relation_target_id]
 );
@@ -476,7 +485,7 @@ $graph_errors['private_semantic_target'] = c99_graph_result(
 );
 
 $breadcrumb_case = c99_public_index($registry);
-$breadcrumb_source_id = 'institution-danon';
+    $breadcrumb_source_id = 'ingredient-kombu';
 $breadcrumb_case['museum-culinary-science'] = c99_private_entity(
     $breadcrumb_case['museum-culinary-science']
 );
@@ -614,14 +623,16 @@ def test_single_museum_root_is_the_exact_bilingual_owner(
     ]
 
 
-def test_publication_gate_is_closed_and_no_offer_is_public(
+def test_reviewed_public_pilot_is_visible_but_no_offer_or_index_is_public(
     science_payload: dict,
 ) -> None:
-    assert science_payload["status"]["public_count"] == 0
+    assert science_payload["status"]["public_count"] == len(EXPECTED_PUBLIC_PILOT)
     for entity in science_payload["registry"]["entities"]:
         publication = entity["publication"]
-        assert publication["public_api"] is False, entity["id"]
-        assert publication["public_page"] is False, entity["id"]
+        expected_public = entity["id"] in EXPECTED_PUBLIC_PILOT
+        assert publication["public_api"] is expected_public, entity["id"]
+        assert publication["public_page"] is expected_public, entity["id"]
+        assert (publication["state"] == "approved_public") is expected_public
         assert publication["search_index"] is False, entity["id"]
         assert entity["commerce"]["public_offer_allowed"] is False, entity["id"]
         assert entity["commerce"]["state"] != "active_offer", entity["id"]
@@ -712,7 +723,7 @@ def test_public_graph_rejects_every_private_reference_class(
             "registry.entities.ingredient-kombu.public_semantic_private"
         ),
         "private_breadcrumb_target": (
-            "registry.entities.institution-danon.public_breadcrumb_private"
+            "registry.entities.ingredient-kombu.public_breadcrumb_private"
         ),
     }
 

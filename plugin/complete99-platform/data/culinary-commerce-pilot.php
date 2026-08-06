@@ -235,7 +235,7 @@ $listings = array(
 		'listing_entity_id'     => 'listing-kito-yuzu-juice-720ml-20260806',
 		'knowledge_entity_id'   => 'ingredient-kito-yuzu',
 		'source_id'             => 'kito-yuzu-juice-720ml-listing-2026',
-		'source_url'            => 'https://shop.ogonnomura.jp/view/category/ichiban',
+		'source_url'            => 'https://shop.ogonnomura.jp/view/item/000000000199?category_page_id=ichiban',
 		'seller_id'             => 'seller-ogon-no-mura',
 		'market_id'             => 'market-jp-source',
 		'currency_id'           => 'currency-jpy',
@@ -435,7 +435,7 @@ return array(
 	'schema'                     => 'complete99-culinary-commerce-registry/v2',
 	'version'                    => 'japanese-commerce-pilot-2026.08.06.v2',
 	'generated_at'               => '2026-08-06',
-	'knowledge_registry_version' => 'japanese-pilot-2026.08.06.v4',
+	'knowledge_registry_version' => 'japanese-pilot-2026.08.06.v5',
 	'controlled_vocabulary'      => array(
 		'product_states'           => array( 'research_candidate', 'verified_product', 'active', 'retired' ),
 		'variant_states'           => array( 'research_candidate', 'verified_variant', 'active', 'retired' ),

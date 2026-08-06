@@ -19,11 +19,13 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 02:05:00"
+RELEASE_LAST_UPDATED = "2026-08-06 04:10:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
 GENERATED_SOURCE_ROOT = PurePath("assets/images/generated")
+SCIENCE_SOURCE_ROOT = PurePath("assets/images/science")
+SOURCE_ONLY_PNG_ROOTS = {GENERATED_SOURCE_ROOT, SCIENCE_SOURCE_ROOT}
 FORBIDDEN_SECRET_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
 FORBIDDEN_SECRET_EXACT_NAMES = {"id_rsa", "id_ed25519"}
 FORBIDDEN_JSON_NAME = re.compile(
@@ -115,10 +117,7 @@ def source_files() -> list[Path]:
         relative = path.relative_to(SOURCE)
         if any(part in EXCLUDED_PARTS for part in relative.parts):
             continue
-        if (
-            relative.parent == GENERATED_SOURCE_ROOT
-            and relative.suffix.casefold() == ".png"
-        ):
+        if relative.parent in SOURCE_ONLY_PNG_ROOTS and relative.suffix.casefold() == ".png":
             continue
         forbidden_reason = forbidden_secret_path_reason(relative)
         if forbidden_reason:
@@ -216,6 +215,12 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Opened a bilingual Culinary Science Museum preview for the reviewed Japanese pilot through exact projection-only routes.</li>"
+                "<li>Added canonical and hreflang metadata, visible breadcrumbs, citation-aware schema, original responsive assets and dated source-market observations.</li>"
+                "<li>Kept every preview route noindex and outside the sitemap until its independent long-form editorial gate is approved.</li>"
+                "</ul>"
+                "<h4>1.3.12</h4>"
                 "<ul>"
                 "<li>Added a source-bound bilingual culinary-science registry with a Japanese pilot, molecular measurements, topic-cluster ownership and fail-closed publication gates.</li>"
                 "<li>Added a modular commerce graph that separates products, variants, SKUs, market observations, supplier offers, channel offers, landed costs, margins and bundles.</li>"

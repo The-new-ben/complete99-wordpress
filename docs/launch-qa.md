@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.3.12
+Release target: Complete99 Platform 1.3.13
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.3.12
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.3.12 and its versioned package URL.
+- The public update manifest matches version 1.3.13 and its versioned package URL.
 - An exactly equivalent read-model retry repeats all public cache purges,
   reports `write_changed=false`, and can recover after a prior purge failure.
 - A fresh model with older or changed dish copy falls back to the packaged menu;
@@ -33,6 +33,11 @@ Release target: Complete99 Platform 1.3.12
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
+- The twelve bilingual museum-preview routes resolve from public projections,
+  emit canonical and hreflang metadata, remain `noindex,follow`, and are absent
+  from the museum sitemap provider until their separate index gate is approved.
+- Public museum responses cannot expose visual prompts, supplier terms, landed
+  cost, margins, connector state, approval identities or private workflow data.
 
 ## Public consumer boundary
 

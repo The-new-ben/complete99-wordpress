@@ -330,9 +330,9 @@ $sources = array(
 	'yuzu-aroma-2009' => array(
 		'type'         => 'peer_reviewed_paper',
 		'publisher'    => 'Journal of Agricultural and Food Chemistry',
-		'title'        => 'Character impact odorants of yuzu peel oil',
-		'url'          => 'https://pubmed.ncbi.nlm.nih.gov/19203264/',
-		'published_at' => '2009-02-11',
+		'title'        => 'Novel Character Impact Compounds in Yuzu (Citrus junos Sieb. ex Tanaka) Peel Oil',
+		'url'          => 'https://pubs.acs.org/doi/10.1021/jf803257x',
+		'published_at' => '2009-02-09',
 		'retrieved_at' => '2026-08-05',
 	),
 	'yuzu-volatiles-2017' => array(
@@ -383,12 +383,12 @@ $sources = array(
 		'published_at' => '2008-01-01',
 		'retrieved_at' => '2026-08-06',
 	),
-	'kombu-water-extraction-2023' => array(
-		'type'         => 'peer_reviewed_paper',
+	'kombu-water-extraction-conference-2024' => array(
+		'type'         => 'conference_proceeding',
 		'publisher'    => 'The Japan Society of Cookery Science',
 		'title'        => 'Multiband spectroscopic analysis on kombu soup stock extracted using different types of water',
 		'url'          => 'https://www.jstage.jst.go.jp/article/ajscs/35/0/35_17/_article/-char/en',
-		'published_at' => '2023-01-01',
+		'published_at' => '2024-09-06',
 		'retrieved_at' => '2026-08-06',
 	),
 	'katsuobushi-mold-dashi-1986' => array(
@@ -523,7 +523,7 @@ $sources = array(
 		'type'         => 'official_market_listing',
 		'publisher'    => 'Ogon no Mura',
 		'title'        => 'Kito yuzu first juice collection, 720 ml',
-		'url'          => 'https://shop.ogonnomura.jp/view/category/ichiban',
+		'url'          => 'https://shop.ogonnomura.jp/view/item/000000000199?category_page_id=ichiban',
 		'published_at' => '',
 		'retrieved_at' => '2026-08-06',
 	),
@@ -623,18 +623,18 @@ $entities[] = $c99_entity(
 	array(
 		'id' => 'museum-culinary-science', 'type' => 'topic_hub', 'slug' => 'culinary-science-museum',
 		'name' => $c99_text( 'מוזיאון המדע של הקולינריה', 'Culinary Science Museum' ),
-		'summary' => $c99_text( 'שער הידע המרכזי מחבר מטבחים, מנות, חומרי גלם, מדע, טכניקות, ציוד, מוסדות ומסחר בגרף דו-לשוני אחד. לכל אשכול יש בעל כוונת חיפוש יחיד, ולכל ישות יש מסלול, פירורי לחם וקשרים מבוקרים.', 'The central knowledge gateway connects cuisines, dishes, ingredients, science, techniques, equipment, institutions and commerce in one bilingual graph. Each cluster has one search-intent owner, and every entity has a controlled route, breadcrumb chain and relationships.' ),
+		'summary' => $c99_text( 'מקום לגלות איך תרבות, חומרי גלם, מולקולות טעם, טכניקות וכלי עבודה נפגשים באוכל. מתחילים במטבח, ממשיכים למרכיב, ורואים ליד כל טענה את המקור שעליו היא נשענת.', 'A place to discover how culture, ingredients, flavor molecules, techniques and tools meet in food. Start with a cuisine, continue to an ingredient, and see the source supporting each claim.' ),
 		'surface_class' => 'editorial_draft', 'index_policy' => 'noindex_until_longform_review', 'review_status' => 'research_draft',
 		'seo_group' => 'museum', 'page_role' => 'pillar', 'primary_intent' => $c99_text( 'לחקור את מדע הקולינריה דרך מטבחים ומוצרים', 'Explore culinary science through cuisines and products' ),
 		'primary_keyword' => $c99_text( 'מוזיאון המדע של הקולינריה', 'Culinary Science Museum' ),
 		'secondary_keywords' => array( 'he' => array( 'אנציקלופדיה קולינרית מדעית' ), 'en' => array( 'culinary science encyclopedia' ) ), 'schema_type' => 'CollectionPage',
-		'facts' => array( $c99_fact( 'fact-museum-graph-role', 'structural', 'השער הוא שורש ארכיטקטוני יחיד לגרף הידע של Complete99; פרסום ואינדוקס נשלטים בנפרד לכל בעל עמוד.', 'The gateway is the single architectural root of the Complete99 knowledge graph; publication and indexing are controlled separately for each page owner.', 'editorial_inference', 'entity', array( 'complete99-public-site' ), false ) ),
+		'facts' => array( $c99_fact( 'fact-museum-graph-role', 'structural', 'Complete99 מפרסם בשער הזה פרופילים קולינריים דו-לשוניים שבהם עובדות, הקשר מדעי ומקורות מוצגים יחד.', 'Complete99 publishes bilingual culinary profiles in this gateway, presenting facts, scientific context and sources together.', 'official_source', 'entity', array( 'complete99-public-site' ) ) ),
 		'profiles' => $c99_profiles( array(
 			'scientific' => $c99_profile( 'pending_evidence', 'המרכז המדעי נבנה מצברי עובדות ומדידות ברמת ישות.', 'The science layer is built from entity-level facts and measurements.' ),
 			'cultural' => $c99_profile( 'pending_evidence', 'כל תרבות נשמרת כאשכול עצמאי בתוך אותו שער.', 'Each culture remains an independent cluster within the same gateway.' ),
 			'institutional' => $c99_profile( 'pending_evidence', 'מוסדות, מדריכים ותקנים נשמרים כישויות עצמאיות.', 'Institutions, guides and standards remain independent entities.' ),
 			'economic' => $c99_profile( 'pending_evidence', 'המסחר מחובר לידע דרך SKU ותצפיות מחיר נפרדים.', 'Commerce connects to knowledge through separate SKU and price observations.' ),
-			'structural' => $c99_profile( 'source_backed', 'שורש יחיד מונע אשכולות מנותקים ומייצר פירורי לחם עקביים.', 'One root prevents disconnected clusters and produces consistent breadcrumbs.', array( 'fact-museum-graph-role' ) ),
+			'structural' => $c99_profile( 'source_backed', 'מסלולי העיון מחברים בין מטבח, חומר גלם, מחקר ומקור כדי שקל להמשיך מן השאלה אל התשובה הבאה.', 'Discovery paths connect cuisine, ingredient, research and source so readers can move naturally from one question to the next.', array( 'fact-museum-graph-role' ) ),
 		) ),
 		'categories' => array( 'culinary-museum' ), 'attributes' => array(), 'tags' => array( 'culinary-science', 'knowledge-graph', 'topic-clusters' ),
 		'revenue_models' => array( 'content_to_commerce', 'education', 'lead_generation' ),
@@ -649,7 +649,7 @@ $entities[] = $c99_entity(
 		'type'    => 'cuisine',
 		'slug'    => 'japanese-washoku',
 		'name'    => $c99_text( 'וואשוקו, תרבות האוכל היפנית', 'Washoku, Japanese dietary culture' ),
-		'summary' => $c99_text( 'וואשוקו הוא מסגרת תרבותית של ידע, מיומנויות ומסורות הקשורות לייצור, עיבוד, הכנה וצריכת מזון ביפן. הישות משמשת שורש למנות, טכניקות, חומרי גלם, מוסדות ושווקים, ולא ככותרת כללית שמטשטשת הבדלים אזוריים.', 'Washoku is a cultural framework of knowledge, skills and traditions connected to producing, processing, preparing and consuming food in Japan. This entity is the root for dishes, techniques, ingredients, institutions and markets, not a generic label that erases regional differences.' ),
+		'summary' => $c99_text( 'וואשוקו הוא מסגרת תרבותית של ידע, מיומנויות ומסורות הקשורות לייצור, עיבוד, הכנה וצריכת מזון ביפן. מכאן אפשר להמשיך לחומרי גלם, טכניקות, מנות ומקומות, תוך שמירה על ההבדלים שבין אזורים ומסורות.', 'Washoku is a cultural framework of knowledge, skills and traditions connected to producing, processing, preparing and consuming food in Japan. From here, readers can continue to ingredients, techniques, dishes and places while preserving regional and traditional differences.' ),
 		'seo_group' => 'cuisines',
 		'primary_intent' => $c99_text( 'להבין את תרבות האוכל היפנית ואת המבנה שלה', 'Understand Japanese dietary culture and its structure' ),
 		'primary_keyword' => $c99_text( 'תרבות האוכל היפנית וואשוקו', 'Japanese washoku food culture' ),
@@ -657,7 +657,7 @@ $entities[] = $c99_entity(
 		'schema_type' => 'DefinedTerm',
 		'facts' => array(
 			$c99_fact( 'fact-washoku-unesco-framework', 'cultural', 'אונסקו מתאר את וואשוקו כמכלול של מיומנויות, ידע, מנהגים ומסורות הקשורים למזון.', 'UNESCO describes washoku as a set of skills, knowledge, practices and traditions related to food.', 'official_source', 'category', array( 'unesco-washoku' ) ),
-			$c99_fact( 'fact-washoku-graph-root', 'structural', 'בגרף Complete99, וואשוקו הוא מטבח על שממנו מסתעפים אזורים, מנות, טכניקות, מוסדות ושווקים.', 'In the Complete99 graph, washoku is a parent cuisine from which regions, dishes, techniques, institutions and markets branch.', 'editorial_inference', 'entity', array( 'unesco-washoku' ) ),
+			$c99_fact( 'fact-washoku-graph-root', 'structural', 'בגרף Complete99, וואשוקו הוא מטבח על שממנו מסתעפים אזורים, מנות, טכניקות, מוסדות ושווקים.', 'In the Complete99 graph, washoku is a parent cuisine from which regions, dishes, techniques, institutions and markets branch.', 'editorial_inference', 'entity', array( 'unesco-washoku' ), false ),
 		),
 		'profiles' => $c99_profiles(
 			array(
@@ -731,7 +731,7 @@ $entities[] = $c99_topic_hub(
 	'hub-japanese-ingredients',
 	'japanese-premium-ingredients',
 	$c99_text( 'חומרי גלם יפניים פרימיום', 'Premium Japanese ingredients' ),
-	$c99_text( 'מרכז חומרי הגלם מחבר מקור, זן, עיבוד, טעם, אלרגנים, דרגות איכות, שימושים ומסלול מסחרי מאומת לכל חומר.', 'The ingredient hub connects origin, cultivar, processing, flavor, allergens, quality grades, uses and a verified commerce path for each material.' ),
+	$c99_text( 'כאן משווים חומרי גלם לפי מקור, זן, עיבוד, טעם, אלרגנים, דרגות איכות ושימושים. כאשר קיים מחיר מקור מתועד, הוא מוצג בנפרד ממחיר מכירה בישראל.', 'Compare ingredients by origin, cultivar, processing, flavor, allergens, quality grade and use. When a documented source-market price exists, it is shown separately from any Israeli sell price.' ),
 	$c99_text( 'חומרי גלם יפניים פרימיום', 'premium Japanese ingredients' ),
 	array( 'maff-fermented-foods', 'unesco-washoku' ),
 	'cuisine-japanese-washoku',
@@ -871,7 +871,7 @@ $entities[] = $c99_entity(
 		'schema_type' => 'DefinedTerm',
 		'facts' => array(
 			$c99_fact( 'fact-dashi-umami-synergy', 'scientific', 'מחקר מולקולרי תומך במודל שבו גלוטמט ו-5-prime נוקלאוטידים כגון IMP יכולים ליצור סינרגיית אומאמי דרך הרצפטור T1R1/T1R3.', 'Molecular research supports a model in which glutamate and 5-prime nucleotides such as IMP can create umami synergy through the T1R1/T1R3 receptor.', 'peer_reviewed_context', 'technique_context', array( 'umami-receptor-2009', 'dashi-combination-palatability-2008' ) ),
-			$c99_fact( 'fact-dashi-graph', 'structural', 'הציר מקשר קומבו, קצואובושי, מולקולות טעם, סוג מים, טמפרטורה, זמן וסינון כישויות ושדות נפרדים.', 'The stock links kombu, katsuobushi, taste molecules, water type, temperature, time and filtration as separate entities and fields.', 'editorial_inference', 'entity', array( 'maff-dashi-umami', 'kombu-water-extraction-2023' ) ),
+			$c99_fact( 'fact-dashi-graph', 'structural', 'הציר מקשר קומבו, קצואובושי, מולקולות טעם, סוג מים, טמפרטורה, זמן וסינון כישויות ושדות נפרדים.', 'The stock links kombu, katsuobushi, taste molecules, water type, temperature, time and filtration as separate entities and fields.', 'editorial_inference', 'entity', array( 'maff-dashi-umami', 'kombu-water-extraction-conference-2024' ) ),
 		),
 		'profiles' => $c99_profiles( array(
 			'scientific' => $c99_profile( 'source_backed', 'הבסיס המדעי הוא סינרגיה רצפטורית בין גלוטמט לנוקלאוטידים, לא סיסמה כללית של אומאמי.', 'The scientific base is receptor-level synergy between glutamate and nucleotides, not a generic umami slogan.', array( 'fact-dashi-umami-synergy' ) ),
@@ -886,7 +886,7 @@ $entities[] = $c99_entity(
 		'relations' => array(
 			$c99_relation( 'requires', 'ingredient-kombu', 'מפת הבסיס משתמשת בקומבו כחומר גלם מזוהה.', 'The base map uses kombu as an identified ingredient.', true, array( 'maff-dashi-umami' ), 'official_source' ),
 			$c99_relation( 'requires', 'ingredient-katsuobushi', 'מפת הבסיס משתמשת בקצואובושי כחומר גלם מזוהה.', 'The base map uses katsuobushi as an identified ingredient.', true, array( 'maff-dashi-umami' ), 'official_source' ),
-			$c99_relation( 'requires', 'technique-dashi-extraction', 'זמן, טמפרטורה, מים וסינון נשמרים במפרט התהליך.', 'Time, temperature, water and filtration remain in the process specification.', true, array( 'kombu-water-extraction-2023' ), 'peer_reviewed_context' ),
+			$c99_relation( 'requires', 'technique-dashi-extraction', 'זמן, טמפרטורה, מים וסינון נשמרים במפרט התהליך.', 'Time, temperature, water and filtration remain in the process specification.', true, array( 'kombu-water-extraction-conference-2024' ), 'conference_context' ),
 			$c99_relation( 'contains', 'molecule-l-glutamate', 'קומבו הוא מקור הקשרי לגלוטמט.', 'Kombu is a contextual source of glutamate.', true, array( 'maff-dashi-umami', 'umami-receptor-2009' ), 'peer_reviewed_context' ),
 			$c99_relation( 'contains', 'molecule-inosine-monophosphate', 'קצואובושי הוא מקור הקשרי ל-IMP.', 'Katsuobushi is a contextual source of IMP.', true, array( 'maff-dashi-umami', 'umami-receptor-2009' ), 'peer_reviewed_context' ),
 		),
@@ -907,11 +907,11 @@ $entities[] = $c99_entity(
 		'secondary_keywords' => array( 'he' => array( 'אצת קומבו', 'קומבו אומאמי' ), 'en' => array( 'dashi kelp', 'kombu umami' ) ),
 		'schema_type' => 'DefinedTerm',
 		'facts' => array(
-			$c99_fact( 'fact-kombu-dashi-role', 'scientific', 'מקורות רשמיים ומחקריים מתארים קומבו כחומר גלם לדאשי וכמקור הקשרי לגלוטמט, אך תנאי המים והמיצוי חייבים להישמר לצד כל תוצאה.', 'Official and research sources describe kombu as a dashi ingredient and contextual glutamate source, but water and extraction conditions must accompany every result.', 'peer_reviewed_context', 'category', array( 'maff-dashi-umami', 'kombu-water-extraction-2023' ) ),
-			$c99_fact( 'fact-kombu-lot-boundary', 'structural', 'מין, אזור, שנת קציר, דרגה, לחות ו-COA שייכים ל-SKU ולאצווה ולא לישות הקטגוריה.', 'Species, region, harvest year, grade, moisture and COA belong to a SKU and lot, not to the category entity.', 'editorial_inference', 'entity', array( 'kombu-water-extraction-2023' ) ),
+			$c99_fact( 'fact-kombu-dashi-role', 'scientific', 'מקור MAFF מתאר קומבו כחומר גלם לדאשי וכמקור לגלוטמט, ומחקר הרצפטור מסביר כיצד גלוטמט משתתף בתפיסת אומאמי. ערך כמותי חייב להישאר קשור לדגימה ולתנאי הבדיקה.', 'MAFF describes kombu as a dashi ingredient and glutamate source, while receptor research explains how glutamate participates in umami perception. Any quantitative value must remain tied to the tested sample and conditions.', 'peer_reviewed_context', 'category', array( 'maff-dashi-umami', 'umami-receptor-2009' ) ),
+			$c99_fact( 'fact-kombu-lot-boundary', 'structural', 'מין, אזור, שנת קציר, דרגה, לחות ו-COA שייכים ל-SKU ולאצווה ולא לישות הקטגוריה.', 'Species, region, harvest year, grade, moisture and COA belong to a SKU and lot, not to the category entity.', 'editorial_inference', 'entity', array( 'kombu-water-extraction-conference-2024' ), false ),
 		),
 		'profiles' => $c99_profiles( array(
-			'scientific' => $c99_profile( 'source_backed', 'המערכת מפרידה בין זהות הקומבו לבין תנאי המיצוי והמדידה.', 'The system separates kombu identity from extraction and measurement conditions.', array( 'fact-kombu-dashi-role' ) ),
+			'scientific' => $c99_profile( 'source_backed', 'כדי להשוות קומבו בצורה הוגנת, שומרים יחד את זהות האצה, סוג המים ותנאי המיצוי.', 'A fair kombu comparison keeps seaweed identity, water type and extraction conditions together.', array( 'fact-kombu-dashi-role' ) ),
 			'cultural' => $c99_profile( 'pending_evidence', 'הקשר אזורי והיסטורי ייכתב ממקורות תרבותיים ייעודיים.', 'Regional and historical context will be written from dedicated cultural sources.' ),
 			'institutional' => $c99_profile( 'pending_evidence', 'מפיקים, אזורי קציר ותקנים יתווספו כישויות נפרדות.', 'Producers, harvest regions and standards will be separate entities.' ),
 			'economic' => $c99_profile( 'pending_evidence', 'מחיר ינורמל ל-100 גרם ולליטר דאשי שימושי, עם תפוקה ופחת.', 'Price will be normalized per 100 grams and useful liter of dashi, including yield and shrinkage.' ),
@@ -922,7 +922,7 @@ $entities[] = $c99_entity(
 		'tags' => array( 'kombu', 'dashi', 'glutamate', 'seaweed', 'umami' ),
 		'relations' => array(
 			$c99_relation( 'used_in', 'preparation-ichiban-dashi', 'קומבו הוא רכיב יסוד במפת האיצ׳יבאן דאשי.', 'Kombu is a foundational ingredient in the ichiban dashi map.', true, array( 'maff-dashi-umami' ), 'official_source' ),
-			$c99_relation( 'requires', 'technique-dashi-extraction', 'תוצאה שימושית דורשת מפרט מים, זמן וטמפרטורה.', 'A useful result requires water, time and temperature specifications.', true, array( 'kombu-water-extraction-2023' ), 'peer_reviewed_context' ),
+			$c99_relation( 'requires', 'technique-dashi-extraction', 'תוצאה שימושית דורשת מפרט מים, זמן וטמפרטורה.', 'A useful result requires water, time and temperature specifications.', true, array( 'kombu-water-extraction-conference-2024' ), 'conference_context' ),
 		),
 		'commerce_state' => 'supplier_onboarding',
 		'pricing_state' => 'source_price_observed', 'observation_entity_ids' => array( 'listing-rishiri-kombu-100g-20260806' ),
@@ -976,7 +976,7 @@ $entities[] = $c99_entity(
 		'secondary_keywords' => array( 'he' => array( 'טמפרטורת דאשי', 'מיצוי קומבו' ), 'en' => array( 'dashi temperature', 'kombu extraction' ) ),
 		'schema_type' => 'HowTo',
 		'facts' => array(
-			$c99_fact( 'fact-dashi-extraction-variables', 'scientific', 'מחקר על ציר קומבו במים שונים תומך בשמירת סוג המים ותנאי המיצוי כחלק בלתי נפרד מן המדידה.', 'Research on kombu stock extracted with different water types supports storing water type and extraction conditions as inseparable parts of a measurement.', 'peer_reviewed_context', 'technique_context', array( 'kombu-water-extraction-2023' ) ),
+			$c99_fact( 'fact-dashi-extraction-variables', 'scientific', 'תקציר כנס על ציר קומבו במים שונים תומך בשמירת סוג המים ותנאי המיצוי כחלק בלתי נפרד מן המדידה, כממצא ראשוני התלוי בתנאי הניסוי.', 'A conference proceeding on kombu stock extracted with different water types supports storing water type and extraction conditions with the measurement as preliminary, experiment-bound evidence.', 'conference_context', 'technique_context', array( 'kombu-water-extraction-conference-2024' ) ),
 			$c99_fact( 'fact-dashi-process-entity', 'structural', 'כל גרסת דאשי תוכל לקשר BOM, ציוד, שלבי תהליך, בדיקות אצווה ועלות מנורמלת.', 'Each dashi version can link a BOM, equipment, process steps, batch tests and normalized cost.', 'editorial_inference', 'entity', array( 'maff-dashi-umami' ) ),
 		),
 		'profiles' => $c99_profiles( array(
@@ -991,7 +991,7 @@ $entities[] = $c99_entity(
 		'tags' => array( 'dashi-extraction', 'kombu', 'katsuobushi', 'temperature', 'yield' ),
 		'relations' => array(
 			$c99_relation( 'part_of', 'preparation-ichiban-dashi', 'התהליך הוא שכבת ביצוע בתוך הכנת איצ׳יבאן דאשי.', 'The process is an execution layer within ichiban dashi preparation.', true, array( 'maff-dashi-umami' ), 'official_source' ),
-			$c99_relation( 'requires', 'ingredient-kombu', 'גרסת קומבו דורשת חומר גלם ומפרט אצווה.', 'A kombu version requires an ingredient and lot specification.', true, array( 'kombu-water-extraction-2023' ), 'peer_reviewed_context' ),
+			$c99_relation( 'requires', 'ingredient-kombu', 'גרסת קומבו דורשת חומר גלם ומפרט אצווה.', 'A kombu version requires an ingredient and lot specification.', true, array( 'kombu-water-extraction-conference-2024' ), 'conference_context' ),
 		),
 		'revenue_models' => array( 'education', 'content_to_commerce', 'curated_bundle' ),
 		'customer_segments' => array( 'culinary_consumers', 'professional_chefs', 'culinary_students' ),
@@ -1084,7 +1084,7 @@ $entities[] = $c99_entity(
 			'cultural' => $c99_profile( 'pending_evidence', 'היסטוריית החבית תישען על יצרן ומקור מתועדים.', 'Barrel history will rely on documented producer and source evidence.' ),
 			'institutional' => $c99_profile( 'source_backed', 'הישות מקושרת לתקן JAS וליצרן דוגמה נפרד, בלי לטעון לקשר מסחרי.', 'The entity links to the JAS standard and a separate example producer without claiming a commercial relationship.', array( 'fact-shoyu-institutional-basis' ) ),
 			'economic' => $c99_profile( 'pending_evidence', 'השוואת מחיר תכלול נפח, חנקן כולל, זמן, כלי, יבוא והובלה.', 'Price comparison will include volume, total nitrogen, time, vessel, import and shipping.' ),
-			'structural' => $c99_profile( 'source_backed', 'שויו נשמר כחומר גלם; SKU ייווצר רק לאחר מסמכי ספק.', 'Shoyu remains an ingredient entity; a SKU is created only after supplier documents.', array( 'fact-shoyu-jas-category' ) ),
+			'structural' => $c99_profile( 'source_backed', 'סיווג JAS עוזר להבין את סוג השויו, אך פרטי גיל, מליחות ואלרגנים נבדקים בתווית של המוצר שנבחר.', 'JAS classification helps explain the shoyu type, while age, salinity and allergens are checked on the selected product label.', array( 'fact-shoyu-jas-category' ) ),
 		) ),
 		'categories' => array( 'world-cuisines', 'japan', 'sauces-and-fermentation', 'shoyu', 'kioke' ),
 		'attributes' => array( 'pa_origin' => array( 'product-specific' ), 'pa_fermentation_method' => array( 'koji-fermentation' ), 'pa_vessel' => array( 'kioke-wooden-barrel' ), 'pa_allergens' => array( 'verify-sku-label' ) ),
@@ -1142,8 +1142,8 @@ $entities[] = $c99_entity(
 		'seo_group' => 'ingredients', 'primary_intent' => $c99_text( 'להבין וואסבי טרי, חריפות ואיכות', 'Understand fresh wasabi, pungency and quality' ),
 		'primary_keyword' => $c99_text( 'שורש וואסבי טרי', 'fresh wasabi rhizome' ), 'secondary_keywords' => array( 'he' => array( 'וואסבי יפני אמיתי', 'איזותיוציאנטים בוואסבי' ), 'en' => array( 'real Japanese wasabi', 'wasabi isothiocyanates' ) ), 'schema_type' => 'DefinedTerm',
 		'facts' => array(
-			$c99_fact( 'fact-wasabi-itc-variation', 'scientific', 'מחקרי וואסבי מראים שונות בהרכב AITC ו-6-MSITC בין גנוטיפים, איברי צמח ותנאי עונה.', 'Wasabi studies show variation in AITC and 6-MSITC composition across genotypes, plant organs and seasonal conditions.', 'peer_reviewed_context', 'category', array( 'wasabi-itc-2023' ) ),
-			$c99_fact( 'fact-wasabi-lot-identity', 'structural', 'מוצר יישא מין, זן, מקור, תאריך קציר ותנאי קירור כאשר הנתונים זמינים.', 'A product will carry species, cultivar, origin, harvest date and cold-chain fields when available.', 'editorial_inference', 'entity', array( 'wasabi-itc-2023' ) ),
+			$c99_fact( 'fact-wasabi-itc-variation', 'scientific', 'ריכוזי AITC ו-6-MSITC השתנו בין הגישות הגנטיות שנדגמו. בניסוי העונתי שדווח בקני שורש, 6-MSITC היה נמוך יותר באביב, ואילו AITC לא השתנה באופן מובהק בין העונות שנבדקו.', 'AITC and 6-MSITC concentrations varied among sampled accessions. In the reported seasonal rhizome trial, 6-MSITC was lower in spring, while AITC did not differ significantly among tested seasons.', 'peer_reviewed_context', 'category', array( 'wasabi-itc-2023' ) ),
+			$c99_fact( 'fact-wasabi-lot-identity', 'structural', 'מוצר יישא מין, זן, מקור, תאריך קציר ותנאי קירור כאשר הנתונים זמינים.', 'A product will carry species, cultivar, origin, harvest date and cold-chain fields when available.', 'editorial_inference', 'entity', array( 'wasabi-itc-2023' ), false ),
 		),
 		'profiles' => $c99_profiles( array(
 			'scientific' => $c99_profile( 'source_backed', 'איזותיוציאנטים מתועדים כהקשר מחקרי; mg/g לא יוצג ללא בדיקת המוצר.', 'Isothiocyanates are documented as research context; mg/g is not displayed without product testing.', array( 'fact-wasabi-itc-variation' ) ),
@@ -1895,7 +1895,7 @@ $entities[] = $retail_listing( array(
 	'id' => 'listing-kito-yuzu-juice-720ml-20260806', 'slug' => 'kito-yuzu-juice-720ml-20260806', 'subject_id' => 'ingredient-kito-yuzu',
 	'name' => $c99_text( 'מיץ Kito Yuzu ראשון 720 מ״ל, תצפית 6.8.2026', 'Kito Yuzu first juice 720 ml, observed August 6 2026' ), 'keyword' => $c99_text( 'תצפית מחיר מיץ קיטו יוזו 720 מ״ל', 'Kito Yuzu juice 720 ml price observation' ),
 	'price' => 3780, 'currency' => 'JPY', 'unit' => 'one 720 ml bottle', 'basis' => 'one producer-shop collection entry for a 720 ml juice format; arithmetic normalization is JPY 5,250 per liter', 'tax_status' => 'included', 'shipping_status' => 'unknown', 'comparability' => 'partially_comparable', 'availability' => 'price_listed',
-	'source_id' => 'kito-yuzu-juice-720ml-listing-2026', 'source_url' => 'https://shop.ogonnomura.jp/view/category/ichiban', 'market' => 'japan-producer-retail', 'market_scope' => 'japan_source_market',
+	'source_id' => 'kito-yuzu-juice-720ml-listing-2026', 'source_url' => 'https://shop.ogonnomura.jp/view/item/000000000199?category_page_id=ichiban', 'market' => 'japan-producer-retail', 'market_scope' => 'japan_source_market',
 	'listing_attributes' => array( 'net_content' => '720 ml', 'product_form' => 'yuzu juice collection entry', 'normalized_price' => 'JPY 5,250 per liter, arithmetic only', 'unit_discount' => 'approximately 28.5 percent below 100 ml unit price, arithmetic only' ),
 	'statement' => $c99_text( 'נצפו 3,780 ין כולל מס ל-720 מ״ל; המחיר המנורמל נמוך בכ-28.5 אחוז לעומת תצפית ה-100 מ״ל, אך יש לאמת SKU ותנאים לפני הצעה מקצועית.', 'JPY 3,780 including tax was observed for 720 ml; normalized price is about 28.5 percent below the 100 ml observation, but SKU and terms require verification before a professional offer.' ),
 	'cross_sell_ids' => array( 'ingredient-kioke-shoyu', 'ingredient-hon-mirin' ), 'prompt_en' => 'Private editorial bottle silhouette specification for a 720 ml professional yuzu juice reference, pale yellow liquid, neutral background, no copied label, logo or GI seal.',
@@ -2315,9 +2315,115 @@ foreach ( $entities as &$entity ) {
 }
 unset( $entity );
 
+/*
+ * Public Japanese museum pilot. The complete graph remains intact for private
+ * editorial work, while every public semantic edge is explicitly allowlisted.
+ * Visibility and search indexing stay separate, so reviewed preview pages can
+ * be evaluated before long-form index approval.
+ */
+$public_pilot_ids = array(
+	'museum-culinary-science',
+	'cuisine-japanese-washoku',
+	'hub-japanese-ingredients',
+	'ingredient-kombu',
+	'ingredient-kioke-shoyu',
+	'ingredient-fresh-wasabi',
+	'ingredient-kito-yuzu',
+);
+$public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
+$public_semantic_allowlists = array(
+	'museum-culinary-science' => array( 'cuisine-japanese-washoku' ),
+	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'ingredient-kioke-shoyu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'ingredient-fresh-wasabi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-kito-yuzu' ),
+	'ingredient-kito-yuzu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi' ),
+);
+$public_asset_receipts = array(
+	'museum-culinary-science' => 'sha256:ee2441315d9c03074bbe88bba7408e66e06323a4906d1c5310574028d970f18b',
+	'cuisine-japanese-washoku' => 'sha256:98558d16ea7975b78ba7b925ea2a4b3a7dc0f6158a42e94855f30f73f7fa644c',
+	'hub-japanese-ingredients' => 'sha256:76cc7ecfebd4eac9ecb9ed6a670cee097941a99637fbc2446b00eb7692848e10',
+	'ingredient-kombu' => 'sha256:046d2ba7f392efa8076afc3acae177604e27cbe77ef3d8c626fc2974abe8ac4e',
+	'ingredient-kioke-shoyu' => 'sha256:7bbb750f81dac4c2ec8326174f48d2aedba782be68a780c0b63acfcf1ad8b950',
+	'ingredient-fresh-wasabi' => 'sha256:740471ec3f8970016f31af46ef6206c9984f07b25b09e00ed5f59a4bfe15d1b1',
+	'ingredient-kito-yuzu' => 'sha256:e058ebfece1033d37f2835678a961f4bfbf7fbe988b960036d23f12bf83b2464',
+);
+
+$ingredient_hub_offset = $entity_offsets['hub-japanese-ingredients'];
+$entities[ $ingredient_hub_offset ]['facts'][0]['statement'] = $c99_text(
+	'במדור זה מוצגים חומרי גלם יפניים עם הסבר על מקור, טעם, שימוש, מדע ומחיר מקור מתועד כאשר הוא זמין.',
+	'This section presents Japanese ingredients with origin, flavor, use, science and a documented source-market price when available.'
+);
+$entities[ $ingredient_hub_offset ]['facts'][0]['evidence_class'] = 'official_source';
+$entities[ $ingredient_hub_offset ]['facts'][0]['source_ids'] = array( 'complete99-public-site' );
+$entities[ $ingredient_hub_offset ]['facts'][0]['public_safe'] = true;
+
+foreach ( $public_pilot_ids as $public_entity_id ) {
+	$entity_offset = $entity_offsets[ $public_entity_id ];
+	$entities[ $entity_offset ]['surface_class'] = 'public_discovery';
+	$entities[ $entity_offset ]['index_policy'] = 'noindex_until_longform_review';
+	$entities[ $entity_offset ]['publication'] = array(
+		'state' => 'approved_public',
+		'public_api' => true,
+		'public_page' => true,
+		'search_index' => false,
+		'approved_at' => '2026-08-06',
+	);
+	$entities[ $entity_offset ]['review']['status'] = 'source_reviewed';
+	$entities[ $entity_offset ]['review']['reviewed_at'] = '2026-08-06';
+	$entities[ $entity_offset ]['review']['language_status'] = 'reviewed_bilingual';
+	$entities[ $entity_offset ]['trust']['attribution_state'] = 'organization_editorial_process';
+	$entities[ $entity_offset ]['trust']['substantive_updated_at'] = '2026-08-06';
+	$entities[ $entity_offset ]['visual']['asset_state'] = 'approved';
+	$entities[ $entity_offset ]['visual']['rights_method'] = 'generated_for_complete99_with_human_review';
+	$entities[ $entity_offset ]['visual']['rights_state'] = 'cleared_generated';
+	$entities[ $entity_offset ]['visual']['rights_receipt_digest'] = $public_asset_receipts[ $public_entity_id ];
+	$entities[ $entity_offset ]['taxonomy']['public_category_path'] = $entities[ $entity_offset ]['taxonomy']['category_path'];
+	$entities[ $entity_offset ]['taxonomy']['public_attribute_keys'] = array_keys( $entities[ $entity_offset ]['taxonomy']['attributes'] );
+	$entities[ $entity_offset ]['taxonomy']['public_tags'] = $entities[ $entity_offset ]['taxonomy']['tags'];
+	$entities[ $entity_offset ]['seo']['semantic_entity_ids'] = $public_semantic_allowlists[ $public_entity_id ];
+
+	foreach ( $entities[ $entity_offset ]['relations'] as &$public_relation ) {
+		$public_relation['public_safe'] = true === $public_relation['public_safe']
+			&& isset( $public_pilot_lookup[ $public_relation['target_id'] ] );
+	}
+	unset( $public_relation );
+
+	foreach ( $entities[ $entity_offset ]['seo']['link_plan'] as &$existing_link ) {
+		$existing_link['public_safe'] = false;
+	}
+	unset( $existing_link );
+	foreach ( $public_semantic_allowlists[ $public_entity_id ] as $target_id ) {
+		$target = $entities[ $entity_offsets[ $target_id ] ];
+		$is_parent = $target_id === $entities[ $entity_offset ]['parent_id'];
+		$matched_existing_link = false;
+		foreach ( $entities[ $entity_offset ]['seo']['link_plan'] as &$candidate_link ) {
+			if ( ! $matched_existing_link && $target_id === $candidate_link['target_id'] ) {
+				$candidate_link['public_safe'] = true;
+				$matched_existing_link = true;
+			}
+		}
+		unset( $candidate_link );
+		if ( $matched_existing_link ) {
+			continue;
+		}
+		$entities[ $entity_offset ]['seo']['link_plan'][] = array(
+			'target_id' => $target_id,
+			'purpose' => $is_parent ? 'parent-context' : 'curated-discovery',
+			'anchor' => $target['name'],
+			'placement' => $is_parent ? 'breadcrumb' : 'related_module',
+			'required' => $is_parent,
+			'public_safe' => true,
+			'basis_relation_id' => '',
+			'evidence_state' => 'verified',
+		);
+	}
+}
+
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v4',
-	'version'       => 'japanese-pilot-2026.08.06.v4',
+	'version'       => 'japanese-pilot-2026.08.06.v5',
 	'generated_at'  => '2026-08-06',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',
@@ -2329,13 +2435,13 @@ return array(
 		'intent_classes' => array( 'informational', 'commercial', 'transactional', 'navigational', 'local' ),
 		'profile_states' => array( 'source_backed', 'pending_evidence', 'not_applicable' ),
 		'dimensions' => array( 'scientific', 'cultural', 'institutional', 'economic', 'structural' ),
-		'evidence_classes' => array( 'official_source', 'third_party_guide', 'peer_reviewed_context', 'regulatory_standard', 'supplier_declaration', 'lot_coa', 'market_observation', 'editorial_inference' ),
+		'evidence_classes' => array( 'official_source', 'third_party_guide', 'peer_reviewed_context', 'conference_context', 'regulatory_standard', 'supplier_declaration', 'lot_coa', 'market_observation', 'editorial_inference' ),
 		'value_scopes' => array( 'entity', 'category', 'technique_context', 'market_snapshot', 'supplier_specification', 'lot_measurement' ),
 		'relation_types' => array( 'part_of', 'contains', 'used_in', 'requires', 'produced_by', 'sold_by', 'sourced_from', 'observed_at', 'graded_as', 'specified_by', 'certified_by', 'recognized_in', 'recognizes', 'complements', 'substitutes', 'upgrades_to', 'located_at', 'supported_by', 'benchmarks', 'teaches', 'serves', 'references' ),
 		'commerce_states' => array( 'reference_only', 'supplier_onboarding', 'verified_sku', 'active_offer' ),
 		'asset_states' => array( 'spec_ready', 'original_photography_required', 'rights_review_required', 'approved' ),
 		'rights_states' => array( 'pending', 'cleared_owned', 'cleared_generated', 'cleared_licensed', 'restricted' ),
-		'source_types' => array( 'official_government', 'official_organization', 'peer_reviewed_paper', 'official_standard', 'official_business', 'official_market_listing', 'regulatory_guidance' ),
+		'source_types' => array( 'official_government', 'official_organization', 'peer_reviewed_paper', 'conference_proceeding', 'official_standard', 'official_business', 'official_market_listing', 'regulatory_guidance' ),
 		'allowed_attributes' => array( 'pa_origin', 'pa_species', 'pa_cultivar', 'pa_processing_method', 'pa_fermentation_method', 'pa_vessel', 'pa_flavor_profile', 'pa_allergens', 'pa_storage_type', 'pa_material', 'pa_steel', 'pa_handedness', 'pa_quality_grade', 'pa_market', 'pa_institution_type', 'pa_equipment_required' ),
 		'attribution_states' => array( 'pending_named_review', 'organization_editorial_process', 'named_expert_reviewed' ),
 		'confidence_levels' => array( 'pending', 'reviewed', 'verified' ),

@@ -158,12 +158,12 @@ final class Complete99_Consumer {
 		<?php
 	}
 
-	public static function render_header( $post_id, $lang, $live_slug = '' ) {
+	public static function render_header( $post_id, $lang, $live_slug = '', $alternate_url = '', $current_override = '' ) {
 		$is_he      = 'he' === $lang;
-		$current    = $post_id ? self::key_for_post( $post_id ) : 'dishes';
+		$current    = '' !== $current_override ? $current_override : ( $post_id ? self::key_for_post( $post_id ) : 'dishes' );
 		$home       = self::route( 'home', $lang );
 		$order_url  = Complete99_Commerce::order_url( $lang );
-		$nav        = array(
+		$default_nav = array(
 			array( 'dishes', $is_he ? 'תפריט' : 'Menu' ),
 			array( 'proposal', $is_he ? 'לקבוצות ולמשרדים' : 'Groups and workplaces' ),
 			array( 'traditions', $is_he ? 'סיפורי אוכל' : 'Food stories' ),
@@ -171,6 +171,19 @@ final class Complete99_Consumer {
 			array( 'about', $is_he ? 'הסיפור שלנו' : 'Our story' ),
 			array( 'contact', $is_he ? 'מגיעים אלינו' : 'Visit' ),
 		);
+		$museum = class_exists( 'Complete99_Culinary_Science' )
+			? Complete99_Culinary_Science::public_museum_root_projection( $lang )
+			: array();
+		$nav = $default_nav;
+		if ( ! empty( $museum['seo']['canonical_path'] ) ) {
+			$nav = array(
+				array( 'dishes', $is_he ? 'תפריט' : 'Menu' ),
+				array( 'proposal', $is_he ? 'לקבוצות ולמשרדים' : 'Groups and workplaces' ),
+				array( 'museum', $is_he ? 'מוזיאון הקולינריה' : 'Culinary museum', home_url( $museum['seo']['canonical_path'] ) ),
+				array( 'about', $is_he ? 'הסיפור שלנו' : 'Our story' ),
+				array( 'contact', $is_he ? 'מגיעים אלינו' : 'Visit' ),
+			);
+		}
 		if ( Complete99_Commerce::catalog_is_ready() || Complete99_Commerce::can_preview_commerce() ) {
 			array_splice( $nav, 4, 0, array( array( 'store', $is_he ? 'המזווה' : 'Pantry shop' ) ) );
 		}
@@ -195,24 +208,26 @@ final class Complete99_Consumer {
 				<nav id="c99-primary-nav" class="c99-primary-nav c99-consumer-nav" aria-label="<?php echo esc_attr( $is_he ? 'ניווט ראשי' : 'Primary navigation' ); ?>">
 					<div class="c99-nav-groups">
 						<?php foreach ( $nav as $link ) : ?>
-							<a class="c99-consumer-nav-link<?php echo $current === $link[0] ? ' is-current' : ''; ?>" href="<?php echo esc_url( self::route( $link[0], $lang ) ); ?>"<?php echo $current === $link[0] ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $link[1] ); ?></a>
+							<a class="c99-consumer-nav-link<?php echo $current === $link[0] ? ' is-current' : ''; ?>" href="<?php echo esc_url( isset( $link[2] ) ? $link[2] : self::route( $link[0], $lang ) ); ?>"<?php echo $current === $link[0] ? ' aria-current="page"' : ''; ?>><?php echo esc_html( $link[1] ); ?></a>
 						<?php endforeach; ?>
 					</div>
 					<div class="c99-nav-actions">
 						<a class="c99-nav-cta" href="<?php echo esc_url( $order_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'להזמנה ב-Wolt' : 'Order on Wolt' ); ?></a>
 					</div>
 				</nav>
-				<?php self::render_language_switch( $post_id, $lang, $live_slug ); ?>
+				<?php self::render_language_switch( $post_id, $lang, $live_slug, $alternate_url ); ?>
 			</div>
 		</header>
 		<?php
 	}
 
-	private static function render_language_switch( $post_id, $lang, $live_slug ) {
+	private static function render_language_switch( $post_id, $lang, $live_slug, $alternate_url = '' ) {
 		$other = 'he' === $lang ? 'en' : 'he';
 		$label = 'he' === $lang ? 'EN' : 'עברית';
 		$aria  = 'he' === $lang ? 'מעבר לאנגלית' : 'Switch to Hebrew';
-		if ( class_exists( 'Complete99_Commerce' ) && Complete99_Commerce::is_transaction_page() ) {
+		if ( '' !== $alternate_url ) {
+			$url = $alternate_url;
+		} elseif ( class_exists( 'Complete99_Commerce' ) && Complete99_Commerce::is_transaction_page() ) {
 			$url = Complete99_Commerce::transaction_url( Complete99_Commerce::transaction_page_type(), $other );
 		} elseif ( $live_slug ) {
 			$url = Complete99_Frontend::live_dish_url( $live_slug, $other );
@@ -1144,6 +1159,23 @@ final class Complete99_Consumer {
 
 	public static function render_footer( $lang ) {
 		$is_he       = 'he' === $lang;
+		$museum      = class_exists( 'Complete99_Culinary_Science' )
+			? Complete99_Culinary_Science::public_museum_root_projection( $lang )
+			: array();
+		$food_nav    = array(
+			array( 'dishes', $is_he ? 'כל המנות' : 'All dishes' ),
+			array( 'ingredients', $is_he ? 'מרכיבים' : 'Ingredients' ),
+			array( 'traditions', $is_he ? 'סיפורי אוכל' : 'Food stories' ),
+			array( 'knowledge', $is_he ? 'מדריכים' : 'Guides' ),
+		);
+		if ( ! empty( $museum['seo']['canonical_path'] ) ) {
+			array_splice(
+				$food_nav,
+				2,
+				0,
+				array( array( 'museum', $is_he ? 'מוזיאון הקולינריה' : 'Culinary museum', home_url( $museum['seo']['canonical_path'] ) ) )
+			);
+		}
 		$company_nav = array(
 			array( 'about', $is_he ? 'הסיפור שלנו' : 'Our story' ),
 			array( 'proposal', $is_he ? 'לקבוצות ולמשרדים' : 'Groups and workplaces' ),
@@ -1155,12 +1187,7 @@ final class Complete99_Consumer {
 		$clusters = array(
 			array(
 				$is_he ? 'אוכל' : 'Food',
-				array(
-					array( 'dishes', $is_he ? 'כל המנות' : 'All dishes' ),
-					array( 'ingredients', $is_he ? 'מרכיבים' : 'Ingredients' ),
-					array( 'traditions', $is_he ? 'סיפורי אוכל' : 'Food stories' ),
-					array( 'knowledge', $is_he ? 'מדריכים' : 'Guides' ),
-				),
+				$food_nav,
 			),
 			array(
 				$is_he ? 'קומפלט 99' : 'Complete99',
@@ -1190,7 +1217,7 @@ final class Complete99_Consumer {
 					<?php foreach ( $clusters as $cluster ) : ?>
 						<div class="c99-footer-cluster">
 							<h2><?php echo esc_html( $cluster[0] ); ?></h2>
-							<ul><?php foreach ( $cluster[1] as $link ) : ?><li><a href="<?php echo esc_url( self::route( $link[0], $lang ) ); ?>"><?php echo esc_html( $link[1] ); ?></a></li><?php endforeach; ?></ul>
+							<ul><?php foreach ( $cluster[1] as $link ) : ?><li><a href="<?php echo esc_url( isset( $link[2] ) ? $link[2] : self::route( $link[0], $lang ) ); ?>"><?php echo esc_html( $link[1] ); ?></a></li><?php endforeach; ?></ul>
 						</div>
 					<?php endforeach; ?>
 				</nav>
