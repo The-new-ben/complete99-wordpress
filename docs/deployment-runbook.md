@@ -93,7 +93,7 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.8.0, require the public read-model integrity tests to prove
+3. For release 1.9.0, require the public read-model integrity tests to prove
    recursive canonical hashing, exclusion of the top-level `digest` field,
    `hash_equals` verification and fail-closed handling of missing, malformed,
    arbitrary or content-mismatched digests.
@@ -103,9 +103,11 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    item timestamps.
 5. Exercise the narrow 1.7 migration gate against the known 12-item live
    fallback state. Confirm canonical ID and slug ownership remains protected.
-6. Confirm the public catalog allowlist and receipt still contain exactly the
-   same 32 items. This integrity-only release must not add, remove or alter a
-   public catalog item.
+6. Confirm the public catalog allowlist and receipt contain exactly 36 items.
+   Require the four 1.9.0 additions to have exact product codes, prices, one
+   unit of opening stock, disabled backorders, image hashes, relations and
+   dated market evidence. Confirm all 32 earlier products keep their current
+   operational stock rather than being reset.
 7. Build twice and require identical bytes:
 
    `python scripts/build-plugin-zip.py --verify-reproducible`
@@ -225,7 +227,8 @@ A production release is complete only when the non-secret audit JSON shows:
 - a public read-model freshness result that is causally bound to its stored
   recursive canonical digest, with negative evidence for missing, malformed,
   arbitrary and content-mismatched digest states;
-- an unchanged exact 32-item public catalog receipt and allowlist;
+- an exact 36-item public catalog receipt and allowlist, including the four
+  version 1.9.0 additions;
 - `sync_configured: true` after an exact secret checkpoint, without exposing the
   value;
 - anonymous `robots.txt` content and SHA-256 matching the managed policy;

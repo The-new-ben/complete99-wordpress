@@ -11,13 +11,27 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.8.0`. Production truth comes
+The source tree targets Complete99 Platform `1.9.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.8.0 is an integrity-only public read-model release. It does not add,
-remove or alter any public catalog item: the approved WooCommerce catalog stays
-at exactly 32 items. The server derives the stored read-model SHA-256 from a
+Release 1.9.0 expands the approved WooCommerce catalog to exactly 36 products.
+It adds Uozu Koshihikari rice, Hishiroku dried rice koji, Hishiroku Chouhaku-kin
+koji starter and one 50 to 60 gram Dutch-grown fresh wasabi rhizome. Each offer
+has a dated source-market observation, a current Bank of Israel conversion when
+needed, an owner-authorized opening retail price, one unit of opening stock, no
+backorders, an original unbranded public image and reciprocal science and
+commercial links. Public prices are not presented as supplier costs. Landed
+cost and gross margin remain unset until invoices, freight, tax and handling
+evidence exist. Every payment gateway remains disabled.
+
+Release 1.9.0 also expands the Japanese culinary-science registry to 73 bounded
+entities and 22 bilingual public knowledge pages. The current pages remain
+`noindex,follow` and outside the sitemap until the separate long-form editorial
+and search-intent gate passes.
+
+Previous release 1.8.0 introduced the integrity-only public read-model
+boundary. The server derives the stored read-model SHA-256 from a
 recursive canonical representation that excludes only the top-level `digest`
 field, preserves list order and sorts associative keys at every depth. Public
 freshness requires the stored digest to match that causal digest through
@@ -46,7 +60,7 @@ dedicated imagery and bilingual science routes. It provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
-- exactly 32 owner-authorized WooCommerce culinary products, including food
+- exactly 36 owner-authorized WooCommerce culinary products, including food
   ingredients and professional preparation equipment;
 - one normal public WebP image for every product, without an archive label,
   disclaimer or unusual public treatment;
@@ -64,7 +78,7 @@ dedicated imagery and bilingual science routes. It provides:
 - local pickup from 99 Ibn Gabirol Street in Tel Aviv;
 - a signed private inventory synchronization route usable by Complete99 OS as
   soon as the catalog is verified;
-- a bilingual, source-bound culinary-science graph with 66 Japanese-pilot,
+- a bilingual, source-bound culinary-science graph with 73 Japanese-pilot,
   institutional, market, technique, ingredient, equipment and evidence entities;
 - a modular commerce graph that separates knowledge, products, variants, SKUs,
   source-market observations, supplier offers, channel offers, landed cost,

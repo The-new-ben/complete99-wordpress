@@ -15,7 +15,11 @@ $c99_foundations_groups = array(
 		'ingredient-kombu',
 		'ingredient-katsuobushi',
 		'ingredient-kioke-shoyu',
+		'ingredient-kome-koji',
+		'ingredient-koji-starter-culture',
+		'ingredient-koshihikari-rice',
 		'ingredient-fresh-wasabi',
+		'ingredient-fresh-dutch-wasabi',
 		'ingredient-kito-yuzu',
 		'ingredient-hon-mirin',
 	),
@@ -133,7 +137,7 @@ return array(
 				array(
 					'id'          => 'ingredients',
 					'label'       => $c99_text( 'חומרי גלם', 'Ingredients' ),
-					'description' => $c99_text( 'קומבו, קצואובושי, שויו, ווסאבי, יוזו והון מירין, עם מקור, טעם ושימוש.', 'Kombu, katsuobushi, shoyu, wasabi, yuzu and hon mirin, with origin, flavor and use.' ),
+					'description' => $c99_text( 'קומבו, קצואובושי, שויו, אורז קושיהיקארי, קוג׳י, תרבית קוג׳י, ווסאבי, יוזו והון מירין, עם מקור, טעם, מדע ושימוש.', 'Kombu, katsuobushi, shoyu, Koshihikari rice, koji, starter culture, wasabi, yuzu and hon mirin, with origin, flavor, science and use.' ),
 				),
 				array(
 					'id'          => 'food_science',

@@ -1,6 +1,6 @@
 <?php
 /**
- * Reviewed public relations between the exact 32 products, 12 dish pages and
+ * Reviewed public relations between the exact 36 products, 12 dish pages and
  * the approved Culinary Science Museum ingredient pages.
  *
  * Relations describe culinary navigation only. They do not assert a supplier,
@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 return array(
 	'schema'      => 'complete99-live-catalog-relations/v1',
-	'reviewed_at' => '2026-07-31',
+	'reviewed_at' => '2026-08-06',
 	'products'    => array(
 		'product-tahini-500g'        => array( 'ingredient_code' => 'ingredient-tahini', 'dish_slugs' => array( 'sabich' ) ),
 		'product-amba-500g'          => array( 'ingredient_code' => 'ingredient-amba', 'dish_slugs' => array( 'sabich' ) ),
@@ -43,10 +43,14 @@ return array(
 		'product-chicken-liver-1kg'  => array( 'ingredient_code' => 'ingredient-chicken-liver', 'dish_slugs' => array( 'chicken-liver' ) ),
 		'product-rishiri-kombu-100g' => array( 'ingredient_code' => 'ingredient-kombu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kombu', 'related_product_codes' => array( 'product-honkarebushi-200g', 'product-yamaroku-tsurubishio-500ml' ) ),
 		'product-honkarebushi-200g'  => array( 'ingredient_code' => 'ingredient-katsuobushi', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-katsuobushi', 'related_product_codes' => array( 'product-rishiri-kombu-100g', 'product-yamaroku-tsurubishio-500ml' ) ),
-		'product-yamaroku-tsurubishio-500ml' => array( 'ingredient_code' => 'ingredient-kioke-shoyu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kioke-shoyu', 'related_product_codes' => array( 'product-kito-yuzu-juice-100ml', 'product-rishiri-kombu-100g', 'product-honkarebushi-200g', 'product-fresh-japanese-wasabi-250g' ) ),
+		'product-yamaroku-tsurubishio-500ml' => array( 'ingredient_code' => 'ingredient-kioke-shoyu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kioke-shoyu', 'related_product_codes' => array( 'product-kito-yuzu-juice-100ml', 'product-rishiri-kombu-100g', 'product-honkarebushi-200g', 'product-fresh-japanese-wasabi-250g', 'product-koshihikari-uozu-2kg', 'product-fresh-wasabi-50-60g' ) ),
 		'product-kito-yuzu-juice-100ml' => array( 'ingredient_code' => 'ingredient-kito-yuzu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kito-yuzu', 'related_product_codes' => array( 'product-yamaroku-tsurubishio-500ml' ) ),
-		'product-fresh-japanese-wasabi-250g' => array( 'ingredient_code' => 'ingredient-fresh-wasabi', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-fresh-wasabi', 'related_product_codes' => array( 'product-hagane-zame-large', 'product-yamaroku-tsurubishio-500ml' ) ),
-		'product-hagane-zame-large' => array( 'ingredient_code' => 'equipment-wasabi-grater', 'dish_slugs' => array(), 'science_entity_id' => 'equipment-wasabi-grater', 'related_product_codes' => array( 'product-fresh-japanese-wasabi-250g' ) ),
+		'product-fresh-japanese-wasabi-250g' => array( 'ingredient_code' => 'ingredient-fresh-wasabi', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-fresh-wasabi', 'related_product_codes' => array( 'product-hagane-zame-large', 'product-yamaroku-tsurubishio-500ml', 'product-fresh-wasabi-50-60g', 'product-koshihikari-uozu-2kg' ) ),
+		'product-hagane-zame-large' => array( 'ingredient_code' => 'equipment-wasabi-grater', 'dish_slugs' => array(), 'science_entity_id' => 'equipment-wasabi-grater', 'related_product_codes' => array( 'product-fresh-japanese-wasabi-250g', 'product-fresh-wasabi-50-60g' ) ),
+		'product-koshihikari-uozu-2kg' => array( 'ingredient_code' => 'ingredient-koshihikari-rice', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-koshihikari-rice', 'related_product_codes' => array( 'product-yamaroku-tsurubishio-500ml', 'product-fresh-wasabi-50-60g', 'product-fresh-japanese-wasabi-250g' ) ),
+		'product-hishiroku-dried-rice-koji-500g' => array( 'ingredient_code' => 'ingredient-kome-koji', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kome-koji', 'related_product_codes' => array( 'product-hishiroku-chouhaku-kin-20g' ) ),
+		'product-hishiroku-chouhaku-kin-20g' => array( 'ingredient_code' => 'ingredient-koji-starter-culture', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-koji-starter-culture', 'related_product_codes' => array( 'product-hishiroku-dried-rice-koji-500g' ) ),
+		'product-fresh-wasabi-50-60g' => array( 'ingredient_code' => 'ingredient-fresh-dutch-wasabi', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-fresh-dutch-wasabi', 'related_product_codes' => array( 'product-hagane-zame-large', 'product-yamaroku-tsurubishio-500ml', 'product-koshihikari-uozu-2kg', 'product-fresh-japanese-wasabi-250g' ) ),
 	),
 	'dishes'      => array(
 		'sabich'             => array( 'product-tahini-500g', 'product-amba-500g', 'product-hot-sauce-60ml', 'product-pita-12x50g', 'product-aubergine-1kg', 'product-eggs-l-12', 'product-potato-white-1kg', 'product-cucumber-1kg', 'product-pickles-brine-320g' ),

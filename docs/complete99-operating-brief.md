@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-06
-Status: release 1.8.0 candidate, 12 dishes and an unchanged 32-product public store
+Status: release 1.9.0 candidate, 12 dishes, 36 public products and 22 public Japanese science pages
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -88,7 +88,7 @@ Hebrew is the root language. English mirrors the same hierarchy under `/en/`.
 | `/ingredients/` | Ingredients in the context of the food | Index |
 | `/traditions/` | Homes, communities and cooking traditions | Index |
 | `/knowledge/` | Practical guidance for choosing and understanding dishes | Index |
-| `/store/` | Curated 32-product culinary store and cart | Index when the exact catalog receipt is ready |
+| `/store/` | Curated 36-product culinary store and cart | Index when the exact catalog receipt is ready |
 | `/about/` | Restaurant story and consumer identity | Index |
 | `/contact/` | Verified address, telephone and contact route | Index |
 | `/privacy/`, `/terms/`, `/accessibility/` | Consumer policy foundation | Index |
@@ -177,7 +177,7 @@ errors.
 
 ## 7. Infrastructure without imposed roles
 
-Release 1.6.0 creates contracts and checks, not worker assignments.
+Release 1.9.0 creates contracts and checks, not worker assignments.
 
 - WordPress keeps consumer publishing and commerce readiness metadata.
 - WooCommerce is the product, cart and stock authority. It becomes the payment
@@ -215,8 +215,8 @@ public dishes or any of the 32 public catalog items.
 
 ## 8. Store readiness
 
-WooCommerce is the commerce engine; a custom cart is not. Release 1.6.0 opens
-the exact 32-product catalog, classic cart and local-pickup continuation. The
+WooCommerce is the commerce engine; a custom cart is not. Release 1.9.0 opens
+the exact 36-product catalog, classic cart and local-pickup continuation. The
 electronic checkout remains closed until the payment-specific evidence below
 passes:
 
@@ -227,6 +227,30 @@ passes:
 - checkout-specific cancellations, privacy, terms and customer support review;
 - test orders, refunds, taxes, emails, stock movement, analytics, and security;
 - truthful Product/Offer structured data matching the visible page.
+
+### Commercial evidence and expansion model
+
+Every current and future sellable entity carries a modular commercial record:
+
+- a stable product code, locale-neutral identity and market;
+- one or more dated source-market observations with currency, tax state,
+  availability state and exact source URL;
+- a documented exchange-rate source and arithmetic when the observation is not
+  in ILS;
+- the owner-authorized channel price, price effective date and sales channel;
+- package quantity, comparable unit price and quality tier;
+- opening stock policy, backorder policy, fulfilment class and stock authority;
+- complementary products, premium alternatives and the culinary reason for
+  each cross-sell or up-sell;
+- procurement cost, freight, duty, tax, handling, waste, landed cost and gross
+  margin fields that stay null until commercial evidence supports them.
+
+Release 1.9.0 proves this pattern with four Japanese-foundation products. Their
+public prices are ILS 149 for 2 kg Uozu Koshihikari rice, ILS 119 for 500 g
+dried rice koji, ILS 109 for 20 g Chouhaku-kin starter culture and ILS 119 for
+one 50 to 60 g Dutch-grown fresh wasabi rhizome. These are authorized opening
+retail prices informed by the dated market observations. They are not claims
+about supplier cost or achieved margin.
 
 ## 9. Integrations and future hardware
 

@@ -913,6 +913,27 @@ final class Complete99_Frontend {
 		if ( '' === trim( $name ) || '' === trim( $description ) || '' === trim( $product_code ) || ! $image ) {
 			return null;
 		}
+		$weight_unit_code = $unit_codes[ $weight_unit ] ?? strtoupper( $weight_unit );
+		$weight_schema = array(
+			'@type'    => 'QuantitativeValue',
+			'value'    => (float) $product->get_weight(),
+			'unitCode' => $weight_unit_code,
+		);
+		if ( class_exists( 'Complete99_Live_Catalog' ) ) {
+			$weight_min = (string) get_post_meta( $product_id, Complete99_Live_Catalog::META_WEIGHT_MIN_KG, true );
+			$weight_max = (string) get_post_meta( $product_id, Complete99_Live_Catalog::META_WEIGHT_MAX_KG, true );
+			if ( is_numeric( $weight_min )
+				&& is_numeric( $weight_max )
+				&& 0 < (float) $weight_min
+				&& (float) $weight_min <= (float) $weight_max ) {
+				$weight_schema = array(
+					'@type'    => 'QuantitativeValue',
+					'minValue' => (float) $weight_min,
+					'maxValue' => (float) $weight_max,
+					'unitCode' => $weight_unit_code,
+				);
+			}
+		}
 		$property_rows = $is_equipment
 			? array(
 				array( $is_he ? 'סוג מוצר' : 'Product kind', $is_he ? 'ציוד' : 'Equipment' ),
@@ -948,11 +969,7 @@ final class Complete99_Frontend {
 			'inLanguage'         => $lang,
 			'image'              => array( $image ),
 			'sku'                => (string) $product->get_sku(),
-			'weight'             => array(
-				'@type'    => 'QuantitativeValue',
-				'value'    => (float) $product->get_weight(),
-				'unitCode' => $unit_codes[ $weight_unit ] ?? strtoupper( $weight_unit ),
-			),
+			'weight'             => $weight_schema,
 			'additionalProperty' => $additional_properties,
 			'offers'             => array(
 				'@type'         => 'Offer',

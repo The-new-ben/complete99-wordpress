@@ -60,5 +60,9 @@ return array(
 		'product-kito-yuzu-juice-100ml' => '64.00',
 		'product-fresh-japanese-wasabi-250g' => '399.00',
 		'product-hagane-zame-large' => '699.00',
+		'product-koshihikari-uozu-2kg' => '149.00',
+		'product-hishiroku-dried-rice-koji-500g' => '119.00',
+		'product-hishiroku-chouhaku-kin-20g' => '109.00',
+		'product-fresh-wasabi-50-60g' => '119.00',
 	),
 );

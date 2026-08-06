@@ -143,6 +143,11 @@ class Complete99_Commerce {{
     const FULFILMENT_HE = '_complete99_product_fulfilment_he';
     const FULFILMENT_EN = '_complete99_product_fulfilment_en';
 }}
+class Complete99_Live_Catalog {{
+    const META_WEIGHT_MIN_KG = '_complete99_live_catalog_weight_min_kg';
+    const META_WEIGHT_MAX_KG = '_complete99_live_catalog_weight_max_kg';
+    public static function relations_for_product_code($product_code) {{ return array(); }}
+}}
 class C99_Product {{
     public function get_image_id() {{ return 50; }}
     public function get_sku() {{ return 'product-test'; }}
@@ -164,6 +169,8 @@ function get_post_meta($product_id, $key, $single = true) {{
     );
     if (isset($common[$key])) {{ return $common[$key]; }}
     if ('_complete99_product_kind' === $key) {{ return $c99_kind; }}
+    if ('food' === $c99_kind && '_complete99_live_catalog_weight_min_kg' === $key) {{ return '0.050'; }}
+    if ('food' === $c99_kind && '_complete99_live_catalog_weight_max_kg' === $key) {{ return '0.060'; }}
     if ('equipment' === $c99_kind) {{
         $equipment = array(
             '_complete99_product_model_en' => 'Pro large',
@@ -218,6 +225,17 @@ echo json_encode(
         "Care",
         "Safety",
         "Fulfilment",
+    }
+    assert result["food"]["weight"] == {
+        "@type": "QuantitativeValue",
+        "minValue": 0.05,
+        "maxValue": 0.06,
+        "unitCode": "KGM",
+    }
+    assert result["equipment"]["weight"] == {
+        "@type": "QuantitativeValue",
+        "value": 0.25,
+        "unitCode": "KGM",
     }
 
 

@@ -435,7 +435,7 @@ return array(
 	'schema'                     => 'complete99-culinary-commerce-registry/v2',
 	'version'                    => 'japanese-commerce-pilot-2026.08.06.v3',
 	'generated_at'               => '2026-08-06',
-	'knowledge_registry_version' => 'japanese-pilot-2026.08.06.v9',
+	'knowledge_registry_version' => 'japanese-pilot-2026.08.06.v10',
 	'controlled_vocabulary'      => array(
 		'product_states'           => array( 'research_candidate', 'verified_product', 'active', 'retired' ),
 		'variant_states'           => array( 'research_candidate', 'verified_variant', 'active', 'retired' ),

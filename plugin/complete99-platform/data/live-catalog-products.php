@@ -89,6 +89,9 @@ return array(
 		'citrus' => array( 'name' => 'הדרים | Citrus', 'slug' => 'complete99-citrus' ),
 		'premium' => array( 'name' => 'פרימיום | Premium', 'slug' => 'complete99-premium' ),
 		'wasabi' => array( 'name' => 'וואסבי | Wasabi', 'slug' => 'complete99-wasabi' ),
+		'rice' => array( 'name' => 'אורז | Rice', 'slug' => 'complete99-rice' ),
+		'koji' => array( 'name' => 'קוג׳י | Koji', 'slug' => 'complete99-koji' ),
+		'starter-culture' => array( 'name' => 'תרביות התחלה | Starter cultures', 'slug' => 'complete99-starter-culture' ),
 		'equipment' => array( 'name' => 'ציוד מקצועי | Professional equipment', 'slug' => 'complete99-equipment' ),
 	),
 	'shipping_classes'   => array(
@@ -168,6 +171,65 @@ return array(
 			'Keep refrigerated. Follow the supplier instructions and use within the shelf life of the received shipment.',
 			'קני שורש וואסבי יפני טרי המיועדים לגירור סמוך להגשה. המרקם והחריפות מתפתחים בזמן הגירור, ולכן המוצר מתאים לסושי, סשימי, רטבים, חמאה מתובלת ומנות דגים ובשר.',
 			'Fresh Japanese wasabi rhizomes intended for grating close to service. Texture and pungency develop during grating, making the product suited to sushi, sashimi, sauces, compound butter, fish and meat dishes.'
+		),
+		'product-koshihikari-uozu-2kg' => $c99_live_product(
+			'2.000',
+			'japanese-pantry',
+			array( 'ambient', 'japanese', 'grain', 'rice', 'premium' ),
+			'ambient',
+			'אורז קצר מזן קושיהיקארי מאוזו שבמחוז טויאמה, יפן, לפי תיאור המוצר שנבדק. התווית שעל האריזה המסופקת היא הקובעת.',
+			'Short-grain Koshihikari rice from Uozu in Toyama, Japan, according to the reviewed product description. The supplied pack label is authoritative.',
+			'לא ידוע על אלרגן מובנה באורז. יש לבדוק את הצהרת האלרגנים והמגע הצולב שעל האריזה.',
+			'No inherent allergen is known for rice. Check the pack for its allergen and cross-contact declaration.',
+			'יש לשמור במקום קריר, חשוך ויבש. לאחר פתיחה יש להעביר לכלי אטום ולפעול לפי הוראות האריזה.',
+			'Keep in a cool, dark, dry place. After opening, transfer to an airtight container and follow the pack instructions.',
+			'אורז קושיהיקארי פרימיום בעל גרגרים קצרים ומרקם מלוכד לאחר בישול. מתאים לאורז יפני ביתי, קערות אורז ולהכנת שארי לפי מתכון מדוד.',
+			'Premium short-grain Koshihikari rice with a cohesive cooked texture. Suited to Japanese home cooking, rice bowls and measured shari preparation.'
+		),
+		'product-hishiroku-dried-rice-koji-500g' => $c99_live_product(
+			'0.500',
+			'japanese-pantry',
+			array( 'chilled', 'japanese', 'grain', 'fermentation', 'koji', 'premium' ),
+			'chilled',
+			'קומה קוג׳י מיובש מאורז שעבר גידול מבוקר של תרבית קוג׳י. המוצר מזוהה בדף היצרן כ-SR-108; התווית שעל האריזה המסופקת היא הקובעת.',
+			'Dried kome koji made from rice cultivated with koji culture. The maker page identifies the product as SR-108; the supplied pack label is authoritative.',
+			'יש לבדוק את הצהרת האלרגנים והמגע הצולב שעל אריזת היצרן לפני שימוש.',
+			'Check the maker pack for its allergen and cross-contact declaration before use.',
+			'יש לשמור בקירור ולפעול לפי תאריך השימוש והוראות היצרן שעל האריזה.',
+			'Keep refrigerated and follow the use-by date and maker instructions on the pack.',
+			'קומה קוג׳י מיובש למטבח התססות מדויק. מתאים לפרויקטים קולינריים כגון שיו קוג׳י, אמאזקה ומיסו כאשר עובדים לפי מתכון בטוח והוראות היצרן.',
+			'Dried kome koji for precise fermentation cooking. Suited to culinary projects such as shio koji, amazake and miso when used with a safe recipe and the maker directions.'
+		),
+		'product-hishiroku-chouhaku-kin-20g' => $c99_live_product(
+			'0.020',
+			'japanese-pantry',
+			array( 'chilled', 'japanese', 'fermentation', 'koji', 'starter-culture', 'premium' ),
+			'chilled',
+			'אבקת תרבית התחלה לקוג׳י מסוג Hishiroku Chouhaku-kin. זהו חומר תהליך מרוכז להכנת קוג׳י חדש, ולא תוספת הנדרשת למוצר קוג׳י מוכן.',
+			'Hishiroku Chouhaku-kin powdered koji starter culture. This is a concentrated process input for cultivating new koji, not an additive required for prepared koji.',
+			'יש לבדוק את הצהרת האלרגנים והמגע הצולב שעל אריזת היצרן לפני שימוש.',
+			'Check the maker pack for its allergen and cross-contact declaration before use.',
+			'יש לשמור בקירור, להימנע מלחות ולהשתמש רק לפי הוראות היצרן שעל האריזה.',
+			'Keep refrigerated, protect from moisture and use only according to the maker directions on the pack.',
+			'תרבית tane-koji מקצועית לתהליכי גידול מבוקרים על מצע מתאים. בחירת מצע, מינון, זמן, טמפרטורה ולחות נקבעת לפי הוראות היצרן והמתכון.',
+			'Professional tane-koji starter for controlled cultivation on a suitable substrate. Substrate, dose, time, temperature and humidity follow the maker directions and recipe.'
+		),
+		'product-fresh-wasabi-50-60g' => array_merge(
+			$c99_live_product(
+				'0.060',
+				'japanese-pantry',
+				array( 'fresh', 'chilled', 'produce', 'wasabi', 'premium' ),
+				'chilled',
+				'קנה שורש וואסבי טרי בגידול הולנדי, יחידה אחת במשקל 50 עד 60 גרם.',
+				'One Dutch-grown fresh wasabi rhizome weighing 50 to 60 g.',
+				'מידע האלרגנים נקבע לפי תווית המוצר המסופק. יש לבדוק את פרטי האריזה לפני שימוש.',
+				'Allergen information is determined by the supplied product label. Check the pack information before use.',
+				'יש לשמור בקירור ולהשתמש במסגרת חיי המדף והוראות הטיפול שעל האריזה.',
+				'Keep refrigerated and use within the shelf life and handling directions on the pack.',
+				'יחידה אישית של קנה שורש וואסבי טרי, המיועדת לגירור סמוך להגשה. מתאימה לסושי, סשימי, רטבים, חמאה מתובלת ומנות שבהן נדרש ניחוח וואסבי טרי.',
+				'An individual fresh wasabi rhizome intended for grating close to service. Suited to sushi, sashimi, sauces, compound butter and dishes that call for fresh wasabi aroma.'
+			),
+			array( 'weight_range_kg' => array( 'min' => '0.050', 'max' => '0.060' ) )
 		),
 		'product-hagane-zame-large' => $c99_live_product(
 			'0.156',

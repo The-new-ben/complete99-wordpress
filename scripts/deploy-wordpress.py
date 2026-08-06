@@ -39,7 +39,7 @@ BOOTSTRAP_SNIPPET_KNOWN_ID = 5
 MIN_PACKAGE_UPLOAD_BYTES = 2 * 1024 * 1024
 MAX_PACKAGE_UPLOAD_BYTES = 32 * 1024 * 1024
 PACKAGE_UPLOAD_HEADROOM_BYTES = 64 * 1024
-EXPECTED_CATALOG_PRODUCT_COUNT = 32
+EXPECTED_CATALOG_PRODUCT_COUNT = 36
 CATALOG_PRODUCT_CODES = frozenset(
     {
         "product-tahini-500g",
@@ -74,6 +74,10 @@ CATALOG_PRODUCT_CODES = frozenset(
         "product-kito-yuzu-juice-100ml",
         "product-fresh-japanese-wasabi-250g",
         "product-hagane-zame-large",
+        "product-koshihikari-uozu-2kg",
+        "product-hishiroku-dried-rice-koji-500g",
+        "product-hishiroku-chouhaku-kin-20g",
+        "product-fresh-wasabi-50-60g",
     }
 )
 if len(CATALOG_PRODUCT_CODES) != EXPECTED_CATALOG_PRODUCT_COUNT:

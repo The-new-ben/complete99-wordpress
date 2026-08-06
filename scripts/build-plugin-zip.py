@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 14:35:25"
+RELEASE_LAST_UPDATED = "2026-08-06 16:48:48"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,14 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the public WooCommerce catalog from 32 to 36 owner-authorized products with Uozu Koshihikari rice, dried rice koji, Chouhaku-kin koji starter and Dutch-grown fresh wasabi.</li>"
+                "<li>Added current dated source-market observations, Bank of Israel currency conversions, explicit opening retail prices, one unit of opening stock and no backorders for all four products.</li>"
+                "<li>Expanded the bilingual Japanese culinary-science pilot to 22 public pages with dedicated product and science imagery, exact canonical routes, natural internal links and reciprocal store offers.</li>"
+                "<li>Added range-aware Product structured data for the 50 to 60 gram wasabi offer while preserving the maximum operational shipping weight.</li>"
+                "<li>Kept actual supplier cost, landed cost and gross margin unset until documented commercial evidence exists, and kept every payment gateway disabled.</li>"
+                "</ul>"
+                "<h4>1.8.0</h4>"
                 "<ul>"
                 "<li>Bound public read-model freshness to a recursive canonical SHA-256 digest that excludes only its own top-level digest field.</li>"
                 "<li>Persisted the normalized OS transport envelope unchanged with exact UTC millisecond generation and item timestamps.</li>"

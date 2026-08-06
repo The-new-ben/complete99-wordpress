@@ -1118,7 +1118,7 @@ return array(
 					array(
 						'חנות המזווה',
 						array(
-							'המזווה מציג 32 מוצרי קולינריה עם תמונה, מחיר, מפרט שמתאים לסוג המוצר ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
+							'המזווה מציג 36 מוצרי קולינריה עם תמונה, מחיר, מפרט שמתאים לסוג המוצר ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
 							'לאחר הכנת הסל, האישור הסופי נעשה בשיחה עם קומפלט 99 לאחר בדיקת המלאי ותנאי הקבלה.',
 						)
 					),
@@ -1157,7 +1157,7 @@ return array(
 					array(
 						'The pantry shop',
 						array(
-							'The pantry presents 32 culinary products with an image, price, type-specific details and stock. Products can be added to the cart, quantities changed and items removed.',
+							'The pantry presents 36 culinary products with an image, price, type-specific details and stock. Products can be added to the cart, quantities changed and items removed.',
 							'After the cart is prepared, final confirmation takes place in a call with Complete99 after stock and fulfilment are checked.',
 						)
 					),

@@ -189,7 +189,7 @@ echo json_encode($public, JSON_THROW_ON_ERROR);
         ):
             self.assertNotIn(private_marker, serialized)
 
-    def test_current_registry_has_32_strict_private_evaluation_seeds(self) -> None:
+    def test_current_registry_has_36_strict_private_evaluation_seeds(self) -> None:
         result = self.run_php(
             """
 $registry = require $c99_catalog_data_path;
@@ -221,10 +221,10 @@ echo json_encode(array(
 """
         )
         self.assertTrue(result["valid"])
-        self.assertEqual(32, result["count"])
-        self.assertEqual(32, result["unique_codes"])
+        self.assertEqual(36, result["count"])
+        self.assertEqual(36, result["unique_codes"])
         self.assertTrue(result["all_stock_one"])
-        self.assertEqual(32, len(result["prices"]))
+        self.assertEqual(36, len(result["prices"]))
         self.assertRegex(result["digest"], r"^[a-f0-9]{64}$")
         self.assertFalse(result["global_public_sale"])
         self.assertFalse(result["global_public_stock"])
@@ -528,10 +528,10 @@ echo json_encode(array(
 """
         )
         self.assertEqual("", result["error"])
-        self.assertEqual(32, result["seed_count"])
-        self.assertEqual(64, result["post_count"])
-        self.assertEqual(32, result["ingredient_count"])
-        self.assertEqual(32, result["plan_count"])
+        self.assertEqual(36, result["seed_count"])
+        self.assertEqual(72, result["post_count"])
+        self.assertEqual(36, result["ingredient_count"])
+        self.assertEqual(36, result["plan_count"])
         self.assertEqual(0, result["woo_count"])
         self.assertFalse(result["woo_materialized"])
         self.assertTrue(result["same_ids"])
@@ -544,7 +544,7 @@ echo json_encode(array(
             result["receipt_schema"],
         )
         self.assertEqual("success", result["receipt_status"])
-        self.assertEqual([32, 32, 32, 0], result["receipt_counts"])
+        self.assertEqual([36, 36, 36, 0], result["receipt_counts"])
         self.assertRegex(result["receipt_digest"], r"^[a-f0-9]{64}$")
         self.assertLessEqual(result["receipt_size"], 1024)
 
@@ -609,7 +609,7 @@ echo json_encode(array(
         self.assertFalse(result["woo_materialized"])
         self.assertEqual(0, result["woo_count"])
         self.assertEqual(0, result["product_objects"])
-        self.assertEqual(64, result["post_count"])
+        self.assertEqual(72, result["post_count"])
         self.assertTrue(result["no_products"])
         self.assertTrue(result["canonical"])
         self.assertTrue(result["same_ids"])
@@ -668,7 +668,7 @@ echo json_encode(array(
         self.assertTrue(result["ready"]["ready"])
         self.assertTrue(result["ready"]["receipt"]["valid"])
         self.assertEqual(
-            {"ingredient_count": 32, "product_plan_count": 32},
+            {"ingredient_count": 36, "product_plan_count": 36},
             result["ready"]["materialized"],
         )
         self.assertNotIn("price", result["ready_json"].lower())
@@ -771,13 +771,13 @@ echo json_encode(array(
 """
         )
         self.assertEqual("", result["error"])
-        self.assertEqual(96, result["post_count"])
-        self.assertEqual(32, result["product_count"])
+        self.assertEqual(108, result["post_count"])
+        self.assertEqual(36, result["product_count"])
         self.assertTrue(result["same_product_ids"])
         self.assertTrue(result["exact"])
         self.assertTrue(result["held"])
         self.assertTrue(result["non_product_private"])
-        self.assertEqual([32, 32, 32, 32], result["receipt_counts"])
+        self.assertEqual([36, 36, 36, 36], result["receipt_counts"])
         self.assertTrue(result["receipt_woo"])
 
     def test_duplicate_and_nonmanaged_bindings_fail_before_catalog_writes(
@@ -975,10 +975,10 @@ echo json_encode(array(
                 )
                 self.assertEqual("", result["error"])
                 self.assertEqual(order, result["order"])
-                self.assertEqual(96, result["post_count"])
-                self.assertEqual(32, result["product_records"])
+                self.assertEqual(108, result["post_count"])
+                self.assertEqual(36, result["product_records"])
                 self.assertEqual(0, result["published_records"])
-                self.assertEqual(32, result["evaluation_products"])
+                self.assertEqual(36, result["evaluation_products"])
                 self.assertEqual(7, result["shared_products"])
                 self.assertTrue(result["shared_bindings_exact"])
                 self.assertTrue(result["held_fields_intact"])
@@ -1148,13 +1148,13 @@ echo json_encode(array(
     def assert_shared_order_result(self, result: dict, order: str) -> None:
         self.assertEqual("", result["error"])
         self.assertEqual(order, result["order"])
-        self.assertEqual(64, result["post_count"])
-        self.assertEqual(32, result["ingredient_records"])
-        self.assertEqual(32, result["plan_records"])
+        self.assertEqual(72, result["post_count"])
+        self.assertEqual(36, result["ingredient_records"])
+        self.assertEqual(36, result["plan_records"])
         self.assertEqual(0, result["product_records"])
         self.assertEqual(0, result["published_records"])
-        self.assertEqual(32, result["evaluation_ingredient_bindings"])
-        self.assertEqual(32, result["evaluation_plan_bindings"])
+        self.assertEqual(36, result["evaluation_ingredient_bindings"])
+        self.assertEqual(36, result["evaluation_plan_bindings"])
         self.assertEqual(7, result["graph_overlap_count"])
         self.assertEqual(7, result["shared_ingredient_count"])
         self.assertEqual(7, result["shared_plan_count"])
