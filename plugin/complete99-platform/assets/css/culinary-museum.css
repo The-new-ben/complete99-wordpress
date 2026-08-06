@@ -98,7 +98,10 @@ body.c99-culinary-museum {
 }
 
 .c99-museum-breadcrumbs a {
+	min-width: 44px;
+	padding-inline: 8px;
 	color: var(--c99-museum-green);
+	justify-content: center;
 	text-decoration-thickness: 1px;
 }
 
@@ -333,14 +336,15 @@ body.c99-culinary-museum {
 
 .c99-museum-citation a {
 	display: inline-flex;
-	min-width: 28px;
-	min-height: 28px;
+	min-width: 44px;
+	min-height: 44px;
 	align-items: center;
 	justify-content: center;
 	color: var(--c99-museum-green);
 	font-size: 13px;
 	font-weight: 900;
 	text-decoration: none;
+	vertical-align: middle;
 }
 
 .c99-museum-measurements {

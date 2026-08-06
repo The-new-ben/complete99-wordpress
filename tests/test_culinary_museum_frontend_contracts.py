@@ -70,6 +70,14 @@ class CulinaryMuseumFrontendContracts(unittest.TestCase):
         self.assertIn("@media (max-width: 680px)", css)
         self.assertIn("@media (prefers-reduced-motion: reduce)", css)
         self.assertGreaterEqual(css.count("min-height: 44px"), 3)
+        self.assertRegex(
+            css,
+            r"(?s)\.c99-museum-breadcrumbs a\s*\{[^}]*min-width:\s*44px",
+        )
+        self.assertRegex(
+            css,
+            r"(?s)\.c99-museum-citation a\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px",
+        )
 
     def test_new_public_files_contain_no_em_dash(self) -> None:
         for path in (FRONTEND, SITEMAP, TEMPLATE, CSS):
