@@ -90,6 +90,10 @@ class PremiumChromeContracts(unittest.TestCase):
         )
         self.assertRegex(
             self.css,
+            r"(?s)\.c99-breadcrumb a\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px",
+        )
+        self.assertRegex(
+            self.css,
             r"(?s)@media\s*\(max-width:\s*560px\).*?\.c99-language-switch\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px",
         )
         self.assertRegex(

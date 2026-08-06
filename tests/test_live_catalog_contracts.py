@@ -428,11 +428,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_6_0(self) -> None:
+    def test_release_version_is_exact_1_6_1(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.6\.0$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.6.0' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.6.0' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.6\.1$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.6.1' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.6.1' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -1233,6 +1233,10 @@ echo wp_json_encode(array(
         filter_button_css = re.search(r"\.c99-product-filter-buttons button\s*\{([^}]*)\}", self.css)
         self.assertIsNotNone(filter_button_css)
         self.assertRegex(filter_button_css.group(1), r"min-height:\s*44px")
+        cart_feedback_css = re.search(r"\.c99-store-cart-feedback a\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(cart_feedback_css)
+        self.assertRegex(cart_feedback_css.group(1), r"min-width:\s*44px")
+        self.assertRegex(cart_feedback_css.group(1), r"min-height:\s*44px")
         hidden_card_css = re.search(r"\.c99-store-product-card\[hidden\]\s*\{([^}]*)\}", self.css)
         self.assertIsNotNone(hidden_card_css)
         self.assertRegex(hidden_card_css.group(1), r"display:\s*none\s*!important")

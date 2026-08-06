@@ -1,9 +1,12 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-06
-Release target: Complete99 Platform 1.6.0
+Release target: Complete99 Platform 1.6.1
 
-## Current 1.6.0 catalog boundary
+## Current 1.6.1 catalog boundary
+
+Release 1.6.1 preserves the 1.6.0 catalog and adds the strict 44 by 44
+CSS-pixel target to the consumer breadcrumb and live cart-status links.
 
 Release 1.6.0 extends the catalog with fresh Japanese wasabi and a professional
 stainless-steel wasabi grater. Food and equipment use one WooCommerce source of

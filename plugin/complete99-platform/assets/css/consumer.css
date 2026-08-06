@@ -896,8 +896,10 @@ body.c99-consumer-site {
 
 .c99-breadcrumb a {
 	display: inline-flex;
+	min-width: 44px;
 	min-height: 44px;
 	align-items: center;
+	justify-content: center;
 	color: var(--c99-food-green);
 }
 
@@ -1357,6 +1359,14 @@ body.c99-consumer-site {
 
 .c99-live-store-hero h1 {
 	max-width: 13ch;
+}
+
+.c99-store-cart-feedback a {
+	display: inline-flex;
+	min-width: 44px;
+	min-height: 44px;
+	align-items: center;
+	justify-content: center;
 }
 
 .c99-live-store-products {
