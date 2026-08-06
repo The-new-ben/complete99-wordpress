@@ -1,16 +1,22 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-06
-Release target: Complete99 Platform 1.7.0
+Release target: Complete99 Platform 1.9.0
 
-## Current 1.7.0 catalog boundary
+## Current 1.9.0 catalog boundary
 
-Release 1.7.0 preserves all 32 WooCommerce offers and introduces a modular
-Japanese Foundations Lab over the reviewed public science graph. It does not
-publish candidate supplier offers, landed costs, margins or future product
-prices. Those records remain private inputs for a later approved channel offer.
-The Lab remains noindex and does not change the canonical owner or commercial
-state of any member entity.
+Release 1.9.0 publishes exactly 36 WooCommerce offers and expands the modular
+Japanese Foundations Lab over the reviewed public science graph. The four new
+offers are Uozu Koshihikari rice, Hishiroku dried rice koji, Hishiroku
+Chouhaku-kin starter culture and one 50 to 60 gram Dutch-grown fresh wasabi
+rhizome. The Lab remains noindex and does not change the canonical owner or
+commercial state of any member entity.
+
+Each new offer has current dated market evidence, a documented Bank of Israel
+conversion when needed, an owner-authorized opening price, opening stock 1, no
+backorders and one exact public image. Supplier cost, landed cost and gross
+margin are not published or inferred. They remain empty until invoice, freight,
+tax and handling evidence exists. Payment remains disabled.
 
 Release 1.6.1 preserves the 1.6.0 catalog and adds the strict 44 by 44
 CSS-pixel target to the consumer breadcrumb and live cart-status links.
@@ -21,7 +27,7 @@ truth but retain type-specific facts, validation, rendering and schema. It
 supersedes the earlier evaluation-only pantry state described below.
 
 - WooCommerce 10.9.4 is installed from the exact pinned official package.
-- The curated public store contains exactly 32 owner-authorized culinary products.
+- The curated public store contains exactly 36 owner-authorized culinary products.
 - Each new product begins with stock 1, no backorders and one normal public
   product image with no archive label or disclaimer.
 - Prices are owner-authorized opening retail prices informed by the bound market

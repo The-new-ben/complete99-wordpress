@@ -331,6 +331,58 @@ $c99_products = array(
 			'safety'     => array( 'he' => 'משטח הגירור חד. יש לאחוז בידית, להרחיק אצבעות מהשיניים ולנקות במברשת במקום ביד חשופה.', 'en' => 'The grating surface is sharp. Hold the handle, keep fingers clear of the teeth and clean with a brush rather than a bare hand.' ),
 		)
 	),
+	$c99_product(
+		'product-koshihikari-uozu-2kg', 'ingredient-koshihikari-rice', 'אורז קושיהיקארי מאוזו, טויאמה, 2 ק״ג', 'Uozu, Toyama Koshihikari rice 2 kg', 'Dutch Wasabi market benchmark',
+		'packaged_shelf_stable', 'אריזת 2 ק״ג', 'One 2 kg pack', 58.95, 58.95, 58.95, 29.47, 'ILS_per_kg_source_conversion', 149.00,
+		'https://www.dutchwasabi.nl/en/koshihikari-rice-from-uozu-toyama-2-kg-2/', 'dutch_wasabi', '2026-08-06', array(), array( 'supplier_label_review', 'harvest_and_milling_lot_review', 'import_label_review', 'generated_unbranded_product_visual' ), '2026-08-06', 'food',
+		array(
+			'source_price' => array( 'amount' => '16.95', 'currency' => 'EUR', 'tax_state' => 'included', 'availability_state' => 'in_stock_at_observation' ),
+			'fx_conversion' => array(
+				'rate' => '3.4776', 'basis' => 'ILS_per_EUR', 'source_url' => 'https://www.boi.org.il/roles/markets/exchangerates/',
+				'rate_date' => '2026-08-06', 'checked_at' => '2026-08-06', 'converted_amount_ils' => '58.95',
+				'formula' => 'EUR 16.95 multiplied by ILS 3.4776 per EUR equals ILS 58.94532, rounded to ILS 58.95.',
+			),
+		)
+	),
+	$c99_product(
+		'product-hishiroku-dried-rice-koji-500g', 'ingredient-kome-koji', 'קומה קוג׳י מיובש Hishiroku SR-108, 500 גרם', 'Hishiroku SR-108 dried rice koji 500 g', 'Hishiroku Moyashi official benchmark',
+		'chilled_or_frozen_sensitive', 'אריזת 500 גרם', 'One 500 g pack', 20.04, 20.04, 20.04, 40.08, 'ILS_per_kg_source_conversion', 119.00,
+		'https://1469.stores.jp/items/601b735cc19c453eef5d6a72', 'hishiroku_moyashi', '2026-08-06', array(), array( 'refrigerated_storage', 'supplier_label_review', 'culture_and_lot_review', 'import_label_review', 'generated_unbranded_product_visual' ), '2026-08-06', 'food',
+		array(
+			'source_price' => array( 'amount' => '1050', 'currency' => 'JPY', 'tax_state' => 'included', 'availability_state' => 'add_to_cart_available_at_observation' ),
+			'fx_conversion' => array(
+				'rate' => '1.9088', 'basis' => 'ILS_per_100_JPY', 'source_url' => 'https://www.boi.org.il/roles/markets/exchangerates/',
+				'rate_date' => '2026-08-06', 'checked_at' => '2026-08-06', 'converted_amount_ils' => '20.04',
+				'formula' => 'JPY 1,050 divided by 100 and multiplied by ILS 1.9088 per JPY 100 equals ILS 20.0424, rounded to ILS 20.04.',
+			),
+		)
+	),
+	$c99_product(
+		'product-hishiroku-chouhaku-kin-20g', 'ingredient-koji-starter-culture', 'תרבית קוג׳י Hishiroku Chouhaku-kin, 20 גרם', 'Hishiroku Chouhaku-kin koji starter culture 20 g', 'Hishiroku Moyashi official benchmark',
+		'chilled_or_frozen_sensitive', 'שקית 20 גרם', 'One 20 g sachet', 12.03, 12.03, 12.03, 601.27, 'ILS_per_kg_source_conversion', 109.00,
+		'https://1469.stores.jp/items/5efed301ec8fd331f922d017', 'hishiroku_moyashi', '2026-08-06', array(), array( 'refrigerated_storage', 'follow_maker_directions', 'culture_identity_and_lot_review', 'import_classification_review', 'generated_unbranded_product_visual' ), '2026-08-06', 'food',
+		array(
+			'source_price' => array( 'amount' => '630', 'currency' => 'JPY', 'tax_state' => 'included', 'availability_state' => 'add_to_cart_available_at_observation' ),
+			'fx_conversion' => array(
+				'rate' => '1.9088', 'basis' => 'ILS_per_100_JPY', 'source_url' => 'https://www.boi.org.il/roles/markets/exchangerates/',
+				'rate_date' => '2026-08-06', 'checked_at' => '2026-08-06', 'converted_amount_ils' => '12.03',
+				'formula' => 'JPY 630 divided by 100 and multiplied by ILS 1.9088 per JPY 100 equals ILS 12.02544, rounded to ILS 12.03.',
+			),
+		)
+	),
+	$c99_product(
+		'product-fresh-wasabi-50-60g', 'ingredient-fresh-dutch-wasabi', 'קנה שורש וואסבי טרי בגידול הולנדי, יחידה 50 עד 60 גרם', 'Dutch-grown fresh wasabi rhizome, one 50 to 60 g piece', 'Dutch Wasabi market benchmark',
+		'chilled_or_frozen_sensitive', 'יחידה אחת, 50 עד 60 גרם', 'One 50 to 60 g piece', 60.89, 60.89, 60.89, 1107.14, 'ILS_per_kg_midpoint_source_conversion', 119.00,
+		'https://www.dutchwasabi.nl/en/fresh-wasabirhi-hem-1-piece-50-60-grams-2-4-servings/', 'dutch_wasabi', '2026-08-06', array(), array( 'cold_chain_review', 'variable_weight_50_60g', 'origin_netherlands', 'supplier_label_review', 'generated_unbranded_product_visual' ), '2026-08-06', 'food',
+		array(
+			'source_price' => array( 'amount' => '17.51', 'currency' => 'EUR', 'tax_state' => 'included', 'availability_state' => 'in_stock_at_observation' ),
+			'fx_conversion' => array(
+				'rate' => '3.4776', 'basis' => 'ILS_per_EUR', 'source_url' => 'https://www.boi.org.il/roles/markets/exchangerates/',
+				'rate_date' => '2026-08-06', 'checked_at' => '2026-08-06', 'converted_amount_ils' => '60.89',
+				'formula' => 'EUR 17.51 multiplied by ILS 3.4776 per EUR equals ILS 60.892776, rounded to ILS 60.89.',
+			),
+		)
+	),
 );
 
 $c99_candidate_relations = array(
@@ -405,6 +457,10 @@ $c99_evaluation_image_bindings = array(
 	'product-kito-yuzu-juice-100ml' => 'c99-ingredient-kito-yuzu-juice-evaluation-v01.webp',
 	'product-fresh-japanese-wasabi-250g' => 'c99-ingredient-fresh-wasabi-250g-v01.webp',
 	'product-hagane-zame-large' => 'c99-equipment-hagane-zame-pro-v01.webp',
+	'product-koshihikari-uozu-2kg' => 'c99-ingredient-koshihikari-rice-2kg-v01.webp',
+	'product-hishiroku-dried-rice-koji-500g' => 'c99-ingredient-dried-rice-koji-500g-v01.webp',
+	'product-hishiroku-chouhaku-kin-20g' => 'c99-culture-chouhaku-kin-koji-starter-20g-v01.webp',
+	'product-fresh-wasabi-50-60g' => 'c99-ingredient-fresh-dutch-wasabi-50-60g-v01.webp',
 );
 
 foreach ( $c99_products as &$c99_seed_product ) {
@@ -447,6 +503,8 @@ return array(
 		'japanese_taste'             => 'https://int.japanesetaste.com/',
 		'the_wasabi_company'          => 'https://www.thewasabicompany.co.uk/',
 		'yamamoto_foods_official'     => 'https://www.yamamotofoods.co.jp/haganezame/jp/spec/',
+		'dutch_wasabi'                => 'https://www.dutchwasabi.nl/',
+		'hishiroku_moyashi'            => 'https://1469.stores.jp/',
 	),
 	'classification_rules'         => $c99_classification_rules,
 	'products'                     => $c99_products,

@@ -88,12 +88,12 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
         cls.assets = cls.manifest["assets"]
         cls.live_product_codes = load_live_product_codes()
 
-    def test_manifest_covers_exactly_56_source_and_delivery_pairs(self):
+    def test_manifest_covers_exactly_60_source_and_delivery_pairs(self):
         self.assertEqual(
             "complete99-generated-asset-manifest/v1", self.manifest["schema"]
         )
         self.assertEqual("2026-08-06", self.manifest["reviewed_at"])
-        self.assertEqual(56, len(self.assets))
+        self.assertEqual(60, len(self.assets))
 
         source_names = {asset["source_filename"] for asset in self.assets}
         delivery_names = {asset["filename"] for asset in self.assets}
@@ -180,7 +180,7 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
                         asset["presentation_scope"],
                     )
 
-        self.assertEqual(32, len(public_product_codes))
+        self.assertEqual(36, len(public_product_codes))
         self.assertEqual(self.live_product_codes, public_product_codes)
 
         by_stable_slug = {asset["stable_slug"]: asset for asset in self.assets}

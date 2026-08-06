@@ -53,7 +53,7 @@ BRIDGE_SOURCE_HEADER = "COMPLETE99_WOOCOMMERCE_BRIDGE_SOURCE_V1"
 CATALOG_ROUTE = "/wp-json/complete99/v1/store/catalog-materialization"
 CATALOG_STATUS_SCHEMA = "complete99-live-catalog-status/v1"
 CATALOG_RECEIPT_SCHEMA = "complete99-live-catalog-receipt/v1"
-EXPECTED_PRODUCT_COUNT = 32
+EXPECTED_PRODUCT_COUNT = 36
 EXPECTED_PRODUCT_CODES = (
     "product-tahini-500g",
     "product-amba-500g",
@@ -87,6 +87,10 @@ EXPECTED_PRODUCT_CODES = (
     "product-kito-yuzu-juice-100ml",
     "product-fresh-japanese-wasabi-250g",
     "product-hagane-zame-large",
+    "product-koshihikari-uozu-2kg",
+    "product-hishiroku-dried-rice-koji-500g",
+    "product-hishiroku-chouhaku-kin-20g",
+    "product-fresh-wasabi-50-60g",
 )
 EXPECTED_ILS_PRICES = {
     "product-tahini-500g": "11.00",
@@ -121,6 +125,10 @@ EXPECTED_ILS_PRICES = {
     "product-kito-yuzu-juice-100ml": "64.00",
     "product-fresh-japanese-wasabi-250g": "399.00",
     "product-hagane-zame-large": "699.00",
+    "product-koshihikari-uozu-2kg": "149.00",
+    "product-hishiroku-dried-rice-koji-500g": "119.00",
+    "product-hishiroku-chouhaku-kin-20g": "109.00",
+    "product-fresh-wasabi-50-60g": "119.00",
 }
 
 

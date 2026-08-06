@@ -95,14 +95,14 @@ Registry:
 
 - `plugin/complete99-platform/data/generated-asset-manifest.php`
 
-The library contains 56 source PNG files and 56 matched WebP delivery files.
+The library contains 60 source PNG files and 60 matched WebP delivery files.
 They were created with OpenAI's built-in image generation between 2026-07-30
 and 2026-08-06 for Complete99. The set covers dishes, ingredient and product
 references, kitchen preparation, group meals, knowledge-centre visuals, pantry
 architecture, and delivery concepts.
 
-Thirty-two individually approved asset records map one-to-one to the current
-32-product public catalog. Approval as a public catalog illustration does not
+Thirty-six individually approved asset records map one-to-one to the current
+36-product public catalog. Approval as a public catalog illustration does not
 turn an unbranded generated vessel into documentary evidence of a supplier's
 actual package or label.
 
@@ -125,6 +125,28 @@ are recorded in the generated asset manifest.
 These assets must not be used with fabricated badges, medical claims,
 certifications, supplier branding, current availability statements, or a
 public add-to-cart control before the corresponding acceptance gates pass.
+
+### Release 1.9.0 product and science additions
+
+OpenAI image generation created four unbranded public product illustrations and
+four companion science illustrations for Complete99 on 2026-08-06. The product
+assets are mapped to exact product codes in the generated asset manifest. The
+science assets illustrate the reviewed knowledge pages and do not represent a
+specific supplier package, production lot, laboratory result or certification.
+
+| Product asset | Binding | Dimensions | PNG SHA256 | WebP SHA256 |
+|---|---|---:|---|---|
+| `c99-ingredient-koshihikari-rice-2kg-v01` | `product-koshihikari-uozu-2kg` | 1254x1254 | `335f366760b0f86067338faf87cbb98214ced71eda8d058b336d7478ac0f6103` | `3fd59c515368780a357d4fffe8bece9db765de115dc07aa54dc3f362229e2e32` |
+| `c99-ingredient-dried-rice-koji-500g-v01` | `product-hishiroku-dried-rice-koji-500g` | 1254x1254 | `8e12856922e89a0b7c2de40d642ede40107378b341718a60cf0580321ffba6bc` | `23e81d6cb75624681a8f72492b993d13416bd98e7a2f20440ef406a15153655d` |
+| `c99-culture-chouhaku-kin-koji-starter-20g-v01` | `product-hishiroku-chouhaku-kin-20g` | 1254x1254 | `84698aed5023c62878b5f1fcb2494cdfa3b302b8b3ecfc38b2a515f0d8b357d4` | `cd36032b74e08b27b8f37b82d6da9a5e240fc5b013731c8aa7192a3cd850c6b0` |
+| `c99-ingredient-fresh-dutch-wasabi-50-60g-v01` | `product-fresh-wasabi-50-60g` | 1254x1254 | `a19d73f17efec269fa6d918ccf9a3429e283ba57baec695b34ee8c2bb3056ee7` | `b69bf0f2037ff435403c5b210431270e67c428a0ebc163873bd344d79a30a685` |
+
+| Science asset | Knowledge binding | Dimensions | AVIF SHA256 | WebP SHA256 |
+|---|---|---:|---|---|
+| `c99-science-koshihikari-rice-v01` | `ingredient-koshihikari-rice` | 1536x1024 | `f75e47898af55a6b76d2bddee92ac97ab675ebe4db58a8c1c60a49c030b4f9c9` | `e231622d6a84a5c2d2f8023bf1431faee49c7da141a22a944882fc584e744799` |
+| `c99-science-kome-koji-v01` | `ingredient-kome-koji` | 1536x1024 | `bd5c0b42eddf449c26d6d1fde50695d01dd02fd9447c80a63c3da77d8b258a22` | `49a01347668903b4e6140b27cbd18db5560dccc17216153a71c85a7eaf385e61` |
+| `c99-science-koji-starter-culture-v01` | `ingredient-koji-starter-culture` | 1536x1024 | `bde47f6d21dceb880468883eeb73ef3ad2294279b7a2671ddee3bed1227a9cfd` | `58811677efcbc8534e8c3ade288c7de332b06d95e2d1e3e0bedddbd2eb37dea0` |
+| `c99-science-dutch-grown-fresh-wasabi-v01` | `ingredient-fresh-dutch-wasabi` | 1536x1024 | `0bacd1785eb971cef7735d48e8b5b4ea494b031e5a223be33f62cd2442f80e81` | `720f8b65c3f1f010332664261ef4608e21d9f88d13349d041dabac248d3d0ed8` |
 
 ### Release 1.6.0 product additions
 

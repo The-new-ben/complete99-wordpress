@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.8.0
+Release target: Complete99 Platform 1.9.0
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.8.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.8.0 and its versioned package URL.
+- The public update manifest matches version 1.9.0 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -43,7 +43,7 @@ Release target: Complete99 Platform 1.8.0
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
-- The twenty-four bilingual museum-preview routes resolve from public projections,
+- The forty-four bilingual museum-preview routes resolve from public projections,
   emit canonical and hreflang metadata, remain `noindex,follow`, and are absent
   from the museum sitemap provider until their separate index gate is approved.
 - Public museum responses cannot expose visual prompts, supplier terms, landed
@@ -72,7 +72,7 @@ Release target: Complete99 Platform 1.8.0
   bilingual consumer copy.
 - Public copy explains food directly and does not narrate templates, publishing
   systems or future content mechanics.
-- The 32 selected catalog images render as normal product media with no public
+- The 36 selected catalog images render as normal product media with no public
   archive label, caveat or unusual treatment.
 - A live read-model image appears only with approved provenance and public-use
   rights.
@@ -114,9 +114,15 @@ Release target: Complete99 Platform 1.8.0
 
 - WooCommerce 10.9.4 is installed from the pinned official package and the
   full installed tree matches the expected digest.
-- The public store contains exactly 32 owner-authorized catalog products and is indexable.
-- Release 1.8.0 leaves the exact 32-item catalog allowlist, receipt and public
-  product set unchanged.
+- The public store contains exactly 36 owner-authorized catalog products and is indexable.
+- Release 1.9.0 adds exactly four owner-authorized offers to the previous
+  32-item allowlist: Uozu Koshihikari rice, dried rice koji, Chouhaku-kin koji
+  starter and Dutch-grown fresh wasabi.
+- Each new offer has its bound dated source URL, Bank of Israel conversion when
+  required, owner-authorized ILS price, one unit of opening stock, no backorders
+  and an exact generated-image receipt.
+- The 50 to 60 gram wasabi offer stores 0.060 kg as its operational shipping
+  weight and exposes a 0.050 to 0.060 kg range in Product structured data.
 - Every product has its exact SKU, researched opening price, normal image,
   category, tags, stock authority and a reciprocal dish or science-entity relation.
 - New products begin with stock 1. Reapplying the catalog preserves operational
@@ -127,7 +133,7 @@ Release target: Complete99 Platform 1.8.0
 - Selecting a pantry filter visually hides every nonmatching product card. The
   result count, selected button and URL parameter remain synchronized.
 - Changing the cart language to English, emptying the cart and returning to
-  either store keeps all 32 products available. Receipt identity uses raw
+  either store keeps all 36 products available. Receipt identity uses raw
   WooCommerce edit values and cannot change with customer-session filters.
 - The public Complete99 store is never the native WooCommerce Shop page.
 - Native product, taxonomy and Shop pages redirect to the curated store without

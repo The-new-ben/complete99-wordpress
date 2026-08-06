@@ -60,6 +60,10 @@ EXPECTED_PRICES = {
     "product-kito-yuzu-juice-100ml": "64.00",
     "product-fresh-japanese-wasabi-250g": "399.00",
     "product-hagane-zame-large": "699.00",
+    "product-koshihikari-uozu-2kg": "149.00",
+    "product-hishiroku-dried-rice-koji-500g": "119.00",
+    "product-hishiroku-chouhaku-kin-20g": "109.00",
+    "product-fresh-wasabi-50-60g": "119.00",
 }
 
 EXPECTED_DISHES = {
@@ -428,11 +432,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_8_0(self) -> None:
+    def test_release_version_is_exact_1_9_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.8\.0$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.8.0' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.8.0' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.9\.0$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.9.0' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.9.0' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -508,7 +512,7 @@ echo wp_json_encode(array(
     def test_runtime_bundle_has_exact_allowlist_and_price_map(self) -> None:
         products = self.bundle["products"]
         price_registry = self.bundle["prices"]
-        self.assertEqual(32, len(products))
+        self.assertEqual(36, len(products))
         self.assertEqual(set(EXPECTED_PRICES), set(products))
         self.assertEqual(EXPECTED_PRICES, {code: row["price"] for code, row in products.items()})
         self.assertEqual("complete99-live-catalog-prices/v1", price_registry["schema"])
@@ -585,6 +589,8 @@ echo wp_json_encode(array(
             "ogon_no_mura_direct": {"shop.ogonnomura.jp"},
             "the_wasabi_company": {"www.thewasabicompany.co.uk"},
             "yamamoto_foods_official": {"www.yamamotofoods.co.jp"},
+            "dutch_wasabi": {"www.dutchwasabi.nl"},
+            "hishiroku_moyashi": {"1469.stores.jp"},
         }
         source_urls = set()
         for code, product in self.bundle["products"].items():
@@ -603,7 +609,7 @@ echo wp_json_encode(array(
             self.assertIn(checked, {date(2026, 7, 31), date(2026, 8, 6)}, code)
             self.assertLessEqual(updated, checked, code)
             source_urls.add(evidence["source_url"])
-        self.assertEqual(32, len(source_urls))
+        self.assertEqual(36, len(source_urls))
 
     def test_import_source_price_and_fx_evidence_remains_distinct_from_public_price(self) -> None:
         cases = {
@@ -614,6 +620,7 @@ echo wp_json_encode(array(
                 "GBP",
                 "4.0450",
                 "ILS_per_GBP",
+                "2026-08-05",
             ),
             "product-hagane-zame-large": (
                 "699.00",
@@ -622,11 +629,48 @@ echo wp_json_encode(array(
                 "JPY",
                 "1.9049",
                 "ILS_per_100_JPY",
+                "2026-08-05",
+            ),
+            "product-koshihikari-uozu-2kg": (
+                "149.00",
+                "58.95",
+                "16.95",
+                "EUR",
+                "3.4776",
+                "ILS_per_EUR",
+                "2026-08-06",
+            ),
+            "product-hishiroku-dried-rice-koji-500g": (
+                "119.00",
+                "20.04",
+                "1050",
+                "JPY",
+                "1.9088",
+                "ILS_per_100_JPY",
+                "2026-08-06",
+            ),
+            "product-hishiroku-chouhaku-kin-20g": (
+                "109.00",
+                "12.03",
+                "630",
+                "JPY",
+                "1.9088",
+                "ILS_per_100_JPY",
+                "2026-08-06",
+            ),
+            "product-fresh-wasabi-50-60g": (
+                "119.00",
+                "60.89",
+                "17.51",
+                "EUR",
+                "3.4776",
+                "ILS_per_EUR",
+                "2026-08-06",
             ),
         }
         for code, expected in cases.items():
             with self.subTest(product=code):
-                public_price, observed, amount, currency, rate, basis = expected
+                public_price, observed, amount, currency, rate, basis, rate_date = expected
                 product = self.bundle["products"][code]
                 evidence = product["price_evidence"]
                 self.assertEqual(public_price, product["price"])
@@ -636,7 +680,7 @@ echo wp_json_encode(array(
                 self.assertEqual(currency, evidence["source_price"]["currency"])
                 self.assertEqual(rate, evidence["fx_conversion"]["rate"])
                 self.assertEqual(basis, evidence["fx_conversion"]["basis"])
-                self.assertEqual("2026-08-05", evidence["fx_conversion"]["rate_date"])
+                self.assertEqual(rate_date, evidence["fx_conversion"]["rate_date"])
                 self.assertEqual(observed, evidence["fx_conversion"]["converted_amount_ils"])
                 self.assertEqual(
                     "https://www.boi.org.il/roles/markets/exchangerates/",
@@ -676,13 +720,15 @@ echo wp_json_encode(array(
             for dish in dishes:
                 self.assertIn(code, dish_relations[dish], f"{code} -> {dish}")
 
-        self.assertEqual(32, len(set(ingredient_codes)))
+        self.assertEqual(36, len(set(ingredient_codes)))
         self.assertEqual(
             {
                 "product-kito-yuzu-juice-100ml",
                 "product-rishiri-kombu-100g",
                 "product-honkarebushi-200g",
                 "product-fresh-japanese-wasabi-250g",
+                "product-koshihikari-uozu-2kg",
+                "product-fresh-wasabi-50-60g",
             },
             set(
                 product_relations["product-yamaroku-tsurubishio-500ml"][
@@ -758,8 +804,8 @@ echo wp_json_encode(array(
             self.assertTrue(asset["alt"]["en"].strip(), code)
             hashes.add(asset["sha256"])
             filenames.add(asset["filename"])
-        self.assertEqual(32, len(hashes))
-        self.assertEqual(32, len(filenames))
+        self.assertEqual(36, len(hashes))
+        self.assertEqual(36, len(filenames))
 
     def test_product_policy_is_bilingual_and_taxonomy_bounded(self) -> None:
         policy = self.bundle["policy"]
@@ -812,6 +858,9 @@ echo wp_json_encode(array(
                 "citrus",
                 "premium",
                 "wasabi",
+                "rice",
+                "koji",
+                "starter-culture",
                 "equipment",
             },
             set(policy["tags"]),
@@ -1499,10 +1548,10 @@ echo wp_json_encode(array(
         ):
             self.assertNotIn(stale, self.consumer_content.lower())
         for current in (
-            "The pantry presents 32 culinary products",
+            "The pantry presents 36 culinary products",
             "Products can be added to the cart",
             "Electronic payment will open after the payment provider is connected",
-            "המזווה מציג 32 מוצרי קולינריה",
+            "המזווה מציג 36 מוצרי קולינריה",
             "אפשר להוסיף מוצרים לסל",
             "סליקה אלקטרונית תיפתח לאחר חיבור ספק הסליקה",
         ):

@@ -18,7 +18,7 @@ final class Complete99_Evaluation_Catalog {
 	const RECEIPT_SCHEMA  = 'complete99-evaluation-catalog-receipt/v1';
 	const STATUS_SCHEMA   = 'complete99-evaluation-catalog-status/v1';
 	const OPTION_RECEIPT  = 'complete99_evaluation_catalog_receipt';
-	const EXPECTED_SEED_COUNT = 32;
+	const EXPECTED_SEED_COUNT = 36;
 	const MODE_AUTO         = 'auto';
 	const MODE_PRIVATE_ONLY = 'private_only';
 
@@ -917,7 +917,7 @@ final class Complete99_Evaluation_Catalog {
 				$path . '.market_observation.source_price'
 			);
 			$source_amount = self::assert_price( $observation['source_price']['amount'], $path . '.market_observation.source_price.amount' );
-			if ( ! in_array( $observation['source_price']['currency'], array( 'GBP', 'JPY' ), true ) ) {
+			if ( ! in_array( $observation['source_price']['currency'], array( 'EUR', 'GBP', 'JPY' ), true ) ) {
 				throw new \UnexpectedValueException( $path . '.market_observation.source_price.currency is invalid.' );
 			}
 			self::assert_identifier( $observation['source_price']['tax_state'], $path . '.market_observation.source_price.tax_state' );
@@ -929,7 +929,7 @@ final class Complete99_Evaluation_Catalog {
 				$path . '.market_observation.fx_conversion'
 			);
 			$fx_rate = self::assert_positive_decimal( $observation['fx_conversion']['rate'], $path . '.market_observation.fx_conversion.rate', 6 );
-			if ( ! in_array( $observation['fx_conversion']['basis'], array( 'ILS_per_GBP', 'ILS_per_100_JPY' ), true ) ) {
+			if ( ! in_array( $observation['fx_conversion']['basis'], array( 'ILS_per_EUR', 'ILS_per_GBP', 'ILS_per_100_JPY' ), true ) ) {
 				throw new \UnexpectedValueException( $path . '.market_observation.fx_conversion.basis is invalid.' );
 			}
 			self::assert_https_url( $observation['fx_conversion']['source_url'], $path . '.market_observation.fx_conversion.source_url' );
@@ -946,7 +946,8 @@ final class Complete99_Evaluation_Catalog {
 			if ( 0.005 <= abs( $converted - $observed ) ) {
 				throw new \UnexpectedValueException( $path . '.market_observation FX result differs from observed_price_ils.' );
 			}
-			$calculated = 'GBP' === $observation['source_price']['currency'] && 'ILS_per_GBP' === $observation['fx_conversion']['basis']
+			$calculated = in_array( $observation['source_price']['currency'], array( 'EUR', 'GBP' ), true )
+				&& 'ILS_per_' . $observation['source_price']['currency'] === $observation['fx_conversion']['basis']
 				? $source_amount * $fx_rate
 				: ( 'JPY' === $observation['source_price']['currency'] && 'ILS_per_100_JPY' === $observation['fx_conversion']['basis']
 					? ( $source_amount / 100 ) * $fx_rate

@@ -27,7 +27,7 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v5"
-EXPECTED_VERSION = "japanese-pilot-2026.08.06.v9"
+EXPECTED_VERSION = "japanese-pilot-2026.08.06.v10"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
@@ -41,7 +41,11 @@ EXPECTED_PUBLIC_PILOT = {
     "ingredient-kombu",
     "ingredient-katsuobushi",
     "ingredient-kioke-shoyu",
+    "ingredient-kome-koji",
+    "ingredient-koji-starter-culture",
+    "ingredient-koshihikari-rice",
     "ingredient-fresh-wasabi",
+    "ingredient-fresh-dutch-wasabi",
     "ingredient-kito-yuzu",
     "ingredient-hon-mirin",
     "molecule-allyl-isothiocyanate",
@@ -52,7 +56,11 @@ EXPECTED_PUBLIC_OFFER_CODES = {
     "ingredient-kombu": "product-rishiri-kombu-100g",
     "ingredient-katsuobushi": "product-honkarebushi-200g",
     "ingredient-kioke-shoyu": "product-yamaroku-tsurubishio-500ml",
+    "ingredient-kome-koji": "product-hishiroku-dried-rice-koji-500g",
+    "ingredient-koji-starter-culture": "product-hishiroku-chouhaku-kin-20g",
+    "ingredient-koshihikari-rice": "product-koshihikari-uozu-2kg",
     "ingredient-fresh-wasabi": "product-fresh-japanese-wasabi-250g",
+    "ingredient-fresh-dutch-wasabi": "product-fresh-wasabi-50-60g",
     "ingredient-kito-yuzu": "product-kito-yuzu-juice-100ml",
     "equipment-wasabi-grater": "product-hagane-zame-large",
 }
@@ -151,9 +159,17 @@ EXPECTED_CANONICAL_OWNERS = {
     "equipment-kioke": ("equipment", "/knowledge/kioke-barrel-guide/"),
     "ingredient-kioke-shoyu": ("ingredient", "/ingredients/kioke-shoyu/"),
     "ingredient-kome-koji": ("ingredient", "/ingredients/kome-koji/"),
+    "ingredient-koji-starter-culture": (
+        "ingredient",
+        "/ingredients/koji-starter-culture/",
+    ),
     "ingredient-fresh-wasabi": (
         "ingredient",
         "/ingredients/fresh-wasabi-rhizome/",
+    ),
+    "ingredient-fresh-dutch-wasabi": (
+        "ingredient",
+        "/ingredients/dutch-grown-fresh-wasabi/",
     ),
     "ingredient-kito-yuzu": ("ingredient", "/ingredients/kito-yuzu/"),
     "ingredient-yakinori": (
@@ -1277,7 +1293,7 @@ echo json_encode(array(
         "dish_schema": "complete99-dish-entity-tree-registry/v1",
         "dish_count": 12,
         "product_schema": "complete99-catalog-product-seeds/v1",
-        "product_count": 32,
+        "product_count": 36,
         "asset_schema": "complete99-generated-asset-manifest/v1",
-        "asset_count": 56,
+        "asset_count": 60,
     }

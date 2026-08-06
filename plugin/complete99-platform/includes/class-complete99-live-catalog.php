@@ -21,7 +21,7 @@ final class Complete99_Live_Catalog {
 	const OPTION_PICKUP_INSTANCE = 'complete99_live_catalog_pickup_instance';
 	const OPTION_PUBLIC_ADDRESS  = 'complete99_live_catalog_public_address';
 	const LOCK_TIMEOUT    = 10;
-	const EXPECTED_COUNT  = 32;
+	const EXPECTED_COUNT  = 36;
 	const RECOVERY_STATES = array(
 		'materializing',
 		'commit_unverified',
@@ -54,6 +54,8 @@ final class Complete99_Live_Catalog {
 	const META_SYNC_ENABLED  = '_complete99_inventory_sync_enabled';
 	const META_STOCK_INITIALIZED = '_complete99_live_catalog_stock_initialized';
 	const META_PUBLIC_COPY_REVIEWED = '_complete99_live_catalog_public_copy_reviewed';
+	const META_WEIGHT_MIN_KG = '_complete99_live_catalog_weight_min_kg';
+	const META_WEIGHT_MAX_KG = '_complete99_live_catalog_weight_max_kg';
 
 	const PRODUCT_CODES = array(
 		'product-tahini-500g',
@@ -88,6 +90,10 @@ final class Complete99_Live_Catalog {
 		'product-kito-yuzu-juice-100ml',
 		'product-fresh-japanese-wasabi-250g',
 		'product-hagane-zame-large',
+		'product-koshihikari-uozu-2kg',
+		'product-hishiroku-dried-rice-koji-500g',
+		'product-hishiroku-chouhaku-kin-20g',
+		'product-fresh-wasabi-50-60g',
 	);
 	const DISH_SLUGS = array(
 		'sabich',
@@ -810,7 +816,7 @@ final class Complete99_Live_Catalog {
 				|| $expected !== $policy_codes
 				|| $expected !== $relation_codes
 				|| $expected_dishes !== $dish_slugs ) {
-				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 32-product coverage.' );
+				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 36-product coverage.' );
 			}
 
 			$products      = array();
@@ -824,6 +830,14 @@ final class Complete99_Live_Catalog {
 				$science_entity_id = sanitize_key( (string) ( $relation['science_entity_id'] ?? '' ) );
 				$product_kind = sanitize_key( (string) ( $seed['product_kind'] ?? '' ) );
 				$public_product_kind = sanitize_key( (string) ( $public['product_kind'] ?? '' ) );
+				$weight_range = is_array( $public['weight_range_kg'] ?? null ) ? $public['weight_range_kg'] : array();
+				$weight_range_valid = empty( $weight_range )
+					|| ( array( 'min', 'max' ) === array_keys( $weight_range )
+						&& is_numeric( $weight_range['min'] )
+						&& is_numeric( $weight_range['max'] )
+						&& 0 < (float) $weight_range['min']
+						&& (float) $weight_range['min'] <= (float) $weight_range['max']
+						&& abs( (float) $public['weight_kg'] - (float) $weight_range['max'] ) < 0.000001 );
 				$food_fields = array( 'ingredients', 'allergens', 'storage' );
 				$equipment_fields = array( 'model', 'material', 'dimensions', 'care', 'safety' );
 				$typed_copy_valid = in_array( $product_kind, array( 'food', 'equipment' ), true )
@@ -871,7 +885,8 @@ final class Complete99_Live_Catalog {
 					|| ! isset( $policy['categories'][ $public['category'] ], $policy['shipping_classes'][ $public['shipping_class'] ] )
 					|| ! is_array( $public['tags'] )
 					|| '' === trim( (string) $public['weight_kg'] )
-					|| (float) $public['weight_kg'] <= 0 ) {
+					|| (float) $public['weight_kg'] <= 0
+					|| ! $weight_range_valid ) {
 					throw new \UnexpectedValueException( 'A live product policy record is invalid: ' . $code );
 				}
 				if ( '' !== $science_entity_id ) {
@@ -932,7 +947,9 @@ final class Complete99_Live_Catalog {
 						? (float) $source_amount * (float) $fx_rate
 						: ( 'JPY' === $source_currency && 'ILS_per_100_JPY' === $fx_basis
 							? ( (float) $source_amount / 100 ) * (float) $fx_rate
-							: -1 );
+							: ( 'EUR' === $source_currency && 'ILS_per_EUR' === $fx_basis
+								? (float) $source_amount * (float) $fx_rate
+								: -1 ) );
 					$source_evidence_valid = is_numeric( $source_amount )
 						&& 0 < (float) $source_amount
 						&& is_numeric( $fx_rate )
@@ -1685,6 +1702,8 @@ final class Complete99_Live_Catalog {
 				'_complete99_live_catalog_initial_stock'   => '1',
 				self::META_STOCK_INITIALIZED                => 'yes',
 				'_complete99_live_catalog_currency'        => 'ILS',
+				self::META_WEIGHT_MIN_KG                  => (string) ( $public['weight_range_kg']['min'] ?? '' ),
+				self::META_WEIGHT_MAX_KG                  => (string) ( $public['weight_range_kg']['max'] ?? '' ),
 			);
 			foreach ( $meta as $key => $value ) {
 				update_post_meta( $product_id, $key, $value );
@@ -1826,6 +1845,8 @@ final class Complete99_Live_Catalog {
 			'_complete99_live_catalog_package_en',
 			'_complete99_live_catalog_initial_stock',
 			self::META_STOCK_INITIALIZED,
+			self::META_WEIGHT_MIN_KG,
+			self::META_WEIGHT_MAX_KG,
 		);
 		$meta = array();
 		foreach ( $meta_keys as $key ) {

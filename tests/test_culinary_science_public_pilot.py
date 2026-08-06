@@ -29,7 +29,11 @@ PUBLIC_IDS = {
     "ingredient-kombu",
     "ingredient-katsuobushi",
     "ingredient-kioke-shoyu",
+    "ingredient-kome-koji",
+    "ingredient-koji-starter-culture",
+    "ingredient-koshihikari-rice",
     "ingredient-fresh-wasabi",
+    "ingredient-fresh-dutch-wasabi",
     "ingredient-kito-yuzu",
     "ingredient-hon-mirin",
     "molecule-allyl-isothiocyanate",
@@ -40,7 +44,11 @@ PUBLIC_OFFER_CODES = {
     "ingredient-kombu": "product-rishiri-kombu-100g",
     "ingredient-katsuobushi": "product-honkarebushi-200g",
     "ingredient-kioke-shoyu": "product-yamaroku-tsurubishio-500ml",
+    "ingredient-kome-koji": "product-hishiroku-dried-rice-koji-500g",
+    "ingredient-koji-starter-culture": "product-hishiroku-chouhaku-kin-20g",
+    "ingredient-koshihikari-rice": "product-koshihikari-uozu-2kg",
     "ingredient-fresh-wasabi": "product-fresh-japanese-wasabi-250g",
+    "ingredient-fresh-dutch-wasabi": "product-fresh-wasabi-50-60g",
     "ingredient-kito-yuzu": "product-kito-yuzu-juice-100ml",
     "equipment-wasabi-grater": "product-hagane-zame-large",
 }
@@ -104,7 +112,11 @@ LAB_GROUP_MEMBERS = {
         "ingredient-kombu",
         "ingredient-katsuobushi",
         "ingredient-kioke-shoyu",
+        "ingredient-kome-koji",
+        "ingredient-koji-starter-culture",
+        "ingredient-koshihikari-rice",
         "ingredient-fresh-wasabi",
+        "ingredient-fresh-dutch-wasabi",
         "ingredient-kito-yuzu",
         "ingredient-hon-mirin",
     ],
@@ -181,8 +193,16 @@ $paths = array(
     '/en/ingredients/katsuobushi/',
     '/ingredients/kioke-shoyu/',
     '/en/ingredients/kioke-shoyu/',
+    '/ingredients/kome-koji/',
+    '/en/ingredients/kome-koji/',
+    '/ingredients/koji-starter-culture/',
+    '/en/ingredients/koji-starter-culture/',
+    '/ingredients/koshihikari-rice/',
+    '/en/ingredients/koshihikari-rice/',
     '/ingredients/fresh-wasabi-rhizome/',
     '/en/ingredients/fresh-wasabi-rhizome/',
+    '/ingredients/dutch-grown-fresh-wasabi/',
+    '/en/ingredients/dutch-grown-fresh-wasabi/',
     '/ingredients/kito-yuzu/',
     '/en/ingredients/kito-yuzu/',
     '/ingredients/hon-mirin/',
@@ -238,14 +258,14 @@ def test_exact_reviewed_public_cohort_and_noindex_boundary(pilot_payload: dict) 
 
 def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict) -> None:
     assert pilot_payload["invalid"] == []
-    assert len(pilot_payload["bundles"]) == 26
+    assert len(pilot_payload["bundles"]) == 34
     public_standalone = {
         entity["id"]
         for entity in pilot_payload["registry"]["entities"]
         if entity["publication"]["public_page"]
         and entity["seo"]["route_mode"] == "standalone"
     }
-    assert len(public_standalone) == 13
+    assert len(public_standalone) == 17
     assert len(pilot_payload["bundles"]) == 2 * len(public_standalone)
     for path, bundle in pilot_payload["bundles"].items():
         assert bundle["canonical_path"] == path

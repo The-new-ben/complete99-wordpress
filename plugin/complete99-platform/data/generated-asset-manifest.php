@@ -1117,6 +1117,98 @@ $c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
 	'No text, logos, labels, packaging, certification marks, people, hands, sharkskin, rust, damaged teeth, duplicate tools or fake Japanese writing.'
 );
 
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-ingredient-koshihikari-rice-2kg-v01',
+	'koshihikari-uozu-rice-2kg',
+	'אורז קושיהיקארי 2 ק״ג',
+	'Koshihikari rice 2 kg',
+	'ingredient',
+	'c99-ingredient-koshihikari-rice-2kg-v01.png',
+	'335f366760b0f86067338faf87cbb98214ced71eda8d058b336d7478ac0f6103',
+	'c99-ingredient-koshihikari-rice-2kg-v01.webp',
+	'3fd59c515368780a357d4fffe8bece9db765de115dc07aa54dc3f362229e2e32',
+	1254,
+	1254,
+	'1:1',
+	array( 'ingredient-koshihikari-rice' ),
+	array( 'product-koshihikari-uozu-2kg' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג את אריזת הספק או את האצווה בפועל.',
+	'Generic product photography generated for Complete99; it does not depict the actual supplier pack or lot.',
+	'שקית אורז לא ממותגת לצד גרגרי קושיהיקארי קצרים וקערת אורז מבושל',
+	'Unbranded rice bag beside short Koshihikari grains and a bowl of cooked rice',
+	'Commercial culinary studio photograph of a premium unbranded two kilogram rice bag beside translucent short-grain Koshihikari rice and a small bowl of precisely cooked glossy rice, warm Japanese pantry styling, soft side light, square composition, natural texture.',
+	'No text, logos, labels, certification marks, barcodes, people, hands, copied packaging, false origin seal or fake Japanese writing.'
+);
+
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-ingredient-dried-rice-koji-500g-v01',
+	'hishiroku-dried-rice-koji-500g',
+	'קומה קוג׳י מיובש 500 גרם',
+	'Dried kome koji 500 g',
+	'ingredient',
+	'c99-ingredient-dried-rice-koji-500g-v01.png',
+	'8e12856922e89a0b7c2de40d642ede40107378b341718a60cf0580321ffba6bc',
+	'c99-ingredient-dried-rice-koji-500g-v01.webp',
+	'23e81d6cb75624681a8f72492b993d13416bd98e7a2f20440ef406a15153655d',
+	1254,
+	1254,
+	'1:1',
+	array( 'ingredient-kome-koji' ),
+	array( 'product-hishiroku-dried-rice-koji-500g' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג את אריזת היצרן או את האצווה בפועל.',
+	'Generic product photography generated for Complete99; it does not depict the actual maker pack or lot.',
+	'שקית לא ממותגת של קומה קוג׳י מיובש לצד גרגרים בהירים ומגש עץ',
+	'Unbranded pouch of dried kome koji beside pale grains and a wooden tray',
+	'Commercial culinary studio photograph of an unbranded five hundred gram pouch of dried kome koji beside distinct pale rice-koji grains in a shallow cedar tray, precise macro texture, clean warm light, square composition, no process exaggeration.',
+	'No text, logos, labels, certification marks, barcodes, people, hands, copied packaging, mold bloom exaggeration or fake Japanese writing.'
+);
+
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-culture-chouhaku-kin-koji-starter-20g-v01',
+	'hishiroku-chouhaku-kin-20g',
+	'תרבית קוג׳י Chouhaku-kin, 20 גרם',
+	'Chouhaku-kin koji starter culture 20 g',
+	'ingredient',
+	'c99-culture-chouhaku-kin-koji-starter-20g-v01.png',
+	'84698aed5023c62878b5f1fcb2494cdfa3b302b8b3ecfc38b2a515f0d8b357d4',
+	'c99-culture-chouhaku-kin-koji-starter-20g-v01.webp',
+	'cd36032b74e08b27b8f37b82d6da9a5e240fc5b013731c8aa7192a3cd850c6b0',
+	1254,
+	1254,
+	'1:1',
+	array( 'ingredient-koji-starter-culture' ),
+	array( 'product-hishiroku-chouhaku-kin-20g' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג אריזת יצרן, זן או אצווה בפועל.',
+	'Generic product photography generated for Complete99; it does not depict the actual maker pack, strain or lot.',
+	'שקית קרם לא ממותגת של תרבית קוג׳י לצד צלוחית אבקה מדודה',
+	'Unbranded cream koji starter sachet beside a small dish of measured powder',
+	'Commercial culinary laboratory photograph of one plain unbranded cream twenty gram koji starter sachet beside a small ceramic dish holding a measured amount of pale powder, cedar tray and rice grains in soft focus, clean warm side light, square composition.',
+	'No text, logos, labels, certification marks, barcodes, bottles, vials, people, hands, dosage claim, copied packaging or fake Japanese writing.'
+);
+
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-ingredient-fresh-dutch-wasabi-50-60g-v01',
+	'fresh-dutch-wasabi-50-60g',
+	'קנה שורש וואסבי טרי 50 עד 60 גרם',
+	'Fresh wasabi rhizome 50 to 60 g',
+	'ingredient',
+	'c99-ingredient-fresh-dutch-wasabi-50-60g-v01.png',
+	'a19d73f17efec269fa6d918ccf9a3429e283ba57baec695b34ee8c2bb3056ee7',
+	'c99-ingredient-fresh-dutch-wasabi-50-60g-v01.webp',
+	'b69bf0f2037ff435403c5b210431270e67c428a0ebc163873bd344d79a30a685',
+	1254,
+	1254,
+	'1:1',
+	array( 'ingredient-fresh-dutch-wasabi' ),
+	array( 'product-fresh-wasabi-50-60g' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג את קנה השורש או האריזה שיימסרו בפועל.',
+	'Generic product photography generated for Complete99; it does not depict the exact rhizome or pack that will be supplied.',
+	'קנה שורש וואסבי טרי יחיד על אבן כהה לצד מעט וואסבי מגורר',
+	'One fresh wasabi rhizome on dark stone beside a small amount of grated wasabi',
+	'Commercial culinary studio photograph of one fresh fifty to sixty gram wasabi rhizome with realistic knobbled green skin and trimmed stems, dark stone surface, a small amount freshly grated nearby, cool side light, square composition, accurate natural texture.',
+	'No text, logos, labels, certification marks, packaging, people, hands, horseradish paste, duplicate rhizomes, false Japanese origin cues or fake writing.'
+);
+
 /*
  * The owner explicitly approved the listed generic ingredient visuals for
  * normal public catalog use on their recorded authorization dates. They remain
@@ -1156,6 +1248,10 @@ $c99_public_catalog_assets = array(
 	'c99-ingredient-kito-yuzu-juice-evaluation-v01.webp',
 	'c99-ingredient-fresh-wasabi-250g-v01.webp',
 	'c99-equipment-hagane-zame-pro-v01.webp',
+	'c99-ingredient-koshihikari-rice-2kg-v01.webp',
+	'c99-ingredient-dried-rice-koji-500g-v01.webp',
+	'c99-culture-chouhaku-kin-koji-starter-20g-v01.webp',
+	'c99-ingredient-fresh-dutch-wasabi-50-60g-v01.webp',
 );
 
 $c99_public_catalog_asset_authorized_at = array_fill_keys( $c99_public_catalog_assets, '2026-07-31' );
@@ -1165,6 +1261,10 @@ $c99_public_catalog_asset_authorized_at['c99-ingredient-kioke-shoyu-evaluation-v
 $c99_public_catalog_asset_authorized_at['c99-ingredient-kito-yuzu-juice-evaluation-v01.webp'] = '2026-08-06';
 $c99_public_catalog_asset_authorized_at['c99-ingredient-fresh-wasabi-250g-v01.webp'] = '2026-08-06';
 $c99_public_catalog_asset_authorized_at['c99-equipment-hagane-zame-pro-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-ingredient-koshihikari-rice-2kg-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-ingredient-dried-rice-koji-500g-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-culture-chouhaku-kin-koji-starter-20g-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-ingredient-fresh-dutch-wasabi-50-60g-v01.webp'] = '2026-08-06';
 
 foreach ( $c99_generated_asset_manifest['assets'] as &$c99_asset_record ) {
 	if ( ! in_array( $c99_asset_record['filename'], $c99_public_catalog_assets, true ) ) {

@@ -55,8 +55,8 @@ class MarketCatalogContracts(unittest.TestCase):
         self.assertFalse(self.registry["stock_policy"]["public_sale"])
 
     def test_all_32_products_have_unique_price_stock_and_sources(self):
-        self.assertEqual(32, len(self.products))
-        self.assertEqual(32, len(self.by_code))
+        self.assertEqual(36, len(self.products))
+        self.assertEqual(36, len(self.by_code))
         for product in self.products:
             with self.subTest(product=product["product_code"]):
                 self.assertRegex(
@@ -171,7 +171,7 @@ class MarketCatalogContracts(unittest.TestCase):
             / "generated"
         )
         bound = [item for item in self.products if item["image_asset"]]
-        self.assertEqual(32, len(bound))
+        self.assertEqual(36, len(bound))
         for product in bound:
             with self.subTest(product=product["product_code"]):
                 self.assertEqual(
