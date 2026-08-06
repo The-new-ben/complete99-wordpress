@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 import unittest
 from pathlib import Path
@@ -13,10 +14,14 @@ FRONTEND = PLUGIN / "includes" / "class-complete99-frontend.php"
 CONTENT = PLUGIN / "includes" / "class-complete99-content.php"
 TEMPLATE = PLUGIN / "templates" / "live-dish.php"
 CSS = PLUGIN / "assets" / "css" / "public.css"
+DIGEST_FIXTURE = ROOT / "tests" / "fixtures" / "complete99-public-read-model-digest-v1.json"
 
 PHP_RUNTIME_BOOTSTRAP = r"""
 define('ABSPATH', __DIR__);
 define('COMPLETE99_PLATFORM_DIR', '__PLUGIN_PATH__/');
+define('COMPLETE99_PLATFORM_VERSION', '1.8.0');
+define('COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.8.0');
+define('C99_DIGEST_FIXTURE', '__FIXTURE_PATH__');
 
 class WP_Error {
     private $code;
@@ -183,31 +188,50 @@ function c99_reset_runtime($stored = null) {
     $c99_upress_result = null;
     $c99_transients = array();
 }
+function c99_generation_at($seconds_offset = 0, $milliseconds = '000') {
+    return gmdate('Y-m-d\TH:i:s', time() + (int) $seconds_offset)
+        . '.' . $milliseconds . 'Z';
+}
 function c99_item($id, $slug) {
     return array(
         'id' => $id,
         'slug' => $slug,
+        'section_id' => 'section-default',
         'name_he' => 'Hebrew name',
         'name_en' => 'English name',
+        'category_he' => 'Hebrew category',
+        'category_en' => 'English category',
         'description_he' => 'Hebrew description',
         'description_en' => 'English description',
+        'tag_he' => 'Hebrew tag',
+        'tag_en' => 'English tag',
+        'image_asset' => '',
+        'media_provenance' => 'business_owned',
+        'media_rights_state' => 'approved_public_use',
         'verification_state' => 'launch_ready',
         'published' => true,
         'vegetarian' => false,
         'sort' => 1,
-        'updated_at' => gmdate('c'),
+        'updated_at' => c99_generation_at(),
     );
 }
-function c99_payload($items) {
+function c99_payload_at($items, $generated_at) {
+    foreach ($items as &$item) {
+        $item['updated_at'] = $generated_at;
+    }
+    unset($item);
     return array(
         'schema' => 'complete99-public-read-model/v1',
         'version' => 'complete99-os-v42',
-        'generated_at' => gmdate('c'),
+        'generated_at' => $generated_at,
         'branches' => array(),
         'menu_sections' => array(),
         'menu_items' => $items,
         'campaigns' => array(),
     );
+}
+function c99_payload($items) {
+    return c99_payload_at($items, c99_generation_at());
 }
 function c99_request($payload) {
     return new WP_REST_Request(json_encode($payload, JSON_UNESCAPED_SLASHES));
@@ -222,8 +246,96 @@ function c99_error($value) {
     );
 }
 
+function c99_canonicalize_read_model_value($value) {
+    if (!is_array($value)) return $value;
+    $is_list = true;
+    $offset = 0;
+    foreach (array_keys($value) as $key) {
+        if ($key !== $offset) {
+            $is_list = false;
+            break;
+        }
+        $offset++;
+    }
+    $canonical = array();
+    foreach ($value as $key => $item) {
+        $canonical[$key] = c99_canonicalize_read_model_value($item);
+    }
+    if (!$is_list) ksort($canonical, SORT_STRING);
+    return $canonical;
+}
+function c99_sign_read_model($model) {
+    unset($model['digest']);
+    $model['digest'] = hash(
+        'sha256',
+        json_encode(
+            c99_canonicalize_read_model_value($model),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        )
+    );
+    return $model;
+}
+function c99_signed_transport_model($items = array(), $generated_at = null, $sections = array()) {
+    $generated_at = null === $generated_at ? c99_generation_at() : $generated_at;
+    $model = c99_payload_at($items, $generated_at);
+    $model['menu_sections'] = $sections;
+    return c99_sign_read_model($model);
+}
+function c99_legacy_model($items = array(), $generated = null, $with_digest = false) {
+    $generated = null === $generated ? gmdate('c', time() - 1) : $generated;
+    foreach ($items as &$item) {
+        $item['updated_at'] = $generated;
+    }
+    unset($item);
+    $model = array(
+        'schema' => 'complete99-public-read-model/v1',
+        'version' => 'complete99-os-v11',
+        'generated' => $generated,
+        'updated_at' => $generated,
+        'sections' => array(),
+        'items' => $items,
+        'campaigns' => array(),
+    );
+    if ($with_digest) {
+        $model['digest'] = hash(
+            'sha256',
+            json_encode(
+                $model,
+                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+            )
+        );
+    }
+    return $model;
+}
+function c99_bundled_transport_items($generated_at) {
+    $items = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
+    foreach ($items as &$item) {
+        $item['section_id'] = 'section-default';
+        $item['verification_state'] = 'launch_ready';
+        $item['updated_at'] = $generated_at;
+        $item['media_provenance'] = 'business_owned';
+        $item['media_rights_state'] = 'approved_public_use';
+        $item['vegetarian'] = in_array(
+            'vegetarian',
+            $item['facets'] ?? array(),
+            true
+        );
+        unset(
+            $item['facets'],
+            $item['badge_codes'],
+            $item['menu_evidence'],
+            $item['availability']
+        );
+    }
+    unset($item);
+    return $items;
+}
+
 class Complete99_Settings {
     const OPTION_SECRET = 'complete99_sync_secret';
+}
+class Complete99_Platform {
+    public static function migration_failed() { return false; }
 }
 
 require '__REST_PATH__';
@@ -245,6 +357,7 @@ class LiveReadModelContracts(unittest.TestCase):
         script = (
             PHP_RUNTIME_BOOTSTRAP.replace("__REST_PATH__", rest_path)
             .replace("__PLUGIN_PATH__", plugin_path)
+            .replace("__FIXTURE_PATH__", DIGEST_FIXTURE.as_posix().replace("'", "\\'"))
             + "\n"
             + body
         )
@@ -257,6 +370,447 @@ class LiveReadModelContracts(unittest.TestCase):
             timeout=20,
         )
         return json.loads(result.stdout)
+
+    def test_health_exposes_only_the_stored_read_model_digest_and_fresh_requires_it(
+        self,
+    ) -> None:
+        result = self.run_php_runtime(
+            r"""
+        $valid = c99_signed_transport_model(
+            array(c99_item('dish-a', 'dish-a'))
+        );
+        $health = static function($model = null) {
+            c99_reset_runtime($model);
+            $GLOBALS['c99_persisted_options']['complete99_platform_version'] = serialize('1.8.0');
+            $GLOBALS['c99_persisted_options']['complete99_last_deployment_id'] = serialize('c99-wp-1.8.0');
+            return Complete99_REST::health()->data['read_model'];
+        };
+        $valid_health = $health($valid);
+
+        $reordered = array(
+            'digest' => $valid['digest'],
+            'campaigns' => $valid['campaigns'],
+            'menu_items' => array(array_reverse($valid['menu_items'][0], true)),
+            'menu_sections' => $valid['menu_sections'],
+            'branches' => $valid['branches'],
+            'generated_at' => $valid['generated_at'],
+            'version' => $valid['version'],
+            'schema' => $valid['schema'],
+        );
+        $reordered_health = $health($reordered);
+
+        $arbitrary = $valid;
+        $arbitrary['digest'] = str_repeat('a', 64);
+        $arbitrary_health = $health($arbitrary);
+
+        $missing = $valid;
+        unset($missing['digest']);
+        $missing_health = $health($missing);
+
+        $malformed = $valid;
+        $malformed['digest'] = 'not-a-digest';
+        $malformed_health = $health($malformed);
+
+        $tampered = $valid;
+        $tampered['menu_items'][0]['description_en'] = 'Tampered after signing.';
+        $tampered_health = $health($tampered);
+
+        $empty_health = $health();
+
+        echo json_encode(array(
+            'valid' => $valid_health,
+            'reordered' => $reordered_health,
+            'arbitrary' => $arbitrary_health,
+            'missing' => $missing_health,
+            'malformed' => $malformed_health,
+            'tampered' => $tampered_health,
+            'empty' => $empty_health,
+        ), JSON_THROW_ON_ERROR);
+        """
+        )
+        self.assertRegex(result["valid"]["digest"], r"^[a-f0-9]{64}$")
+        self.assertTrue(result["valid"]["fresh"])
+        self.assertEqual(result["valid"], result["reordered"])
+        for state in ("arbitrary", "missing", "malformed", "tampered", "empty"):
+            self.assertEqual("", result[state]["digest"])
+            self.assertEqual("", result[state]["version"])
+            self.assertEqual("", result[state]["updated_at"])
+            self.assertEqual("", result[state]["expires_at"])
+            self.assertFalse(result[state]["fresh"])
+
+    def test_cross_language_digest_fixture_matches_the_wordpress_contract(self) -> None:
+        fixture = json.loads(DIGEST_FIXTURE.read_text(encoding="utf-8"))
+        canonical = json.dumps(
+            fixture["model"],
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        self.assertEqual(fixture["expected_canonical_utf8_bytes"], len(canonical))
+        self.assertEqual(
+            fixture["expected_sha256"], hashlib.sha256(canonical).hexdigest()
+        )
+
+        result = self.run_php_runtime(
+            r"""
+        $fixture = json_decode(
+            file_get_contents(C99_DIGEST_FIXTURE),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        $model = $fixture['model'];
+        $digest_method = new ReflectionMethod('Complete99_REST', 'read_model_digest');
+        $digest_method->setAccessible(true);
+        $shape_method = new ReflectionMethod(
+            'Complete99_REST',
+            'is_valid_transport_read_model_shape'
+        );
+        $shape_method->setAccessible(true);
+        $model['digest'] = $fixture['expected_sha256'];
+        $canonical = json_encode(
+            c99_canonicalize_read_model_value($fixture['model']),
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+        );
+        c99_reset_runtime($model);
+        $sync = Complete99_REST::sync_read_model(
+            c99_request($fixture['model'])
+        );
+        $receipt = $sync instanceof WP_REST_Response ? $sync->data : array();
+        $stored = maybe_unserialize(
+            $c99_persisted_options['complete99_public_read_model'] ?? ''
+        );
+        echo json_encode(array(
+            'bytes' => strlen($canonical),
+            'digest' => $digest_method->invoke(null, $model),
+            'shape_valid' => $shape_method->invoke(null, $model),
+            'expected' => $fixture['expected_sha256'],
+            'receipt' => $receipt,
+            'receipt_keys' => array_keys($receipt),
+            'stored_matches_fixture' => $stored === $model,
+        ), JSON_THROW_ON_ERROR);
+        """
+        )
+        self.assertEqual(810, result["bytes"])
+        self.assertEqual(
+            "b183d09588cb21c1374b5ec75d6d90fac836a49f5e1dbe030f01aa9d85d35410",
+            result["digest"],
+        )
+        self.assertEqual(result["expected"], result["digest"])
+        self.assertTrue(result["shape_valid"])
+        self.assertEqual(result["expected"], result["receipt"]["digest"])
+        self.assertFalse(result["receipt"]["write_changed"])
+        self.assertTrue(result["stored_matches_fixture"])
+        self.assertEqual(
+            {
+                "stored",
+                "write_changed",
+                "version",
+                "digest",
+                "item_count",
+                "expires_at",
+                "cache",
+            },
+            set(result["receipt_keys"]),
+        )
+
+    def test_sync_persists_the_exact_transport_envelope_and_rejects_partial_input(
+        self,
+    ) -> None:
+        result = self.run_php_runtime(
+            r"""
+        c99_reset_runtime();
+        $payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
+        $expected = c99_sign_read_model($payload);
+        $response = Complete99_REST::sync_read_model(c99_request($payload));
+        $receipt = $response instanceof WP_REST_Response ? $response->data : array();
+        $stored = maybe_unserialize(
+            $c99_persisted_options['complete99_public_read_model'] ?? ''
+        );
+        $stored_unsigned = $stored;
+        unset($stored_unsigned['digest']);
+
+        c99_reset_runtime();
+        $missing_version = $payload;
+        unset($missing_version['version']);
+        $missing_response = Complete99_REST::sync_read_model(
+            c99_request($missing_version)
+        );
+        $missing_updates = $c99_update_count;
+
+        c99_reset_runtime();
+        $missing_item_field = $payload;
+        unset($missing_item_field['menu_items'][0]['tag_en']);
+        $missing_item_response = Complete99_REST::sync_read_model(
+            c99_request($missing_item_field)
+        );
+        $missing_item_updates = $c99_update_count;
+
+        c99_reset_runtime();
+        $timestamp_mismatch = $payload;
+        $timestamp_mismatch['menu_items'][0]['updated_at'] =
+            substr($payload['generated_at'], 0, 19) . '.001Z';
+        $timestamp_response = Complete99_REST::sync_read_model(
+            c99_request($timestamp_mismatch)
+        );
+        $timestamp_updates = $c99_update_count;
+
+        echo json_encode(array(
+            'receipt' => $receipt,
+            'receipt_keys' => array_keys($receipt),
+            'stored_keys' => array_keys($stored),
+            'stored_unsigned_matches' => $stored_unsigned === $payload,
+            'expected_digest' => $expected['digest'],
+            'missing_version' => c99_error($missing_response),
+            'missing_updates' => $missing_updates,
+            'missing_item' => c99_error($missing_item_response),
+            'missing_item_updates' => $missing_item_updates,
+            'timestamp' => c99_error($timestamp_response),
+            'timestamp_updates' => $timestamp_updates,
+        ), JSON_THROW_ON_ERROR);
+        """
+        )
+        self.assertEqual(
+            {
+                "stored",
+                "write_changed",
+                "version",
+                "digest",
+                "item_count",
+                "expires_at",
+                "cache",
+            },
+            set(result["receipt_keys"]),
+        )
+        self.assertEqual(
+            {
+                "schema",
+                "version",
+                "generated_at",
+                "branches",
+                "menu_sections",
+                "menu_items",
+                "campaigns",
+                "digest",
+            },
+            set(result["stored_keys"]),
+        )
+        self.assertTrue(result["stored_unsigned_matches"])
+        self.assertEqual(result["expected_digest"], result["receipt"]["digest"])
+        for state in ("missing_version", "missing_item"):
+            self.assertEqual("complete99_sync_normalization", result[state]["code"])
+            self.assertEqual(400, result[state]["status"])
+        self.assertEqual("complete99_sync_item_timestamp", result["timestamp"]["code"])
+        self.assertEqual(400, result["timestamp"]["status"])
+        self.assertEqual(0, result["missing_updates"])
+        self.assertEqual(0, result["missing_item_updates"])
+        self.assertEqual(0, result["timestamp_updates"])
+
+    def test_legacy_upgrade_is_narrow_integrity_checked_and_identity_preserving(
+        self,
+    ) -> None:
+        result = self.run_php_runtime(
+            r"""
+        $live_generated = '2026-08-01T02:39:21+00:00';
+        $live_items = c99_bundled_transport_items($live_generated);
+        $live_legacy = c99_legacy_model(
+            $live_items,
+            $live_generated,
+            false
+        );
+        c99_reset_runtime($live_legacy);
+        $new_generated = c99_generation_at();
+        $new_items = c99_bundled_transport_items($new_generated);
+        $live_upgrade = Complete99_REST::sync_read_model(
+            c99_request(c99_payload_at($new_items, $new_generated))
+        );
+        $live_stored = maybe_unserialize(
+            $c99_persisted_options['complete99_public_read_model'] ?? ''
+        );
+
+        $later_legacy = c99_legacy_model(
+            array(c99_item('dish-a', 'dish-a')),
+            gmdate('c', time() - 2),
+            true
+        );
+        c99_reset_runtime($later_legacy);
+        $later_upgrade = Complete99_REST::sync_read_model(
+            c99_request(c99_payload(array(c99_item('dish-a', 'dish-a'))))
+        );
+
+        $same_generated = c99_generation_at(-1);
+        $same_item = c99_item('dish-a', 'dish-a');
+        $same_legacy = c99_legacy_model(
+            array($same_item),
+            $same_generated,
+            true
+        );
+        c99_reset_runtime($same_legacy);
+        $same_payload = c99_payload_at(array($same_item), $same_generated);
+        $same_payload['version'] = 'complete99-os-v11';
+        $same_upgrade = Complete99_REST::sync_read_model(
+            c99_request($same_payload)
+        );
+        $same_stored = maybe_unserialize(
+            $c99_persisted_options['complete99_public_read_model'] ?? ''
+        );
+
+        $tampered_legacy = c99_legacy_model(
+            array(c99_item('dish-a', 'dish-a')),
+            gmdate('c', time() - 2),
+            true
+        );
+        $tampered_legacy['items'][0]['description_en'] = 'Tampered legacy';
+        c99_reset_runtime($tampered_legacy);
+        $tampered_response = Complete99_REST::sync_read_model(
+            c99_request(c99_payload(array(c99_item('dish-a', 'dish-a'))))
+        );
+        $tampered_updates = $c99_update_count;
+
+        $narrow_missing = c99_legacy_model(
+            array(c99_item('dish-a', 'dish-a')),
+            gmdate('c', time() - 2),
+            false
+        );
+        c99_reset_runtime($narrow_missing);
+        $narrow_response = Complete99_REST::sync_read_model(
+            c99_request(c99_payload(array(c99_item('dish-a', 'dish-a'))))
+        );
+
+        $malformed_new = c99_signed_transport_model(
+            array(c99_item('dish-a', 'dish-a'))
+        );
+        unset($malformed_new['digest']);
+        c99_reset_runtime($malformed_new);
+        $malformed_response = Complete99_REST::sync_read_model(
+            c99_request(c99_payload(array(c99_item('dish-a', 'dish-a'))))
+        );
+
+        $fraction_second = substr(c99_generation_at(-1), 0, 19);
+        $fraction_legacy_time = $fraction_second . '.900Z';
+        $fraction_new_time = $fraction_second . '.500Z';
+        $fraction_item = c99_item('dish-a', 'dish-a');
+        $fraction_legacy = c99_legacy_model(
+            array($fraction_item),
+            $fraction_legacy_time,
+            true
+        );
+        c99_reset_runtime($fraction_legacy);
+        $fraction_payload = c99_payload_at(
+            array($fraction_item),
+            $fraction_new_time
+        );
+        $fraction_payload['version'] = 'complete99-os-v11';
+        $fraction_response = Complete99_REST::sync_read_model(
+            c99_request($fraction_payload)
+        );
+
+        echo json_encode(array(
+            'live_upgrade' => $live_upgrade instanceof WP_REST_Response
+                ? $live_upgrade->data
+                : c99_error($live_upgrade),
+            'live_stored_keys' => array_keys($live_stored),
+            'live_item_count' => count($live_stored['menu_items'] ?? array()),
+            'later_upgrade' => $later_upgrade instanceof WP_REST_Response
+                ? $later_upgrade->data
+                : c99_error($later_upgrade),
+            'same_upgrade' => $same_upgrade instanceof WP_REST_Response
+                ? $same_upgrade->data
+                : c99_error($same_upgrade),
+            'same_stored_keys' => array_keys($same_stored),
+            'tampered' => c99_error($tampered_response),
+            'tampered_updates' => $tampered_updates,
+            'narrow_missing' => c99_error($narrow_response),
+            'malformed_new' => c99_error($malformed_response),
+            'fraction' => c99_error($fraction_response),
+        ), JSON_THROW_ON_ERROR);
+        """
+        )
+        for state in ("live_upgrade", "later_upgrade", "same_upgrade"):
+            self.assertTrue(result[state]["stored"])
+        self.assertEqual(12, result["live_item_count"])
+        expected_keys = {
+            "schema",
+            "version",
+            "generated_at",
+            "branches",
+            "menu_sections",
+            "menu_items",
+            "campaigns",
+            "digest",
+        }
+        self.assertEqual(expected_keys, set(result["live_stored_keys"]))
+        self.assertEqual(expected_keys, set(result["same_stored_keys"]))
+        for state in ("tampered", "narrow_missing", "malformed_new"):
+            self.assertEqual("complete99_sync_stored_integrity", result[state]["code"])
+            self.assertEqual(500, result[state]["status"])
+        self.assertEqual(0, result["tampered_updates"])
+        self.assertEqual("complete99_sync_non_monotonic", result["fraction"]["code"])
+        self.assertEqual(409, result["fraction"]["status"])
+
+    def test_transport_time_and_shape_tampering_fail_closed_before_storage(self) -> None:
+        result = self.run_php_runtime(
+            r"""
+        $timestamp_results = array();
+        foreach (array(
+            '2026-08-06T12:34:56Z',
+            '2026-08-06T12:34:56.000+00:00',
+            '2026-08-06T12:34:56.000000Z',
+            '2026-02-30T12:34:56.000Z'
+        ) as $timestamp) {
+            c99_reset_runtime();
+            $payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
+            $payload['generated_at'] = $timestamp;
+            $payload['menu_items'][0]['updated_at'] = $timestamp;
+            $response = Complete99_REST::sync_read_model(c99_request($payload));
+            $timestamp_results[] = array(
+                'error' => c99_error($response),
+                'updates' => $c99_update_count,
+            );
+        }
+
+        $tampered_time = c99_signed_transport_model(
+            array(c99_item('dish-a', 'dish-a'))
+        );
+        $tampered_time['menu_items'][0]['updated_at'] =
+            substr($tampered_time['generated_at'], 0, 19) . '.001Z';
+        $tampered_time = c99_sign_read_model($tampered_time);
+        c99_reset_runtime($tampered_time);
+        $tampered_response = Complete99_REST::sync_read_model(
+            c99_request(c99_payload(array(c99_item('dish-a', 'dish-a'))))
+        );
+
+        $malicious_schema = c99_signed_transport_model(
+            array(c99_item('dish-a', 'dish-a'))
+        );
+        $malicious_schema['schema'] = 'private-schema';
+        $malicious_schema = c99_sign_read_model($malicious_schema);
+        c99_reset_runtime($malicious_schema);
+        $c99_persisted_options['complete99_platform_version'] = serialize('1.8.0');
+        $health = Complete99_REST::health()->data['read_model'];
+        $catalog = Complete99_REST::public_catalog()->data;
+
+        echo json_encode(array(
+            'timestamps' => $timestamp_results,
+            'tampered' => c99_error($tampered_response),
+            'health' => $health,
+            'catalog' => $catalog,
+        ), JSON_THROW_ON_ERROR);
+        """
+        )
+        for timestamp in result["timestamps"]:
+            self.assertEqual(
+                "complete99_sync_generated_at", timestamp["error"]["code"]
+            )
+            self.assertEqual(400, timestamp["error"]["status"])
+            self.assertEqual(0, timestamp["updates"])
+        self.assertEqual("complete99_sync_stored_integrity", result["tampered"]["code"])
+        self.assertEqual(500, result["tampered"]["status"])
+        self.assertEqual("", result["health"]["digest"])
+        self.assertEqual("", result["health"]["version"])
+        self.assertFalse(result["health"]["fresh"])
+        self.assertEqual("complete99-public-read-model/v1", result["catalog"]["schema"])
+        self.assertEqual("wordpress_bundle", result["catalog"]["source"])
 
     def test_receiver_keeps_the_bilingual_public_dish_contract(self) -> None:
         for field in (
@@ -306,9 +860,17 @@ class LiveReadModelContracts(unittest.TestCase):
             "complete99_sync_slug_collision",
             "complete99_sync_stale_model",
             "complete99_sync_non_monotonic",
+            "complete99_sync_stored_integrity",
+            "complete99_sync_item_timestamp",
             "reserve_sync_nonce",
             "SELECT GET_LOCK",
-            "serialize( $clean )",
+            "canonicalize_read_model_value",
+            "canonical_read_model_value_digest",
+            "read_model_digest",
+            "read_model_integrity_is_valid",
+            "is_valid_transport_read_model_shape",
+            "is_recognized_legacy_read_model",
+            "hash_equals( $expected, $stored )",
             "litespeed_purge_all",
             "\\Upress\\EzCache\\Cache::instance()",
         ):
@@ -334,8 +896,8 @@ class LiveReadModelContracts(unittest.TestCase):
         $private_campaign_updates = $c99_update_count;
 
         c99_reset_runtime();
-        $accepted_payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
-        $accepted_payload['branches'] = array(
+        $private_branch_payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
+        $private_branch_payload['branches'] = array(
             array(
                 'id' => 'branch-from-private-os',
                 'name_en' => 'Internal branch name',
@@ -343,6 +905,12 @@ class LiveReadModelContracts(unittest.TestCase):
                 'published' => true,
             )
         );
+        $private_branch = Complete99_REST::sync_read_model(
+            c99_request($private_branch_payload)
+        );
+
+        c99_reset_runtime();
+        $accepted_payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
         $accepted = Complete99_REST::sync_read_model(
             c99_request($accepted_payload)
         );
@@ -352,6 +920,7 @@ class LiveReadModelContracts(unittest.TestCase):
 
         $approved_items = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
         foreach ($approved_items as &$approved_item) {
+            $approved_item['section_id'] = 'section-default';
             $approved_item['verification_state'] = 'launch_ready';
             $approved_item['updated_at'] = gmdate('c');
             $approved_item['media_provenance'] = 'business_owned';
@@ -369,50 +938,7 @@ class LiveReadModelContracts(unittest.TestCase):
             );
         }
         unset($approved_item);
-        $model = array(
-            'schema' => 'complete99-public-read-model/v1',
-            'version' => 'complete99-os-v42',
-            'generated' => gmdate('c'),
-            'updated_at' => gmdate('c'),
-            'digest' => 'private-digest',
-            'branches' => array(
-                array(
-                    'id' => 'branch-1',
-                    'slug' => 'tel-aviv',
-                    'name_he' => 'Hebrew branch',
-                    'name_en' => 'Tel Aviv',
-                    'city_he' => 'Hebrew city',
-                    'city_en' => 'Tel Aviv',
-                    'status' => 'operating',
-                    'published' => true,
-                ),
-                array(
-                    'id' => 'branch-2',
-                    'slug' => 'private-branch',
-                    'name_he' => 'Private',
-                    'name_en' => 'Private',
-                    'status' => 'planned',
-                    'published' => false,
-                ),
-            ),
-            'sections' => array(
-                array(
-                    'id' => 'section-1',
-                    'name_he' => 'Hebrew section',
-                    'name_en' => 'Section',
-                    'sort' => 10,
-                    'published' => true,
-                ),
-            ),
-            'items' => $approved_items,
-            'campaigns' => array(
-                array(
-                    'id' => 'campaign-private',
-                    'title_en' => 'Never public',
-                    'published' => true,
-                ),
-            ),
-        );
+        $model = c99_signed_transport_model($approved_items);
         c99_reset_runtime($model);
         $catalog_response = Complete99_REST::public_catalog();
         $catalog = $catalog_response instanceof WP_REST_Response
@@ -422,14 +948,12 @@ class LiveReadModelContracts(unittest.TestCase):
         echo json_encode(array(
             'private_campaign' => c99_error($private_campaign),
             'private_campaign_updates' => $private_campaign_updates,
+            'private_branch' => c99_error($private_branch),
             'accepted' => $accepted instanceof WP_REST_Response
                 ? $accepted->data
                 : array(),
             'stored_campaigns' => $accepted_model['campaigns'] ?? null,
-            'stored_branches_present' => array_key_exists(
-                'branches',
-                is_array($accepted_model) ? $accepted_model : array()
-            ),
+            'stored_branches' => $accepted_model['branches'] ?? null,
             'catalog' => $catalog,
         ));
         """
@@ -439,10 +963,14 @@ class LiveReadModelContracts(unittest.TestCase):
         )
         self.assertEqual(422, result["private_campaign"]["status"])
         self.assertEqual(0, result["private_campaign_updates"])
+        self.assertEqual(
+            "complete99_sync_private_field", result["private_branch"]["code"]
+        )
+        self.assertEqual(422, result["private_branch"]["status"])
         self.assertTrue(result["accepted"]["stored"])
         self.assertEqual(1, result["accepted"]["item_count"])
         self.assertEqual([], result["stored_campaigns"])
-        self.assertFalse(result["stored_branches_present"])
+        self.assertEqual([], result["stored_branches"])
 
         catalog = result["catalog"]
         self.assertEqual(
@@ -489,7 +1017,6 @@ class LiveReadModelContracts(unittest.TestCase):
         for private_value in (
             "campaign-private",
             "Never public",
-            "private-digest",
             "branch-1",
             "branch-from-private-os",
             "Internal branch name",
@@ -517,16 +1044,16 @@ class LiveReadModelContracts(unittest.TestCase):
             'published' => true,
             'updated_at' => gmdate('c'),
         );
-        $fresh = array(
-            'updated_at' => gmdate('c'),
-            'items' => array($base),
+        $fresh = c99_signed_transport_model(
+            array(c99_item('dish-1', 'sabich'))
         );
-        $stale = array(
-            'updated_at' => gmdate('c', time() - Complete99_REST::PUBLIC_MODEL_TTL - 1),
-            'items' => array($base),
+        $stale = c99_signed_transport_model(
+            array(c99_item('dish-1', 'sabich')),
+            c99_generation_at(-Complete99_REST::PUBLIC_MODEL_TTL - 1)
         );
         $approved_items = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
         foreach ($approved_items as &$approved_item) {
+            $approved_item['section_id'] = 'section-default';
             $approved_item['verification_state'] = 'launch_ready';
             $approved_item['updated_at'] = gmdate('c');
             $approved_item['media_provenance'] = 'business_owned';
@@ -544,14 +1071,13 @@ class LiveReadModelContracts(unittest.TestCase):
             );
         }
         unset($approved_item);
-        $approved = array(
-            'updated_at' => gmdate('c'),
-            'items' => $approved_items,
-        );
+        $approved = c99_signed_transport_model($approved_items);
         $changed_copy = $approved;
-        $changed_copy['items'][0]['description_en'] = 'Unapproved replacement copy.';
+        $changed_copy['menu_items'][0]['description_en'] = 'Unapproved replacement copy.';
+        $changed_copy = c99_sign_read_model($changed_copy);
         $held = $approved;
-        $held['items'][0]['published'] = false;
+        $held['menu_items'][0]['published'] = false;
+        $held = c99_sign_read_model($held);
         $draft = $base;
         $draft['published'] = false;
         $string_false = $base;
@@ -630,7 +1156,7 @@ class LiveReadModelContracts(unittest.TestCase):
             result,
         )
 
-    def test_branch_input_is_counted_then_discarded_for_schema_compatibility(
+    def test_branch_input_is_rejected_because_public_transport_requires_empty_lists(
         self,
     ) -> None:
         result = self.run_php_runtime(
@@ -646,27 +1172,23 @@ class LiveReadModelContracts(unittest.TestCase):
                 'published' => true,
             )
         );
-        $response = Complete99_REST::sync_read_model(c99_request($payload));
-        $stored = maybe_unserialize(
-            $c99_persisted_options['complete99_public_read_model'] ?? ''
-        );
+        $nonempty = Complete99_REST::sync_read_model(c99_request($payload));
+
+        c99_reset_runtime();
+        $scalar_payload = c99_payload(array());
+        $scalar_payload['branches'] = 'private';
+        $scalar = Complete99_REST::sync_read_model(c99_request($scalar_payload));
         echo json_encode(array(
-            'response' => $response instanceof WP_REST_Response
-                ? $response->data
-                : c99_error($response),
-            'stored_has_branches' => array_key_exists(
-                'branches',
-                is_array($stored) ? $stored : array()
-            ),
-            'stored_json' => json_encode($stored),
+            'nonempty' => c99_error($nonempty),
+            'scalar' => c99_error($scalar),
+            'updates' => $c99_update_count,
         ));
         """
         )
-        self.assertTrue(result["response"]["stored"])
-        self.assertEqual(0, result["response"]["item_count"])
-        self.assertFalse(result["stored_has_branches"])
-        self.assertNotIn("private-location-1", result["stored_json"])
-        self.assertNotIn("Never public", result["stored_json"])
+        for state in ("nonempty", "scalar"):
+            self.assertEqual("complete99_sync_private_field", result[state]["code"])
+            self.assertEqual(422, result[state]["status"])
+        self.assertEqual(0, result["updates"])
 
     def test_sync_rejects_unknown_public_payload_and_record_fields(self) -> None:
         result = self.run_php_runtime(
@@ -698,22 +1220,14 @@ class LiveReadModelContracts(unittest.TestCase):
         self.assertEqual(400, result["record"]["status"])
         self.assertEqual(0, result["updates"])
 
-    def test_sync_normalizes_boolean_strings_and_rejects_malformed_values_and_slug_collisions(
+    def test_sync_rejects_non_boolean_values_and_slug_collisions(
         self,
     ) -> None:
         result = self.run_php_runtime(
             r"""
         c99_reset_runtime();
-        $normalised_payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
-        $normalised_payload['menu_items'][0]['published'] = 'false';
-        $normalised_payload['menu_items'][0]['vegetarian'] = 'true';
-        $normalised = Complete99_REST::sync_read_model(c99_request($normalised_payload));
-        $normalised_model = maybe_unserialize(
-            $c99_persisted_options['complete99_public_read_model'] ?? ''
-        );
-
         $malformed = array();
-        foreach (array('False', ' false ', '0', 1, null) as $index => $invalid_boolean) {
+        foreach (array('true', 'false', 'False', ' false ', '0', 1, null) as $index => $invalid_boolean) {
             c99_reset_runtime();
             $malformed_payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
             $malformed_payload['menu_items'][0]['published'] = $invalid_boolean;
@@ -726,14 +1240,13 @@ class LiveReadModelContracts(unittest.TestCase):
 
         c99_reset_runtime();
         $duplicate_payload = c99_payload(array(
-            c99_item('dish-a', 'Same Dish'),
+            c99_item('dish-a', 'same-dish'),
             c99_item('dish-b', 'same-dish'),
         ));
         $duplicate = Complete99_REST::sync_read_model(c99_request($duplicate_payload));
 
-        $stored = array(
-            'updated_at' => gmdate('c'),
-            'items' => array(c99_item('dish-a', 'owned-slug')),
+        $stored = c99_signed_transport_model(
+            array(c99_item('dish-a', 'owned-slug'))
         );
         c99_reset_runtime($stored);
         $reassigned = Complete99_REST::sync_read_model(
@@ -741,20 +1254,12 @@ class LiveReadModelContracts(unittest.TestCase):
         );
 
         echo json_encode(array(
-            'normalised_response' => $normalised instanceof WP_REST_Response
-                ? $normalised->data
-                : array(),
-            'normalised_published' => $normalised_model['items'][0]['published'] ?? null,
-            'normalised_vegetarian' => $normalised_model['items'][0]['vegetarian'] ?? null,
             'malformed' => $malformed,
             'duplicate' => c99_error($duplicate),
             'reassigned' => c99_error($reassigned),
         ));
         """
         )
-        self.assertTrue(result["normalised_response"]["stored"])
-        self.assertIs(result["normalised_published"], False)
-        self.assertIs(result["normalised_vegetarian"], True)
         for malformed in result["malformed"]:
             self.assertEqual("complete99_sync_boolean", malformed["error"]["code"])
             self.assertEqual(400, malformed["error"]["status"])
@@ -769,10 +1274,7 @@ class LiveReadModelContracts(unittest.TestCase):
             r"""
         $legacy_item = c99_item('dish-legacy', 'unused');
         unset($legacy_item['slug']);
-        $legacy = array(
-            'updated_at' => gmdate('c'),
-            'items' => array($legacy_item),
-        );
+        $legacy = c99_legacy_model(array($legacy_item), null, true);
         c99_reset_runtime($legacy);
         $assigned = Complete99_REST::sync_read_model(
             c99_request(c99_payload(array(c99_item('dish-legacy', 'initial-slug'))))
@@ -782,9 +1284,10 @@ class LiveReadModelContracts(unittest.TestCase):
             : c99_error($assigned);
         $assigned_updates = $c99_update_count;
 
-        $stored = array(
-            'updated_at' => gmdate('c'),
-            'items' => array(c99_item('dish-a', 'canonical-slug')),
+        $stored = c99_legacy_model(
+            array(c99_item('dish-a', 'canonical-slug')),
+            null,
+            true
         );
         c99_reset_runtime($stored);
         $renamed = Complete99_REST::sync_read_model(
@@ -811,9 +1314,12 @@ class LiveReadModelContracts(unittest.TestCase):
         result = self.run_php_runtime(
             r"""
         c99_reset_runtime();
-        $generated = gmdate('c');
-        $first_payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
-        $first_payload['generated_at'] = $generated;
+        $generated = c99_generation_at(0, '500');
+        $generation_second = substr($generated, 0, 19);
+        $first_payload = c99_payload_at(
+            array(c99_item('dish-a', 'dish-a')),
+            $generated
+        );
         $first = Complete99_REST::sync_read_model(c99_request($first_payload));
         $updates_after_first = $c99_update_count;
 		$cache_calls_after_first = array(
@@ -830,8 +1336,10 @@ class LiveReadModelContracts(unittest.TestCase):
 			'object' => $c99_object_cache_calls,
 		);
 
-        $older_payload = $first_payload;
-        $older_payload['generated_at'] = gmdate('c', strtotime($generated) - 1);
+        $older_payload = c99_payload_at(
+            array(c99_item('dish-a', 'dish-a')),
+            $generation_second . '.400Z'
+        );
         $older_payload['menu_items'][0]['description_en'] = 'Changed older copy';
         $older = Complete99_REST::sync_read_model(c99_request($older_payload));
 
@@ -840,6 +1348,13 @@ class LiveReadModelContracts(unittest.TestCase):
         $same_time = Complete99_REST::sync_read_model(
             c99_request($same_time_changed)
         );
+
+        $later_payload = c99_payload_at(
+            array(c99_item('dish-a', 'dish-a')),
+            $generation_second . '.600Z'
+        );
+        $later_payload['menu_items'][0]['description_en'] = 'Changed later copy';
+        $later = Complete99_REST::sync_read_model(c99_request($later_payload));
 
         echo json_encode(array(
             'first' => $first instanceof WP_REST_Response ? $first->data : array(),
@@ -850,6 +1365,7 @@ class LiveReadModelContracts(unittest.TestCase):
 			'cache_calls_after_retry' => $cache_calls_after_retry,
             'older' => c99_error($older),
             'same_time' => c99_error($same_time),
+            'later' => $later instanceof WP_REST_Response ? $later->data : c99_error($later),
         ));
         """
         )
@@ -881,6 +1397,7 @@ class LiveReadModelContracts(unittest.TestCase):
             "complete99_sync_non_monotonic", result["same_time"]["code"]
         )
         self.assertEqual(409, result["same_time"]["status"])
+        self.assertTrue(result["later"]["stored"])
 
     def test_cache_failure_is_fail_closed_and_recovers_on_equivalent_fresh_nonce_retry(
         self,
@@ -892,7 +1409,6 @@ class LiveReadModelContracts(unittest.TestCase):
         update_option(Complete99_Settings::OPTION_SECRET, $secret, false);
 
         $payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
-        $payload['generated_at'] = gmdate('c');
         $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
         $timestamp = (string) time();
         $attempt = static function($nonce) use ($body, $timestamp, $secret) {
@@ -999,40 +1515,11 @@ class LiveReadModelContracts(unittest.TestCase):
     ) -> None:
         result = self.run_php_runtime(
             r"""
-        $generated = gmdate(
-            'c',
-            time() - Complete99_REST::MAX_CLOCK_SKEW - 5
+        $generated = c99_generation_at(
+            -Complete99_REST::MAX_CLOCK_SKEW - 5
         );
         $item = c99_item('dish-a', 'dish-a');
-        $stored_item = array(
-            'id' => $item['id'],
-            'slug' => $item['slug'],
-            'name_he' => $item['name_he'],
-            'name_en' => $item['name_en'],
-            'description_he' => $item['description_he'],
-            'description_en' => $item['description_en'],
-            'vegetarian' => $item['vegetarian'],
-            'verification_state' => $item['verification_state'],
-            'published' => $item['published'],
-            'sort' => (float) $item['sort'],
-            'updated_at' => $item['updated_at'],
-        );
-        $stored = array(
-            'schema' => 'complete99-public-read-model/v1',
-            'version' => 'complete99-os-v42',
-            'generated' => $generated,
-            'updated_at' => $generated,
-            'sections' => array(),
-            'items' => array($stored_item),
-            'campaigns' => array(),
-        );
-        $stored['digest'] = hash(
-            'sha256',
-            wp_json_encode(
-                $stored,
-                JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-            )
-        );
+        $stored = c99_signed_transport_model(array($item), $generated);
         c99_reset_runtime($stored);
 
         $secret = str_repeat('s', 32);
@@ -1063,8 +1550,7 @@ class LiveReadModelContracts(unittest.TestCase):
             );
         };
 
-        $payload = c99_payload(array($item));
-        $payload['generated_at'] = $generated;
+        $payload = c99_payload_at(array($item), $generated);
         $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
         $retry = $send($body, 'stale_equivalent_nonce_0001');
         $calls_after_retry = array(
@@ -1251,19 +1737,15 @@ class LiveReadModelContracts(unittest.TestCase):
         $invalid = Complete99_REST::sync_read_model(c99_request($invalid_payload));
 
         c99_reset_runtime();
-        $stale_payload = c99_payload(array(c99_item('dish-a', 'dish-a')));
-        $stale_payload['generated_at'] = gmdate(
-            'c',
-            time() - Complete99_REST::MAX_CLOCK_SKEW - 1
+        $stale_payload = c99_payload_at(
+            array(c99_item('dish-a', 'dish-a')),
+            c99_generation_at(-Complete99_REST::MAX_CLOCK_SKEW - 1)
         );
         $stale = Complete99_REST::sync_read_model(c99_request($stale_payload));
 
-        $stale_model = array(
-            'updated_at' => gmdate(
-                'c',
-                time() - Complete99_REST::PUBLIC_MODEL_TTL - 1
-            ),
-            'items' => array(c99_item('dish-a', 'dish-a')),
+        $stale_model = c99_signed_transport_model(
+            array(c99_item('dish-a', 'dish-a')),
+            c99_generation_at(-Complete99_REST::PUBLIC_MODEL_TTL - 1)
         );
         c99_reset_runtime($stale_model);
         $catalog_response = Complete99_REST::public_catalog();
@@ -1318,6 +1800,9 @@ class LiveReadModelContracts(unittest.TestCase):
             "'@type'       => 'MenuItem'",
         ):
             self.assertIn(marker, self.frontend)
+        self.assertIn(
+            "Complete99_REST::is_public_model_fresh( $model )", self.frontend
+        )
         self.assertNotIn("publicDishes", self.frontend)
         self.assertIn("Complete99_Frontend::render_document_head()", self.template)
         self.assertNotIn("wp_head()", self.template)

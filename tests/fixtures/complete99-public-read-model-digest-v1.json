@@ -1,0 +1,44 @@
+{
+  "fixture_schema": "complete99-read-model-digest-fixture/v1",
+  "model": {
+    "schema": "complete99-public-read-model/v1",
+    "version": "complete99-os-v42",
+    "generated_at": "2026-08-06T12:34:56.000Z",
+    "branches": [],
+    "menu_sections": [
+      {
+        "id": "section-sabich",
+        "name_he": "בפיתה",
+        "name_en": "In a pita",
+        "sort": 1,
+        "published": true
+      }
+    ],
+    "menu_items": [
+      {
+        "id": "dish-sabich",
+        "slug": "sabich",
+        "section_id": "section-sabich",
+        "name_he": "סביח",
+        "name_en": "Sabich",
+        "category_he": "בפיתה",
+        "category_en": "In a pita",
+        "description_he": "חציל, ביצה וטחינה",
+        "description_en": "Eggplant / egg and tahini",
+        "tag_he": "צמחוני",
+        "tag_en": "Vegetarian",
+        "image_asset": "c99-food-sabich.jpg",
+        "media_provenance": "business_owned",
+        "media_rights_state": "approved_public_use",
+        "vegetarian": true,
+        "verification_state": "launch_ready",
+        "published": true,
+        "sort": 1,
+        "updated_at": "2026-08-06T12:34:56.000Z"
+      }
+    ],
+    "campaigns": []
+  },
+  "expected_canonical_utf8_bytes": 810,
+  "expected_sha256": "b183d09588cb21c1374b5ec75d6d90fac836a49f5e1dbe030f01aa9d85d35410"
+}

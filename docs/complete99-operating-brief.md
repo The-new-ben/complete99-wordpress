@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-06
-Status: release 1.7.0 candidate, 12 dishes, 32-product store and bilingual Japanese Foundations Lab
+Status: release 1.8.0 candidate, 12 dishes and an unchanged 32-product public store
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -189,6 +189,29 @@ Release 1.6.0 creates contracts and checks, not worker assignments.
 - No migration calls the dormant WordPress role installer.
 - Any future owner, approval chain, supplier process or campaign workflow needs
   a separate operating decision.
+
+### Public read-model integrity
+
+Release 1.8.0 changes the integrity boundary only. It does not change the 12
+public dishes or any of the 32 public catalog items.
+
+- WordPress computes the read-model SHA-256 from a recursive canonical form.
+- The top-level `digest` field is excluded from its own hash, ordered lists keep
+  their order, and associative keys are sorted at every depth.
+- Stored and recomputed digests are compared with `hash_equals` before a model
+  can be fresh or influence any public menu, route, SEO row or sitemap entry.
+- A missing, malformed, arbitrary or content-mismatched digest makes the model
+  non-fresh and activates the approved packaged-menu fallback.
+- The public health response exposes digest, version and generation time only
+  when the complete stored transport envelope passes shape and causal hash
+  validation. It never substitutes a newly computed value for stored state.
+- WordPress persists the normalized OS transport envelope unchanged, then adds
+  only its top-level digest. `generated_at` uses exact UTC millisecond form and
+  every public item carries that byte-identical timestamp.
+- A narrow one-time legacy gate recognizes the 1.7 envelope, verifies its old
+  digest when present, preserves ID and slug ownership, and permits the stable
+  12-item live fallback state without a digest only when its IDs and slugs match
+  the packaged catalog in canonical order.
 
 ## 8. Store readiness
 

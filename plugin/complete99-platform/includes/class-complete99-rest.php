@@ -51,6 +51,8 @@ final class Complete99_REST {
 	public static function health() {
 		$model = get_option( 'complete99_public_read_model', array() );
 		$freshness = self::model_freshness( $model );
+		$model_integrity_valid = self::read_model_integrity_is_valid( $model );
+		$model_digest = $model_integrity_valid ? self::stored_read_model_digest( $model ) : '';
 		$science_loaded = class_exists( 'Complete99_Culinary_Science', false );
 		$science        = $science_loaded ? Complete99_Culinary_Science::status() : array();
 		$commerce_graph_loaded = class_exists( 'Complete99_Culinary_Commerce', false );
@@ -82,8 +84,9 @@ final class Complete99_REST {
 				'content_schema'  => 'complete99-public-read-model/v1',
 				'sync_configured' => '' !== (string) get_option( Complete99_Settings::OPTION_SECRET, '' ),
 				'read_model'      => array(
-					'version'    => isset( $model['version'] ) ? (string) $model['version'] : '',
-					'updated_at' => isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '',
+					'version'    => $model_integrity_valid && isset( $model['version'] ) ? (string) $model['version'] : '',
+					'updated_at' => $model_integrity_valid && isset( $model['generated_at'] ) ? (string) $model['generated_at'] : '',
+					'digest'     => $model_digest,
 					'fresh'      => $freshness['fresh'],
 					'expires_at' => $freshness['expires_at'],
 					'ttl_seconds' => self::PUBLIC_MODEL_TTL,
@@ -233,12 +236,25 @@ final class Complete99_REST {
 				array( 'status' => 400 )
 			);
 		}
+		$required_payload_fields = array( 'schema', 'version', 'generated_at', 'branches', 'menu_sections', 'menu_items', 'campaigns' );
+		if ( array() !== array_diff( $required_payload_fields, array_keys( $payload ) ) ) {
+			return new WP_Error(
+				'complete99_sync_normalization',
+				'The public read model must contain the complete normalized transport envelope.',
+				array( 'status' => 400 )
+			);
+		}
+		if ( ! is_string( $payload['version'] )
+			|| '' === trim( $payload['version'] )
+			|| sanitize_text_field( $payload['version'] ) !== $payload['version'] ) {
+			return new WP_Error( 'complete99_sync_normalization', 'The public read-model version is not normalized.', array( 'status' => 400 ) );
+		}
 
 		$generated = isset( $payload['generated_at'] ) && is_string( $payload['generated_at'] )
 			? trim( $payload['generated_at'] )
 			: '';
-		$generated_at = self::parse_rfc3339_timestamp( $generated );
-		if ( false === $generated_at ) {
+		$generated_at = self::parse_canonical_generation_millis( $generated );
+		if ( false === $generated_at || $generated !== $payload['generated_at'] ) {
 			return new WP_Error( 'complete99_sync_generated_at', 'The public read-model generation timestamp is invalid.', array( 'status' => 400 ) );
 		}
 		$campaigns = isset( $payload['campaigns'] ) ? $payload['campaigns'] : array();
@@ -251,42 +267,47 @@ final class Complete99_REST {
 		}
 
 		$branch_records = isset( $payload['branches'] ) ? $payload['branches'] : array();
-		$branch_count   = is_array( $branch_records )
-			? min( count( $branch_records ), self::MAX_MODEL_ITEMS )
-			: 0;
+		if ( ! is_array( $branch_records ) || ! empty( $branch_records ) ) {
+			return new WP_Error(
+				'complete99_sync_private_field',
+				'Branches are private and cannot be accepted by the public read model.',
+				array( 'status' => 422 )
+			);
+		}
 		$sections = self::clean_records(
 			isset( $payload['menu_sections'] ) ? $payload['menu_sections'] : array(),
-			array( 'id', 'name_he', 'name_en', 'sort', 'published' )
+			self::transport_section_keys()
 		);
 		if ( is_wp_error( $sections ) ) {
 			return $sections;
 		}
 		$items = self::clean_records(
 			isset( $payload['menu_items'] ) ? $payload['menu_items'] : array(),
-			array(
-				'id',
-				'slug',
-				'section_id',
-				'name_he',
-				'name_en',
-				'category_he',
-				'category_en',
-				'description_he',
-				'description_en',
-				'tag_he',
-				'tag_en',
-				'image_asset',
-				'media_provenance',
-				'media_rights_state',
-				'vegetarian',
-				'verification_state',
-				'published',
-				'sort',
-				'updated_at',
-			)
+			self::transport_item_keys()
 		);
 		if ( is_wp_error( $items ) ) {
 			return $items;
+		}
+		if ( ! is_array( $payload['menu_sections'] )
+			|| ! is_array( $payload['menu_items'] )
+			|| ! self::records_have_exact_keys( $payload['menu_sections'], self::transport_section_keys() )
+			|| ! self::records_have_exact_keys( $payload['menu_items'], self::transport_item_keys() )
+			|| ! hash_equals( self::canonical_read_model_value_digest( $sections ), self::canonical_read_model_value_digest( $payload['menu_sections'] ) )
+			|| ! hash_equals( self::canonical_read_model_value_digest( $items ), self::canonical_read_model_value_digest( $payload['menu_items'] ) ) ) {
+			return new WP_Error(
+				'complete99_sync_normalization',
+				'The public read-model records must already be normalized.',
+				array( 'status' => 400 )
+			);
+		}
+		foreach ( $items as $item ) {
+			if ( ! isset( $item['updated_at'] ) || ! hash_equals( $generated, (string) $item['updated_at'] ) ) {
+				return new WP_Error(
+					'complete99_sync_item_timestamp',
+					'Every public menu item must use the read-model generation timestamp.',
+					array( 'status' => 400 )
+				);
+			}
 		}
 
 		if ( ! self::acquire_sync_lock( 'read-model' ) ) {
@@ -303,50 +324,51 @@ final class Complete99_REST {
 		if ( ! is_array( $stored_model ) ) {
 			return new WP_Error( 'complete99_sync_stored_model', 'The stored public read model is invalid.', array( 'status' => 500 ) );
 		}
+		$stored_is_legacy = false;
+		if ( ! empty( $stored_model ) && ! self::read_model_integrity_is_valid( $stored_model ) ) {
+			if ( self::is_recognized_legacy_read_model( $stored_model ) ) {
+				$stored_is_legacy = true;
+			} else {
+				return new WP_Error( 'complete99_sync_stored_integrity', 'The stored public read model failed its integrity check.', array( 'status' => 500 ) );
+			}
+		}
 		$identity_check = self::validate_item_identities( $items, $stored_model );
 		if ( is_wp_error( $identity_check ) ) {
 			return $identity_check;
 		}
 
-		$clean = array(
-			'schema'     => 'complete99-public-read-model/v1',
-			'version'    => sanitize_text_field( isset( $payload['version'] ) ? (string) $payload['version'] : '' ),
-			'generated'  => sanitize_text_field( $generated ),
-			'updated_at' => gmdate( 'c' ),
-			'sections'   => $sections,
-			'items'      => $items,
-			'campaigns'  => array(),
-		);
-		$stored_generated_at = ! empty( $stored_model['generated'] )
-			? self::parse_rfc3339_timestamp( (string) $stored_model['generated'] )
+		$clean = $payload;
+		$stored_generated = $stored_is_legacy
+			? (string) ( $stored_model['generated'] ?? '' )
+			: (string) ( $stored_model['generated_at'] ?? '' );
+		$stored_generated_at = '' !== $stored_generated
+			? ( $stored_is_legacy
+				? self::parse_rfc3339_millis( $stored_generated )
+				: self::parse_canonical_generation_millis( $stored_generated ) )
 			: false;
-		if ( false !== $stored_generated_at && $generated_at === $stored_generated_at ) {
-			$equivalent = (string) ( $stored_model['generated'] ?? '' ) === (string) $clean['generated']
-				&& (string) ( $stored_model['version'] ?? '' ) === (string) $clean['version']
-				&& hash_equals(
-					hash(
-						'sha256',
-						wp_json_encode(
-							array(
-								'sections'  => $clean['sections'],
-								'items'     => $clean['items'],
-								'campaigns' => $clean['campaigns'],
-							),
-							JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-						)
-					),
-					hash(
-						'sha256',
-						wp_json_encode(
-							array(
-								'sections'  => $stored_model['sections'] ?? array(),
-								'items'     => $stored_model['items'] ?? array(),
-								'campaigns' => $stored_model['campaigns'] ?? array(),
-							),
-							JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-						)
+		$legacy_equal_equivalent = $stored_is_legacy
+			&& false !== $stored_generated_at
+			&& $generated_at === $stored_generated_at
+			&& (string) ( $stored_model['version'] ?? '' ) === (string) $clean['version']
+			&& hash_equals(
+				self::canonical_read_model_value_digest(
+					array(
+						'menu_sections' => $clean['menu_sections'],
+						'menu_items'    => $clean['menu_items'],
 					)
-				);
+				),
+				self::canonical_read_model_value_digest(
+					array(
+						'menu_sections' => $stored_model['sections'] ?? array(),
+						'menu_items'    => $stored_model['items'] ?? array(),
+					)
+				)
+			);
+		if ( ! $stored_is_legacy && false !== $stored_generated_at && $generated_at === $stored_generated_at ) {
+			$equivalent = hash_equals(
+				self::read_model_digest( $clean ),
+				self::stored_read_model_digest( $stored_model )
+			);
 			if ( $equivalent ) {
 				$cache = self::purge_public_read_model_caches();
 				if ( is_wp_error( $cache ) ) {
@@ -359,7 +381,7 @@ final class Complete99_REST {
 						'write_changed' => false,
 						'version'       => (string) $stored_model['version'],
 						'digest'        => (string) ( $stored_model['digest'] ?? '' ),
-						'item_count'    => count( $clean['sections'] ) + count( $clean['items'] ),
+						'item_count'    => count( $clean['menu_sections'] ) + count( $clean['menu_items'] ),
 						'expires_at'    => $freshness['expires_at'],
 						'cache'         => $cache,
 					)
@@ -367,28 +389,31 @@ final class Complete99_REST {
 			}
 		}
 
-		if ( $generated_at < time() - self::MAX_CLOCK_SKEW || $generated_at > time() + self::MAX_CLOCK_SKEW ) {
+		$now_millis = 1000 * time();
+		if ( $generated_at < $now_millis - ( 1000 * self::MAX_CLOCK_SKEW ) || $generated_at > $now_millis + ( 1000 * self::MAX_CLOCK_SKEW ) ) {
 			return new WP_Error( 'complete99_sync_stale_model', 'The public read model was not generated inside the accepted freshness window.', array( 'status' => 409 ) );
 		}
 		if ( false !== $stored_generated_at && $generated_at < $stored_generated_at ) {
 			return new WP_Error( 'complete99_sync_non_monotonic', 'An older public read model cannot replace the current model.', array( 'status' => 409 ) );
 		}
-		if ( false !== $stored_generated_at && $generated_at === $stored_generated_at ) {
+		if ( false !== $stored_generated_at && $generated_at === $stored_generated_at && ! $legacy_equal_equivalent ) {
 			return new WP_Error( 'complete99_sync_non_monotonic', 'A different public read model must use a later generation timestamp.', array( 'status' => 409 ) );
 		}
 
-		$total = count( $clean['sections'] ) + count( $clean['items'] );
-		if ( $branch_count + $total > self::MAX_MODEL_ITEMS ) {
+		$total = count( $clean['menu_sections'] ) + count( $clean['menu_items'] );
+		if ( $total > self::MAX_MODEL_ITEMS ) {
 			return new WP_Error( 'complete99_sync_items', 'The public read model contains too many records.', array( 'status' => 413 ) );
 		}
 
-		$clean['digest'] = hash( 'sha256', wp_json_encode( $clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
+		$clean['digest'] = self::read_model_digest( $clean );
 		$write_changed = update_option( 'complete99_public_read_model', $clean, false );
 		$persisted     = self::read_persisted_read_model();
 		if ( is_wp_error( $persisted ) ) {
 			return $persisted;
 		}
-		if ( ! is_array( $persisted ) || ! hash_equals( hash( 'sha256', serialize( $clean ) ), hash( 'sha256', serialize( $persisted ) ) ) ) {
+		if ( ! is_array( $persisted )
+			|| ! self::read_model_integrity_is_valid( $persisted )
+			|| ! hash_equals( $clean['digest'], self::stored_read_model_digest( $persisted ) ) ) {
 			return new WP_Error( 'complete99_sync_readback', 'The public read model could not be verified after storage.', array( 'status' => 500 ) );
 		}
 
@@ -442,13 +467,9 @@ final class Complete99_REST {
 						$item[ $key ] = $value;
 						continue;
 					}
-					if ( 'true' === $value || 'false' === $value ) {
-						$item[ $key ] = 'true' === $value;
-						continue;
-					}
 					return new WP_Error(
 						'complete99_sync_boolean',
-						'Public read-model boolean fields must use JSON booleans or the strings "true" or "false".',
+						'Public read-model boolean fields must use JSON booleans.',
 						array( 'status' => 400 )
 					);
 				} elseif ( 'sort' === $key ) {
@@ -473,6 +494,48 @@ final class Complete99_REST {
 		return $clean;
 	}
 
+	private static function transport_section_keys() {
+		return array( 'id', 'name_he', 'name_en', 'sort', 'published' );
+	}
+
+	private static function transport_item_keys() {
+		return array(
+			'id',
+			'slug',
+			'section_id',
+			'name_he',
+			'name_en',
+			'category_he',
+			'category_en',
+			'description_he',
+			'description_en',
+			'tag_he',
+			'tag_en',
+			'image_asset',
+			'media_provenance',
+			'media_rights_state',
+			'vegetarian',
+			'verification_state',
+			'published',
+			'sort',
+			'updated_at',
+		);
+	}
+
+	private static function records_have_exact_keys( $records, $expected_keys ) {
+		if ( ! is_array( $records ) ) {
+			return false;
+		}
+		foreach ( $records as $record ) {
+			if ( ! is_array( $record )
+				|| array() !== array_diff( $expected_keys, array_keys( $record ) )
+				|| array() !== array_diff( array_keys( $record ), $expected_keys ) ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	private static function parse_rfc3339_timestamp( $value ) {
 		$value = is_string( $value ) ? trim( $value ) : '';
 		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$/', $value ) ) {
@@ -488,19 +551,238 @@ final class Complete99_REST {
 		return $date->getTimestamp();
 	}
 
+	private static function parse_canonical_generation_millis( $value ) {
+		$value = is_string( $value ) ? $value : '';
+		if ( ! preg_match( '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\z/', $value ) ) {
+			return false;
+		}
+		$date = \DateTimeImmutable::createFromFormat(
+			'!Y-m-d\TH:i:s.v\Z',
+			$value,
+			new \DateTimeZone( 'UTC' )
+		);
+		$errors = \DateTimeImmutable::getLastErrors();
+		if ( false === $date || ( is_array( $errors ) && ( 0 < $errors['warning_count'] || 0 < $errors['error_count'] ) ) ) {
+			return false;
+		}
+		return ( 1000 * $date->getTimestamp() ) + (int) $date->format( 'v' );
+	}
+
+	private static function parse_rfc3339_millis( $value ) {
+		$value = is_string( $value ) ? trim( $value ) : '';
+		if ( ! preg_match( '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d{1,6}))?(?:Z|[+-]\d{2}:\d{2})\z/', $value, $matches ) ) {
+			return false;
+		}
+		$timestamp = self::parse_rfc3339_timestamp( $value );
+		if ( false === $timestamp ) {
+			return false;
+		}
+		$fraction = isset( $matches[1] ) ? str_pad( $matches[1], 3, '0' ) : '000';
+		return ( 1000 * $timestamp ) + (int) substr( $fraction, 0, 3 );
+	}
+
+	private static function canonicalize_read_model_value( $value ) {
+		if ( ! is_array( $value ) ) {
+			return $value;
+		}
+
+		$is_list = true;
+		$offset  = 0;
+		foreach ( array_keys( $value ) as $key ) {
+			if ( $key !== $offset ) {
+				$is_list = false;
+				break;
+			}
+			$offset++;
+		}
+
+		$canonical = array();
+		foreach ( $value as $key => $item ) {
+			$canonical[ $key ] = self::canonicalize_read_model_value( $item );
+		}
+		if ( ! $is_list ) {
+			ksort( $canonical, SORT_STRING );
+		}
+		return $canonical;
+	}
+
+	private static function canonical_read_model_value_digest( $value ) {
+		$encoded = wp_json_encode(
+			self::canonicalize_read_model_value( $value ),
+			JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+		);
+		return is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+	}
+
+	private static function read_model_digest( $model ) {
+		if ( ! is_array( $model ) ) {
+			return '';
+		}
+		$unsigned = $model;
+		unset( $unsigned['digest'] );
+		return self::canonical_read_model_value_digest( $unsigned );
+	}
+
+	private static function stored_read_model_digest( $model ) {
+		$digest = is_array( $model ) && isset( $model['digest'] ) ? (string) $model['digest'] : '';
+		return 1 === preg_match( '/\A[a-f0-9]{64}\z/', $digest ) ? $digest : '';
+	}
+
+	private static function read_model_integrity_is_valid( $model ) {
+		if ( ! self::is_valid_transport_read_model_shape( $model ) ) {
+			return false;
+		}
+		$stored   = self::stored_read_model_digest( $model );
+		$expected = self::read_model_digest( $model );
+		return '' !== $stored && '' !== $expected && hash_equals( $expected, $stored );
+	}
+
+	private static function is_valid_transport_read_model_shape( $model ) {
+		$required = array( 'schema', 'version', 'generated_at', 'branches', 'menu_sections', 'menu_items', 'campaigns', 'digest' );
+		if ( ! is_array( $model )
+			|| array() !== array_diff( $required, array_keys( $model ) )
+			|| array() !== array_diff( array_keys( $model ), $required )
+			|| 'complete99-public-read-model/v1' !== ( $model['schema'] ?? '' )
+			|| '' === trim( (string) ( $model['version'] ?? '' ) )
+			|| sanitize_text_field( (string) $model['version'] ) !== (string) $model['version']
+			|| false === self::parse_canonical_generation_millis( (string) ( $model['generated_at'] ?? '' ) )
+			|| trim( (string) $model['generated_at'] ) !== (string) $model['generated_at']
+			|| ! is_array( $model['branches'] )
+			|| array() !== $model['branches']
+			|| ! is_array( $model['campaigns'] )
+			|| array() !== $model['campaigns']
+			|| ! is_array( $model['menu_sections'] )
+			|| ! is_array( $model['menu_items'] )
+			|| count( $model['menu_sections'] ) + count( $model['menu_items'] ) > self::MAX_MODEL_ITEMS ) {
+			return false;
+		}
+
+		$sections = self::clean_records(
+			$model['menu_sections'],
+			self::transport_section_keys()
+		);
+		$items = self::clean_records(
+			$model['menu_items'],
+			self::transport_item_keys()
+		);
+		if ( ! is_wp_error( $items ) ) {
+			foreach ( $items as $item ) {
+				if ( ! isset( $item['updated_at'] ) || ! hash_equals( (string) $model['generated_at'], (string) $item['updated_at'] ) ) {
+					return false;
+				}
+			}
+		}
+		return ! is_wp_error( $sections )
+			&& ! is_wp_error( $items )
+			&& self::records_have_exact_keys( $model['menu_sections'], self::transport_section_keys() )
+			&& self::records_have_exact_keys( $model['menu_items'], self::transport_item_keys() )
+			&& count( $sections ) === count( $model['menu_sections'] )
+			&& count( $items ) === count( $model['menu_items'] )
+			&& hash_equals( self::canonical_read_model_value_digest( $sections ), self::canonical_read_model_value_digest( $model['menu_sections'] ) )
+			&& hash_equals( self::canonical_read_model_value_digest( $items ), self::canonical_read_model_value_digest( $model['menu_items'] ) );
+	}
+
+	private static function is_recognized_legacy_read_model( $model ) {
+		if ( ! is_array( $model ) ) {
+			return false;
+		}
+		$required = array( 'schema', 'version', 'generated', 'updated_at', 'sections', 'items', 'campaigns' );
+		$allowed  = array_merge( $required, array( 'digest' ) );
+		if ( array() !== array_diff( $required, array_keys( $model ) )
+			|| array() !== array_diff( array_keys( $model ), $allowed )
+			|| 'complete99-public-read-model/v1' !== ( $model['schema'] ?? '' )
+			|| 1 !== preg_match( '/\Acomplete99-os-v\d+\z/', (string) ( $model['version'] ?? '' ) )
+			|| false === self::parse_rfc3339_timestamp( (string) ( $model['generated'] ?? '' ) )
+			|| false === self::parse_rfc3339_timestamp( (string) ( $model['updated_at'] ?? '' ) )
+			|| ! is_array( $model['sections'] )
+			|| ! is_array( $model['items'] )
+			|| ! is_array( $model['campaigns'] )
+			|| array() !== $model['campaigns']
+			|| count( $model['sections'] ) + count( $model['items'] ) > self::MAX_MODEL_ITEMS ) {
+			return false;
+		}
+
+		$sections = self::clean_records(
+			$model['sections'],
+			array( 'id', 'name_he', 'name_en', 'sort', 'published' )
+		);
+		$items = self::clean_records(
+			$model['items'],
+			array(
+				'id',
+				'slug',
+				'section_id',
+				'name_he',
+				'name_en',
+				'category_he',
+				'category_en',
+				'description_he',
+				'description_en',
+				'tag_he',
+				'tag_en',
+				'image_asset',
+				'media_provenance',
+				'media_rights_state',
+				'vegetarian',
+				'verification_state',
+				'published',
+				'sort',
+				'updated_at',
+			)
+		);
+		if ( is_wp_error( $sections ) || is_wp_error( $items )
+			|| count( $sections ) !== count( $model['sections'] )
+			|| count( $items ) !== count( $model['items'] )
+			|| ! hash_equals( self::canonical_read_model_value_digest( $sections ), self::canonical_read_model_value_digest( $model['sections'] ) )
+			|| ! hash_equals( self::canonical_read_model_value_digest( $items ), self::canonical_read_model_value_digest( $model['items'] ) ) ) {
+			return false;
+		}
+
+		if ( ! array_key_exists( 'digest', $model ) ) {
+			$bundled = self::bundled_public_indexable_items();
+			if ( 12 !== count( $model['items'] ) || count( $bundled ) !== count( $model['items'] ) ) {
+				return false;
+			}
+			foreach ( $model['items'] as $offset => $item ) {
+				if ( ! isset( $bundled[ $offset ] )
+					|| ! hash_equals( (string) ( $bundled[ $offset ]['id'] ?? '' ), (string) ( $item['id'] ?? '' ) )
+					|| ! hash_equals( (string) ( $bundled[ $offset ]['slug'] ?? '' ), sanitize_title( (string) ( $item['slug'] ?? '' ) ) ) ) {
+					return false;
+				}
+			}
+			return true;
+		}
+		$stored = self::stored_read_model_digest( $model );
+		if ( '' === $stored ) {
+			return false;
+		}
+		$unsigned = $model;
+		unset( $unsigned['digest'] );
+		$encoded = wp_json_encode( $unsigned, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES );
+		$expected = is_string( $encoded ) ? hash( 'sha256', $encoded ) : '';
+		return '' !== $expected && hash_equals( $expected, $stored );
+	}
+
 	private static function model_freshness( $model ) {
-		$updated_at = is_array( $model ) && isset( $model['updated_at'] ) ? (string) $model['updated_at'] : '';
-		$timestamp  = self::parse_rfc3339_timestamp( $updated_at );
+		if ( ! self::read_model_integrity_is_valid( $model ) ) {
+			return array(
+				'fresh'      => false,
+				'expires_at' => '',
+			);
+		}
+		$updated_at = is_array( $model ) && isset( $model['generated_at'] ) ? (string) $model['generated_at'] : '';
+		$timestamp  = self::parse_canonical_generation_millis( $updated_at );
 		if ( false === $timestamp ) {
 			return array(
 				'fresh'      => false,
 				'expires_at' => '',
 			);
 		}
-		$expires = $timestamp + self::PUBLIC_MODEL_TTL;
+		$expires = $timestamp + ( 1000 * self::PUBLIC_MODEL_TTL );
+		$now_millis = 1000 * time();
 		return array(
-			'fresh'      => $timestamp <= time() + self::MAX_CLOCK_SKEW && time() <= $expires,
-			'expires_at' => gmdate( 'c', $expires ),
+			'fresh'      => $timestamp <= $now_millis + ( 1000 * self::MAX_CLOCK_SKEW ) && $now_millis <= $expires,
+			'expires_at' => gmdate( 'c', (int) floor( $expires / 1000 ) ),
 		);
 	}
 
@@ -571,7 +853,9 @@ final class Complete99_REST {
 
 		$stored_ids   = array();
 		$stored_slugs = array();
-		$stored_items = isset( $stored_model['items'] ) && is_array( $stored_model['items'] ) ? $stored_model['items'] : array();
+		$stored_items = isset( $stored_model['menu_items'] ) && is_array( $stored_model['menu_items'] )
+			? $stored_model['menu_items']
+			: ( isset( $stored_model['items'] ) && is_array( $stored_model['items'] ) ? $stored_model['items'] : array() );
 		foreach ( $stored_items as $item ) {
 			if ( ! is_array( $item ) ) {
 				continue;
@@ -731,7 +1015,7 @@ final class Complete99_REST {
 		if ( ! is_array( $model ) || ! self::is_public_model_fresh( $model ) ) {
 			return $bundled;
 		}
-		$records        = isset( $model['items'] ) && is_array( $model['items'] ) ? $model['items'] : array();
+		$records        = isset( $model['menu_items'] ) && is_array( $model['menu_items'] ) ? $model['menu_items'] : array();
 		$synced_by_slug = array();
 		$synced_order   = array();
 		$exact_contract = true;
@@ -953,7 +1237,7 @@ final class Complete99_REST {
 		);
 		return rest_ensure_response(
 			array(
-				'schema'     => isset( $model['schema'] ) ? (string) $model['schema'] : 'complete99-public-read-model/v1',
+				'schema'     => $model_is_fresh && isset( $model['schema'] ) ? (string) $model['schema'] : 'complete99-public-read-model/v1',
 				'version'    => self::BUNDLED_CATALOG_VERSION,
 				'updated_at' => self::BUNDLED_CATALOG_UPDATED_AT,
 				'source'     => $source,
@@ -961,7 +1245,7 @@ final class Complete99_REST {
 					'attested'         => $attested,
 					'controls_applied' => $model_is_fresh,
 					'version'          => $model_is_fresh ? (string) ( $model['version'] ?? '' ) : '',
-					'updated_at'       => $model_is_fresh ? (string) ( $model['updated_at'] ?? '' ) : '',
+					'updated_at'       => $model_is_fresh ? (string) ( $model['generated_at'] ?? '' ) : '',
 				),
 				'sections'   => self::public_catalog_sections( $indexable ),
 				'items'      => array_values( $items ),

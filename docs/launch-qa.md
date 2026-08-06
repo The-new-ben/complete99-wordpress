@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.7.0
+Release target: Complete99 Platform 1.8.0
 
 ## Automated gates
 
@@ -13,14 +13,15 @@ Release target: Complete99 Platform 1.7.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.7.0 and its versioned package URL.
-- The Japanese Foundations Lab renders only the approved public collection
-  projection and rejects malformed or private collection fields.
-- Hebrew and English Lab routes expose reciprocal canonicals and hreflang,
-  visible breadcrumbs, accessible group filters and CollectionPage plus
-  ItemList schema that matches visible cards.
-- Lab filter query state never creates a second canonical URL, and all Lab
-  variants remain noindex until the editorial search-intent gate is approved.
+- The public update manifest matches version 1.8.0 and its versioned package URL.
+- The stored public read-model digest equals SHA-256 of the recursive canonical
+  model after removing only the top-level `digest` field.
+- Canonicalization preserves ordered lists and sorts associative keys at every
+  depth, so equivalent key insertion orders produce the same digest and retry
+  result.
+- Every digest comparison uses `hash_equals`. Missing, malformed, arbitrary and
+  content-mismatched digests make the model non-fresh and activate the approved
+  packaged-menu fallback.
 - Consumer breadcrumb and live cart-status links expose a minimum 44 by 44
   CSS-pixel target.
 - An exactly equivalent read-model retry repeats all public cache purges,
@@ -83,7 +84,23 @@ Release target: Complete99 Platform 1.7.0
 ## Read-model checks
 
 - Signed model and item timestamps are valid and no more than 24 hours old.
-- Only strict JSON booleans or exact `true` and `false` strings are accepted.
+- A model can be fresh only when its stored digest causally matches its complete
+  canonical content. A valid timestamp or 64-hex string alone is insufficient.
+- Health exposes digest, version and generation time only after complete shape
+  and causal hash validation. It does not compute a replacement that could
+  disguise missing or altered persisted state.
+- The stored model is the unchanged normalized OS transport envelope plus only
+  its top-level digest. The fixed cross-language fixture must produce SHA-256
+  `b183d09588cb21c1374b5ec75d6d90fac836a49f5e1dbe030f01aa9d85d35410`
+  from 810 canonical UTF-8 bytes in PHP and the OS runtime.
+- New `generated_at` values use exact `YYYY-MM-DDTHH:mm:ss.sssZ` form. Every
+  public item uses that same byte-identical `updated_at`, and millisecond order
+  is monotonic.
+- Only strict JSON booleans are accepted. String coercion is rejected before
+  storage because it would change the OS transport digest.
+- The one-time 1.7 migration gate preserves item ID and slug ownership, checks
+  the old insertion-order digest when present, and narrowly recognizes the
+  known stable 12-item live model when the legacy digest is absent.
 - Canonical item IDs and slugs cannot collide, change ownership or be silently
   renamed.
 - Public item contract contains no price, currency, stock quantity or
@@ -98,6 +115,8 @@ Release target: Complete99 Platform 1.7.0
 - WooCommerce 10.9.4 is installed from the pinned official package and the
   full installed tree matches the expected digest.
 - The public store contains exactly 32 owner-authorized catalog products and is indexable.
+- Release 1.8.0 leaves the exact 32-item catalog allowlist, receipt and public
+  product set unchanged.
 - Every product has its exact SKU, researched opening price, normal image,
   category, tags, stock authority and a reciprocal dish or science-entity relation.
 - New products begin with stock 1. Reapplying the catalog preserves operational
