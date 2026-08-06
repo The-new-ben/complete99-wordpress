@@ -11,9 +11,17 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.9.0`. Production truth comes
+The source tree targets Complete99 Platform `1.10.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.10.0 adds an administrator-only Entity Studio inside WordPress for
+modular culinary, scientific and commercial dossiers. It covers all 41 known
+product identities: 36 current public WooCommerce products and five private
+draft planning offers. The five plans are not active offers, do not write to
+the public catalog, stock or POS projection, and do not assert supplier cost,
+landed cost or achieved margin. Payment remains disabled. This release changes
+no public route or public interface.
 
 Release 1.9.0 expands the approved WooCommerce catalog to exactly 36 products.
 It adds Uozu Koshihikari rice, Hishiroku dried rice koji, Hishiroku Chouhaku-kin

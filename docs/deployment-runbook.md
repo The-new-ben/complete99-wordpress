@@ -93,33 +93,41 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.9.0, require the public read-model integrity tests to prove
+3. For release 1.10.0, require the Entity Studio contracts to prove private
+   post-type and REST boundaries, capability denial, advisory-lock failure,
+   transaction rollback with cache invalidation, exact revision and source-base
+   conflicts, explicit draft-only rebase, history-chain tamper detection,
+   bounded API pagination, orphan-dossier audit access and fail-closed
+   observation identity collisions.
+4. Require the public read-model integrity tests to prove
    recursive canonical hashing, exclusion of the top-level `digest` field,
    `hash_equals` verification and fail-closed handling of missing, malformed,
    arbitrary or content-mismatched digests.
-4. Require the shared 810-byte fixture to produce SHA-256
+5. Require the shared 810-byte fixture to produce SHA-256
    `b183d09588cb21c1374b5ec75d6d90fac836a49f5e1dbe030f01aa9d85d35410`,
    and verify exact UTC millisecond generation timestamps plus byte-identical
    item timestamps.
-5. Exercise the narrow 1.7 migration gate against the known 12-item live
+6. Exercise the narrow 1.7 migration gate against the known 12-item live
    fallback state. Confirm canonical ID and slug ownership remains protected.
-6. Confirm the public catalog allowlist and receipt contain exactly 36 items.
+7. Confirm the public catalog allowlist and receipt contain exactly 36 items.
    Require the four 1.9.0 additions to have exact product codes, prices, one
    unit of opening stock, disabled backorders, image hashes, relations and
    dated market evidence. Confirm all 32 earlier products keep their current
-   operational stock rather than being reset.
-7. Build twice and require identical bytes:
+   operational stock rather than being reset. Confirm the five 1.10.0 planning
+   offers remain private drafts, zero new offers are active and price-basis
+   coverage is exactly 41 of 41 product identities.
+8. Build twice and require identical bytes:
 
    `python scripts/build-plugin-zip.py --verify-reproducible`
 
-8. Inspect and validate the artifact:
+9. Inspect and validate the artifact:
 
    `python scripts/validate-package.py`
 
-9. Confirm `plugin-dist/complete99-platform.json` is the public PUC update
+10. Confirm `plugin-dist/complete99-platform.json` is the public PUC update
    manifest and `plugin-dist/complete99-platform-integrity.json` contains the
    independently checked artifact digest and size.
-10. Review source and metadata, then merge to `main`.
+11. Review source and metadata, then merge to `main`.
 
 The deliberate deploy path remains the authenticated temporary bridge. Vendored
 Plugin Update Checker 5.6 reads the public manifest on `main` only as the normal
@@ -229,6 +237,11 @@ A production release is complete only when the non-secret audit JSON shows:
   arbitrary and content-mismatched digest states;
 - an exact 36-item public catalog receipt and allowlist, including the four
   version 1.9.0 additions;
+- a private Entity Studio registration and invariant check with no public route,
+  no new role and no WooCommerce write;
+- five private draft planning offers, zero active new offers and 41 of 41
+  product identities with either a current live price or a private planning
+  price;
 - `sync_configured: true` after an exact secret checkpoint, without exposing the
   value;
 - anonymous `robots.txt` content and SHA-256 matching the managed policy;

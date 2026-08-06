@@ -216,6 +216,13 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
+                "<li>Added a private administrator-only Entity Studio inside WordPress for modular culinary, scientific and commercial dossiers.</li>"
+                "<li>Added five evidence-bound private draft planning offers, bringing commercial price identity coverage to 41 of 41 products while activating no new offers.</li>"
+                "<li>Preserved the exact 36-product public WooCommerce catalog, all public routes and the public interface unchanged.</li>"
+                "<li>Kept WooCommerce as the price and stock authority for live offers, kept payment disabled and kept planned prices separate from supplier cost, landed cost and achieved margin.</li>"
+                "</ul>"
+                "<h4>1.9.0</h4>"
+                "<ul>"
                 "<li>Expanded the public WooCommerce catalog from 32 to 36 owner-authorized products with Uozu Koshihikari rice, dried rice koji, Chouhaku-kin koji starter and Dutch-grown fresh wasabi.</li>"
                 "<li>Added current dated source-market observations, Bank of Israel currency conversions, explicit opening retail prices, one unit of opening stock and no backorders for all four products.</li>"
                 "<li>Expanded the bilingual Japanese culinary-science pilot to 22 public entities across 17 canonical page owners per language, with dedicated imagery, natural internal links and reciprocal store offers.</li>"

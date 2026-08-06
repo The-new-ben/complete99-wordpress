@@ -1,10 +1,10 @@
 {
-  "artifact": "complete99-platform-1.9.0.zip",
-  "deployment_id": "c99-wp-1.9.0",
-  "sha256": "3be42637166121913d81c9e186cd573111d7e66232540a4a33f97f035fe80e1b",
-  "size": 25166642,
+  "artifact": "complete99-platform-1.10.0.zip",
+  "deployment_id": "c99-wp-1.10.0",
+  "sha256": "9bc215c1cbf79e8c78414b850b30cc751b212c59bb0da378e1511ab54b1871a7",
+  "size": 25187124,
   "slug": "complete99-platform",
-  "source_sha256": "a59e52d2a9f1909ddd1c42f094b182a99d035b4713ae7ce125fa2c55145beaae",
+  "source_sha256": "255bfc066c4bb4a7a51b85e65dfda652c4ba4fdea9955bd8f061aa34a9bda4ab",
   "type": "plugin",
-  "version": "1.9.0"
+  "version": "1.10.0"
 }

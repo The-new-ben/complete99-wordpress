@@ -1,7 +1,37 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-06
-Release target: Complete99 Platform 1.9.0
+Release target: Complete99 Platform 1.10.0
+
+## Current 1.10.0 private planning boundary
+
+Release 1.10.0 adds Entity Studio under WordPress Tools for administrators. It
+is private, absent from the public REST API, search, sitemap and public route
+ownership, and creates no worker role. Its private REST surface requires
+`manage_options` and is available at
+`/wp-json/complete99/v1/editorial/entity-studio`.
+
+The Studio presents one modular dossier contract over the culinary-science,
+authorized catalog and commerce registries. It keeps current WooCommerce price
+and stock authority separate from planning values. Each save uses an expected
+revision and subject-scoped source digest, preserves review history, and fails
+closed on stale, corrupt or mismatched records.
+
+Price identity coverage is 41 of 41 product identities. Thirty-six are the
+unchanged live public catalog. Five are private draft planning offers:
+
+| Private planning identity | Planned price | State |
+| --- | ---: | --- |
+| Honkarebushi belly, 200 g | ILS 219 | Draft only |
+| Fukumitsuya hon mirin, 3 years, 720 ml | ILS 249 | Draft only |
+| Fukumitsuya hon mirin, 10 years, 720 ml | ILS 349 | Draft only |
+| Kito yuzu juice, 720 ml | ILS 199 | Draft only |
+| Umezawa hangiri, 36 cm | ILS 649 | Draft only |
+
+There are zero new active offers. These values do not create WooCommerce
+products or stock, do not enter the active POS projection, and do not represent
+verified supplier cost, landed cost, gross margin or current availability.
+Payment remains disabled. Release 1.10.0 changes no public UI or public route.
 
 ## Current 1.9.0 catalog boundary
 

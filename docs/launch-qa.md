@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.9.0
+Release target: Complete99 Platform 1.10.0
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.9.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.9.0 and its versioned package URL.
+- The public update manifest matches version 1.10.0 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -49,6 +49,16 @@ Release target: Complete99 Platform 1.9.0
   from the museum sitemap provider until their separate index gate is approved.
 - Public museum responses cannot expose visual prompts, supplier terms, landed
   cost, margins, connector state, approval identities or private workflow data.
+- Entity Studio remains private, requires `manage_options`, creates no role,
+  exposes no public route and cannot delete dossier records or revisions.
+- Entity Studio subject identity covers all 41 product identities: 36 current
+  public WooCommerce products and five private draft planning offers.
+- The five planning offers remain draft, create zero new active offers, do not
+  write WooCommerce price or stock, and remain absent from the active POS
+  projection.
+- Entity Studio records reject stale revisions, stale subject-scoped source
+  digests, corrupt history links, mismatched subject identity and failed write
+  readback.
 
 ## Public consumer boundary
 
@@ -116,6 +126,8 @@ Release target: Complete99 Platform 1.9.0
 - WooCommerce 10.9.4 is installed from the pinned official package and the
   full installed tree matches the expected digest.
 - The public store contains exactly 36 owner-authorized catalog products and is indexable.
+- Release 1.10.0 preserves all 36 public products unchanged and adds no active
+  public or POS offer.
 - Release 1.9.0 adds exactly four owner-authorized offers to the previous
   32-item allowlist: Uozu Koshihikari rice, dried rice koji, Chouhaku-kin koji
   starter and Dutch-grown fresh wasabi.
