@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import unittest
@@ -18,6 +19,7 @@ SITEMAP = (
 TEMPLATE = PLUGIN / "templates" / "culinary-museum.php"
 CSS = PLUGIN / "assets" / "css" / "culinary-museum.css"
 CONSUMER = PLUGIN / "includes" / "class-complete99-consumer.php"
+SCIENCE_DATA = PLUGIN / "data" / "culinary-science-pilot.php"
 
 
 class CulinaryMuseumFrontendContracts(unittest.TestCase):
@@ -47,6 +49,10 @@ class CulinaryMuseumFrontendContracts(unittest.TestCase):
         self.assertIn("Complete99_Commerce::catalog_is_ready()", frontend)
         self.assertIn("private static function market_value_label", frontend)
         self.assertIn("self::market_value_label( $item['availability'], $is_he )", frontend)
+        self.assertIn("private static function relationship_label", frontend)
+        self.assertEqual(2, frontend.count("self::relationship_label("))
+        self.assertIn("מרכזי תוכן וענפי ידע", frontend)
+        self.assertNotIn("$is_he ? 'Hubs & Spokes' : 'Hubs & Spokes'", frontend)
 
     def test_bilingual_seo_evidence_and_accessibility_are_explicit(self) -> None:
         frontend = FRONTEND.read_text(encoding="utf-8")
@@ -87,6 +93,220 @@ class CulinaryMuseumFrontendContracts(unittest.TestCase):
             css,
             r"(?s)\.c99-museum-citation a\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px",
         )
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for label evaluation")
+    def test_dashi_and_emitted_relationship_labels_are_fully_bilingual(self) -> None:
+        frontend_path = json.dumps(FRONTEND.as_posix())
+        script = f"""
+define('ABSPATH', __DIR__);
+require {frontend_path};
+
+$entity_type_label = new ReflectionMethod(
+    'Complete99_Culinary_Museum_Frontend',
+    'entity_type_label'
+);
+$entity_type_label->setAccessible(true);
+$relationship_label = new ReflectionMethod(
+    'Complete99_Culinary_Museum_Frontend',
+    'relationship_label'
+);
+$relationship_label->setAccessible(true);
+
+function c99_label_values($method, $values, $lang) {{
+    $labels = array();
+    foreach ($values as $value) {{
+        $labels[$value] = $method->invoke(null, $value, $lang);
+    }}
+    return $labels;
+}}
+
+$entity_types = array('preparation', 'guide');
+$relationships = array(
+    'parent-context',
+    'child-discovery',
+    'curated-discovery',
+    'cross-sell',
+    'up-sell',
+    'related-complements',
+    'related-requires',
+    'related-used_in',
+    'complements',
+    'requires',
+    'used_in',
+    'unknown-machine-purpose'
+);
+
+echo json_encode(array(
+    'entity_he' => c99_label_values($entity_type_label, $entity_types, 'he'),
+    'entity_en' => c99_label_values($entity_type_label, $entity_types, 'en'),
+    'relationship_he' => c99_label_values($relationship_label, $relationships, 'he'),
+    'relationship_en' => c99_label_values($relationship_label, $relationships, 'en'),
+), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+"""
+        completed = subprocess.run(
+            ["php", "-r", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual(
+            {"preparation": "הכנה", "guide": "מדריך"},
+            result["entity_he"],
+        )
+        self.assertEqual(
+            {"preparation": "Preparation", "guide": "Guide"},
+            result["entity_en"],
+        )
+        self.assertEqual(
+            {
+                "parent-context": "חזרה לנושא האב",
+                "child-discovery": "המשך לתת-נושא",
+                "curated-discovery": "המשך מומלץ",
+                "cross-sell": "השלמה קולינרית",
+                "up-sell": "חלופת פרימיום",
+                "related-complements": "משלים",
+                "related-requires": "דורש",
+                "related-used_in": "משמש בתוך",
+                "complements": "משלים",
+                "requires": "דורש",
+                "used_in": "משמש בתוך",
+                "unknown-machine-purpose": "קשר נוסף",
+            },
+            result["relationship_he"],
+        )
+        self.assertEqual(
+            {
+                "parent-context": "Parent topic",
+                "child-discovery": "Explore subtopic",
+                "curated-discovery": "Recommended next",
+                "cross-sell": "Culinary pairing",
+                "up-sell": "Premium alternative",
+                "related-complements": "Complements",
+                "related-requires": "Requires",
+                "related-used_in": "Used in",
+                "complements": "Complements",
+                "requires": "Requires",
+                "used_in": "Used in",
+                "unknown-machine-purpose": "Unknown Machine Purpose",
+            },
+            result["relationship_en"],
+        )
+        self.assertNotIn("Preparation", result["entity_he"].values())
+        self.assertNotIn("RELATED REQUIRES", result["relationship_he"].values())
+
+    def test_every_controlled_entity_and_relation_has_a_bilingual_label(self) -> None:
+        frontend = FRONTEND.read_text(encoding="utf-8")
+        registry = SCIENCE_DATA.read_text(encoding="utf-8")
+        entity_block = frontend.split(
+            "private static function entity_type_label", 1
+        )[1].split("private static function relationship_label", 1)[0]
+        relation_block = frontend.split(
+            "private static function relationship_label", 1
+        )[1].split("private static function machine_label", 1)[0]
+
+        entity_vocabulary = re.search(
+            r"'entity_types'\s*=>\s*array\((.*?)\)", registry, re.DOTALL
+        )
+        relation_vocabulary = re.search(
+            r"'relation_types'\s*=>\s*array\((.*?)\)", registry, re.DOTALL
+        )
+        self.assertIsNotNone(entity_vocabulary)
+        self.assertIsNotNone(relation_vocabulary)
+
+        entity_types = re.findall(r"'([a-z_]+)'", entity_vocabulary.group(1))
+        relation_types = re.findall(r"'([a-z_]+)'", relation_vocabulary.group(1))
+        self.assertEqual(28, len(entity_types))
+        self.assertEqual(22, len(relation_types))
+        for entity_type in entity_types:
+            self.assertIn(f"'{entity_type}'", entity_block, entity_type)
+        for relation_type in relation_types:
+            normalized = relation_type.replace("_", "-")
+            self.assertIn(f"'{normalized}'", relation_block, relation_type)
+        for purpose in (
+            "parent-context",
+            "child-discovery",
+            "curated-discovery",
+            "cross-sell",
+            "up-sell",
+        ):
+            self.assertIn(f"'{purpose}'", relation_block, purpose)
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for label evaluation")
+    def test_current_public_taxonomy_and_evidence_labels_are_localized(self) -> None:
+        frontend_path = json.dumps(FRONTEND.as_posix())
+        script = f"""
+define('ABSPATH', __DIR__);
+require {frontend_path};
+
+$bundle = new ReflectionProperty(
+    'Complete99_Culinary_Museum_Frontend',
+    'bundle'
+);
+$bundle->setAccessible(true);
+$bundle->setValue(null, array('language' => 'he'));
+$machine_label = new ReflectionMethod(
+    'Complete99_Culinary_Museum_Frontend',
+    'machine_label'
+);
+$machine_label->setAccessible(true);
+$evidence_label = new ReflectionMethod(
+    'Complete99_Culinary_Museum_Frontend',
+    'evidence_label'
+);
+$evidence_label->setAccessible(true);
+
+$taxonomy_values = array(
+    'japanese-food-science',
+    'dashi-ingredients',
+    'controlled-water-extraction',
+    'fresh-aromatics',
+    'refrigerated-perishable',
+    'seaweed',
+    'seasonality',
+    'smoking',
+    'imp',
+    'aitc',
+    't1r1-t1r3'
+);
+$taxonomy = array();
+foreach ($taxonomy_values as $value) {{
+    $taxonomy[$value] = $machine_label->invoke(null, $value);
+}}
+echo json_encode(array(
+    'taxonomy' => $taxonomy,
+    'regulatory_standard' => $evidence_label->invoke(null, 'regulatory_standard', 'he'),
+), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+"""
+        completed = subprocess.run(
+            ["php", "-r", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual("מדע האוכל היפני", result["taxonomy"]["japanese-food-science"])
+        self.assertEqual("חומרי גלם לדאשי", result["taxonomy"]["dashi-ingredients"])
+        self.assertEqual("מיצוי מבוקר במים", result["taxonomy"]["controlled-water-extraction"])
+        self.assertEqual("ארומטים טריים", result["taxonomy"]["fresh-aromatics"])
+        self.assertEqual("מתכלה בקירור", result["taxonomy"]["refrigerated-perishable"])
+        self.assertEqual("אצת ים", result["taxonomy"]["seaweed"])
+        self.assertEqual("עונתיות", result["taxonomy"]["seasonality"])
+        self.assertEqual("עישון", result["taxonomy"]["smoking"])
+        self.assertEqual("IMP", result["taxonomy"]["imp"])
+        self.assertEqual("AITC", result["taxonomy"]["aitc"])
+        self.assertEqual("T1R1/T1R3", result["taxonomy"]["t1r1-t1r3"])
+        self.assertEqual("תקן רגולטורי", result["regulatory_standard"])
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for offer evaluation")
     def test_offer_renderer_requires_managed_approved_matching_woo_product(self) -> None:

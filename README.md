@@ -11,11 +11,13 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.5.0`. Production truth comes
+The source tree targets Complete99 Platform `1.5.1`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.5.0 provides:
+Release 1.5.1 preserves the 1.5.0 catalog and science pilot and adds complete
+bilingual public labels for culinary entity types, relationship paths,
+evidence classes and the current Japanese taxonomy. It provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
