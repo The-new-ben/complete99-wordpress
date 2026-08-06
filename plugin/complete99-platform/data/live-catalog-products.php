@@ -38,7 +38,7 @@ $none_en    = 'No inherent allergen is known for the raw item. Check the supplie
 
 return array(
 	'schema'             => 'complete99-live-catalog-products/v1',
-	'reviewed_at'        => '2026-07-31',
+	'reviewed_at'        => '2026-08-06',
 	'catalog_publication_authorized' => true,
 	'supplier_label_reviewed'        => false,
 	'country_of_origin_reviewed'     => false,
@@ -56,6 +56,7 @@ return array(
 		'produce' => array( 'name' => 'ירקות ועשבי תיבול | Produce and herbs', 'slug' => 'complete99-produce' ),
 		'eggs' => array( 'name' => 'ביצים | Eggs', 'slug' => 'complete99-eggs' ),
 		'protein' => array( 'name' => 'בשר, עוף ודגים | Meat, poultry and fish', 'slug' => 'complete99-protein' ),
+		'japanese-pantry' => array( 'name' => 'המזווה היפני | Japanese pantry', 'slug' => 'complete99-japanese-pantry' ),
 	),
 	'tags'               => array(
 		'ambient' => array( 'name' => 'מדף | Ambient', 'slug' => 'complete99-ambient' ),
@@ -67,6 +68,9 @@ return array(
 		'spice' => array( 'name' => 'תבלינים | Spices', 'slug' => 'complete99-spice' ),
 		'produce' => array( 'name' => 'תוצרת טרייה | Fresh produce', 'slug' => 'complete99-fresh-produce' ),
 		'protein' => array( 'name' => 'חלבון מן החי | Animal protein', 'slug' => 'complete99-animal-protein' ),
+		'japanese' => array( 'name' => 'יפני | Japanese', 'slug' => 'complete99-japanese' ),
+		'dashi' => array( 'name' => 'דאשי ואומאמי | Dashi and umami', 'slug' => 'complete99-dashi-umami' ),
+		'fish' => array( 'name' => 'דגים | Fish', 'slug' => 'complete99-fish' ),
 	),
 	'shipping_classes'   => array(
 		'ambient' => array( 'name' => 'משלוח מדף | Ambient delivery', 'slug' => 'complete99-ambient-delivery' ),
@@ -101,5 +105,7 @@ return array(
 		'product-olive-oil-750ml' => $c99_live_product( '0.690', 'pantry', array( 'ambient' ), 'ambient', 'שמן זית כתית מעולה.', 'Extra virgin olive oil.', $none_he, $none_en, $ambient_he, $ambient_en ),
 		'product-pickles-brine-320g' => $c99_live_product( '0.320', 'pantry', array( 'ambient', 'condiment' ), 'ambient', 'מלפפונים במי מלח. רשימת המרכיבים המלאה מופיעה על אריזת הספק.', 'Cucumbers in brine. The complete ingredient list appears on the supplier pack.', $label_he, $label_en, $ambient_he, $ambient_en ),
 		'product-chicken-liver-1kg' => $c99_live_product( '1.000', 'protein', array( 'fresh', 'chilled', 'protein' ), 'chilled', 'כבד עוף טרי.', 'Fresh chicken liver.', $none_he, $none_en, $cold_he, $cold_en ),
+		'product-rishiri-kombu-100g' => $c99_live_product( '0.100', 'japanese-pantry', array( 'ambient', 'japanese', 'dashi' ), 'ambient', 'אצת קומבו מיובשת מסוג רישירי.', 'Dried Rishiri-type kombu seaweed.', 'יש לקרוא את הצהרת האלרגנים והמגע הצולב שעל אריזת הספק. אצות עשויות להכיל יוד בכמות משמעותית.', 'Read the supplier allergen and cross-contact declaration. Seaweed may contain a significant amount of iodine.', $ambient_he, $ambient_en ),
+		'product-honkarebushi-200g' => $c99_live_product( '0.200', 'japanese-pantry', array( 'ambient', 'japanese', 'dashi', 'fish' ), 'ambient', 'בלוק דג בוניטו מבושל, מעושן, מיובש ומיושן בתהליך קצואובושי. יש לפעול לפי רשימת המרכיבים שעל אריזת הספק.', 'A cooked, smoked, dried and matured bonito block made by the katsuobushi process. Follow the ingredient list on the supplier pack.', 'מכיל דגים. יש לבדוק מגע צולב ואלרגנים נוספים על אריזת הספק.', 'Contains fish. Check the supplier pack for cross-contact and additional allergens.', $ambient_he, $ambient_en ),
 	),
 );

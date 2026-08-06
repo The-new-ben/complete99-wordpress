@@ -189,7 +189,7 @@ echo json_encode($public, JSON_THROW_ON_ERROR);
         ):
             self.assertNotIn(private_marker, serialized)
 
-    def test_current_registry_has_26_strict_private_evaluation_seeds(self) -> None:
+    def test_current_registry_has_28_strict_private_evaluation_seeds(self) -> None:
         result = self.run_php(
             """
 $registry = require $c99_catalog_data_path;
@@ -221,10 +221,10 @@ echo json_encode(array(
 """
         )
         self.assertTrue(result["valid"])
-        self.assertEqual(26, result["count"])
-        self.assertEqual(26, result["unique_codes"])
+        self.assertEqual(28, result["count"])
+        self.assertEqual(28, result["unique_codes"])
         self.assertTrue(result["all_stock_one"])
-        self.assertEqual(26, len(result["prices"]))
+        self.assertEqual(28, len(result["prices"]))
         self.assertRegex(result["digest"], r"^[a-f0-9]{64}$")
         self.assertFalse(result["global_public_sale"])
         self.assertFalse(result["global_public_stock"])
@@ -501,10 +501,10 @@ echo json_encode(array(
 """
         )
         self.assertEqual("", result["error"])
-        self.assertEqual(26, result["seed_count"])
-        self.assertEqual(52, result["post_count"])
-        self.assertEqual(26, result["ingredient_count"])
-        self.assertEqual(26, result["plan_count"])
+        self.assertEqual(28, result["seed_count"])
+        self.assertEqual(56, result["post_count"])
+        self.assertEqual(28, result["ingredient_count"])
+        self.assertEqual(28, result["plan_count"])
         self.assertEqual(0, result["woo_count"])
         self.assertFalse(result["woo_materialized"])
         self.assertTrue(result["same_ids"])
@@ -517,7 +517,7 @@ echo json_encode(array(
             result["receipt_schema"],
         )
         self.assertEqual("success", result["receipt_status"])
-        self.assertEqual([26, 26, 26, 0], result["receipt_counts"])
+        self.assertEqual([28, 28, 28, 0], result["receipt_counts"])
         self.assertRegex(result["receipt_digest"], r"^[a-f0-9]{64}$")
         self.assertLessEqual(result["receipt_size"], 1024)
 
@@ -582,7 +582,7 @@ echo json_encode(array(
         self.assertFalse(result["woo_materialized"])
         self.assertEqual(0, result["woo_count"])
         self.assertEqual(0, result["product_objects"])
-        self.assertEqual(52, result["post_count"])
+        self.assertEqual(56, result["post_count"])
         self.assertTrue(result["no_products"])
         self.assertTrue(result["canonical"])
         self.assertTrue(result["same_ids"])
@@ -616,7 +616,7 @@ $options['complete99_evaluation_catalog_receipt']['bindings_digest']
     = str_repeat('0', 64);
 $receipt_corrupt = Complete99_Evaluation_Catalog::persisted_status();
 $options['complete99_evaluation_catalog_receipt'] = $receipt;
-$options['complete99_evaluation_catalog_receipt']['seed_count'] = '26';
+$options['complete99_evaluation_catalog_receipt']['seed_count'] = '28';
 $receipt_type_corrupt = Complete99_Evaluation_Catalog::persisted_status();
 $options['complete99_evaluation_catalog_receipt'] = $receipt;
 $options['complete99_evaluation_catalog_receipt']['materialized_at']
@@ -641,7 +641,7 @@ echo json_encode(array(
         self.assertTrue(result["ready"]["ready"])
         self.assertTrue(result["ready"]["receipt"]["valid"])
         self.assertEqual(
-            {"ingredient_count": 26, "product_plan_count": 26},
+            {"ingredient_count": 28, "product_plan_count": 28},
             result["ready"]["materialized"],
         )
         self.assertNotIn("price", result["ready_json"].lower())
@@ -744,13 +744,13 @@ echo json_encode(array(
 """
         )
         self.assertEqual("", result["error"])
-        self.assertEqual(78, result["post_count"])
-        self.assertEqual(26, result["product_count"])
+        self.assertEqual(84, result["post_count"])
+        self.assertEqual(28, result["product_count"])
         self.assertTrue(result["same_product_ids"])
         self.assertTrue(result["exact"])
         self.assertTrue(result["held"])
         self.assertTrue(result["non_product_private"])
-        self.assertEqual([26, 26, 26, 26], result["receipt_counts"])
+        self.assertEqual([28, 28, 28, 28], result["receipt_counts"])
         self.assertTrue(result["receipt_woo"])
 
     def test_duplicate_and_nonmanaged_bindings_fail_before_catalog_writes(
@@ -948,10 +948,10 @@ echo json_encode(array(
                 )
                 self.assertEqual("", result["error"])
                 self.assertEqual(order, result["order"])
-                self.assertEqual(78, result["post_count"])
-                self.assertEqual(26, result["product_records"])
+                self.assertEqual(84, result["post_count"])
+                self.assertEqual(28, result["product_records"])
                 self.assertEqual(0, result["published_records"])
-                self.assertEqual(26, result["evaluation_products"])
+                self.assertEqual(28, result["evaluation_products"])
                 self.assertEqual(7, result["shared_products"])
                 self.assertTrue(result["shared_bindings_exact"])
                 self.assertTrue(result["held_fields_intact"])
@@ -1121,13 +1121,13 @@ echo json_encode(array(
     def assert_shared_order_result(self, result: dict, order: str) -> None:
         self.assertEqual("", result["error"])
         self.assertEqual(order, result["order"])
-        self.assertEqual(52, result["post_count"])
-        self.assertEqual(26, result["ingredient_records"])
-        self.assertEqual(26, result["plan_records"])
+        self.assertEqual(56, result["post_count"])
+        self.assertEqual(28, result["ingredient_records"])
+        self.assertEqual(28, result["plan_records"])
         self.assertEqual(0, result["product_records"])
         self.assertEqual(0, result["published_records"])
-        self.assertEqual(26, result["evaluation_ingredient_bindings"])
-        self.assertEqual(26, result["evaluation_plan_bindings"])
+        self.assertEqual(28, result["evaluation_ingredient_bindings"])
+        self.assertEqual(28, result["evaluation_plan_bindings"])
         self.assertEqual(7, result["graph_overlap_count"])
         self.assertEqual(7, result["shared_ingredient_count"])
         self.assertEqual(7, result["shared_plan_count"])

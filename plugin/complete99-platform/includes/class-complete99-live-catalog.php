@@ -21,7 +21,7 @@ final class Complete99_Live_Catalog {
 	const OPTION_PICKUP_INSTANCE = 'complete99_live_catalog_pickup_instance';
 	const OPTION_PUBLIC_ADDRESS  = 'complete99_live_catalog_public_address';
 	const LOCK_TIMEOUT    = 10;
-	const EXPECTED_COUNT  = 26;
+	const EXPECTED_COUNT  = 28;
 	const RECOVERY_STATES = array(
 		'materializing',
 		'commit_unverified',
@@ -82,6 +82,8 @@ final class Complete99_Live_Catalog {
 		'product-olive-oil-750ml',
 		'product-pickles-brine-320g',
 		'product-chicken-liver-1kg',
+		'product-rishiri-kombu-100g',
+		'product-honkarebushi-200g',
 	);
 	const DISH_SLUGS = array(
 		'sabich',
@@ -730,16 +732,19 @@ final class Complete99_Live_Catalog {
 			$policy         = require COMPLETE99_PLATFORM_DIR . 'data/live-catalog-products.php';
 			$relations      = require COMPLETE99_PLATFORM_DIR . 'data/live-catalog-relations.php';
 			$asset_manifest = require COMPLETE99_PLATFORM_DIR . 'data/generated-asset-manifest.php';
+			$science_registry = require COMPLETE99_PLATFORM_DIR . 'data/culinary-science-pilot.php';
 			if ( ! is_array( $seed_registry )
 				|| ! is_array( $price_registry )
 				|| ! is_array( $policy )
 				|| ! is_array( $relations )
 				|| ! is_array( $asset_manifest )
+				|| ! is_array( $science_registry )
 				|| 'complete99-catalog-product-seeds/v1' !== ( $seed_registry['schema'] ?? '' )
 				|| 'complete99-live-catalog-prices/v1' !== ( $price_registry['schema'] ?? '' )
 				|| 'complete99-live-catalog-products/v1' !== ( $policy['schema'] ?? '' )
 				|| 'complete99-live-catalog-relations/v1' !== ( $relations['schema'] ?? '' )
 				|| 'complete99-generated-asset-manifest/v1' !== ( $asset_manifest['schema'] ?? '' )
+				|| 'complete99-culinary-science-registry/v4' !== ( $science_registry['schema'] ?? '' )
 				|| 'ILS' !== ( $price_registry['currency'] ?? '' )
 				|| 'owner_authorized_opening_retail_price_informed_by_market_observation' !== ( $price_registry['price_scope'] ?? '' )
 				|| ! is_array( $price_registry['evidence'] ?? null )
@@ -772,6 +777,14 @@ final class Complete99_Live_Catalog {
 					$assets[ $filename ] = $asset;
 				}
 			}
+			$science_entities = array();
+			foreach ( (array) ( $science_registry['entities'] ?? array() ) as $science_entity ) {
+				$science_id = is_array( $science_entity ) ? sanitize_key( (string) ( $science_entity['id'] ?? '' ) ) : '';
+				if ( '' === $science_id || isset( $science_entities[ $science_id ] ) ) {
+					throw new \UnexpectedValueException( 'The culinary science registry contains a duplicate or empty entity ID.' );
+				}
+				$science_entities[ $science_id ] = $science_entity;
+			}
 
 			$expected = self::PRODUCT_CODES;
 			$seed_codes = array_keys( $seeds );
@@ -793,7 +806,7 @@ final class Complete99_Live_Catalog {
 				|| $expected !== $policy_codes
 				|| $expected !== $relation_codes
 				|| $expected_dishes !== $dish_slugs ) {
-				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 26-product coverage.' );
+				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 28-product coverage.' );
 			}
 
 			$products      = array();
@@ -804,6 +817,7 @@ final class Complete99_Live_Catalog {
 				$relation   = $relations['products'][ $code ];
 				$price      = (string) $price_registry['prices'][ $code ];
 				$asset_name = sanitize_file_name( (string) ( $seed['image_asset'] ?? '' ) );
+				$science_entity_id = sanitize_key( (string) ( $relation['science_entity_id'] ?? '' ) );
 				if ( 1 !== preg_match( '/\A\d+\.\d{2}\z/', $price ) || (float) $price <= 0
 					|| ! isset( $assets[ $asset_name ] )
 					|| ! is_array( $public )
@@ -811,13 +825,29 @@ final class Complete99_Live_Catalog {
 					|| (string) ( $relation['ingredient_code'] ?? '' ) !== (string) $seed['ingredient_code']
 					|| ! isset( $relation['dish_slugs'] )
 					|| ! is_array( $relation['dish_slugs'] )
-					|| empty( $relation['dish_slugs'] )
+					|| ( empty( $relation['dish_slugs'] ) && '' === $science_entity_id )
+					|| ( '' !== $science_entity_id && 1 !== preg_match( '/\A[a-z0-9][a-z0-9-]{4,99}\z/', $science_entity_id ) )
 					|| ! isset( $public['ingredients']['he'], $public['ingredients']['en'], $public['allergens']['he'], $public['allergens']['en'], $public['storage']['he'], $public['storage']['en'] )
 					|| ! isset( $policy['categories'][ $public['category'] ], $policy['shipping_classes'][ $public['shipping_class'] ] )
 					|| ! is_array( $public['tags'] )
 					|| '' === trim( (string) $public['weight_kg'] )
 					|| (float) $public['weight_kg'] <= 0 ) {
 					throw new \UnexpectedValueException( 'A live product policy record is invalid: ' . $code );
+				}
+				if ( '' !== $science_entity_id ) {
+					$science_entity = $science_entities[ $science_entity_id ] ?? array();
+					if ( 'public_discovery' !== (string) ( $science_entity['surface_class'] ?? '' )
+						|| 'approved_public' !== (string) ( $science_entity['publication']['state'] ?? '' )
+						|| true !== ( $science_entity['publication']['public_api'] ?? null )
+						|| true !== ( $science_entity['publication']['public_page'] ?? null )
+						|| 'standalone' !== (string) ( $science_entity['seo']['route_mode'] ?? '' )
+						|| '' === (string) ( $science_entity['seo']['canonical_path']['he'] ?? '' )
+						|| '' === (string) ( $science_entity['seo']['canonical_path']['en'] ?? '' )
+						|| 'active_offer' !== (string) ( $science_entity['commerce']['state'] ?? '' )
+						|| true !== ( $science_entity['commerce']['public_offer_allowed'] ?? null )
+						|| $code !== (string) ( $science_entity['commerce']['woo_product_code'] ?? '' ) ) {
+						throw new \UnexpectedValueException( 'A live product science relation is not public and reciprocal: ' . $code );
+					}
 				}
 				foreach ( $public['tags'] as $tag ) {
 					if ( ! isset( $policy['tags'][ $tag ] ) ) {
@@ -844,7 +874,7 @@ final class Complete99_Live_Catalog {
 					|| 'owner_approved' !== (string) ( $asset['review_state'] ?? '' )
 					|| 'public' !== (string) ( $asset['usage_state'] ?? '' )
 					|| 'public_catalog_illustration' !== (string) ( $asset['presentation_scope'] ?? '' )
-					|| '2026-07-31' !== (string) ( $asset['owner_authorized_at'] ?? '' )
+					|| ! self::is_valid_date( (string) ( $asset['owner_authorized_at'] ?? '' ) )
 					|| ! empty( $asset['visual_caveat']['he'] )
 					|| ! empty( $asset['visual_caveat']['en'] )
 					|| ! empty( $asset['visual_caveats'] )
@@ -2400,6 +2430,14 @@ final class Complete99_Live_Catalog {
 			return self::error( 'complete99_live_catalog_recovery_cleanup_readback', 'The catalog upload baseline failed exact cleanup readback.', 500 );
 		}
 		return array( 'deleted' => $deleted, 'verified' => true );
+	}
+
+	private static function is_valid_date( $value ) {
+		if ( 1 !== preg_match( '/\A\d{4}-\d{2}-\d{2}\z/', (string) $value ) ) {
+			return false;
+		}
+		$parts = array_map( 'intval', explode( '-', (string) $value ) );
+		return 3 === count( $parts ) && checkdate( $parts[1], $parts[2], $parts[0] );
 	}
 
 	private static function canonicalize( $value ) {

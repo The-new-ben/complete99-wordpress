@@ -88,12 +88,12 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
         cls.assets = cls.manifest["assets"]
         cls.live_product_codes = load_live_product_codes()
 
-    def test_manifest_covers_exactly_50_source_and_delivery_pairs(self):
+    def test_manifest_covers_exactly_52_source_and_delivery_pairs(self):
         self.assertEqual(
             "complete99-generated-asset-manifest/v1", self.manifest["schema"]
         )
-        self.assertEqual("2026-07-31", self.manifest["reviewed_at"])
-        self.assertEqual(50, len(self.assets))
+        self.assertEqual("2026-08-06", self.manifest["reviewed_at"])
+        self.assertEqual(52, len(self.assets))
 
         source_names = {asset["source_filename"] for asset in self.assets}
         delivery_names = {asset["filename"] for asset in self.assets}
@@ -155,7 +155,10 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
                         "public_catalog_illustration",
                         asset["presentation_scope"],
                     )
-                    self.assertEqual("2026-07-31", asset["owner_authorized_at"])
+                    self.assertIn(
+                        asset["owner_authorized_at"],
+                        {"2026-07-31", "2026-08-06"},
+                    )
                     self.assertEqual({"he": "", "en": ""}, asset["visual_caveat"])
                     self.assertEqual([], asset["visual_caveats"])
                     self.assertNotIn("archive", asset["filename"].lower())
@@ -173,7 +176,7 @@ class GeneratedAssetManifestContracts(unittest.TestCase):
                         asset["presentation_scope"],
                     )
 
-        self.assertEqual(26, len(public_product_codes))
+        self.assertEqual(28, len(public_product_codes))
         self.assertEqual(self.live_product_codes, public_product_codes)
 
     def test_manifest_has_no_local_paths_sessions_or_em_dash(self):

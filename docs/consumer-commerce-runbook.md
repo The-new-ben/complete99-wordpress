@@ -1,19 +1,19 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-06
-Release target: Complete99 Platform 1.3.14
+Release target: Complete99 Platform 1.4.0
 
-## Current 1.3.14 catalog boundary
+## Current 1.4.0 catalog boundary
 
-Release 1.3.14 supersedes the earlier evaluation-only pantry state described in
+Release 1.4.0 supersedes the earlier evaluation-only pantry state described in
 the historical sections below.
 
 - WooCommerce 10.9.4 is installed from the exact pinned official package.
-- The curated public store contains exactly 26 owner-authorized ingredient products.
+- The curated public store contains exactly 28 owner-authorized ingredient products.
 - Each new product begins with stock 1, no backorders and one normal public
   product image with no archive label or disclaimer.
 - Prices are owner-authorized opening retail prices informed by the bound market
-  observations dated 2026-07-31.
+  observations dated between 2026-07-31 and 2026-08-06.
 - The store and classic cart are public when the exact catalog receipt passes.
 - Pantry filters hide every nonmatching product card and keep the visible result
   count and shareable URL filter in sync.
@@ -53,7 +53,7 @@ suppliers, costs, campaigns and operating dashboards stay private. Their legacy
 seed records are migrated to private status and removed from public navigation,
 search ownership and sitemaps.
 
-No Complete99 worker role is installed or assigned by release 1.3.14. The private
+No Complete99 worker role is installed or assigned by release 1.4.0. The private
 commerce outbox reports `unassigned_infrastructure` until a later, separately
 approved operating decision.
 

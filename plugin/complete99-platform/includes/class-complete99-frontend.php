@@ -752,8 +752,8 @@ final class Complete99_Frontend {
 			if ( Complete99_Commerce::catalog_is_ready() && class_exists( 'Complete99_Live_Catalog' ) ) {
 				$store_url = Complete99_Content::route_url( 'store', $lang );
 				$related_products = array();
-				foreach ( Complete99_Live_Catalog::product_ids_for_dish_slug( (string) $dish['slug'] ) as $product_id ) {
-					$related_products[] = array( '@id' => $store_url . '#c99-product-' . absint( $product_id ) );
+				foreach ( Complete99_Live_Catalog::product_codes_for_dish_slug( (string) $dish['slug'] ) as $product_code ) {
+					$related_products[] = array( '@id' => $store_url . '#c99-product-code-' . sanitize_html_class( $product_code ) );
 				}
 				if ( ! empty( $related_products ) ) {
 					$menu_item['isRelatedTo'] = $related_products;
@@ -900,12 +900,12 @@ final class Complete99_Frontend {
 		$image       = wp_get_attachment_image_url( $product->get_image_id(), 'full' );
 		$unit_codes  = array( 'kg' => 'KGM', 'g' => 'GRM', 'lbs' => 'LBR', 'oz' => 'ONZ' );
 		$weight_unit = (string) get_option( 'woocommerce_weight_unit', 'kg' );
-		if ( '' === trim( $name ) || '' === trim( $description ) || ! $image ) {
+		if ( '' === trim( $name ) || '' === trim( $description ) || '' === trim( $product_code ) || ! $image ) {
 			return null;
 		}
 		$schema = array(
 			'@type'              => 'Product',
-			'@id'                => $store_url . '#c99-product-' . absint( $product_id ),
+			'@id'                => $store_url . '#c99-product-code-' . sanitize_html_class( $product_code ),
 			'name'               => $name,
 			'description'        => $description,
 			'inLanguage'         => $lang,
@@ -923,7 +923,7 @@ final class Complete99_Frontend {
 			),
 			'offers'             => array(
 				'@type'         => 'Offer',
-				'url'           => $store_url . '#c99-product-' . absint( $product_id ),
+				'url'           => $store_url . '#c99-product-code-' . sanitize_html_class( $product_code ),
 				'priceCurrency' => (string) get_woocommerce_currency(),
 				'price'         => (string) $product->get_price(),
 				'availability'  => $product->is_in_stock() ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
@@ -940,7 +940,13 @@ final class Complete99_Frontend {
 			if ( ! empty( $dish_urls ) ) {
 				$schema['isRelatedTo'] = array_values( array_unique( $dish_urls ) );
 			}
-			if ( ! empty( $relations['ingredient_code'] ) ) {
+			$science_entity_id = sanitize_key( (string) ( $relations['science_entity_id'] ?? '' ) );
+			if ( '' !== $science_entity_id && class_exists( 'Complete99_Culinary_Science' ) ) {
+				$science_bundle = Complete99_Culinary_Science::public_page_bundle_for_id( $science_entity_id, $lang );
+				if ( ! empty( $science_bundle['canonical_path'] ) ) {
+					$schema['subjectOf'] = home_url( $science_bundle['canonical_path'] );
+				}
+			} elseif ( ! empty( $relations['ingredient_code'] ) ) {
 				$schema['subjectOf'] = Complete99_Content::route_url( 'ingredients', $lang ) . '#' . sanitize_html_class( $relations['ingredient_code'] );
 			}
 		}

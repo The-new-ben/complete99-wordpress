@@ -20,9 +20,69 @@ PUBLIC_IDS = {
     "cuisine-japanese-washoku",
     "hub-japanese-ingredients",
     "ingredient-kombu",
+    "ingredient-katsuobushi",
     "ingredient-kioke-shoyu",
     "ingredient-fresh-wasabi",
     "ingredient-kito-yuzu",
+}
+PUBLIC_OFFER_CODES = {
+    "ingredient-kombu": "product-rishiri-kombu-100g",
+    "ingredient-katsuobushi": "product-honkarebushi-200g",
+}
+PUBLIC_PROJECTION_KEYS = {
+    "id",
+    "type",
+    "slug",
+    "parent_id",
+    "name",
+    "summary",
+    "index_policy",
+    "search_index",
+    "seo",
+    "profiles",
+    "facts",
+    "taxonomy",
+    "relations",
+    "internal_links",
+    "visual",
+    "market_context",
+    "offer",
+    "safety_notes",
+    "sources",
+    "trust",
+    "reviewed_at",
+}
+PRIVATE_PROJECTION_KEYS = {
+    "surface_class",
+    "publication",
+    "commerce",
+    "review",
+    "asset_state",
+    "prompt_en",
+    "negative_prompt_en",
+    "shot_list",
+    "rights_method",
+    "rights_state",
+    "rights_receipt_digest",
+    "woo_product_code",
+    "public_offer_allowed",
+    "product_copy",
+    "cross_sell_ids",
+    "up_sell_ids",
+    "business_model",
+    "revenue_models",
+    "customer_segments",
+    "value_proposition",
+    "pricing_state",
+    "market_scope",
+    "observation_entity_ids",
+    "margin_scenario",
+    "landed_cost_low",
+    "landed_cost_high",
+    "retail_price_low",
+    "retail_price_high",
+    "gross_margin_low",
+    "gross_margin_high",
 }
 
 
@@ -60,6 +120,8 @@ $paths = array(
     '/en/museum/japanese-culinary-science/',
     '/ingredients/kombu/',
     '/en/ingredients/kombu/',
+    '/ingredients/katsuobushi/',
+    '/en/ingredients/katsuobushi/',
     '/ingredients/kioke-shoyu/',
     '/en/ingredients/kioke-shoyu/',
     '/ingredients/fresh-wasabi-rhizome/',
@@ -109,7 +171,7 @@ def test_exact_reviewed_public_cohort_and_noindex_boundary(pilot_payload: dict) 
 
 def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict) -> None:
     assert pilot_payload["invalid"] == []
-    assert len(pilot_payload["bundles"]) == 12
+    assert len(pilot_payload["bundles"]) == 14
     for path, bundle in pilot_payload["bundles"].items():
         assert bundle["canonical_path"] == path
         assert bundle["canonical_url"] == "https://complete99.test" + path
@@ -127,11 +189,50 @@ def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict)
             "indexable",
         }
         entity = bundle["entity"]
-        assert "commerce" not in entity
-        assert "publication" not in entity
-        assert "prompt_en" not in entity["visual"]
-        assert "rights_receipt_digest" not in entity["visual"]
+        assert set(entity) == PUBLIC_PROJECTION_KEYS
         assert entity["search_index"] is False
+
+
+def _mapping_keys(value: object) -> set[str]:
+    keys: set[str] = set()
+    if isinstance(value, dict):
+        keys.update(value)
+        for item in value.values():
+            keys.update(_mapping_keys(item))
+    elif isinstance(value, list):
+        for item in value:
+            keys.update(_mapping_keys(item))
+    return keys
+
+
+def test_public_projections_expose_only_two_safe_offer_references(
+    pilot_payload: dict,
+) -> None:
+    seen: dict[tuple[str, str], dict] = {}
+    for bundle in pilot_payload["bundles"].values():
+        projections = [bundle["entity"], *bundle["sections"]]
+        for projection in projections:
+            assert set(projection) == PUBLIC_PROJECTION_KEYS
+            assert not (_mapping_keys(projection) & PRIVATE_PROJECTION_KEYS), (
+                projection["id"],
+                sorted(_mapping_keys(projection) & PRIVATE_PROJECTION_KEYS),
+            )
+            seen[(bundle["language"], projection["id"])] = projection
+
+    for (language, entity_id), projection in seen.items():
+        expected_code = PUBLIC_OFFER_CODES.get(entity_id)
+        if expected_code is None:
+            assert not projection["offer"], (language, entity_id)
+            continue
+
+        offer = projection["offer"]
+        assert set(offer) == {"product_code", "store_path", "label"}
+        assert offer["product_code"] == expected_code
+        store_prefix = "/en/store/" if language == "en" else "/store/"
+        assert offer["store_path"] == (
+            f"{store_prefix}#c99-product-code-{expected_code}"
+        )
+        assert offer["label"].strip()
 
 
 def test_cuisine_owns_the_public_ingredient_section(pilot_payload: dict) -> None:

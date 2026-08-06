@@ -18,7 +18,7 @@ final class Complete99_Evaluation_Catalog {
 	const RECEIPT_SCHEMA  = 'complete99-evaluation-catalog-receipt/v1';
 	const STATUS_SCHEMA   = 'complete99-evaluation-catalog-status/v1';
 	const OPTION_RECEIPT  = 'complete99_evaluation_catalog_receipt';
-	const EXPECTED_SEED_COUNT = 26;
+	const EXPECTED_SEED_COUNT = 28;
 	const MODE_AUTO         = 'auto';
 	const MODE_PRIVATE_ONLY = 'private_only';
 

@@ -20,15 +20,20 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v4"
-EXPECTED_VERSION = "japanese-pilot-2026.08.06.v5"
+EXPECTED_VERSION = "japanese-pilot-2026.08.06.v6"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
     "hub-japanese-ingredients",
     "ingredient-kombu",
+    "ingredient-katsuobushi",
     "ingredient-kioke-shoyu",
     "ingredient-fresh-wasabi",
     "ingredient-kito-yuzu",
+}
+EXPECTED_PUBLIC_OFFER_CODES = {
+    "ingredient-kombu": "product-rishiri-kombu-100g",
+    "ingredient-katsuobushi": "product-honkarebushi-200g",
 }
 EXPECTED_CLUSTERS = {
     "cluster-culinary-science-museum",
@@ -623,7 +628,7 @@ def test_single_museum_root_is_the_exact_bilingual_owner(
     ]
 
 
-def test_reviewed_public_pilot_is_visible_but_no_offer_or_index_is_public(
+def test_reviewed_public_pilot_has_only_approved_offers_and_no_indexing(
     science_payload: dict,
 ) -> None:
     assert science_payload["status"]["public_count"] == len(EXPECTED_PUBLIC_PILOT)
@@ -634,9 +639,20 @@ def test_reviewed_public_pilot_is_visible_but_no_offer_or_index_is_public(
         assert publication["public_page"] is expected_public, entity["id"]
         assert (publication["state"] == "approved_public") is expected_public
         assert publication["search_index"] is False, entity["id"]
-        assert entity["commerce"]["public_offer_allowed"] is False, entity["id"]
-        assert entity["commerce"]["state"] != "active_offer", entity["id"]
-        assert entity["commerce"]["woo_product_code"] == "", entity["id"]
+        expected_product_code = EXPECTED_PUBLIC_OFFER_CODES.get(entity["id"], "")
+        commerce = entity["commerce"]
+        assert commerce["public_offer_allowed"] is bool(expected_product_code), (
+            entity["id"]
+        )
+        assert (commerce["state"] == "active_offer") is bool(
+            expected_product_code
+        ), entity["id"]
+        assert commerce["woo_product_code"] == expected_product_code, entity["id"]
+        if expected_product_code:
+            assert entity["id"] in EXPECTED_PUBLIC_PILOT
+            assert commerce["business_model"]["pricing_state"] == (
+                "approved_sell_price"
+            )
 
 
 def test_v4_media_rights_and_taxonomy_shapes_are_complete(
@@ -1048,7 +1064,7 @@ echo json_encode(array(
         "dish_schema": "complete99-dish-entity-tree-registry/v1",
         "dish_count": 12,
         "product_schema": "complete99-catalog-product-seeds/v1",
-        "product_count": 26,
+        "product_count": 28,
         "asset_schema": "complete99-generated-asset-manifest/v1",
-        "asset_count": 50,
+        "asset_count": 52,
     }

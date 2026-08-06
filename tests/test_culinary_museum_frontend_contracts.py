@@ -39,6 +39,14 @@ class CulinaryMuseumFrontendContracts(unittest.TestCase):
         self.assertNotIn("woo_product_code", frontend)
         self.assertNotIn("margin_scenario", frontend)
         self.assertNotIn("landed_cost", frontend)
+        self.assertIn("private static function render_offer", frontend)
+        self.assertIn("wc_get_product_id_by_sku( $code )", frontend)
+        self.assertIn("'_complete99_live_catalog_managed'", frontend)
+        self.assertIn("'_complete99_catalog_product_code'", frontend)
+        self.assertIn("Complete99_Commerce::PRODUCT_APPROVED", frontend)
+        self.assertIn("Complete99_Commerce::catalog_is_ready()", frontend)
+        self.assertIn("private static function market_value_label", frontend)
+        self.assertIn("self::market_value_label( $item['availability'], $is_he )", frontend)
 
     def test_bilingual_seo_evidence_and_accessibility_are_explicit(self) -> None:
         frontend = FRONTEND.read_text(encoding="utf-8")
@@ -56,6 +64,7 @@ class CulinaryMuseumFrontendContracts(unittest.TestCase):
             "'noindex'",
             "'max-image-preview'",
             "render_source_markers",
+            "render_offer",
             "render_market_context",
         ):
             self.assertIn(marker, frontend)
@@ -78,6 +87,171 @@ class CulinaryMuseumFrontendContracts(unittest.TestCase):
             css,
             r"(?s)\.c99-museum-citation a\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px",
         )
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for offer evaluation")
+    def test_offer_renderer_requires_managed_approved_matching_woo_product(self) -> None:
+        frontend_path = json.dumps(FRONTEND.as_posix())
+        script = f"""
+define('ABSPATH', __DIR__);
+define('COMPLETE99_PLATFORM_DIR', 'C:/complete99/');
+define('COMPLETE99_PLATFORM_URL', 'https://complete99.example/plugin/');
+define('COMPLETE99_PLATFORM_VERSION', 'test');
+
+function sanitize_key($value) {{
+    return preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $value));
+}}
+function absint($value) {{ return abs((int) $value); }}
+function home_url($path = '') {{
+    return 'https://complete99.example/' . ltrim((string) $path, '/');
+}}
+function esc_attr($value) {{
+    return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}}
+function esc_url($value) {{ return esc_attr($value); }}
+function esc_html($value) {{ return esc_attr($value); }}
+function wp_kses_post($value) {{ return (string) $value; }}
+
+class Complete99_Commerce {{
+    const PRODUCT_APPROVED = '_complete99_store_approved';
+    const NAME_HE = '_complete99_name_he';
+    const NAME_EN = '_complete99_name_en';
+    public static function catalog_is_ready() {{
+        global $c99_offer_mode;
+        return 'catalog_not_ready' !== $c99_offer_mode;
+    }}
+}}
+class C99_Test_Product {{
+    public function get_price_html() {{ return '<span>₪89.00</span>'; }}
+    public function is_in_stock() {{ return true; }}
+}}
+
+$c99_offer_mode = 'valid';
+$c99_offer_code = 'product-rishiri-kombu-100g';
+function wc_get_product_id_by_sku($sku) {{
+    global $c99_offer_mode, $c99_offer_code;
+    if ('missing' === $c99_offer_mode || $sku !== $c99_offer_code) {{
+        return 0;
+    }}
+    return 700;
+}}
+function wc_get_product($product_id) {{
+    return 700 === (int) $product_id ? new C99_Test_Product() : false;
+}}
+function get_post_meta($product_id, $key, $single = false) {{
+    global $c99_offer_mode, $c99_offer_code;
+    if ('_complete99_live_catalog_managed' === $key) {{
+        return 'unmanaged' === $c99_offer_mode ? 'no' : 'yes';
+    }}
+    if ('_complete99_catalog_product_code' === $key) {{
+        return 'mismatch' === $c99_offer_mode ? 'product-other' : $c99_offer_code;
+    }}
+    if (Complete99_Commerce::PRODUCT_APPROVED === $key) {{
+        return 'unapproved' === $c99_offer_mode ? 'no' : 'yes';
+    }}
+    if (Complete99_Commerce::NAME_HE === $key) {{
+        return 'קומבו רישירי טבעי 100 גרם';
+    }}
+    if (Complete99_Commerce::NAME_EN === $key) {{
+        return 'Natural Rishiri kombu 100 g';
+    }}
+    return '';
+}}
+
+require {frontend_path};
+$bundle_property = new ReflectionProperty(
+    'Complete99_Culinary_Museum_Frontend',
+    'bundle'
+);
+$bundle_property->setAccessible(true);
+$bundle_property->setValue(null, array('language' => 'en'));
+$render_offer = new ReflectionMethod(
+    'Complete99_Culinary_Museum_Frontend',
+    'render_offer'
+);
+$render_offer->setAccessible(true);
+$internal_url = new ReflectionMethod(
+    'Complete99_Culinary_Museum_Frontend',
+    'internal_url'
+);
+$internal_url->setAccessible(true);
+
+function c99_render_offer_case($method, $mode, $offer) {{
+    global $c99_offer_mode;
+    $c99_offer_mode = $mode;
+    ob_start();
+    $method->invoke(null, array('offer' => $offer));
+    return ob_get_clean();
+}}
+
+$offer = array(
+    'product_code' => $c99_offer_code,
+    'store_path' => '/en/store/#c99-product-code-' . $c99_offer_code,
+    'label' => 'View in the pantry',
+);
+$preflight = array(
+    'code' => sanitize_key($offer['product_code']),
+    'product_id' => wc_get_product_id_by_sku($offer['product_code']),
+    'managed' => get_post_meta(700, '_complete99_live_catalog_managed', true),
+    'catalog_code' => get_post_meta(700, '_complete99_catalog_product_code', true),
+    'approved' => get_post_meta(700, Complete99_Commerce::PRODUCT_APPROVED, true),
+    'name' => get_post_meta(700, Complete99_Commerce::NAME_EN, true),
+    'url' => $internal_url->invoke(null, $offer['store_path']),
+);
+echo json_encode(array(
+    'preflight' => $preflight,
+    'valid' => c99_render_offer_case($render_offer, 'valid', $offer),
+    'catalog_not_ready' => c99_render_offer_case($render_offer, 'catalog_not_ready', $offer),
+    'unmanaged' => c99_render_offer_case($render_offer, 'unmanaged', $offer),
+    'mismatch' => c99_render_offer_case($render_offer, 'mismatch', $offer),
+    'unapproved' => c99_render_offer_case($render_offer, 'unapproved', $offer),
+    'missing' => c99_render_offer_case($render_offer, 'missing', $offer),
+    'empty' => c99_render_offer_case($render_offer, 'valid', array()),
+), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+"""
+        completed = subprocess.run(
+            ["php", "-r", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        result = json.loads(completed.stdout)
+        self.assertEqual(
+            {
+                "code": "product-rishiri-kombu-100g",
+                "product_id": 700,
+                "managed": "yes",
+                "catalog_code": "product-rishiri-kombu-100g",
+                "approved": "yes",
+                "name": "Natural Rishiri kombu 100 g",
+                "url": (
+                    "https://complete99.example/en/store/"
+                    "#c99-product-code-product-rishiri-kombu-100g"
+                ),
+            },
+            result["preflight"],
+        )
+        self.assertIn("Natural Rishiri kombu 100 g", result["valid"])
+        self.assertIn("₪89.00", result["valid"])
+        self.assertIn("In stock", result["valid"])
+        self.assertIn(
+            "https://complete99.example/en/store/"
+            "#c99-product-code-product-rishiri-kombu-100g",
+            result["valid"],
+        )
+        for case in (
+            "catalog_not_ready",
+            "unmanaged",
+            "mismatch",
+            "unapproved",
+            "missing",
+            "empty",
+        ):
+            self.assertEqual("", result[case], case)
 
     def test_new_public_files_contain_no_em_dash(self) -> None:
         for path in (FRONTEND, SITEMAP, TEMPLATE, CSS):

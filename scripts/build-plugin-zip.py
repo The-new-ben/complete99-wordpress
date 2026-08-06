@@ -216,6 +216,12 @@ def main() -> int:
             "changelog": (
                 f"<h4>{version}</h4>"
                 "<ul>"
+                "<li>Expanded the bilingual pantry from 26 to 28 owner-authorized products with Rishiri kombu and Honkarebushi katsuobushi.</li>"
+                "<li>Added current dated market evidence, opening ILS prices, stock, exact image receipts and fail-closed deployment coverage for both products.</li>"
+                "<li>Connected the reviewed kombu and katsuobushi science pages to their exact WooCommerce offers through reciprocal safe public links.</li>"
+                "</ul>"
+                "<h4>1.3.14</h4>"
+                "<ul>"
                 "<li>Expanded museum breadcrumb and evidence-citation targets to the 44 by 44 CSS-pixel acceptance target.</li>"
                 "</ul>"
                 "<h4>1.3.13</h4>"

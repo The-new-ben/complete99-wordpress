@@ -23,7 +23,7 @@ SCIENCE_DATA = PLUGIN / "data" / "culinary-science-pilot.php"
 COMMERCE_DATA = PLUGIN / "data" / "culinary-commerce-pilot.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-commerce-registry/v2"
-EXPECTED_VERSION = "japanese-commerce-pilot-2026.08.06.v2"
+EXPECTED_VERSION = "japanese-commerce-pilot-2026.08.06.v3"
 EXPECTED_COUNTS = {
     "countries": 4,
     "currencies": 4,

@@ -284,12 +284,48 @@ final class Complete99_Culinary_Museum_Frontend {
 				<?php self::render_sources( $entity, 2 ); ?>
 			</div>
 			<aside class="c99-museum-side-column" aria-label="<?php echo esc_attr( $is_he ? 'מידע משלים' : 'Supporting information' ); ?>">
+				<?php self::render_offer( $entity ); ?>
 				<?php self::render_market_context( $entity ); ?>
 				<?php self::render_taxonomy( $entity ); ?>
 				<?php self::render_safety( $entity ); ?>
 				<?php self::render_trust( $entity, $bundle ); ?>
 			</aside>
 		</div>
+		<?php
+	}
+
+	private static function render_offer( $entity ) {
+		$offer = isset( $entity['offer'] ) && is_array( $entity['offer'] ) ? $entity['offer'] : array();
+		$code  = sanitize_key( (string) ( $offer['product_code'] ?? '' ) );
+		if ( '' === $code
+			|| ! class_exists( 'Complete99_Commerce' )
+			|| ! Complete99_Commerce::catalog_is_ready()
+			|| ! function_exists( 'wc_get_product_id_by_sku' )
+			|| ! function_exists( 'wc_get_product' ) ) {
+			return;
+		}
+		$product_id = absint( wc_get_product_id_by_sku( $code ) );
+		$product    = $product_id ? wc_get_product( $product_id ) : false;
+		if ( ! $product
+			|| 'yes' !== (string) get_post_meta( $product_id, '_complete99_live_catalog_managed', true )
+			|| $code !== (string) get_post_meta( $product_id, '_complete99_catalog_product_code', true )
+			|| 'yes' !== (string) get_post_meta( $product_id, Complete99_Commerce::PRODUCT_APPROVED, true ) ) {
+			return;
+		}
+		$is_he = 'he' === self::$bundle['language'];
+		$name  = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::NAME_HE : Complete99_Commerce::NAME_EN, true );
+		$url   = self::internal_url( (string) ( $offer['store_path'] ?? '' ) );
+		if ( '' === trim( $name ) || '' === $url ) {
+			return;
+		}
+		?>
+		<section class="c99-museum-side-card c99-museum-offer" aria-labelledby="c99-museum-offer-title">
+			<p class="c99-museum-card-label"><?php echo esc_html( $is_he ? 'במזווה' : 'In the pantry' ); ?></p>
+			<h2 id="c99-museum-offer-title"><?php echo esc_html( $name ); ?></h2>
+			<p class="c99-museum-offer-price"><?php echo wp_kses_post( $product->get_price_html() ); ?></p>
+			<p><?php echo esc_html( $product->is_in_stock() ? ( $is_he ? 'במלאי' : 'In stock' ) : ( $is_he ? 'אזל זמנית' : 'Temporarily out of stock' ) ); ?></p>
+			<a class="c99-button c99-button-primary" href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( (string) $offer['label'] ); ?></a>
+		</section>
 		<?php
 	}
 
@@ -518,10 +554,10 @@ final class Complete99_Culinary_Museum_Frontend {
 							<?php self::render_market_term( $is_he ? 'שוק' : 'Market', isset( $item['market'] ) ? $item['market'] : '' ); ?>
 							<?php self::render_market_term( $is_he ? 'מוכר' : 'Seller', isset( $item['seller'] ) ? $item['seller'] : '' ); ?>
 							<?php self::render_market_term( $is_he ? 'נצפה בתאריך' : 'Observed', isset( $item['observed_at'] ) ? $item['observed_at'] : '' ); ?>
-							<?php self::render_market_term( $is_he ? 'זמינות בעת הבדיקה' : 'Availability at review', isset( $item['availability'] ) ? self::machine_label( $item['availability'] ) : '' ); ?>
-							<?php self::render_market_term( $is_he ? 'בסיס השוואה' : 'Comparability', isset( $item['comparability'] ) ? self::machine_label( $item['comparability'] ) : '' ); ?>
-							<?php self::render_market_term( $is_he ? 'מצב מס' : 'Tax state', isset( $item['tax_state'] ) ? self::machine_label( $item['tax_state'] ) : '' ); ?>
-							<?php self::render_market_term( $is_he ? 'משלוח' : 'Shipping', isset( $item['shipping_state'] ) ? self::machine_label( $item['shipping_state'] ) : '' ); ?>
+							<?php self::render_market_term( $is_he ? 'זמינות בעת הבדיקה' : 'Availability at review', isset( $item['availability'] ) ? self::market_value_label( $item['availability'], $is_he ) : '' ); ?>
+							<?php self::render_market_term( $is_he ? 'בסיס השוואה' : 'Comparability', isset( $item['comparability'] ) ? self::market_value_label( $item['comparability'], $is_he ) : '' ); ?>
+							<?php self::render_market_term( $is_he ? 'מצב מס' : 'Tax state', isset( $item['tax_state'] ) ? self::market_value_label( $item['tax_state'], $is_he ) : '' ); ?>
+							<?php self::render_market_term( $is_he ? 'משלוח' : 'Shipping', isset( $item['shipping_state'] ) ? self::market_value_label( $item['shipping_state'], $is_he ) : '' ); ?>
 						</dl>
 						<?php if ( ! empty( $item['scope_note'] ) ) : ?><p class="c99-museum-market-scope"><?php echo esc_html( $item['scope_note'] ); ?></p><?php endif; ?>
 						<?php if ( '' !== $source ) : ?><a class="c99-museum-source-link" href="<?php echo esc_url( $source ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'לרישום המקור' : 'View source listing' ); ?></a><?php endif; ?>
@@ -537,6 +573,25 @@ final class Complete99_Culinary_Museum_Frontend {
 			return;
 		}
 		echo '<div><dt>' . esc_html( $label ) . '</dt><dd>' . esc_html( $value ) . '</dd></div>';
+	}
+
+	private static function market_value_label( $value, $is_he ) {
+		$labels = array(
+			'quantity_selector_visible' => array( 'ניתן היה לבחור כמות', 'Quantity selection available' ),
+			'in_stock'                  => array( 'במלאי בעת הבדיקה', 'In stock at review' ),
+			'listed_for_sale'           => array( 'הוצע למכירה בעת הבדיקה', 'Listed for sale at review' ),
+			'price_listed'              => array( 'מחיר הוצג בעת הבדיקה', 'Price displayed at review' ),
+			'out_of_stock'              => array( 'אזל בעת הבדיקה', 'Out of stock at review' ),
+			'low_stock'                 => array( 'מלאי נמוך בעת הבדיקה', 'Low stock at review' ),
+			'like_for_like'             => array( 'השוואה בין גרסאות מקבילות', 'Like-for-like comparison' ),
+			'partially_comparable'      => array( 'השוואה חלקית', 'Partially comparable' ),
+			'non_comparable'            => array( 'לא מיועד להשוואת מחיר ישירה', 'Not directly comparable' ),
+			'included'                  => array( 'כלול במחיר המקור', 'Included in source price' ),
+			'excluded'                  => array( 'לא כלול במחיר המקור', 'Excluded from source price' ),
+			'unknown'                   => array( 'לא צוין במקור', 'Not stated by source' ),
+		);
+		$key = sanitize_key( (string) $value );
+		return isset( $labels[ $key ] ) ? $labels[ $key ][ $is_he ? 0 : 1 ] : self::machine_label( $value );
 	}
 
 	private static function render_taxonomy( $entity ) {

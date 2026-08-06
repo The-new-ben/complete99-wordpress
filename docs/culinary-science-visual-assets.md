@@ -2,7 +2,7 @@
 
 ## Scope and provenance
 
-This register covers the first seven visual assets for the public culinary
+This register covers nine visual assets for the culinary
 science pilot. OpenAI's built-in image generation tool created the source PNG
 files for Complete99 on 2026-08-06. The original generated PNG bytes are
 preserved in the plugin. Each project PNG has the same SHA256 digest as its
@@ -12,10 +12,13 @@ ImageMagick 7.1.2 Q16-HDRI produced the delivery derivatives. WebP files use
 quality 88 with encoding method 6. AVIF files use quality 70. Every artifact is
 1536 by 1024 pixels, 8-bit sRGB. No resize or crop was applied.
 
-Public-use status for all seven assets is `project-generated`. They are
-approved for use as editorial visuals on the matching Complete99 culinary
-science page. They are not documentary evidence of a supplier, package, SKU,
-stock level, certification, laboratory measurement, or health outcome.
+Public-use status for all nine assets is `project-generated`. The eight assets
+whose entities passed the public projection gate are approved for use as
+editorial visuals on the matching Complete99 culinary science page. The
+ichiban dashi asset remains an internal editorial asset until the corresponding
+recipe passes its culinary test and publication gates. None of these images is
+documentary evidence of a supplier, package, SKU, stock level, certification,
+laboratory measurement, or health outcome.
 
 ## Asset map
 
@@ -36,6 +39,8 @@ All project artifacts are under:
 | Kioke shoyu | `exec-5e185809-3ecc-4721-b90c-4eaa6ee08d9f.png` | `c99-science-kioke-shoyu-v01` | Culinary studio study of traditionally barrel-aged shoyu, color, and serving context | Project-generated, approved for matching editorial page |
 | Fresh wasabi rhizome | `exec-f58c65cf-c744-42e0-83af-33c1a5ff86e7.png` | `c99-science-fresh-wasabi-rhizome-v01` | Culinary studio study of a fresh wasabi rhizome and careful grating context | Project-generated, approved for matching editorial page |
 | Kito yuzu | `exec-346464a6-b9f0-4ca4-96a0-561ba193fcda.png` | `c99-science-kito-yuzu-v01` | Culinary studio study of fresh Kito yuzu, peel, juice, and aromatic context | Project-generated, approved for matching editorial page |
+| Katsuobushi | `exec-562a63db-fdd5-4757-be3b-6020bd2e9d41.png` | `c99-science-katsuobushi-v01` | Culinary studio study of a whole smoked bonito block, shaved curls, and the shaving tool | Project-generated, approved for matching editorial page |
+| Ichiban dashi | `exec-d25a8ee3-da63-470e-9a25-c3c8c26f1fbd.png` | `c99-science-ichiban-dashi-v01` | Culinary studio study of clear first-extraction dashi with kombu and katsuobushi context | Project-generated, internal editorial asset pending recipe gate |
 
 ## Artifact integrity register
 
@@ -62,11 +67,17 @@ All project artifacts are under:
 | `c99-science-kito-yuzu-v01.png` | PNG | 1536x1024 | 2,272,868 | `7f437eb79c9687c480e421068e57144c3bb66b133edbf73f9cc08378a35b4979` |
 | `c99-science-kito-yuzu-v01.webp` | WebP | 1536x1024 | 182,042 | `e058ebfece1033d37f2835678a961f4bfbf7fbe988b960036d23f12bf83b2464` |
 | `c99-science-kito-yuzu-v01.avif` | AVIF | 1536x1024 | 138,168 | `d77c0cc9ea72261743c10e94e676494ae8b53a1196dca3a81da968ef1173fbcd` |
+| `c99-science-katsuobushi-v01.png` | PNG | 1536x1024 | 2,406,661 | `d2f37b6e4f1890a1fb1489ccbd8f6d9dd8fc2a7f92afeb7ce4041f9b5709edd4` |
+| `c99-science-katsuobushi-v01.webp` | WebP | 1536x1024 | 171,562 | `a48c8adf8f92b0c425301ff5cfff502301af0babb059cf446aa100c1fdd91b8e` |
+| `c99-science-katsuobushi-v01.avif` | AVIF | 1536x1024 | 88,266 | `2000e38a171c2e718c856269d887b4fd921ef049e83d4f0212b6435e5092b2e9` |
+| `c99-science-ichiban-dashi-v01.png` | PNG | 1536x1024 | 2,400,377 | `5d5c24588e071243b3a44ad4bb56617d5b266bb88d8eaa0611455159167a47cd` |
+| `c99-science-ichiban-dashi-v01.webp` | WebP | 1536x1024 | 148,964 | `28eb6c05cec30ba9f4fb986c12afc31b8dd9c3cf2c90a3ec2a25400482a847e2` |
+| `c99-science-ichiban-dashi-v01.avif` | AVIF | 1536x1024 | 78,823 | `f21766a4ce0aa0f5e8f81c54e7a98ff0fb8f841d09d4329bc440302b896cb604` |
 
 ## Validation record
 
-- All 21 artifacts decode successfully with ImageMagick.
-- Format signatures resolve as seven PNG, seven WebP, and seven AVIF files.
+- All 27 artifacts decode successfully with ImageMagick.
+- Format signatures resolve as nine PNG, nine WebP, and nine AVIF files.
 - Every decoded artifact reports 1536 by 1024 pixels, 8-bit sRGB.
 - Each retained project PNG is byte-identical to its generated source according
   to SHA256.

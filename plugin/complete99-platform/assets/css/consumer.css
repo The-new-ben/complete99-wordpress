@@ -1424,6 +1424,7 @@ body.c99-consumer-site {
 }
 
 .c99-store-product-card {
+	position: relative;
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
@@ -1432,6 +1433,12 @@ body.c99-consumer-site {
 	background: #fff;
 	box-shadow: 0 16px 45px rgba(41, 51, 42, .08);
 	flex-direction: column;
+	scroll-margin-top: 128px;
+}
+
+.c99-store-product-card:target {
+	outline: 3px solid var(--c99-focus, #a53b22);
+	outline-offset: 4px;
 }
 
 .c99-store-product-card[hidden] {

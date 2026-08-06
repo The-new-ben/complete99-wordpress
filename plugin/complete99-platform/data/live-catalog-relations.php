@@ -1,6 +1,7 @@
 <?php
 /**
- * Reviewed public relations between the exact 26 products and 12 dish pages.
+ * Reviewed public relations between the exact 28 products, 12 dish pages and
+ * the approved Culinary Science Museum ingredient pages.
  *
  * Relations describe culinary navigation only. They do not assert a supplier,
  * brand, formulation, nutrition, health, allergen or kosher fact.
@@ -40,6 +41,8 @@ return array(
 		'product-olive-oil-750ml'    => array( 'ingredient_code' => 'ingredient-olive-oil', 'dish_slugs' => array( 'shakshuka' ) ),
 		'product-pickles-brine-320g' => array( 'ingredient_code' => 'ingredient-pickles', 'dish_slugs' => array( 'sabich' ) ),
 		'product-chicken-liver-1kg'  => array( 'ingredient_code' => 'ingredient-chicken-liver', 'dish_slugs' => array( 'chicken-liver' ) ),
+		'product-rishiri-kombu-100g' => array( 'ingredient_code' => 'ingredient-kombu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kombu' ),
+		'product-honkarebushi-200g'  => array( 'ingredient_code' => 'ingredient-katsuobushi', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-katsuobushi' ),
 	),
 	'dishes'      => array(
 		'sabich'             => array( 'product-tahini-500g', 'product-amba-500g', 'product-hot-sauce-60ml', 'product-pita-12x50g', 'product-aubergine-1kg', 'product-eggs-l-12', 'product-potato-white-1kg', 'product-cucumber-1kg', 'product-pickles-brine-320g' ),

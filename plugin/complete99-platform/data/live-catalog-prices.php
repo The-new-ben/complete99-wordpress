@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
 return array(
 	'schema'      => 'complete99-live-catalog-prices/v1',
 	'currency'    => 'ILS',
-	'reviewed_at' => '2026-07-31',
+	'reviewed_at' => '2026-08-06',
 	'price_scope' => 'owner_authorized_opening_retail_price_informed_by_market_observation',
 	'evidence'    => array(
 		'registry'          => 'catalog-product-seeds.php',
@@ -54,5 +54,7 @@ return array(
 		'product-olive-oil-750ml'    => '44.90',
 		'product-pickles-brine-320g' => '14.90',
 		'product-chicken-liver-1kg'  => '17.90',
+		'product-rishiri-kombu-100g' => '89.00',
+		'product-honkarebushi-200g'  => '219.00',
 	),
 );

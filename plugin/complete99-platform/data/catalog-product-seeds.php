@@ -58,7 +58,8 @@ $c99_product = static function (
 	$source_provider,
 	$source_updated_at,
 	$linked_dish_ids = array(),
-	$attention_codes = array()
+	$attention_codes = array(),
+	$checked_at = '2026-07-31'
 ) use ( $c99_classification_rules ) {
 	$rules = $c99_classification_rules[ $classification ];
 
@@ -76,7 +77,7 @@ $c99_product = static function (
 		'market_observation'         => array(
 			'source_provider'    => $source_provider,
 			'source_url'         => $source_url,
-			'checked_at'         => '2026-07-31',
+			'checked_at'         => $checked_at,
 			'source_updated_at'  => $source_updated_at,
 			'observed_price_ils' => (float) $observed_price,
 			'range_low_ils'      => (float) $observed_low,
@@ -241,6 +242,16 @@ $c99_products = array(
 		'chilled_or_frozen_sensitive', '1 ק״ג להערכת מחיר', '1 kg price benchmark', 17.50, 9.90, 24.90, 24.90, 'ILS_per_kg_evaluation', 24.90,
 		'https://prices.pricez.co.il/product-65990-%D7%9B%D7%91%D7%93-%D7%A2%D7%95%D7%A3-%D7%98%D7%A8%D7%99-%D7%9B%D7%A9%D7%A8%D7%95%D7%AA-%D7%A8%D7%92%D7%99%D7%9C%D7%94-%D7%91%D7%9E%D7%A9%D7%A7%D7%9C-city-1179-%D7%A8%D7%97%D7%95%D7%91%D7%95%D7%AA.html', 'pricez', '2026-07-26', array( 'menu-reference-chicken-liver' )
 	),
+	$c99_product(
+		'product-rishiri-kombu-100g', 'ingredient-kombu', 'קומבו רישירי טבעי 100 גרם', 'Natural Rishiri kombu 100 g', 'Rishiri direct market benchmark',
+		'packaged_shelf_stable', '100 גרם', '100 g', 22.19, 22.19, 119.00, 221.90, 'ILS_per_kg_source_conversion', 89.00,
+		'https://www.rishirikonbu.com/items/4808577', 'rishiri_kombu_direct', '2026-08-06', array(), array( 'import_label_review', 'seaweed_iodine_guidance_review' ), '2026-08-06'
+	),
+	$c99_product(
+		'product-honkarebushi-200g', 'ingredient-katsuobushi', 'בלוק קצואובושי הונקרבושי כ-200 גרם', 'Honkarebushi katsuobushi block, approx. 200 g', 'Japanese Taste market benchmark',
+		'packaged_shelf_stable', 'כ-200 גרם', 'Approx. 200 g', 99.03, 99.03, 240.00, 495.15, 'ILS_per_kg_source_conversion', 219.00,
+		'https://int.japanesetaste.com/products/honkarebushi-whole-japanese-katsuobushi-block-bonito-belly-200g', 'japanese_taste', '2026-08-06', array(), array( 'fish_allergen', 'animal_derived_food_import_review', 'import_label_review' ), '2026-08-06'
+	),
 );
 
 $c99_candidate_relations = array(
@@ -309,6 +320,8 @@ $c99_evaluation_image_bindings = array(
 	'product-beef-shank-1kg'     => 'c99-ingredient-beef-shank-evaluation-v01.webp',
 	'product-hawayej-soup-100g'  => 'c99-ingredient-hawayej-soup-evaluation-v01.webp',
 	'product-chicken-liver-1kg'  => 'c99-ingredient-chicken-liver-evaluation-v01.webp',
+	'product-rishiri-kombu-100g' => 'c99-ingredient-rishiri-kombu-evaluation-v01.webp',
+	'product-honkarebushi-200g'  => 'c99-ingredient-katsuobushi-evaluation-v01.webp',
 );
 
 foreach ( $c99_products as &$c99_seed_product ) {
@@ -328,7 +341,7 @@ unset( $c99_seed_product );
 
 return array(
 	'schema'                      => 'complete99-catalog-product-seeds/v1',
-	'registry_reviewed_at'        => '2026-07-31',
+	'registry_reviewed_at'        => '2026-08-06',
 	'currency'                    => 'ILS',
 	'price_scope'                 => 'private_market_benchmark',
 	'stock_policy'                => array(
@@ -343,6 +356,10 @@ return array(
 		'carrefour_transparency'     => 'https://shilut.carrefour.co.il/',
 		'israel_controlled_products' => 'https://www.gov.il/he/Departments/DynamicCollectors/food-price-control-search',
 		'israel_maximum_prices'      => 'https://www.gov.il/he/service/maximum_price_for_consumer_goods',
+		'bank_of_israel_fx'          => 'https://www.boi.org.il/roles/markets/exchangerates/',
+		'israel_food_import'         => 'https://www.gov.il/en/departments/units/import-food-inspection-unit',
+		'rishiri_kombu_direct'       => 'https://www.rishirikonbu.com/',
+		'japanese_taste'             => 'https://int.japanesetaste.com/',
 	),
 	'classification_rules'         => $c99_classification_rules,
 	'products'                     => $c99_products,

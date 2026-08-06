@@ -193,8 +193,8 @@ $c99_entity = static function ( $config ) use ( $c99_text, $c99_profiles ) {
 		'relations'     => $relations,
 		'commerce'      => array(
 			'state'                => isset( $config['commerce_state'] ) ? $config['commerce_state'] : 'reference_only',
-			'woo_product_code'     => '',
-			'public_offer_allowed' => false,
+			'woo_product_code'     => isset( $config['woo_product_code'] ) ? $config['woo_product_code'] : '',
+			'public_offer_allowed' => isset( $config['public_offer_allowed'] ) ? (bool) $config['public_offer_allowed'] : false,
 			'product_copy'         => isset( $config['product_copy'] ) ? $config['product_copy'] : $summary,
 			'cross_sell_ids'       => $cross,
 			'up_sell_ids'          => $upsell,
@@ -924,8 +924,9 @@ $entities[] = $c99_entity(
 			$c99_relation( 'used_in', 'preparation-ichiban-dashi', 'קומבו הוא רכיב יסוד במפת האיצ׳יבאן דאשי.', 'Kombu is a foundational ingredient in the ichiban dashi map.', true, array( 'maff-dashi-umami' ), 'official_source' ),
 			$c99_relation( 'requires', 'technique-dashi-extraction', 'תוצאה שימושית דורשת מפרט מים, זמן וטמפרטורה.', 'A useful result requires water, time and temperature specifications.', true, array( 'kombu-water-extraction-conference-2024' ), 'conference_context' ),
 		),
-		'commerce_state' => 'supplier_onboarding',
-		'pricing_state' => 'source_price_observed', 'observation_entity_ids' => array( 'listing-rishiri-kombu-100g-20260806' ),
+		'commerce_state' => 'active_offer',
+		'woo_product_code' => 'product-rishiri-kombu-100g', 'public_offer_allowed' => true,
+		'pricing_state' => 'approved_sell_price', 'observation_entity_ids' => array( 'listing-rishiri-kombu-100g-20260806' ),
 		'cross_sell_ids' => array( 'ingredient-katsuobushi', 'technique-dashi-extraction' ),
 		'prompt_en' => 'Commercial culinary studio photograph of premium unbranded kombu sheets for dashi, natural olive-brown surface bloom and realistic thickness, one cut edge beside clear golden stock, soft raking side light, macro texture, neutral stone background, no packaging or text.',
 	)
@@ -942,7 +943,7 @@ $entities[] = $c99_entity(
 		'schema_type' => 'DefinedTerm',
 		'facts' => array(
 			$c99_fact( 'fact-katsuobushi-dashi-processing', 'scientific', 'מחקר על דאשי מקצואובושי בחן את השפעת תהליך העובש, ולכן סוג העיבוד חייב להישמר כמשתנה ולא ככותרת איכות כללית.', 'Research on katsuobushi dashi examined the effect of the mold process, so processing type must remain a variable rather than a generic quality label.', 'peer_reviewed_context', 'category', array( 'katsuobushi-mold-dashi-1986' ) ),
-			$c99_fact( 'fact-katsuobushi-fish-identity', 'structural', 'קצואובושי הוא ישות חומר גלם מדג; מין, מפעל, מספר אצווה ואלרגנים מאומתים שייכים למוצר בפועל.', 'Katsuobushi is a fish ingredient entity; species, facility, lot number and verified allergens belong to the actual product.', 'editorial_inference', 'entity', array( 'maff-dashi-umami' ) ),
+			$c99_fact( 'fact-katsuobushi-fish-identity', 'structural', 'קצואובושי הוא ישות חומר גלם מדג; מין, מפעל, מספר אצווה ואלרגנים מאומתים שייכים למוצר בפועל.', 'Katsuobushi is a fish ingredient entity; species, facility, lot number and verified allergens belong to the actual product.', 'editorial_inference', 'entity', array( 'maff-dashi-umami' ), false ),
 		),
 		'profiles' => $c99_profiles( array(
 			'scientific' => $c99_profile( 'source_backed', 'העיבוד נשמר כמשתנה מחקרי ומסחרי הניתן להשוואה.', 'Processing is retained as a research and commercial comparison variable.', array( 'fact-katsuobushi-dashi-processing' ) ),
@@ -958,8 +959,9 @@ $entities[] = $c99_entity(
 			$c99_relation( 'used_in', 'preparation-ichiban-dashi', 'קצואובושי הוא רכיב יסוד במפת האיצ׳יבאן דאשי.', 'Katsuobushi is a foundational ingredient in the ichiban dashi map.', true, array( 'maff-dashi-umami' ), 'official_source' ),
 			$c99_relation( 'complements', 'ingredient-kombu', 'השילוב נלמד בהקשר של טעם וקבילות דאשי.', 'The combination is studied in dashi taste and palatability context.', true, array( 'dashi-combination-palatability-2008' ), 'peer_reviewed_context' ),
 		),
-		'commerce_state' => 'supplier_onboarding',
-		'pricing_state' => 'source_price_observed', 'observation_entity_ids' => array( 'listing-honkarebushi-belly-200g-20260806' ),
+		'commerce_state' => 'active_offer',
+		'woo_product_code' => 'product-honkarebushi-200g', 'public_offer_allowed' => true,
+		'pricing_state' => 'approved_sell_price', 'observation_entity_ids' => array( 'listing-honkarebushi-belly-200g-20260806' ),
 		'cross_sell_ids' => array( 'ingredient-kombu', 'technique-dashi-extraction' ),
 		'prompt_en' => 'Commercial culinary studio photograph of freshly shaved katsuobushi in paper-thin amber rose curls beside an unbranded whole smoked bonito block and clear dashi, precise fibrous texture, controlled warm side light, Japanese pantry styling, no packaging or text.',
 		'compliance' => array( $c99_compliance( 'fish-allergen', 'יש לסמן אלרגן דגים ולבדוק את המין, היצרן, האצווה ותנאי האחסון של המוצר בפועל.', 'Fish allergen labeling and verification of species, producer, lot and storage conditions are required for the actual product.', array( 'israel-food-import' ) ) ),
@@ -2326,6 +2328,7 @@ $public_pilot_ids = array(
 	'cuisine-japanese-washoku',
 	'hub-japanese-ingredients',
 	'ingredient-kombu',
+	'ingredient-katsuobushi',
 	'ingredient-kioke-shoyu',
 	'ingredient-fresh-wasabi',
 	'ingredient-kito-yuzu',
@@ -2333,9 +2336,10 @@ $public_pilot_ids = array(
 $public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
 $public_semantic_allowlists = array(
 	'museum-culinary-science' => array( 'cuisine-japanese-washoku' ),
-	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
-	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
-	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'ingredient-katsuobushi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu' ),
 	'ingredient-kioke-shoyu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
 	'ingredient-fresh-wasabi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-kito-yuzu' ),
 	'ingredient-kito-yuzu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi' ),
@@ -2345,6 +2349,7 @@ $public_asset_receipts = array(
 	'cuisine-japanese-washoku' => 'sha256:98558d16ea7975b78ba7b925ea2a4b3a7dc0f6158a42e94855f30f73f7fa644c',
 	'hub-japanese-ingredients' => 'sha256:76cc7ecfebd4eac9ecb9ed6a670cee097941a99637fbc2446b00eb7692848e10',
 	'ingredient-kombu' => 'sha256:046d2ba7f392efa8076afc3acae177604e27cbe77ef3d8c626fc2974abe8ac4e',
+	'ingredient-katsuobushi' => 'sha256:a48c8adf8f92b0c425301ff5cfff502301af0babb059cf446aa100c1fdd91b8e',
 	'ingredient-kioke-shoyu' => 'sha256:7bbb750f81dac4c2ec8326174f48d2aedba782be68a780c0b63acfcf1ad8b950',
 	'ingredient-fresh-wasabi' => 'sha256:740471ec3f8970016f31af46ef6206c9984f07b25b09e00ed5f59a4bfe15d1b1',
 	'ingredient-kito-yuzu' => 'sha256:e058ebfece1033d37f2835678a961f4bfbf7fbe988b960036d23f12bf83b2464',
@@ -2423,7 +2428,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v4',
-	'version'       => 'japanese-pilot-2026.08.06.v5',
+	'version'       => 'japanese-pilot-2026.08.06.v6',
 	'generated_at'  => '2026-08-06',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',

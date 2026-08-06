@@ -545,7 +545,7 @@ final class Complete99_Consumer {
 								<h3><?php echo esc_html( $name ); ?></h3>
 								<p><?php echo esc_html( $summary ); ?></p>
 								<div class="c99-ingredient-index-links">
-									<a href="<?php echo esc_url( self::route( 'store', $lang ) . '#c99-product-' . absint( $product_id ) ); ?>"><?php echo esc_html( $is_he ? 'למוצר במזווה' : 'View pantry product' ); ?></a>
+									<a href="<?php echo esc_url( self::route( 'store', $lang ) . '#c99-product-code-' . sanitize_html_class( $product_code ) ); ?>"><?php echo esc_html( $is_he ? 'למוצר במזווה' : 'View pantry product' ); ?></a>
 									<a href="<?php echo esc_url( self::route( 'knowledge', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'למדריכים ומתכונים' : 'Guides and recipes' ); ?></a>
 									<?php foreach ( (array) ( $relations['dish_slugs'] ?? array() ) as $dish_slug ) : ?>
 										<?php $dish = self::dish_by_slug( $dish_slug ); ?>
@@ -800,6 +800,14 @@ final class Complete99_Consumer {
 		$package     = (string) get_post_meta( $product_id, $is_he ? '_complete99_live_catalog_package_he' : '_complete99_live_catalog_package_en', true );
 		$product_code= (string) get_post_meta( $product_id, '_complete99_catalog_product_code', true );
 		$relations   = class_exists( 'Complete99_Live_Catalog' ) ? Complete99_Live_Catalog::relations_for_product_code( $product_code ) : array();
+		$guide_url   = self::route( 'ingredients', $lang ) . '#' . sanitize_html_class( (string) ( $relations['ingredient_code'] ?? '' ) );
+		$science_entity_id = sanitize_key( (string) ( $relations['science_entity_id'] ?? '' ) );
+		if ( '' !== $science_entity_id && class_exists( 'Complete99_Culinary_Science' ) ) {
+			$science_bundle = Complete99_Culinary_Science::public_page_bundle_for_id( $science_entity_id, $lang );
+			if ( ! empty( $science_bundle['canonical_path'] ) ) {
+				$guide_url = home_url( $science_bundle['canonical_path'] );
+			}
+		}
 		$can_purchase = Complete99_Commerce::cart_is_ready() && $product->is_in_stock() && $product->is_purchasable();
 		$facet_labels = array(
 			'pantry'         => $is_he ? 'מזווה' : 'Pantry',
@@ -817,7 +825,7 @@ final class Complete99_Consumer {
 			self::route( 'store', $lang )
 		);
 		?>
-		<article id="c99-product-<?php echo esc_attr( $product_id ); ?>" class="c99-store-product-card" data-c99-product-card data-c99-product-facets="<?php echo esc_attr( $facet ); ?>">
+		<article id="c99-product-code-<?php echo esc_attr( sanitize_html_class( $product_code ) ); ?>" class="c99-store-product-card" data-c99-product-card data-c99-product-facets="<?php echo esc_attr( $facet ); ?>" data-c99-product-id="<?php echo esc_attr( $product_id ); ?>" tabindex="-1">
 			<figure><?php echo wp_get_attachment_image( $product->get_image_id(), 'woocommerce_thumbnail', false, array( 'alt' => $name, 'loading' => 'lazy', 'decoding' => 'async' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></figure>
 			<div class="c99-store-product-copy">
 				<p class="c99-store-product-status"><?php echo esc_html( $product->is_in_stock() ? ( $is_he ? 'במלאי' : 'In stock' ) : ( $is_he ? 'אזל זמנית' : 'Temporarily out of stock' ) ); ?></p>
@@ -835,7 +843,7 @@ final class Complete99_Consumer {
 					<div><dt><?php echo esc_html( $is_he ? 'איסוף עצמי' : 'Pickup' ); ?></dt><dd><?php echo esc_html( $fulfilment ); ?></dd></div>
 				</dl>
 				<div class="c99-store-product-relations" aria-label="<?php echo esc_attr( $is_he ? 'קשרים קולינריים' : 'Culinary connections' ); ?>">
-					<a href="<?php echo esc_url( self::route( 'ingredients', $lang ) . '#' . sanitize_html_class( (string) ( $relations['ingredient_code'] ?? '' ) ) ); ?>"><?php echo esc_html( $is_he ? 'מדריך המרכיב' : 'Ingredient guide' ); ?></a>
+					<a href="<?php echo esc_url( $guide_url ); ?>"><?php echo esc_html( $is_he ? 'מדריך המרכיב' : 'Ingredient guide' ); ?></a>
 					<?php foreach ( (array) ( $relations['dish_slugs'] ?? array() ) as $dish_slug ) : ?>
 						<?php $related_dish = self::dish_by_slug( $dish_slug ); ?>
 						<?php if ( ! empty( $related_dish ) ) : ?><a href="<?php echo esc_url( Complete99_Frontend::live_dish_url( $dish_slug, $lang ) ); ?>"><?php echo esc_html( $is_he ? $related_dish['name_he'] : $related_dish['name_en'] ); ?></a><?php endif; ?>
@@ -878,7 +886,9 @@ final class Complete99_Consumer {
 						<?php $product = function_exists( 'wc_get_product' ) ? wc_get_product( $product_id ) : false; ?>
 						<?php if ( ! $product ) : ?><?php continue; ?><?php endif; ?>
 						<?php $name = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::NAME_HE : Complete99_Commerce::NAME_EN, true ); ?>
-						<a href="<?php echo esc_url( self::route( 'store', $lang ) . '#c99-product-' . absint( $product_id ) ); ?>">
+						<?php $product_code = (string) get_post_meta( $product_id, '_complete99_catalog_product_code', true ); ?>
+						<?php if ( '' === $product_code ) : ?><?php continue; ?><?php endif; ?>
+						<a href="<?php echo esc_url( self::route( 'store', $lang ) . '#c99-product-code-' . sanitize_html_class( $product_code ) ); ?>">
 							<?php echo wp_get_attachment_image( $product->get_image_id(), 'woocommerce_thumbnail', false, array( 'alt' => $name, 'loading' => 'lazy', 'decoding' => 'async' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
 							<strong><?php echo esc_html( $name ); ?></strong>
 							<span><?php echo wp_kses_post( $product->get_price_html() ); ?></span>
