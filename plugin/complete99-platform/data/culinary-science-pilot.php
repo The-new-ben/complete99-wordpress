@@ -871,7 +871,7 @@ $entities[] = $c99_entity(
 		'schema_type' => 'DefinedTerm',
 		'facts' => array(
 			$c99_fact( 'fact-dashi-umami-synergy', 'scientific', 'מחקר מולקולרי תומך במודל שבו גלוטמט ו-5-prime נוקלאוטידים כגון IMP יכולים ליצור סינרגיית אומאמי דרך הרצפטור T1R1/T1R3.', 'Molecular research supports a model in which glutamate and 5-prime nucleotides such as IMP can create umami synergy through the T1R1/T1R3 receptor.', 'peer_reviewed_context', 'technique_context', array( 'umami-receptor-2009', 'dashi-combination-palatability-2008' ) ),
-			$c99_fact( 'fact-dashi-graph', 'structural', 'הציר מקשר קומבו, קצואובושי, מולקולות טעם, סוג מים, טמפרטורה, זמן וסינון כישויות ושדות נפרדים.', 'The stock links kombu, katsuobushi, taste molecules, water type, temperature, time and filtration as separate entities and fields.', 'editorial_inference', 'entity', array( 'maff-dashi-umami', 'kombu-water-extraction-conference-2024' ) ),
+			$c99_fact( 'fact-dashi-graph', 'structural', 'הציר מקשר קומבו, קצואובושי, מולקולות טעם, סוג מים, טמפרטורה, זמן וסינון כישויות ושדות נפרדים.', 'The stock links kombu, katsuobushi, taste molecules, water type, temperature, time and filtration as separate entities and fields.', 'editorial_inference', 'entity', array( 'maff-dashi-umami', 'kombu-water-extraction-conference-2024' ), false ),
 		),
 		'profiles' => $c99_profiles( array(
 			'scientific' => $c99_profile( 'source_backed', 'הבסיס המדעי הוא סינרגיה רצפטורית בין גלוטמט לנוקלאוטידים, לא סיסמה כללית של אומאמי.', 'The scientific base is receptor-level synergy between glutamate and nucleotides, not a generic umami slogan.', array( 'fact-dashi-umami-synergy' ) ),
@@ -892,7 +892,7 @@ $entities[] = $c99_entity(
 		),
 		'cross_sell_ids' => array( 'ingredient-kombu', 'ingredient-katsuobushi', 'technique-dashi-extraction' ),
 		'prompt_en' => 'Translucent golden ichiban dashi in a clear laboratory-style culinary vessel, one kombu sheet and paper-thin katsuobushi shavings beside it, backlight revealing clarity and gentle steam, restrained Japanese studio composition, scientifically precise food texture.',
-		'culinary_test_status' => 'pending',
+		'culinary_test_status' => 'not_applicable',
 		'compliance' => array( $c99_compliance( 'fish-allergen', 'קצואובושי הוא מוצר דג ויש לסמן אלרגן דגים ולבדוק מגע צולב במוצר בפועל.', 'Katsuobushi is a fish product; fish allergen labeling and actual-product cross-contact review are required.' ) ),
 	)
 );
@@ -1098,8 +1098,10 @@ $entities[] = $c99_entity(
 			$c99_relation( 'requires', 'equipment-kioke', 'ישות הקיוקה מתעדת את כלי העץ בנפרד מן הרוטב.', 'The kioke entity documents the wooden vessel separately from the sauce.', true, array( 'yamaroku-about' ), 'official_source' ),
 			$c99_relation( 'requires', 'reaction-koji-enzymatic-hydrolysis', 'פירוק אנזימטי הוא שכבת מדע מרכזית בתהליך.', 'Enzymatic hydrolysis is a central science layer in the process.', true, array( 'maff-fermented-foods' ), 'official_source' ),
 		),
-		'commerce_state' => 'supplier_onboarding',
-		'pricing_state' => 'source_price_observed', 'observation_entity_ids' => array( 'listing-yamaroku-tsurubishio-500ml-20260806' ),
+		'commerce_state' => 'active_offer',
+		'woo_product_code' => 'product-yamaroku-tsurubishio-500ml',
+		'public_offer_allowed' => true,
+		'pricing_state' => 'approved_sell_price', 'observation_entity_ids' => array( 'listing-yamaroku-tsurubishio-500ml-20260806' ),
 		'cross_sell_ids' => array( 'ingredient-fresh-wasabi', 'ingredient-yakinori', 'preparation-sushi-shari' ),
 		'prompt_en' => 'Artisanal Japanese soy sauce flowing into dark stoneware, deep ruby-brown highlights, authentic cedar kioke softly out of focus, whole soybeans and roasted wheat presented as source materials, dramatic side light, macro commercial detail, unbranded vessel.',
 		'compliance' => array(
@@ -1192,8 +1194,10 @@ $entities[] = $c99_entity(
 		'attributes' => array( 'pa_origin' => array( 'product-specific-kito-eligibility-required' ), 'pa_processing_method' => array( 'whole-fruit-or-derived-product' ), 'pa_flavor_profile' => array( 'aromatic-citrus' ) ),
 		'tags' => array( 'yuzu', 'kito', 'gi', 'limonene', 'yuzunone' ),
 		'relations' => array( $c99_relation( 'supported_by', 'market-toyosu', 'שוק סיטונאי יכול להיות נקודת מחקר לאספקת הדרים עונתיים, לא הוכחת מלאי.', 'A wholesale market can be a research point for seasonal citrus supply, not proof of stock.' ) ),
-		'commerce_state' => 'supplier_onboarding',
-		'pricing_state' => 'source_price_observed', 'observation_entity_ids' => array( 'listing-kito-yuzu-juice-100ml-20260806', 'listing-kito-yuzu-juice-720ml-20260806' ),
+		'commerce_state' => 'active_offer',
+		'woo_product_code' => 'product-kito-yuzu-juice-100ml',
+		'public_offer_allowed' => true,
+		'pricing_state' => 'approved_sell_price', 'observation_entity_ids' => array( 'listing-kito-yuzu-juice-100ml-20260806', 'listing-kito-yuzu-juice-720ml-20260806' ),
 		'prompt_en' => 'Premium Kito-origin yuzu study, one whole fruit and one freshly cut half with thick aromatic rind and visible juice vesicles, suspended zest oils caught in side light, refined commercial food photography, accurate natural color, unbranded presentation.',
 		'compliance' => array( $c99_compliance( 'gi-use', 'השם Kito Yuzu וסימון GI יוצגו רק למוצר בעל הסמכה ורישום תואמים; מוצר בסגנון קיטו אינו מוצר GI.', 'The Kito Yuzu name and GI mark are displayed only for a product with matching certification and registration; Kito-style is not GI product.', array( 'kito-yuzu-gi' ) ) ),
 	)
@@ -1235,7 +1239,7 @@ $entities[] = $c99_entity(
 		'primary_keyword' => $c99_text( 'הון מירין יפני', 'Japanese hon mirin' ), 'secondary_keywords' => array( 'he' => array( 'מירין אמיתי', 'מירין עם קוג׳י' ), 'en' => array( 'real mirin', 'koji mirin' ) ), 'schema_type' => 'DefinedTerm',
 		'facts' => array(
 			$c99_fact( 'fact-hon-mirin-process', 'scientific', 'MAFF מתאר תהליך שבו אנזימי קוג׳י פועלים על אורז בנוכחות אלכוהול ומייצרים סוכרים וחומצות אמינו.', 'MAFF describes a process in which koji enzymes act on rice in the presence of alcohol, producing sugars and amino acids.', 'official_source', 'technique_context', array( 'maff-hon-mirin' ) ),
-			$c99_fact( 'fact-hon-mirin-sku-values', 'structural', 'ABV, סוכר, נפח וסיווג אלכוהולי הם שדות SKU ומסמכים, לא תגיות כלליות.', 'ABV, sugar, volume and alcohol classification are SKU and documentation fields, not generic tags.', 'editorial_inference', 'entity', array( 'maff-hon-mirin', 'israel-alcohol-license' ) ),
+			$c99_fact( 'fact-hon-mirin-sku-values', 'structural', 'ABV, סוכר, נפח וסיווג אלכוהולי הם שדות SKU ומסמכים, לא תגיות כלליות.', 'ABV, sugar, volume and alcohol classification are SKU and documentation fields, not generic tags.', 'editorial_inference', 'entity', array( 'maff-hon-mirin', 'israel-alcohol-license' ), false ),
 		),
 		'profiles' => $c99_profiles( array(
 			'scientific' => $c99_profile( 'source_backed', 'סכריפיקציה ופירוק חלבון מתועדים כתהליך; ערכי מוצר דורשים תווית.', 'Saccharification and protein breakdown describe process; product values require a label.', array( 'fact-hon-mirin-process' ) ),
@@ -2327,22 +2331,32 @@ $public_pilot_ids = array(
 	'museum-culinary-science',
 	'cuisine-japanese-washoku',
 	'hub-japanese-ingredients',
+	'hub-japanese-techniques',
+	'hub-japanese-food-science',
 	'ingredient-kombu',
 	'ingredient-katsuobushi',
 	'ingredient-kioke-shoyu',
 	'ingredient-fresh-wasabi',
 	'ingredient-kito-yuzu',
+	'ingredient-hon-mirin',
+	'preparation-ichiban-dashi',
+	'guide-umami-synergy',
 );
 $public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
 $public_semantic_allowlists = array(
 	'museum-culinary-science' => array( 'cuisine-japanese-washoku' ),
-	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
-	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
-	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
-	'ingredient-katsuobushi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu' ),
-	'ingredient-kioke-shoyu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu' ),
+	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'guide-umami-synergy' ),
+	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
+	'hub-japanese-techniques' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'hub-japanese-food-science' ),
+	'hub-japanese-food-science' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'ingredient-kombu', 'ingredient-katsuobushi' ),
+	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'preparation-ichiban-dashi', 'guide-umami-synergy' ),
+	'ingredient-katsuobushi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kombu', 'preparation-ichiban-dashi', 'guide-umami-synergy' ),
+	'ingredient-kioke-shoyu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
 	'ingredient-fresh-wasabi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-kito-yuzu' ),
-	'ingredient-kito-yuzu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi' ),
+	'ingredient-kito-yuzu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-hon-mirin' ),
+	'ingredient-hon-mirin' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kioke-shoyu', 'ingredient-kito-yuzu' ),
+	'preparation-ichiban-dashi' => array( 'cuisine-japanese-washoku', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'guide-umami-synergy' ),
+	'guide-umami-synergy' => array( 'cuisine-japanese-washoku', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'preparation-ichiban-dashi' ),
 );
 $public_asset_receipts = array(
 	'museum-culinary-science' => 'sha256:ee2441315d9c03074bbe88bba7408e66e06323a4906d1c5310574028d970f18b',
@@ -2353,6 +2367,11 @@ $public_asset_receipts = array(
 	'ingredient-kioke-shoyu' => 'sha256:7bbb750f81dac4c2ec8326174f48d2aedba782be68a780c0b63acfcf1ad8b950',
 	'ingredient-fresh-wasabi' => 'sha256:740471ec3f8970016f31af46ef6206c9984f07b25b09e00ed5f59a4bfe15d1b1',
 	'ingredient-kito-yuzu' => 'sha256:e058ebfece1033d37f2835678a961f4bfbf7fbe988b960036d23f12bf83b2464',
+	'hub-japanese-food-science' => 'sha256:41affd1d16f01e9aeb418d05139d0df6aad5bee4c02df88473ea2c33c516c49b',
+	'hub-japanese-techniques' => 'sha256:2eda7710abfa5ce35e1634fecdf69a57efdf3875638889c217bba804d44027b4',
+	'ingredient-hon-mirin' => 'sha256:c8808bebd8f92d7ebfd4b78d3ab3853ebff56fbe00e8d98c3433db75d4de97d0',
+	'preparation-ichiban-dashi' => 'sha256:28eb6c05cec30ba9f4fb986c12afc31b8dd9c3cf2c90a3ec2a25400482a847e2',
+	'guide-umami-synergy' => 'sha256:cff653805e2e90b3ee4d565cdfdd21c8ac4e13782441860bd81a98516d1c7cd5',
 );
 
 $ingredient_hub_offset = $entity_offsets['hub-japanese-ingredients'];
@@ -2363,6 +2382,27 @@ $entities[ $ingredient_hub_offset ]['facts'][0]['statement'] = $c99_text(
 $entities[ $ingredient_hub_offset ]['facts'][0]['evidence_class'] = 'official_source';
 $entities[ $ingredient_hub_offset ]['facts'][0]['source_ids'] = array( 'complete99-public-site' );
 $entities[ $ingredient_hub_offset ]['facts'][0]['public_safe'] = true;
+
+$food_science_hub_offset = $entity_offsets['hub-japanese-food-science'];
+$entities[ $food_science_hub_offset ]['facts'][0]['evidence_class'] = 'peer_reviewed_context';
+$entities[ $food_science_hub_offset ]['facts'][0]['source_ids'] = array( 'umami-receptor-2009', 'wasabi-itc-2023' );
+$entities[ $food_science_hub_offset ]['facts'][0]['public_safe'] = true;
+
+$techniques_hub_offset = $entity_offsets['hub-japanese-techniques'];
+$entities[ $techniques_hub_offset ]['facts'][0]['evidence_class'] = 'official_source';
+$entities[ $techniques_hub_offset ]['facts'][0]['source_ids'] = array( 'maff-edomae', 'maff-fermented-foods' );
+$entities[ $techniques_hub_offset ]['facts'][0]['public_safe'] = true;
+
+$public_meta_descriptions = array(
+	'hub-japanese-food-science' => $c99_text( 'מדע המזון היפני: אומאמי, גלוטמט, IMP, קוג׳י, התססה, דאשי ומדידות, עם מקורות וקשרים למנות ולחומרי גלם.', 'Japanese food science: umami, glutamate, IMP, koji, fermentation, dashi and measurements, with sources and links to ingredients and dishes.' ),
+	'hub-japanese-techniques' => $c99_text( 'טכניקות בישול יפניות: דאשי, אורז, חיתוך, קוג׳י והתססה במפת ידע שמפרידה חומר, זמן, טמפרטורה, כלי ותוצאה.', 'Japanese culinary techniques: dashi, rice, cutting, koji and fermentation in a knowledge map separating material, time, temperature, tool and result.' ),
+	'preparation-ichiban-dashi' => $c99_text( 'איצ׳יבאן דאשי מקומבו וקצואובושי: עקרונות מיצוי, סינרגיית גלוטמט ו-IMP, אלרגן דגים וקישורים לחומרי הגלם.', 'Ichiban dashi from kombu and katsuobushi: extraction principles, glutamate and IMP synergy, fish allergen context and ingredient links.' ),
+	'ingredient-hon-mirin' => $c99_text( 'מהו הון מירין יפני: אורז דביק, קוג׳י, סכריפיקציה, הבשלה, אלכוהול וההבדל מתיבול בסגנון מירין, עם מקורות.', 'What Japanese hon mirin is: glutinous rice, koji, saccharification, maturation, alcohol and the boundary from mirin-style seasoning, with sources.' ),
+	'guide-umami-synergy' => $c99_text( 'סינרגיית אומאמי בין גלוטמט ל-IMP: מנגנון T1R1/T1R3, ההבדל בין מחקר למדידת מוצר וקשרים לדאשי, קומבו וקצואובושי.', 'Glutamate and IMP umami synergy: the T1R1/T1R3 mechanism, research versus product measurement, and links to dashi, kombu and katsuobushi.' ),
+);
+foreach ( $public_meta_descriptions as $public_meta_entity_id => $public_meta_description ) {
+	$entities[ $entity_offsets[ $public_meta_entity_id ] ]['seo']['meta_description'] = $public_meta_description;
+}
 
 foreach ( $public_pilot_ids as $public_entity_id ) {
 	$entity_offset = $entity_offsets[ $public_entity_id ];
@@ -2428,7 +2468,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v4',
-	'version'       => 'japanese-pilot-2026.08.06.v6',
+	'version'       => 'japanese-pilot-2026.08.06.v7',
 	'generated_at'  => '2026-08-06',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',

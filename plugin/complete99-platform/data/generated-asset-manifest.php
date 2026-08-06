@@ -23,7 +23,11 @@ $c99_generated_asset = static function (
 	$related_entity_codes,
 	$related_product_codes,
 	$caveat_he,
-	$caveat_en
+	$caveat_en,
+	$alt_he = '',
+	$alt_en = '',
+	$prompt_en = '',
+	$negative_prompt_en = ''
 ) {
 	$related_entity_codes = array_values( array_filter( (array) $related_entity_codes ) );
 	$related_product_codes = array_values( array_filter( (array) $related_product_codes ) );
@@ -34,6 +38,10 @@ $c99_generated_asset = static function (
 		'label'                       => array(
 			'he' => $label_he,
 			'en' => $label_en,
+		),
+		'alt'                         => array(
+			'he' => '' !== trim( (string) $alt_he ) ? $alt_he : $label_he,
+			'en' => '' !== trim( (string) $alt_en ) ? $alt_en : $label_en,
 		),
 		'asset_type'                  => $asset_type,
 		'provenance'                  => 'openai-imagegen-session',
@@ -50,6 +58,10 @@ $c99_generated_asset = static function (
 		'review_state'                => 'evaluation',
 		'usage_state'                 => 'held',
 		'rights'                      => 'OpenAI generated for Complete99',
+		'prompt_en'                   => $prompt_en,
+		'negative_prompt_en'          => $negative_prompt_en,
+		'generation_model'            => 'openai-imagegen',
+		'generation_reviewed_at'      => '2026-08-06',
 		'presentation_scope'          => 'illustrative_evaluation_only',
 		'actual_product_presentation' => false,
 		'delivery_review_state'       => 'webp_visually_checked',
@@ -995,6 +1007,52 @@ $c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
 );
 
 $c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-ingredient-kioke-shoyu-v01',
+	'kioke-shoyu-500ml',
+	'שויו קיוקה 500 מ״ל',
+	'Kioke-fermented shoyu 500 ml',
+	'ingredient',
+	'c99-ingredient-kioke-shoyu-evaluation-v01.png',
+	'5db441b80e2e98bbe32ca62a8f21e6be292a118ff5428614569d17dc9b7acf64',
+	'c99-ingredient-kioke-shoyu-evaluation-v01.webp',
+	'c37b56c5d7228b290e54a5adcf4204d75d35699339a6a3b2ca3cd16b23d168dc',
+	1536,
+	1024,
+	'3:2',
+	array( 'ingredient-kioke-shoyu' ),
+	array( 'product-yamaroku-tsurubishio-500ml' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג אריזת ספק ממותגת.',
+	'Generic product photography generated for Complete99; no branded supplier packaging is depicted.',
+	'בקבוק שויו קיוקה בנפח 500 מ״ל ללא מיתוג, לצד קערית שויו וחבית עץ ברקע',
+	'Unbranded 500 ml kioke shoyu bottle beside a bowl of shoyu with a wooden barrel in the background',
+	'Commercial culinary product photograph of one unbranded 500 ml glass bottle filled with deep ruby-brown kioke-fermented shoyu, beside a dark stoneware bowl and cedar kioke barrel, premium Japanese pantry styling, all essential content inside a centered square-safe crop.',
+	'No text, logos, labels, certification seals, barcodes, people, hands, drinking scene, copied packaging or fake Japanese writing.'
+);
+
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-ingredient-kito-yuzu-juice-v01',
+	'kito-yuzu-juice-100ml',
+	'מיץ יוזו 100 מ״ל',
+	'Yuzu juice 100 ml',
+	'ingredient',
+	'c99-ingredient-kito-yuzu-juice-evaluation-v01.png',
+	'6aa616b91498cada0abf0252b588f2eaebf1effbdd24fedd98ec49b335c65e3a',
+	'c99-ingredient-kito-yuzu-juice-evaluation-v01.webp',
+	'1769dcc6124bd751da014e6451728b7cde1982f666a9795ad87c8f5391c61d1b',
+	1536,
+	1024,
+	'3:2',
+	array( 'ingredient-kito-yuzu' ),
+	array( 'product-kito-yuzu-juice-100ml' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג אריזת ספק ממותגת או סימון GI.',
+	'Generic product photography generated for Complete99; no branded supplier packaging or GI mark is depicted.',
+	'בקבוק מיץ יוזו בנפח 100 מ״ל ללא מיתוג, לצד פרי יוזו שלם וחצוי',
+	'Unbranded 100 ml yuzu juice bottle beside a whole and halved yuzu',
+	'Commercial culinary product photograph of one unbranded 100 ml clear glass bottle filled with pale golden yuzu juice beside a whole and halved yuzu, accurate peel and juice textures, premium Japanese pantry styling, all essential content inside a centered square-safe crop.',
+	'No text, logos, labels, GI mark, certification seals, barcodes, people, hands, lemon substitution, copied packaging or fake Japanese writing.'
+);
+
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
 	'c99-ingredient-katsuobushi-v01',
 	'honkarebushi-katsuobushi',
 	'בלוק קצואובושי הונקרבושי',
@@ -1048,11 +1106,15 @@ $c99_public_catalog_assets = array(
 	'c99-ingredient-chicken-liver-evaluation-v01.webp',
 	'c99-ingredient-rishiri-kombu-evaluation-v01.webp',
 	'c99-ingredient-katsuobushi-evaluation-v01.webp',
+	'c99-ingredient-kioke-shoyu-evaluation-v01.webp',
+	'c99-ingredient-kito-yuzu-juice-evaluation-v01.webp',
 );
 
 $c99_public_catalog_asset_authorized_at = array_fill_keys( $c99_public_catalog_assets, '2026-07-31' );
 $c99_public_catalog_asset_authorized_at['c99-ingredient-rishiri-kombu-evaluation-v01.webp'] = '2026-08-06';
 $c99_public_catalog_asset_authorized_at['c99-ingredient-katsuobushi-evaluation-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-ingredient-kioke-shoyu-evaluation-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-ingredient-kito-yuzu-juice-evaluation-v01.webp'] = '2026-08-06';
 
 foreach ( $c99_generated_asset_manifest['assets'] as &$c99_asset_record ) {
 	if ( ! in_array( $c99_asset_record['filename'], $c99_public_catalog_assets, true ) ) {

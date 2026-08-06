@@ -11,15 +11,15 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.4.0`. Production truth comes
+The source tree targets Complete99 Platform `1.5.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.4.0 provides:
+Release 1.5.0 provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
-- exactly 28 owner-authorized WooCommerce ingredient products;
+- exactly 30 owner-authorized WooCommerce ingredient products;
 - one normal public WebP image for every product, without an archive label,
   disclaimer or unusual public treatment;
 - researched price evidence dated between 2026-07-31 and 2026-08-06 and an

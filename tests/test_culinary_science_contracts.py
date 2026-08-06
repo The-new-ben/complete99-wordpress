@@ -20,20 +20,27 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v4"
-EXPECTED_VERSION = "japanese-pilot-2026.08.06.v6"
+EXPECTED_VERSION = "japanese-pilot-2026.08.06.v7"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
+    "hub-japanese-food-science",
     "hub-japanese-ingredients",
+    "hub-japanese-techniques",
+    "guide-umami-synergy",
     "ingredient-kombu",
     "ingredient-katsuobushi",
     "ingredient-kioke-shoyu",
     "ingredient-fresh-wasabi",
     "ingredient-kito-yuzu",
+    "ingredient-hon-mirin",
+    "preparation-ichiban-dashi",
 }
 EXPECTED_PUBLIC_OFFER_CODES = {
     "ingredient-kombu": "product-rishiri-kombu-100g",
     "ingredient-katsuobushi": "product-honkarebushi-200g",
+    "ingredient-kioke-shoyu": "product-yamaroku-tsurubishio-500ml",
+    "ingredient-kito-yuzu": "product-kito-yuzu-juice-100ml",
 }
 EXPECTED_CLUSTERS = {
     "cluster-culinary-science-museum",
@@ -285,8 +292,12 @@ function c99_public_entity($entity) {
     );
     $entity['review']['status'] = 'source_reviewed';
     $entity['review']['language_status'] = 'reviewed_bilingual';
-    if (in_array($entity['type'], array('dish', 'preparation'), true)) {
+    if ('dish' === $entity['type']
+        || ('preparation' === $entity['type']
+            && 'Recipe' === $entity['seo']['schema_type'])) {
         $entity['review']['culinary_test_status'] = 'tested';
+    } elseif ('preparation' === $entity['type']) {
+        $entity['review']['culinary_test_status'] = 'not_applicable';
     }
     $entity['visual']['asset_state'] = 'approved';
     $entity['visual']['rights_state'] = 'cleared_generated';
@@ -543,6 +554,63 @@ $taxonomy_projection = c99_projection(
     $taxonomy_registry
 );
 
+$culinary_gate_cases = array();
+
+$dish_without_test = $registry;
+foreach ($dish_without_test['entities'] as &$entity) {
+    if ('dish-edomae-nigiri' !== $entity['id']) {
+        continue;
+    }
+    $entity = c99_public_entity($entity);
+    $entity['review']['culinary_test_status'] = 'pending';
+    break;
+}
+unset($entity);
+$culinary_gate_cases['dish_without_test'] = c99_validation_result(
+    $dish_without_test
+);
+
+$recipe_without_test = $registry;
+foreach ($recipe_without_test['entities'] as &$entity) {
+    if ('preparation-ichiban-dashi' !== $entity['id']) {
+        continue;
+    }
+    $entity['seo']['schema_type'] = 'Recipe';
+    $entity['review']['culinary_test_status'] = 'pending';
+    break;
+}
+unset($entity);
+$culinary_gate_cases['recipe_without_test'] = c99_validation_result(
+    $recipe_without_test
+);
+
+$recipe_with_test = $registry;
+foreach ($recipe_with_test['entities'] as &$entity) {
+    if ('preparation-ichiban-dashi' !== $entity['id']) {
+        continue;
+    }
+    $entity['seo']['schema_type'] = 'Recipe';
+    $entity['review']['culinary_test_status'] = 'tested';
+    break;
+}
+unset($entity);
+$culinary_gate_cases['recipe_with_test'] = c99_validation_result(
+    $recipe_with_test
+);
+
+$indexed_nonrecipe_without_test = $registry;
+foreach ($indexed_nonrecipe_without_test['entities'] as &$entity) {
+    if ('preparation-ichiban-dashi' !== $entity['id']) {
+        continue;
+    }
+    $entity['publication']['search_index'] = true;
+    break;
+}
+unset($entity);
+$culinary_gate_cases['indexed_nonrecipe_without_test'] = c99_validation_result(
+    $indexed_nonrecipe_without_test
+);
+
 echo json_encode(array(
     'mutations' => $mutations,
     'graph_errors' => $graph_errors,
@@ -550,6 +618,7 @@ echo json_encode(array(
     'profile_projection' => $profile_projection,
     'taxonomy_candidate' => c99_validation_result($taxonomy_registry),
     'taxonomy_projection' => $taxonomy_projection,
+    'culinary_gate_cases' => $culinary_gate_cases,
 ), JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 """
     )
@@ -653,6 +722,53 @@ def test_reviewed_public_pilot_has_only_approved_offers_and_no_indexing(
             assert commerce["business_model"]["pricing_state"] == (
                 "approved_sell_price"
             )
+
+
+def test_public_culinary_test_gates_distinguish_dishes_recipes_and_noindex_guides(
+    science_payload: dict,
+    science_v4_contract_payload: dict,
+) -> None:
+    public_by_id = {
+        entity["id"]: entity
+        for entity in science_payload["registry"]["entities"]
+        if entity["publication"]["public_page"]
+    }
+    ichiban = public_by_id["preparation-ichiban-dashi"]
+    assert ichiban["type"] == "preparation"
+    assert ichiban["seo"]["schema_type"] == "DefinedTerm"
+    assert ichiban["review"]["culinary_test_status"] == "not_applicable"
+    assert ichiban["publication"]["search_index"] is False
+    assert ichiban["index_policy"] == "noindex_until_longform_review"
+
+    for entity in public_by_id.values():
+        requires_test = entity["type"] == "dish" or (
+            entity["type"] == "preparation"
+            and entity["seo"]["schema_type"] == "Recipe"
+        )
+        if requires_test:
+            assert entity["review"]["culinary_test_status"] == "tested"
+
+    cases = science_v4_contract_payload["culinary_gate_cases"]
+    assert cases["dish_without_test"] == {
+        "valid": False,
+        "code": "complete99_science_registry_invalid",
+        "path": "registry.entities.10.publication.culinary_test_gate",
+    }
+    assert cases["recipe_without_test"] == {
+        "valid": False,
+        "code": "complete99_science_registry_invalid",
+        "path": "registry.entities.12.publication.culinary_test_gate",
+    }
+    assert cases["recipe_with_test"] == {
+        "valid": True,
+        "code": "",
+        "path": "",
+    }
+    assert cases["indexed_nonrecipe_without_test"] == {
+        "valid": False,
+        "code": "complete99_science_registry_invalid",
+        "path": "registry.entities.12.publication.untested_preparation_scope",
+    }
 
 
 def test_v4_media_rights_and_taxonomy_shapes_are_complete(
@@ -1038,7 +1154,7 @@ def test_plugin_php_contains_no_em_dash_u2014() -> None:
     assert offenders == []
 
 
-def test_exact_legacy_registry_counts_are_preserved() -> None:
+def test_exact_v7_registry_counts_are_preserved() -> None:
     dish_path = _php_path(PLUGIN / "data" / "dish-entity-trees.php")
     product_path = _php_path(PLUGIN / "data" / "catalog-product-seeds.php")
     asset_path = _php_path(PLUGIN / "data" / "generated-asset-manifest.php")
@@ -1064,7 +1180,7 @@ echo json_encode(array(
         "dish_schema": "complete99-dish-entity-tree-registry/v1",
         "dish_count": 12,
         "product_schema": "complete99-catalog-product-seeds/v1",
-        "product_count": 28,
+        "product_count": 30,
         "asset_schema": "complete99-generated-asset-manifest/v1",
-        "asset_count": 52,
+        "asset_count": 54,
     }

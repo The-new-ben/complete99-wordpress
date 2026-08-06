@@ -56,5 +56,7 @@ return array(
 		'product-chicken-liver-1kg'  => '17.90',
 		'product-rishiri-kombu-100g' => '89.00',
 		'product-honkarebushi-200g'  => '219.00',
+		'product-yamaroku-tsurubishio-500ml' => '149.00',
+		'product-kito-yuzu-juice-100ml' => '64.00',
 	),
 );

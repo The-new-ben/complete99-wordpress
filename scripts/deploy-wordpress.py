@@ -69,6 +69,8 @@ CATALOG_PRODUCT_CODES = frozenset(
         "product-chicken-liver-1kg",
         "product-rishiri-kombu-100g",
         "product-honkarebushi-200g",
+        "product-yamaroku-tsurubishio-500ml",
+        "product-kito-yuzu-juice-100ml",
     }
 )
 _CATALOG_CAUSES_BY_STAGE = {

@@ -950,8 +950,58 @@ final class Complete99_Culinary_Museum_Frontend {
 	}
 
 	private static function machine_label( $value ) {
-		$value = str_replace( array( '_', '-' ), ' ', (string) $value );
-		return ucwords( trim( $value ) );
+		$key  = strtolower( trim( str_replace( '_', '-', (string) $value ) ) );
+		$lang = isset( self::$bundle['language'] ) ? self::$bundle['language'] : 'en';
+		$labels = array(
+			'pa-origin' => array( 'מקור', 'Origin' ),
+			'pa-species' => array( 'מין', 'Species' ),
+			'pa-cultivar' => array( 'זן', 'Cultivar' ),
+			'pa-processing-method' => array( 'שיטת עיבוד', 'Processing method' ),
+			'pa-fermentation-method' => array( 'שיטת התססה', 'Fermentation method' ),
+			'pa-vessel' => array( 'כלי תהליך', 'Process vessel' ),
+			'pa-flavor-profile' => array( 'פרופיל טעם', 'Flavor profile' ),
+			'pa-allergens' => array( 'אלרגנים', 'Allergens' ),
+			'pa-storage-type' => array( 'סוג אחסון', 'Storage type' ),
+			'pa-equipment-required' => array( 'ציוד נדרש', 'Equipment required' ),
+			'part-of' => array( 'חלק מתוך', 'Part of' ),
+			'contains' => array( 'מכיל ומקשר', 'Contains' ),
+			'used-in' => array( 'משמש בתוך', 'Used in' ),
+			'requires' => array( 'דורש', 'Requires' ),
+			'produced-by' => array( 'מיוצר על ידי', 'Produced by' ),
+			'complements' => array( 'משלים', 'Complements' ),
+			'supported-by' => array( 'נתמך על ידי', 'Supported by' ),
+			'parent-context' => array( 'נושא אב', 'Parent context' ),
+			'curated-discovery' => array( 'המשך מומלץ', 'Curated discovery' ),
+			'world-cuisines' => array( 'מטבחי עולם', 'World cuisines' ),
+			'culinary-museum' => array( 'מוזיאון קולינרי', 'Culinary museum' ),
+			'japanese-cuisine' => array( 'מטבח יפני', 'Japanese cuisine' ),
+			'japan' => array( 'יפן', 'Japan' ),
+			'knowledge' => array( 'מרכז הידע', 'Knowledge' ),
+			'food-science' => array( 'מדע המזון', 'Food science' ),
+			'taste' => array( 'טעם', 'Taste' ),
+			'umami' => array( 'אומאמי', 'Umami' ),
+			'dashi' => array( 'דאשי', 'Dashi' ),
+			'first-stock' => array( 'ציר ראשון', 'First stock' ),
+			'sauces-and-fermentation' => array( 'רטבים והתססות', 'Sauces and fermentation' ),
+			'shoyu' => array( 'שויו', 'Shoyu' ),
+			'kioke' => array( 'קיוקה', 'Kioke' ),
+			'seasonings' => array( 'תיבול', 'Seasonings' ),
+			'mirin' => array( 'מירין', 'Mirin' ),
+			'citrus' => array( 'הדרים', 'Citrus' ),
+			'yuzu' => array( 'יוזו', 'Yuzu' ),
+			'product-specific' => array( 'לפי המוצר', 'Product-specific' ),
+			'koji-fermentation' => array( 'התססת קוג׳י', 'Koji fermentation' ),
+			'koji-saccharification-in-alcohol' => array( 'סכריפיקציית קוג׳י באלכוהול', 'Koji saccharification in alcohol' ),
+			'kioke-wooden-barrel' => array( 'חבית עץ קיוקה', 'Kioke wooden barrel' ),
+			'verify-sku-label' => array( 'לפי תווית המוצר', 'Verify SKU label' ),
+			'product-label-required' => array( 'נדרשת תווית מוצר', 'Product label required' ),
+			'aromatic-citrus' => array( 'הדרי ארומטי', 'Aromatic citrus' ),
+			'umami-synergy' => array( 'סינרגיית אומאמי', 'Umami synergy' ),
+		);
+		if ( isset( $labels[ $key ] ) ) {
+			return $labels[ $key ][ 'he' === $lang ? 0 : 1 ];
+		}
+		return ucwords( trim( str_replace( '-', ' ', $key ) ) );
 	}
 
 	private static function format_number( $value ) {

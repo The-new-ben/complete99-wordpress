@@ -54,9 +54,9 @@ class MarketCatalogContracts(unittest.TestCase):
         self.assertFalse(self.registry["stock_policy"]["public_stock_claim"])
         self.assertFalse(self.registry["stock_policy"]["public_sale"])
 
-    def test_all_28_products_have_unique_price_stock_and_sources(self):
-        self.assertEqual(28, len(self.products))
-        self.assertEqual(28, len(self.by_code))
+    def test_all_30_products_have_unique_price_stock_and_sources(self):
+        self.assertEqual(30, len(self.products))
+        self.assertEqual(30, len(self.by_code))
         for product in self.products:
             with self.subTest(product=product["product_code"]):
                 self.assertRegex(
@@ -101,6 +101,8 @@ class MarketCatalogContracts(unittest.TestCase):
             "product-chicken-liver-1kg": 24.90,
             "product-rishiri-kombu-100g": 89.00,
             "product-honkarebushi-200g": 219.00,
+            "product-yamaroku-tsurubishio-500ml": 149.00,
+            "product-kito-yuzu-juice-100ml": 64.00,
         }
         for code, price in expected.items():
             with self.subTest(product=code):
@@ -147,7 +149,7 @@ class MarketCatalogContracts(unittest.TestCase):
             / "generated"
         )
         bound = [item for item in self.products if item["image_asset"]]
-        self.assertEqual(28, len(bound))
+        self.assertEqual(30, len(bound))
         for product in bound:
             with self.subTest(product=product["product_code"]):
                 self.assertEqual(

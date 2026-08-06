@@ -1,6 +1,6 @@
 <?php
 /**
- * Reviewed public relations between the exact 28 products, 12 dish pages and
+ * Reviewed public relations between the exact 30 products, 12 dish pages and
  * the approved Culinary Science Museum ingredient pages.
  *
  * Relations describe culinary navigation only. They do not assert a supplier,
@@ -41,8 +41,10 @@ return array(
 		'product-olive-oil-750ml'    => array( 'ingredient_code' => 'ingredient-olive-oil', 'dish_slugs' => array( 'shakshuka' ) ),
 		'product-pickles-brine-320g' => array( 'ingredient_code' => 'ingredient-pickles', 'dish_slugs' => array( 'sabich' ) ),
 		'product-chicken-liver-1kg'  => array( 'ingredient_code' => 'ingredient-chicken-liver', 'dish_slugs' => array( 'chicken-liver' ) ),
-		'product-rishiri-kombu-100g' => array( 'ingredient_code' => 'ingredient-kombu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kombu' ),
-		'product-honkarebushi-200g'  => array( 'ingredient_code' => 'ingredient-katsuobushi', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-katsuobushi' ),
+		'product-rishiri-kombu-100g' => array( 'ingredient_code' => 'ingredient-kombu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kombu', 'related_product_codes' => array( 'product-honkarebushi-200g', 'product-yamaroku-tsurubishio-500ml' ) ),
+		'product-honkarebushi-200g'  => array( 'ingredient_code' => 'ingredient-katsuobushi', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-katsuobushi', 'related_product_codes' => array( 'product-rishiri-kombu-100g', 'product-yamaroku-tsurubishio-500ml' ) ),
+		'product-yamaroku-tsurubishio-500ml' => array( 'ingredient_code' => 'ingredient-kioke-shoyu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kioke-shoyu', 'related_product_codes' => array( 'product-kito-yuzu-juice-100ml', 'product-rishiri-kombu-100g', 'product-honkarebushi-200g' ) ),
+		'product-kito-yuzu-juice-100ml' => array( 'ingredient_code' => 'ingredient-kito-yuzu', 'dish_slugs' => array(), 'science_entity_id' => 'ingredient-kito-yuzu', 'related_product_codes' => array( 'product-yamaroku-tsurubishio-500ml' ) ),
 	),
 	'dishes'      => array(
 		'sabich'             => array( 'product-tahini-500g', 'product-amba-500g', 'product-hot-sauce-60ml', 'product-pita-12x50g', 'product-aubergine-1kg', 'product-eggs-l-12', 'product-potato-white-1kg', 'product-cucumber-1kg', 'product-pickles-brine-320g' ),

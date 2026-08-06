@@ -399,8 +399,16 @@ final class Complete99_Culinary_Science {
 				|| 'pending_named_review' === $entity['trust']['attribution_state'] ) ) {
 			throw new RuntimeException( $path . '.approval_contract' );
 		}
-		if ( 'approved_public' === $publication['state'] && in_array( $entity['type'], array( 'dish', 'preparation' ), true ) && 'tested' !== $entity['review']['culinary_test_status'] ) {
+		$requires_culinary_test = 'dish' === $entity['type']
+			|| ( 'preparation' === $entity['type'] && 'Recipe' === $entity['seo']['schema_type'] );
+		if ( 'approved_public' === $publication['state'] && $requires_culinary_test && 'tested' !== $entity['review']['culinary_test_status'] ) {
 			throw new RuntimeException( $path . '.culinary_test_gate' );
+		}
+		if ( 'approved_public' === $publication['state']
+			&& 'preparation' === $entity['type']
+			&& 'not_applicable' === $entity['review']['culinary_test_status']
+			&& ( 'Recipe' === $entity['seo']['schema_type'] || true === $publication['search_index'] ) ) {
+			throw new RuntimeException( $path . '.untested_preparation_scope' );
 		}
 		if ( 'approved_public' === $publication['state'] ) {
 			foreach ( $entity['facts'] as $fact ) {
@@ -1338,7 +1346,9 @@ final class Complete99_Culinary_Science {
 			|| ! in_array( $entity['visual']['rights_state'], array( 'cleared_owned', 'cleared_generated', 'cleared_licensed' ), true )
 			|| '' === $entity['visual']['rights_receipt_digest']
 			|| 'pending_named_review' === $entity['trust']['attribution_state']
-			|| ( in_array( $entity['type'], array( 'dish', 'preparation' ), true ) && 'tested' !== $entity['review']['culinary_test_status'] ) ) {
+			|| ( 'dish' === $entity['type'] && 'tested' !== $entity['review']['culinary_test_status'] )
+			|| ( 'preparation' === $entity['type'] && 'Recipe' === $entity['seo']['schema_type'] && 'tested' !== $entity['review']['culinary_test_status'] )
+			|| ( 'preparation' === $entity['type'] && 'not_applicable' === $entity['review']['culinary_test_status'] && ( 'Recipe' === $entity['seo']['schema_type'] || true === $entity['publication']['search_index'] ) ) ) {
 			return false;
 		}
 		if ( true === $entity['publication']['search_index']
@@ -1580,10 +1590,19 @@ final class Complete99_Culinary_Science {
 		$asset_slug = preg_replace( '/[^a-z0-9-]/', '', (string) $entity['slug'] );
 		$asset_stem = 'c99-science-' . $asset_slug . '-v01';
 		$asset_base = defined( 'COMPLETE99_PLATFORM_URL' ) ? COMPLETE99_PLATFORM_URL : '';
+		$visual_alts = array(
+			'hub-japanese-techniques' => array( 'he' => 'האנגירי עם אורז, דאשי, קומבו, קצואובושי, קוג׳י, סכין וכלי מדידה', 'en' => 'Hangiri with rice, dashi, kombu, katsuobushi, koji, knife and measurement tools' ),
+			'hub-japanese-food-science' => array( 'he' => 'דאשי, קומבו, קצואובושי, שויו, יוזו, אורז וקוג׳י לצד כלי מדידה', 'en' => 'Dashi, kombu, katsuobushi, shoyu, yuzu, rice and koji beside measurement tools' ),
+			'preparation-ichiban-dashi' => array( 'he' => 'איצ׳יבאן דאשי צלול לצד קומבו ושבבי קצואובושי', 'en' => 'Clear ichiban dashi beside kombu and katsuobushi shavings' ),
+			'ingredient-kioke-shoyu' => array( 'he' => 'שויו כהה נמזג לקערת קרמיקה לצד חבית קיוקה, פולי סויה וחיטה', 'en' => 'Dark shoyu poured into a ceramic bowl beside a kioke barrel, soybeans and wheat' ),
+			'ingredient-kito-yuzu' => array( 'he' => 'יוזו קיטו שלם וחצוי, עם קליפה עבה ופלחי פרי מוארים', 'en' => 'Whole and halved Kito yuzu showing thick rind and illuminated juice vesicles' ),
+			'ingredient-hon-mirin' => array( 'he' => 'הון מירין ענברי בכלי זכוכית לצד אורז דביק וקוג׳י אורז', 'en' => 'Amber hon mirin in a glass vessel beside glutinous rice and rice koji' ),
+			'guide-umami-synergy' => array( 'he' => 'דאשי, קומבו וקצואובושי לצד המחשה מולקולרית של גלוטמט ו-IMP', 'en' => 'Dashi, kombu and katsuobushi beside a molecular illustration of glutamate and IMP' ),
+		);
 		$visual = array(
 			'url'      => $asset_base . 'assets/images/science/' . rawurlencode( $asset_stem . '.webp' ),
 			'avif_url' => $asset_base . 'assets/images/science/' . rawurlencode( $asset_stem . '.avif' ),
-			'alt'      => $entity['name'][ $lang ],
+			'alt'      => isset( $visual_alts[ $entity['id'] ][ $lang ] ) ? $visual_alts[ $entity['id'] ][ $lang ] : $entity['name'][ $lang ],
 			'width'    => 1536,
 			'height'   => 1024,
 		);

@@ -11,7 +11,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$c99_live_product = static function ( $weight_kg, $category, $tags, $shipping_class, $ingredients_he, $ingredients_en, $allergens_he, $allergens_en, $storage_he, $storage_en ) {
+$c99_live_product = static function ( $weight_kg, $category, $tags, $shipping_class, $ingredients_he, $ingredients_en, $allergens_he, $allergens_en, $storage_he, $storage_en, $description_he = '', $description_en = '' ) {
 	return array(
 		'weight_kg'      => (string) $weight_kg,
 		'category'       => $category,
@@ -20,6 +20,7 @@ $c99_live_product = static function ( $weight_kg, $category, $tags, $shipping_cl
 		'ingredients'    => array( 'he' => $ingredients_he, 'en' => $ingredients_en ),
 		'allergens'      => array( 'he' => $allergens_he, 'en' => $allergens_en ),
 		'storage'        => array( 'he' => $storage_he, 'en' => $storage_en ),
+		'description'    => array( 'he' => $description_he, 'en' => $description_en ),
 	);
 };
 
@@ -71,6 +72,14 @@ return array(
 		'japanese' => array( 'name' => 'יפני | Japanese', 'slug' => 'complete99-japanese' ),
 		'dashi' => array( 'name' => 'דאשי ואומאמי | Dashi and umami', 'slug' => 'complete99-dashi-umami' ),
 		'fish' => array( 'name' => 'דגים | Fish', 'slug' => 'complete99-fish' ),
+		'fermentation' => array( 'name' => 'התססה | Fermentation', 'slug' => 'complete99-fermentation' ),
+		'shoyu' => array( 'name' => 'שויו | Shoyu', 'slug' => 'complete99-shoyu' ),
+		'soy' => array( 'name' => 'סויה | Soy', 'slug' => 'complete99-soy' ),
+		'wheat' => array( 'name' => 'חיטה | Wheat', 'slug' => 'complete99-wheat' ),
+		'seasoning' => array( 'name' => 'תיבול | Seasoning', 'slug' => 'complete99-seasoning' ),
+		'yuzu' => array( 'name' => 'יוזו | Yuzu', 'slug' => 'complete99-yuzu' ),
+		'citrus' => array( 'name' => 'הדרים | Citrus', 'slug' => 'complete99-citrus' ),
+		'premium' => array( 'name' => 'פרימיום | Premium', 'slug' => 'complete99-premium' ),
 	),
 	'shipping_classes'   => array(
 		'ambient' => array( 'name' => 'משלוח מדף | Ambient delivery', 'slug' => 'complete99-ambient-delivery' ),
@@ -107,5 +116,33 @@ return array(
 		'product-chicken-liver-1kg' => $c99_live_product( '1.000', 'protein', array( 'fresh', 'chilled', 'protein' ), 'chilled', 'כבד עוף טרי.', 'Fresh chicken liver.', $none_he, $none_en, $cold_he, $cold_en ),
 		'product-rishiri-kombu-100g' => $c99_live_product( '0.100', 'japanese-pantry', array( 'ambient', 'japanese', 'dashi' ), 'ambient', 'אצת קומבו מיובשת מסוג רישירי.', 'Dried Rishiri-type kombu seaweed.', 'יש לקרוא את הצהרת האלרגנים והמגע הצולב שעל אריזת הספק. אצות עשויות להכיל יוד בכמות משמעותית.', 'Read the supplier allergen and cross-contact declaration. Seaweed may contain a significant amount of iodine.', $ambient_he, $ambient_en ),
 		'product-honkarebushi-200g' => $c99_live_product( '0.200', 'japanese-pantry', array( 'ambient', 'japanese', 'dashi', 'fish' ), 'ambient', 'בלוק דג בוניטו מבושל, מעושן, מיובש ומיושן בתהליך קצואובושי. יש לפעול לפי רשימת המרכיבים שעל אריזת הספק.', 'A cooked, smoked, dried and matured bonito block made by the katsuobushi process. Follow the ingredient list on the supplier pack.', 'מכיל דגים. יש לבדוק מגע צולב ואלרגנים נוספים על אריזת הספק.', 'Contains fish. Check the supplier pack for cross-contact and additional allergens.', $ambient_he, $ambient_en ),
+		'product-yamaroku-tsurubishio-500ml' => $c99_live_product(
+			'0.570',
+			'japanese-pantry',
+			array( 'ambient', 'japanese', 'fermentation', 'shoyu', 'soy', 'wheat', 'seasoning', 'premium' ),
+			'ambient',
+			'סויה, חיטה ומלח, לפי תיאור היצרן. התווית שעל המוצר המסופק היא הקובעת.',
+			'Soybeans, wheat and salt, according to the producer description. The supplied product label is authoritative.',
+			'מכיל סויה וחיטה, לרבות גלוטן. יש לקרוא את הצהרת האלרגנים שעל האריזה.',
+			'Contains soy and wheat, including gluten. Read the allergen declaration on the pack.',
+			'יש לשמור במקום קריר ומוצל. לאחר פתיחה יש לפעול לפי הוראות היצרן שעל האריזה.',
+			'Keep in a cool, shaded place. After opening, follow the producer instructions on the pack.',
+			'שויו סאישיקומי בעל גוף עמוק, המיוצר במחזור יישון נוסף בקיוקה. מתאים לדאשי, רטבי טבילה, זיגוגים ותיבול מדויק שבו נדרשת עוצמת אומאמי.',
+			'A deep-bodied saishikomi shoyu made with an additional maturation cycle in kioke. Suited to dashi, dipping sauces, glazes and precise seasoning where concentrated umami is wanted.'
+		),
+		'product-kito-yuzu-juice-100ml' => $c99_live_product(
+			'0.160',
+			'japanese-pantry',
+			array( 'ambient', 'japanese', 'seasoning', 'yuzu', 'citrus', 'premium' ),
+			'ambient',
+			'100% מיץ יוזו, לפי תיאור היצרן. התווית שעל המוצר המסופק היא הקובעת.',
+			'100% yuzu juice, according to the producer description. The supplied product label is authoritative.',
+			'לא ידוע על אלרגן מובנה במיץ הפרי. יש לבדוק את אריזת הספק למגע צולב.',
+			'No inherent allergen is known for the fruit juice. Check the supplier pack for cross-contact.',
+			'יש לשמור לפי התווית ולקרר לאחר הפתיחה. יש להשתמש במסגרת חיי המדף המצוינים על הבקבוק.',
+			'Store as directed on the label and refrigerate after opening. Use within the shelf life shown on the bottle.',
+			'מיץ יוזו ראשון בעל חומציות בהירה וארומה הדרית מורכבת. מיועד לרטבים, ויניגרט, דאשי, קינוחים ומשקאות ללא צורך להוסיף ממתיקים למוצר עצמו.',
+			'First-press yuzu juice with bright acidity and a layered citrus aroma. Intended for sauces, vinaigrettes, dashi, desserts and drinks without adding sweetener to the product itself.'
+		),
 	),
 );

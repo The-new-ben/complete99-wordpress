@@ -21,7 +21,7 @@ final class Complete99_Live_Catalog {
 	const OPTION_PICKUP_INSTANCE = 'complete99_live_catalog_pickup_instance';
 	const OPTION_PUBLIC_ADDRESS  = 'complete99_live_catalog_public_address';
 	const LOCK_TIMEOUT    = 10;
-	const EXPECTED_COUNT  = 28;
+	const EXPECTED_COUNT  = 30;
 	const RECOVERY_STATES = array(
 		'materializing',
 		'commit_unverified',
@@ -84,6 +84,8 @@ final class Complete99_Live_Catalog {
 		'product-chicken-liver-1kg',
 		'product-rishiri-kombu-100g',
 		'product-honkarebushi-200g',
+		'product-yamaroku-tsurubishio-500ml',
+		'product-kito-yuzu-juice-100ml',
 	);
 	const DISH_SLUGS = array(
 		'sabich',
@@ -806,7 +808,7 @@ final class Complete99_Live_Catalog {
 				|| $expected !== $policy_codes
 				|| $expected !== $relation_codes
 				|| $expected_dishes !== $dish_slugs ) {
-				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 28-product coverage.' );
+				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 30-product coverage.' );
 			}
 
 			$products      = array();
@@ -858,6 +860,15 @@ final class Complete99_Live_Catalog {
 					if ( ! in_array( $dish_slug, self::DISH_SLUGS, true )
 						|| ! in_array( $code, (array) $relations['dishes'][ $dish_slug ], true ) ) {
 						throw new \UnexpectedValueException( 'A live product relation is unknown or not reciprocal: ' . $code );
+					}
+				}
+				$related_product_codes = array_values( array_map( 'strval', (array) ( $relation['related_product_codes'] ?? array() ) ) );
+				if ( count( $related_product_codes ) !== count( array_unique( $related_product_codes ) ) ) {
+					throw new \UnexpectedValueException( 'A live product relation list is duplicated: ' . $code );
+				}
+				foreach ( $related_product_codes as $related_product_code ) {
+					if ( $related_product_code === $code || ! in_array( $related_product_code, self::PRODUCT_CODES, true ) ) {
+						throw new \UnexpectedValueException( 'A related live product code is invalid: ' . $code );
 					}
 				}
 				$asset = $assets[ $asset_name ];
@@ -916,6 +927,10 @@ final class Complete99_Live_Catalog {
 						'sha256'   => $sha,
 						'width'    => absint( $asset['width'] ?? 0 ),
 						'height'   => absint( $asset['height'] ?? 0 ),
+						'alt'      => array(
+							'he' => (string) ( $asset['alt']['he'] ?? $seed['name']['he'] ),
+							'en' => (string) ( $asset['alt']['en'] ?? $seed['name']['en'] ),
+						),
 					),
 				);
 				$asset_receipt[ $code ] = array( 'filename' => $asset_name, 'sha256' => $sha );
@@ -1478,7 +1493,9 @@ final class Complete99_Live_Catalog {
 		update_post_meta( $attachment_id, self::META_ASSET_CODE, $record['code'] );
 		update_post_meta( $attachment_id, self::META_ASSET_SHA, $record['asset']['sha256'] );
 		update_post_meta( $attachment_id, Complete99_Commerce::MEDIA_PUBLIC_SAFE, 'yes' );
-		update_post_meta( $attachment_id, '_wp_attachment_image_alt', $record['name']['he'] . ' | ' . $record['name']['en'] );
+		update_post_meta( $attachment_id, '_wp_attachment_image_alt', (string) $record['asset']['alt']['he'] );
+		update_post_meta( $attachment_id, '_complete99_attachment_alt_he', (string) $record['asset']['alt']['he'] );
+		update_post_meta( $attachment_id, '_complete99_attachment_alt_en', (string) $record['asset']['alt']['en'] );
 	}
 
 	private static function ensure_product( $record, $existing_id, $attachment_id, $terms, $bundle ) {
@@ -1492,8 +1509,14 @@ final class Complete99_Live_Catalog {
 			$name_en     = trim( (string) $record['name']['en'] );
 			$package_he  = trim( (string) $record['package']['he'] );
 			$package_en  = trim( (string) $record['package']['en'] );
-			$description_he = $name_he . ' באריזת ' . $package_he . '. מוצר למטבח הביתי, עם מחיר ומלאי שמתעדכנים בקטלוג.';
-			$description_en = $name_en . ' in a ' . $package_en . ' pack. A home-kitchen product with price and stock maintained in the catalog.';
+			$description_he = trim( (string) ( $public['description']['he'] ?? '' ) );
+			$description_en = trim( (string) ( $public['description']['en'] ?? '' ) );
+			if ( '' === $description_he ) {
+				$description_he = $name_he . ' באריזת ' . $package_he . '. מוצר למטבח הביתי, עם מחיר ומלאי שמתעדכנים בקטלוג.';
+			}
+			if ( '' === $description_en ) {
+				$description_en = $name_en . ' in a ' . $package_en . ' pack. A home-kitchen product with price and stock maintained in the catalog.';
+			}
 
 			$product->set_name( $name_he );
 			$product->set_slug( sanitize_title( 'complete99-' . substr( $record['code'], strlen( 'product-' ) ) ) );
@@ -1570,7 +1593,7 @@ final class Complete99_Live_Catalog {
 				'_complete99_catalog_ingredient_code'      => $record['ingredient'],
 				'_complete99_live_catalog_asset_sha256'    => $record['asset']['sha256'],
 				'_complete99_live_catalog_relation_digest' => self::digest( $record['relations'] ),
-				'_complete99_live_catalog_facet'           => self::facet_for_classification( $record['classification'] ),
+				'_complete99_live_catalog_facet'           => self::facets_for_record( $record ),
 				'_complete99_live_catalog_package_he'      => $package_he,
 				'_complete99_live_catalog_package_en'      => $package_en,
 				'_complete99_live_catalog_initial_stock'   => '1',
@@ -1616,6 +1639,14 @@ final class Complete99_Live_Catalog {
 			'regulated_category'          => 'regulated',
 		);
 		return isset( $facets[ $classification ] ) ? $facets[ $classification ] : '';
+	}
+
+	private static function facets_for_record( $record ) {
+		$facets = array_filter( array( self::facet_for_classification( $record['classification'] ?? '' ) ) );
+		if ( 'japanese-pantry' === (string) ( $record['public']['category'] ?? '' ) ) {
+			$facets[] = 'japanese-pantry';
+		}
+		return implode( ' ', array_values( array_unique( $facets ) ) );
 	}
 
 	private static function product_identity( $product_id, $strict_asset ) {
