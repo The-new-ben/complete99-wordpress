@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-06
-Status: release 1.9.0 candidate, 12 dishes, 36 public products and 22 public Japanese science pages
+Status: release 1.9.0 live, 12 dishes, 36 public products and 22 public Japanese science entities across 17 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future

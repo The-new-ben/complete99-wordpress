@@ -26,9 +26,11 @@ cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
 Release 1.9.0 also expands the Japanese culinary-science registry to 73 bounded
-entities and 22 bilingual public knowledge pages. The current pages remain
-`noindex,follow` and outside the sitemap until the separate long-form editorial
-and search-intent gate passes.
+entities. Twenty-two public entities are projected through 17 canonical page
+owners per language, for 34 distinct Hebrew and English routes. Shared page
+ownership prevents closely related entities from competing for the same search
+intent. The current pages remain `noindex,follow` and outside the sitemap until
+the separate long-form editorial and search-intent gate passes.
 
 Previous release 1.8.0 introduced the integrity-only public read-model
 boundary. The server derives the stored read-model SHA-256 from a

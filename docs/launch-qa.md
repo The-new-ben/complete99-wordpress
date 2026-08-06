@@ -43,7 +43,8 @@ Release target: Complete99 Platform 1.9.0
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
-- The forty-four bilingual museum-preview routes resolve from public projections,
+- The thirty-four bilingual culinary-science routes resolve from 22 public
+  entities through 17 canonical page owners per language,
   emit canonical and hreflang metadata, remain `noindex,follow`, and are absent
   from the museum sitemap provider until their separate index gate is approved.
 - Public museum responses cannot expose visual prompts, supplier terms, landed

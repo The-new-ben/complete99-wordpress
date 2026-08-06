@@ -218,7 +218,7 @@ def main() -> int:
                 "<ul>"
                 "<li>Expanded the public WooCommerce catalog from 32 to 36 owner-authorized products with Uozu Koshihikari rice, dried rice koji, Chouhaku-kin koji starter and Dutch-grown fresh wasabi.</li>"
                 "<li>Added current dated source-market observations, Bank of Israel currency conversions, explicit opening retail prices, one unit of opening stock and no backorders for all four products.</li>"
-                "<li>Expanded the bilingual Japanese culinary-science pilot to 22 public pages with dedicated product and science imagery, exact canonical routes, natural internal links and reciprocal store offers.</li>"
+                "<li>Expanded the bilingual Japanese culinary-science pilot to 22 public entities across 17 canonical page owners per language, with dedicated imagery, natural internal links and reciprocal store offers.</li>"
                 "<li>Added range-aware Product structured data for the 50 to 60 gram wasabi offer while preserving the maximum operational shipping weight.</li>"
                 "<li>Kept actual supplier cost, landed cost and gross margin unset until documented commercial evidence exists, and kept every payment gateway disabled.</li>"
                 "</ul>"
