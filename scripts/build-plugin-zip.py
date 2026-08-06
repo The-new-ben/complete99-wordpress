@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 11:25:03"
+RELEASE_LAST_UPDATED = "2026-08-06 14:35:25"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,14 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Bound public read-model freshness to a recursive canonical SHA-256 digest that excludes only its own top-level digest field.</li>"
+                "<li>Persisted the normalized OS transport envelope unchanged with exact UTC millisecond generation and item timestamps.</li>"
+                "<li>Added a narrow identity-preserving migration gate for the known 1.7 read-model envelope and a fixed PHP/OS digest fixture.</li>"
+                "<li>Made health, menu, public catalog, SEO and sitemap consumers fail closed when a stored digest is missing, malformed, arbitrary or does not match the stored content.</li>"
+                "<li>Kept the exact 32-item public WooCommerce catalog and approved public content unchanged.</li>"
+                "</ul>"
+                "<h4>1.7.0</h4>"
                 "<ul>"
                 "<li>Introduced the modular culinary-science v5 ownership and public-exposure contracts for safe multi-cuisine expansion.</li>"
                 "<li>Added a bilingual Japanese Foundations Lab with curated canonical links, accessible filters and collection schema.</li>"

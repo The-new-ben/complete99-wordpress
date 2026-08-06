@@ -1230,7 +1230,9 @@ def test_plugin_require_boot_migration_health_and_review_lab_are_wired() -> None
     assert "'culinary_science_ready' =>" in health_method
     assert "'culinary_science' => $science" not in health_method
     assert "'entity_count'" not in health_method
-    assert "'digest'" not in health_method
+    assert "'read_model'      => array(" in health_method
+    assert "'digest'     => $model_digest" in health_method
+    assert "'culinary_science_digest'" not in health_method
 
     snapshot = review.split("public static function snapshot()", 1)[1].split(
         "private static function evaluation_catalog_status", 1

@@ -11,11 +11,23 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.7.0`. Production truth comes
+The source tree targets Complete99 Platform `1.8.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.7.0 introduces the modular culinary-science registry v5 and the
+Release 1.8.0 is an integrity-only public read-model release. It does not add,
+remove or alter any public catalog item: the approved WooCommerce catalog stays
+at exactly 32 items. The server derives the stored read-model SHA-256 from a
+recursive canonical representation that excludes only the top-level `digest`
+field, preserves list order and sorts associative keys at every depth. Public
+freshness requires the stored digest to match that causal digest through
+`hash_equals`. Missing, malformed, arbitrary or content-mismatched digests fail
+closed, so public consumers use the approved packaged menu instead of trusting
+the stored model. Health reports a digest, version and generation time only
+when the complete transport envelope passes its shape and causal hash checks.
+It never invents a replacement.
+
+Previous release 1.7.0 introduced the modular culinary-science registry v5 and the
 bilingual Japanese Foundations Lab. The Lab is a curated topic collection over
 reviewed ingredient, food-science, technique and equipment entities. It owns
 its narrow discovery intent without changing the canonical ownership of its

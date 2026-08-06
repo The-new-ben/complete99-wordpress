@@ -1380,6 +1380,7 @@ final class Complete99_Frontend {
 		$is_he = 'he' === $lang;
 		$items = self::public_model_items();
 		$model = get_option( 'complete99_public_read_model', array() );
+		$model_is_fresh = class_exists( 'Complete99_REST' ) && Complete99_REST::is_public_model_fresh( $model );
 		?>
 		<section class="c99-live-menu" aria-labelledby="c99-live-menu-title">
 			<div class="c99-container">
@@ -1427,7 +1428,7 @@ final class Complete99_Frontend {
 						echo esc_html(
 							sprintf(
 								$is_he ? 'מקור: Complete99 OS · גרסת פרסום %s' : 'Source: Complete99 OS · publication version %s',
-								isset( $model['version'] ) && '' !== (string) $model['version'] ? (string) $model['version'] : '-'
+								$model_is_fresh && isset( $model['version'] ) && '' !== (string) $model['version'] ? (string) $model['version'] : '-'
 							)
 						);
 						?>

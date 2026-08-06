@@ -93,18 +93,31 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. Build twice and require identical bytes:
+3. For release 1.8.0, require the public read-model integrity tests to prove
+   recursive canonical hashing, exclusion of the top-level `digest` field,
+   `hash_equals` verification and fail-closed handling of missing, malformed,
+   arbitrary or content-mismatched digests.
+4. Require the shared 810-byte fixture to produce SHA-256
+   `b183d09588cb21c1374b5ec75d6d90fac836a49f5e1dbe030f01aa9d85d35410`,
+   and verify exact UTC millisecond generation timestamps plus byte-identical
+   item timestamps.
+5. Exercise the narrow 1.7 migration gate against the known 12-item live
+   fallback state. Confirm canonical ID and slug ownership remains protected.
+6. Confirm the public catalog allowlist and receipt still contain exactly the
+   same 32 items. This integrity-only release must not add, remove or alter a
+   public catalog item.
+7. Build twice and require identical bytes:
 
    `python scripts/build-plugin-zip.py --verify-reproducible`
 
-4. Inspect and validate the artifact:
+8. Inspect and validate the artifact:
 
    `python scripts/validate-package.py`
 
-5. Confirm `plugin-dist/complete99-platform.json` is the public PUC update
+9. Confirm `plugin-dist/complete99-platform.json` is the public PUC update
    manifest and `plugin-dist/complete99-platform-integrity.json` contains the
    independently checked artifact digest and size.
-6. Review source and metadata, then merge to `main`.
+10. Review source and metadata, then merge to `main`.
 
 The deliberate deploy path remains the authenticated temporary bridge. Vendored
 Plugin Update Checker 5.6 reads the public manifest on `main` only as the normal
@@ -209,6 +222,10 @@ A production release is complete only when the non-secret audit JSON shows:
 - transactional-storage preflight and run-time database baseline;
 - expected public health version and deployment ID;
 - matching health `database_version`;
+- a public read-model freshness result that is causally bound to its stored
+  recursive canonical digest, with negative evidence for missing, malformed,
+  arbitrary and content-mismatched digest states;
+- an unchanged exact 32-item public catalog receipt and allowlist;
 - `sync_configured: true` after an exact secret checkpoint, without exposing the
   value;
 - anonymous `robots.txt` content and SHA-256 matching the managed policy;
