@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 04:10:00"
+RELEASE_LAST_UPDATED = "2026-08-06 04:30:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,10 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded museum breadcrumb and evidence-citation targets to the 44 by 44 CSS-pixel acceptance target.</li>"
+                "</ul>"
+                "<h4>1.3.13</h4>"
                 "<ul>"
                 "<li>Opened a bilingual Culinary Science Museum preview for the reviewed Japanese pilot through exact projection-only routes.</li>"
                 "<li>Added canonical and hreflang metadata, visible breadcrumbs, citation-aware schema, original responsive assets and dated source-market observations.</li>"

@@ -11,11 +11,11 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.3.13`. Production truth comes
+The source tree targets Complete99 Platform `1.3.14`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.3.13 provides:
+Release 1.3.14 provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
@@ -48,6 +48,7 @@ Release 1.3.13 provides:
   source-market observations for the first reviewed Japanese entities;
 - an explicit `noindex,follow` gate for the museum preview until long-form
   editorial review is approved, with sitemap exclusion enforced independently;
+- 44 by 44 CSS-pixel targets for museum breadcrumbs and evidence citations;
 - deterministic deployment, exact package verification, fail-closed recovery
   markers and independent live acceptance.
 

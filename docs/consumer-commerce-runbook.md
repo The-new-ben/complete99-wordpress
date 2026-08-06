@@ -1,11 +1,11 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-06
-Release target: Complete99 Platform 1.3.13
+Release target: Complete99 Platform 1.3.14
 
-## Current 1.3.13 catalog boundary
+## Current 1.3.14 catalog boundary
 
-Release 1.3.13 supersedes the earlier evaluation-only pantry state described in
+Release 1.3.14 supersedes the earlier evaluation-only pantry state described in
 the historical sections below.
 
 - WooCommerce 10.9.4 is installed from the exact pinned official package.
@@ -53,7 +53,7 @@ suppliers, costs, campaigns and operating dashboards stay private. Their legacy
 seed records are migrated to private status and removed from public navigation,
 search ownership and sitemaps.
 
-No Complete99 worker role is installed or assigned by release 1.3.13. The private
+No Complete99 worker role is installed or assigned by release 1.3.14. The private
 commerce outbox reports `unassigned_infrastructure` until a later, separately
 approved operating decision.
 

@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-06
-Status: bilingual culinary release 1.3.13, 12 dishes, 26-product store and public Japanese culinary-science preview
+Status: bilingual culinary release 1.3.14, 12 dishes, 26-product store and public Japanese culinary-science preview
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -72,7 +72,7 @@ copy.
 - Draft content, failed checks, evidence workflows, migration and deployment
   terms, signing details and machine-generated drafts.
 
-No Complete99 worker role is installed or assigned by release 1.3.13. Role
+No Complete99 worker role is installed or assigned by release 1.3.14. Role
 definitions remain dormant infrastructure. The commerce outbox has no worker
 assignment.
 
@@ -177,7 +177,7 @@ errors.
 
 ## 7. Infrastructure without imposed roles
 
-Release 1.3.13 creates contracts and checks, not worker assignments.
+Release 1.3.14 creates contracts and checks, not worker assignments.
 
 - WordPress keeps consumer publishing and commerce readiness metadata.
 - WooCommerce is the product, cart and stock authority. It becomes the payment
@@ -192,7 +192,7 @@ Release 1.3.13 creates contracts and checks, not worker assignments.
 
 ## 8. Store readiness
 
-WooCommerce is the commerce engine; a custom cart is not. Release 1.3.13 opens
+WooCommerce is the commerce engine; a custom cart is not. Release 1.3.14 opens
 the exact 26-product catalog, classic cart and local-pickup continuation. The
 electronic checkout remains closed until the payment-specific evidence below
 passes:
