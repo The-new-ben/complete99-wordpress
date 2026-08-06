@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-06
-Status: source release target 1.10.0, with 12 dishes, 36 unchanged public products, five private draft planning offers and 22 public Japanese science entities across 17 page owners per language
+Status: source release target 1.11.0, with 12 dishes, 36 unchanged public products, 17 private draft planning offers and 22 public Japanese science entities across 17 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -177,7 +177,7 @@ errors.
 
 ## 7. Infrastructure without imposed roles
 
-Release 1.10.0 creates contracts and checks, not worker assignments.
+Release 1.11.0 creates contracts and checks, not worker assignments.
 
 - The private Entity Studio is an administrator-only WordPress tool backed by
   the existing culinary-science, authorized catalog and commerce registries.
@@ -226,9 +226,9 @@ the exact 36-product catalog, classic cart and local-pickup continuation. The
 electronic checkout remains closed until the payment-specific evidence below
 passes:
 
-Release 1.10.0 does not change that public catalog, cart or route surface. It
-adds five private draft planning offers and zero active offers. Payment remains
-disabled.
+Release 1.11.0 does not change that public catalog, cart or route surface. It
+retains the five 1.10.0 plans, adds 12 private Japanese premium-market plans and
+keeps all 17 private draft offers inactive. Payment remains disabled.
 
 - merchant identity and contact details;
 - payment provider and live-account verification;
@@ -269,6 +269,15 @@ Fukumitsuya hon mirin, ILS 199 for 720 ml Kito yuzu juice and ILS 649 for a
 36 cm Umezawa hangiri. They remain draft planning values. They are not live
 offers, supplier quotations, landed costs, achieved margins or availability
 claims.
+
+Release 1.11.0 extends coverage to all 53 product identities. It adds 12 exact
+source-market candidates spanning premium nori, seasoned sushi vinegar, tamari,
+dried shiitake, dried yuba, kudzu starch, sansho, Tenju matcha, a makisu,
+yanagiba, Kamado-san and a maker-attributed chasen. Their source prices, Bank of
+Israel conversions and ILS planning prices are documented in
+`docs/japanese-premium-market-tranche-2026-08-06.md`. Every new candidate stays
+private, held, at planning stock zero and outside WooCommerce until exact
+supplier, landed-cost, compliance, media and acceptance gates pass.
 
 ## 9. Integrations and future hardware
 

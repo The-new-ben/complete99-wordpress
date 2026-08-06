@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.10.0
+Release target: Complete99 Platform 1.11.0
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.10.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.10.0 and its versioned package URL.
+- The public update manifest matches version 1.11.0 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -126,8 +126,15 @@ Release target: Complete99 Platform 1.10.0
 - WooCommerce 10.9.4 is installed from the pinned official package and the
   full installed tree matches the expected digest.
 - The public store contains exactly 36 owner-authorized catalog products and is indexable.
-- Release 1.10.0 preserves all 36 public products unchanged and adds no active
+- Release 1.11.0 preserves all 36 public products unchanged and adds no active
   public or POS offer.
+- The 12 new Japanese premium-market candidates remain private
+  `research_candidate` records with planning stock zero, blank WooCommerce
+  product codes, held projection and one held draft offer each.
+- Entity Studio reports exactly 144 subjects, 53 product identities, 36 live
+  prices, 17 private planning prices and 53 of 53 price-basis coverage.
+- Public source-market projection emits only exact explicit `public` variants.
+  Missing, malformed, unknown and `held` values emit no public row.
 - Release 1.9.0 adds exactly four owner-authorized offers to the previous
   32-item allowlist: Uozu Koshihikari rice, dried rice koji, Chouhaku-kin koji
   starter and Dutch-grown fresh wasabi.

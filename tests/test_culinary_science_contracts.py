@@ -27,7 +27,7 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v5"
-EXPECTED_VERSION = "japanese-pilot-2026.08.06.v10"
+EXPECTED_VERSION = "japanese-pilot-2026.08.06.v11"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
@@ -1214,6 +1214,303 @@ def test_price_records_have_scoped_measurements_and_observation_links(
                 assert item["source_url"].startswith("https://")
                 assert item["currency"] == measurement["currency"]
                 assert item["tax_status"] in {"included", "excluded", "unknown"}
+
+
+def test_japanese_premium_tranche_is_private_bilingual_and_source_bounded(
+    science_payload: dict,
+) -> None:
+    registry = science_payload["registry"]
+    by_id = {entity["id"]: entity for entity in registry["entities"]}
+    knowledge_ids = {
+        "market-toyosu",
+        "supplier-district-kappabashi",
+        "institution-japanese-culinary-academy",
+        "restaurant-ginza-kyubey",
+        "technique-edomae-shari-control",
+        "technique-kombujime",
+        "dish-futomaki-sushi",
+        "dish-kaiseki-hassun",
+    }
+    listing_ids = {
+        "listing-maruyama-gokujo-kontobi-nori-5-sheets-20260806",
+        "listing-tajima-red-sushi-vinegar-360ml-20260806",
+        "listing-minamigura-gin-warabeuta-tamari-200ml-20260806",
+        "listing-sugimoto-organic-dried-shiitake-70g-20260806",
+        "listing-yubaya-kyoto-dried-yuba-100g-20260806",
+        "listing-ohsawa-organic-kudzu-starch-150g-20260806",
+        "listing-yawataya-isogoro-sansho-12g-20260806",
+        "listing-marukyu-koyamaen-tenju-matcha-20g-20260806",
+        "listing-yamaco-bamboo-makisu-27cm-20260806",
+        "listing-sakai-takayuki-ginsan-yanagiba-270mm-20260806",
+        "listing-nagatanien-kamado-san-3-cup-20260806",
+        "listing-kubo-komakichi-kazuho-chasen-20260806",
+    }
+
+    assert knowledge_ids | listing_ids <= set(by_id)
+    for entity_id in knowledge_ids | listing_ids:
+        entity = by_id[entity_id]
+        assert entity["name"]["he"]
+        assert entity["name"]["en"]
+        assert entity["publication"]["public_api"] is False
+        assert entity["publication"]["public_page"] is False
+        assert entity["publication"]["search_index"] is False
+        if entity_id in {
+            "market-toyosu",
+            "institution-japanese-culinary-academy",
+        }:
+            assert entity["index_policy"].startswith("noindex_")
+        else:
+            assert entity["index_policy"] == "noindex_private"
+        assert entity["seo"]["route_mode"] in {"private", "section"}
+
+    toyosu_source_ids = {
+        source_id
+        for fact in by_id["market-toyosu"]["facts"]
+        for source_id in fact["source_ids"]
+    }
+    assert {
+        "toyosu-market-official-2026",
+        "toyosu-market-overview-2026",
+    } <= toyosu_source_ids
+    academy_source_ids = {
+        source_id
+        for fact in by_id["institution-japanese-culinary-academy"]["facts"]
+        for source_id in fact["source_ids"]
+    }
+    assert {"jca-corpus-2026", "jca-taizen-digital-book-2026"} <= academy_source_ids
+
+
+def test_japanese_premium_tranche_august_6_chronology_and_source_provenance(
+    science_payload: dict,
+) -> None:
+    registry = science_payload["registry"]
+    by_id = {entity["id"]: entity for entity in registry["entities"]}
+    source_types = {
+        source_id: source["type"]
+        for source_id, source in registry["sources"].items()
+    }
+    new_entity_ids = {
+        "supplier-district-kappabashi",
+        "restaurant-ginza-kyubey",
+        "technique-edomae-shari-control",
+        "technique-kombujime",
+        "dish-futomaki-sushi",
+        "dish-kaiseki-hassun",
+        "listing-maruyama-gokujo-kontobi-nori-5-sheets-20260806",
+        "listing-tajima-red-sushi-vinegar-360ml-20260806",
+        "listing-minamigura-gin-warabeuta-tamari-200ml-20260806",
+        "listing-sugimoto-organic-dried-shiitake-70g-20260806",
+        "listing-yubaya-kyoto-dried-yuba-100g-20260806",
+        "listing-ohsawa-organic-kudzu-starch-150g-20260806",
+        "listing-yawataya-isogoro-sansho-12g-20260806",
+        "listing-marukyu-koyamaen-tenju-matcha-20g-20260806",
+        "listing-yamaco-bamboo-makisu-27cm-20260806",
+        "listing-sakai-takayuki-ginsan-yanagiba-270mm-20260806",
+        "listing-nagatanien-kamado-san-3-cup-20260806",
+        "listing-kubo-komakichi-kazuho-chasen-20260806",
+    }
+    enriched_entity_ids = {
+        "market-toyosu",
+        "institution-japanese-culinary-academy",
+    }
+
+    for entity_id in new_entity_ids:
+        entity = by_id[entity_id]
+        assert entity["trust"]["substantive_updated_at"] == "2026-08-06"
+        assert entity["review"]["reviewed_at"] == "2026-08-06"
+        assert all(
+            relation["valid_from"] == "2026-08-06"
+            for relation in entity["relations"]
+        ), entity_id
+
+    enrichment_source_ids = {
+        "market-toyosu": {
+            "toyosu-market-official-2026",
+            "toyosu-market-overview-2026",
+        },
+        "institution-japanese-culinary-academy": {
+            "jca-official-en-2026",
+            "jca-corpus-2026",
+            "jca-taizen-digital-book-2026",
+        },
+    }
+    for entity_id in enriched_entity_ids:
+        entity = by_id[entity_id]
+        assert entity["trust"]["substantive_updated_at"] == "2026-08-06"
+        assert entity["review"]["reviewed_at"] == "2026-08-06"
+        new_relations = [
+            relation
+            for relation in entity["relations"]
+            if set(relation["source_ids"]) & enrichment_source_ids[entity_id]
+        ]
+        assert new_relations, entity_id
+        assert all(
+            relation["valid_from"] == "2026-08-06"
+            for relation in new_relations
+        ), entity_id
+
+    category_facts = [
+        (entity["id"], fact)
+        for entity in registry["entities"]
+        for fact in entity["facts"]
+        if entity["id"].startswith("listing-")
+        and "category-context-boundary" in fact["id"]
+    ]
+    assert category_facts
+    for entity_id, fact in category_facts:
+        assert fact["value_scope"] == "category"
+        assert fact["public_safe"] is False
+        observed_source_types = {
+            source_types[source_id] for source_id in fact["source_ids"]
+        }
+        if fact["evidence_class"] == "peer_reviewed_context":
+            assert observed_source_types == {"peer_reviewed_paper"}, entity_id
+        elif fact["evidence_class"] == "official_source":
+            assert observed_source_types <= {
+                "official_business",
+                "official_market_listing",
+                "official_government",
+                "official_organization",
+            }, entity_id
+            assert observed_source_types, entity_id
+        else:
+            raise AssertionError(
+                f"Unexpected category evidence class for {entity_id}: "
+                f"{fact['evidence_class']}"
+            )
+
+    minamigura_facts = [
+        fact
+        for entity_id, fact in category_facts
+        if entity_id
+        == "listing-minamigura-gin-warabeuta-tamari-200ml-20260806"
+    ]
+    assert len(minamigura_facts) == 2
+    assert {fact["evidence_class"] for fact in minamigura_facts} == {
+        "official_source",
+        "peer_reviewed_context",
+    }
+
+    assert registry["sources"]["nori-category-science-2024"]["published_at"] == (
+        "2024-07-15"
+    )
+    assert registry["sources"]["shiitake-category-science-2024"][
+        "published_at"
+    ] == "2024-10-23"
+    assert registry["sources"]["matcha-category-science-2022-a"][
+        "published_at"
+    ] == "2022-09-20"
+    assert registry["sources"]["matcha-category-science-2022-b"][
+        "published_at"
+    ] == "2022-04-30"
+
+
+def test_japanese_premium_tranche_primary_source_corrections_are_exact(
+    science_payload: dict,
+) -> None:
+    by_id = {
+        entity["id"]: entity
+        for entity in science_payload["registry"]["entities"]
+    }
+
+    def listing_measurement(entity_id: str) -> dict:
+        matches = [
+            fact["measurement"]
+            for fact in by_id[entity_id]["facts"]
+            if fact["evidence_class"] == "market_observation"
+        ]
+        assert len(matches) == 1
+        return matches[0]
+
+    tenju = listing_measurement(
+        "listing-marukyu-koyamaen-tenju-matcha-20g-20260806"
+    )
+    assert tenju["value"] == 21600
+    assert tenju["currency"] == "JPY"
+    assert tenju["source_url"] == (
+        "https://www.marukyu-koyamaen.co.jp/motoan-shop/products/1111020c1/"
+    )
+    assert tenju["line_items"][0]["availability"] == (
+        "sold_out_limited_allocation"
+    )
+    assert tenju["line_items"][0]["attributes"] == {
+        "sku": "1111020C1",
+        "net_content": "20 g",
+        "allocation_state": "limited",
+        "stock_state": "sold out",
+        "selling_context": "irregular selling or shortage context",
+    }
+    tenju_copy = json.dumps(
+        by_id["listing-marukyu-koyamaen-tenju-matcha-20g-20260806"],
+        ensure_ascii=False,
+    ).lower()
+    for stale_claim in ("20,100", "price-conflict", "january 2026 catalog"):
+        assert stale_claim not in tenju_copy
+
+    kamado = listing_measurement(
+        "listing-nagatanien-kamado-san-3-cup-20260806"
+    )
+    assert kamado["value"] == 16500
+    assert kamado["currency"] == "JPY"
+    assert kamado["tax_status"] == "included"
+    kamado_item = kamado["line_items"][0]
+    assert kamado_item["availability"] == (
+        "sequential_shipment_after_late_september"
+    )
+    assert kamado_item["tax_status"] == "included"
+    assert kamado_item["attributes"]["model_code"] == "ACT-01"
+    assert kamado_item["attributes"]["capacity"] == "three cups"
+    assert "9月下旬以降" in kamado_item["attributes"]["availability_state"]
+    kamado_copy = json.dumps(
+        by_id["listing-nagatanien-kamado-san-3-cup-20260806"],
+        ensure_ascii=False,
+    ).lower()
+    for stale_claim in (
+        "mid-september",
+        "preorder",
+        "restock",
+        "four cups",
+        "four-cup",
+        "4-cup",
+    ):
+        assert stale_claim not in kamado_copy
+
+    for entity_id in (
+        "listing-maruyama-gokujo-kontobi-nori-5-sheets-20260806",
+        "listing-yubaya-kyoto-dried-yuba-100g-20260806",
+    ):
+        measurement = listing_measurement(entity_id)
+        assert measurement["tax_status"] == "included"
+        assert measurement["line_items"][0]["tax_status"] == "included"
+
+    yanagiba = listing_measurement(
+        "listing-sakai-takayuki-ginsan-yanagiba-270mm-20260806"
+    )
+    yanagiba_attributes = yanagiba["line_items"][0]["attributes"]
+    assert yanagiba_attributes["brand_claim"] == "Sakai Takayuki"
+    assert yanagiba_attributes["manufacturer_claim"] == "Aoki Hamono"
+
+
+def test_japanese_premium_tranche_preserves_regulatory_and_endorsement_boundaries(
+    science_payload: dict,
+) -> None:
+    by_id = {
+        entity["id"]: entity
+        for entity in science_payload["registry"]["entities"]
+    }
+    shari = by_id["technique-edomae-shari-control"]
+    shari_copy = json.dumps(shari, ensure_ascii=False).lower()
+    assert "4.2" in shari_copy
+    assert "not an automatic statement of israeli law" in shari_copy
+    assert "jurisdiction-and-batch-ph-review" in shari_copy
+
+    for entity_id in (
+        "supplier-district-kappabashi",
+        "restaurant-ginza-kyubey",
+        "institution-japanese-culinary-academy",
+    ):
+        copy = json.dumps(by_id[entity_id], ensure_ascii=False).lower()
+        assert "endorsement" in copy or "partnership" in copy or "affiliation" in copy
 
 
 def test_plugin_require_boot_migration_health_and_review_lab_are_wired() -> None:

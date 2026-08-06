@@ -1072,8 +1072,14 @@ final class Complete99_Culinary_Commerce {
 			$product  = is_array( $variant ) && isset( $products[ $variant['product_id'] ] ) ? $products[ $variant['product_id'] ] : null;
 			$market   = $markets[ $observation['market_id'] ];
 			$artifact = $artifacts[ $observation['evidence_artifact_id'] ];
+			$projection_policy = is_array( $variant )
+				&& isset( $variant['attributes']['public_market_projection'] )
+				&& 'public' === $variant['attributes']['public_market_projection']
+				? 'public'
+				: 'held';
 			if ( ! is_array( $product )
 				|| $science_entity_id !== $product['knowledge_entity_id']
+				|| 'public' !== $projection_policy
 				|| 'research_candidate' !== $product['state']
 				|| 'research_candidate' !== $variant['state']
 				|| 'research_candidate' !== $sku['state']

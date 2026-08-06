@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 from collections.abc import Iterator, Mapping
+from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
 from typing import Any
@@ -23,28 +24,28 @@ SCIENCE_DATA = PLUGIN / "data" / "culinary-science-pilot.php"
 COMMERCE_DATA = PLUGIN / "data" / "culinary-commerce-pilot.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-commerce-registry/v2"
-EXPECTED_VERSION = "japanese-commerce-pilot-2026.08.06.v4"
+EXPECTED_VERSION = "japanese-commerce-pilot-2026.08.06.v5"
 EXPECTED_COUNTS = {
-    "countries": 4,
-    "currencies": 4,
-    "locales": 5,
-    "tax_zones": 4,
-    "markets": 4,
+    "countries": 5,
+    "currencies": 5,
+    "locales": 6,
+    "tax_zones": 5,
+    "markets": 5,
     "channels": 4,
-    "sellers": 5,
-    "brands": 4,
-    "manufacturers": 4,
-    "products": 10,
-    "variants": 10,
-    "skus": 10,
+    "sellers": 12,
+    "brands": 16,
+    "manufacturers": 16,
+    "products": 22,
+    "variants": 22,
+    "skus": 22,
     "supplier_offers": 0,
-    "evidence_artifacts": 10,
-    "market_observations": 10,
-    "channel_offers": 5,
+    "evidence_artifacts": 23,
+    "market_observations": 22,
+    "channel_offers": 17,
     "landed_cost_scenarios": 0,
     "margin_scenarios": 0,
-    "bundles": 3,
-    "merchandising_edges": 5,
+    "bundles": 8,
+    "merchandising_edges": 14,
     "connector_profiles": 2,
     "integration_consumers": 1,
 }
@@ -867,6 +868,18 @@ def test_private_draft_prices_cover_every_non_live_commerce_candidate(
         "sku-fukumitsuya-hon-mirin-10y-720ml": 34900,
         "sku-kito-yuzu-juice-720ml": 19900,
         "sku-umezawa-hangiri-36cm": 64900,
+        "sku-maruyama-gokujo-kontobi-nori-5-sheets": 9900,
+        "sku-tajima-red-sushi-vinegar-360ml": 11900,
+        "sku-minamigura-gin-warabeuta-tamari-200ml": 15900,
+        "sku-sugimoto-organic-dried-shiitake-70g": 14900,
+        "sku-yubaya-kyoto-dried-yuba-100g": 8900,
+        "sku-ohsawa-organic-kudzu-starch-150g": 14900,
+        "sku-yawataya-isogoro-sansho-12g": 16900,
+        "sku-marukyu-koyamaen-tenju-matcha-20g": 74900,
+        "sku-yamaco-bamboo-makisu-27cm": 12900,
+        "sku-sakai-takayuki-ginsan-yanagiba-270mm": 179900,
+        "sku-nagatanien-kamado-san-3-cup": 119900,
+        "sku-kubo-komakichi-kazuho-chasen": 24900,
     }
     offers = {offer["sku_id"]: offer for offer in registry["channel_offers"]}
 
@@ -884,6 +897,267 @@ def test_private_draft_prices_cover_every_non_live_commerce_candidate(
         assert offer["landed_cost_scenario_id"] == ""
         assert offer["margin_scenario_id"] == ""
         assert offer["evidence_artifact_ids"]
+        assert offer["kiosk_projection"]["availability"] == "held"
+
+
+def test_public_market_projection_uses_an_explicit_legacy_allowlist(
+    commerce_payload: dict[str, Any],
+) -> None:
+    variants = _id_index(commerce_payload["registry"]["variants"])
+    expected_public = {
+        "variant-rishiri-kombu-100g",
+        "variant-honkarebushi-belly-200g",
+        "variant-fukumitsuya-hon-mirin-3y-720ml",
+        "variant-fukumitsuya-hon-mirin-10y-720ml",
+        "variant-yamaroku-tsurubishio-500ml",
+        "variant-fresh-japanese-wasabi-250g",
+        "variant-kito-yuzu-juice-100ml",
+        "variant-kito-yuzu-juice-720ml",
+        "variant-hagane-zame-large",
+    }
+    actual_public = {
+        variant_id
+        for variant_id, variant in variants.items()
+        if variant["attributes"].get("public_market_projection") == "public"
+    }
+
+    assert actual_public == expected_public
+    assert variants["variant-umezawa-hangiri-36cm"]["attributes"][
+        "public_market_projection"
+    ] == "held"
+    for variant in variants.values():
+        assert variant["attributes"]["public_market_projection"] in {
+            "public",
+            "held",
+        }
+
+
+def test_premium_tranche_keeps_stock_zero_gates_and_compliance_in_private_variants(
+    commerce_payload: dict[str, Any],
+) -> None:
+    registry = commerce_payload["registry"]
+    variants = _id_index(registry["variants"])
+    products = _id_index(registry["products"])
+    skus = _id_index(registry["skus"])
+    new_product_ids = {
+        "product-maruyama-gokujo-kontobi-nori-5-sheets",
+        "product-tajima-red-sushi-vinegar-360ml",
+        "product-minamigura-gin-warabeuta-tamari-200ml",
+        "product-sugimoto-organic-dried-shiitake-70g",
+        "product-yubaya-kyoto-dried-yuba-100g",
+        "product-ohsawa-organic-kudzu-starch-150g",
+        "product-yawataya-isogoro-sansho-12g",
+        "product-marukyu-koyamaen-tenju-matcha-20g",
+        "product-yamaco-bamboo-makisu-27cm",
+        "product-sakai-takayuki-ginsan-yanagiba-270mm",
+        "product-nagatanien-kamado-san-3-cup",
+        "product-kubo-komakichi-kazuho-chasen",
+    }
+    expected_fx_arithmetic = {
+        "product-maruyama-gokujo-kontobi-nori-5-sheets": "ILS 25.77 source equivalent",
+        "product-tajima-red-sushi-vinegar-360ml": "ILS 14.53 source equivalent",
+        "product-minamigura-gin-warabeuta-tamari-200ml": "ILS 51.07 source equivalent",
+        "product-sugimoto-organic-dried-shiitake-70g": "ILS 43.06 source equivalent",
+        "product-yubaya-kyoto-dried-yuba-100g": "ILS 20.62 source equivalent",
+        "product-ohsawa-organic-kudzu-starch-150g": "ILS 45.13 source equivalent",
+        "product-yawataya-isogoro-sansho-12g": "ILS 66.26 source equivalent",
+        "product-marukyu-koyamaen-tenju-matcha-20g": "ILS 412.30 source equivalent",
+        "product-yamaco-bamboo-makisu-27cm": "ILS 59.41 source equivalent",
+        "product-sakai-takayuki-ginsan-yanagiba-270mm": "ILS 848.61 source equivalent",
+        "product-nagatanien-kamado-san-3-cup": "ILS 314.95 source equivalent",
+        "product-kubo-komakichi-kazuho-chasen": "ILS 111.28 source equivalent",
+    }
+    assert new_product_ids <= set(products)
+
+    science_only_sources = {
+        "nori-category-science-2024",
+        "tamari-category-science-2020",
+        "shiitake-category-science-2024",
+        "kudzu-category-science-2026",
+        "sansho-category-science-2023",
+        "matcha-category-science-2022-a",
+        "matcha-category-science-2022-b",
+        "chasen-foam-science-2012",
+    }
+    for product_id in new_product_ids:
+        product = products[product_id]
+        variant = variants["variant-" + product_id.removeprefix("product-")]
+        sku = skus["sku-" + product_id.removeprefix("product-")]
+        attributes = variant["attributes"]
+        assert product["state"] == "research_candidate"
+        assert sku["state"] == "research_candidate"
+        assert sku["woo_product_code"] == ""
+        assert sku["inventory_policy"] == "research_only"
+        assert attributes["planning_stock_quantity"] == "0"
+        assert attributes["public_market_projection"] == "held"
+        assert Decimal(attributes["planning_price_ils"]) > 0
+        assert attributes["planning_price_rationale"]
+        assert expected_fx_arithmetic[product_id] in attributes["planning_price_rationale"]
+        assert attributes["activation_gates"]
+        assert attributes["compliance_note"].startswith("[COMPLIANCE_NOTE:")
+        assert attributes["compliance_note_he"].startswith("[COMPLIANCE_NOTE:")
+        assert attributes["compliance_note_en"].startswith("[COMPLIANCE_NOTE:")
+        assert attributes["compliance_note"] == attributes["compliance_note_en"]
+        assert attributes["compliance_note_he"] != attributes["compliance_note_en"]
+        assert set(product["source_ids"]).isdisjoint(science_only_sources)
+
+    offers = {
+        offer["sku_id"]: offer
+        for offer in registry["channel_offers"]
+        if offer["sku_id"].removeprefix("sku-")
+        in {item.removeprefix("product-") for item in new_product_ids}
+    }
+    assert len(offers) == 12
+    for offer in offers.values():
+        assert offer["state"] == "draft"
+        assert offer["stock_policy"] == "research_only"
+        assert offer["kiosk_projection"]["availability"] == "held"
+        assert "evidence-boi-fx-20260806" in offer["evidence_artifact_ids"]
+
+
+def test_premium_tranche_bundles_and_merchandising_are_held_and_evidenced(
+    commerce_payload: dict[str, Any],
+) -> None:
+    registry = commerce_payload["registry"]
+    bundle_ids = {
+        "bundle-edomae-sushi-lab-draft",
+        "bundle-umami-shojin-lab-draft",
+        "bundle-matcha-ritual-draft",
+        "bundle-pro-sushi-tools-draft",
+        "bundle-seasonal-hassun-capsule-draft",
+    }
+    bundles = _id_index(registry["bundles"])
+    assert bundle_ids <= set(bundles)
+    for bundle_id in bundle_ids:
+        bundle = bundles[bundle_id]
+        assert bundle["state"] == "draft"
+        assert bundle["channel_offer_id"] == ""
+        assert bundle["inventory_policy"] == "component_managed"
+        assert bundle["components"]
+        assert bundle["evidence_artifact_ids"]
+
+    premium_edges = [
+        edge
+        for edge in registry["merchandising_edges"]
+        if edge["id"].startswith(
+            (
+                "edge-kontobi-",
+                "edge-vinegar-",
+                "edge-tamari-",
+                "edge-shiitake-",
+                "edge-yuba-",
+                "edge-kudzu-",
+                "edge-matcha-",
+                "edge-makisu-",
+                "edge-kamadosan-",
+            )
+        )
+    ]
+    assert len(premium_edges) == 9
+    assert {edge["type"] for edge in premium_edges} == {"cross_sell"}
+    assert next(
+        edge for edge in premium_edges if edge["id"] == "edge-makisu-to-yanagiba"
+    )["type"] == "cross_sell"
+    assert all(edge["state"] == "draft" for edge in premium_edges)
+    assert all(edge["evidence_artifact_ids"] for edge in premium_edges)
+
+
+def test_premium_tranche_primary_source_corrections_are_exact_and_bounded(
+    commerce_payload: dict[str, Any],
+) -> None:
+    registry = commerce_payload["registry"]
+    products = _id_index(registry["products"])
+    variants = _id_index(registry["variants"])
+    skus = _id_index(registry["skus"])
+    observations = _id_index(registry["market_observations"])
+    artifacts = _id_index(registry["evidence_artifacts"])
+
+    fx = artifacts["evidence-boi-fx-20260806"]
+    official_update = datetime.fromisoformat("2026-08-06T12:21:04+00:00")
+    captured = datetime.fromisoformat(fx["captured_at"].replace("Z", "+00:00"))
+    assert captured >= official_update
+    assert fx["source_url"] == "https://boi.org.il/PublicApi/GetExchangeRates"
+    assert fx["capture_method"] == "official-api-json-review"
+    assert "lastUpdate 2026-08-06T12:21:04Z" in fx["claim_locator"]
+    assert "retrieved 2026-08-06T18:19:19Z" in fx["claim_locator"]
+
+    tenju_key = "marukyu-koyamaen-tenju-matcha-20g"
+    tenju_product = products[f"product-{tenju_key}"]
+    tenju_variant = variants[f"variant-{tenju_key}"]
+    tenju_observation = observations[f"observation-{tenju_key}-20260806"]
+    tenju_artifact = artifacts[f"evidence-{tenju_key}-20260806"]
+    assert tenju_observation["amount_minor"] == 21600
+    assert tenju_observation["availability_state"] == "sold_out_limited_allocation"
+    assert tenju_observation["normalization"]["normalized_amount_minor"] == 1080000
+    assert tenju_variant["attributes"]["sku"] == "1111020C1"
+    assert tenju_variant["attributes"]["stock_state"] == "sold out"
+    assert "ILS 412.30 source equivalent" in tenju_variant["attributes"][
+        "planning_price_rationale"
+    ]
+    assert tenju_artifact["source_url"] == (
+        "https://www.marukyu-koyamaen.co.jp/motoan-shop/products/1111020c1/"
+    )
+
+    tenju_serialized = json.dumps(
+        [tenju_product, tenju_variant, tenju_observation, tenju_artifact],
+        ensure_ascii=False,
+    ).lower()
+    for unsupported in (
+        "20,100",
+        "20100",
+        "price-conflict",
+        "price conflict",
+        "january 2026 catalog",
+    ):
+        assert unsupported not in tenju_serialized
+
+    kamado_key = "nagatanien-kamado-san-3-cup"
+    kamado_product = products[f"product-{kamado_key}"]
+    kamado_variant = variants[f"variant-{kamado_key}"]
+    kamado_observation = observations[f"observation-{kamado_key}-20260806"]
+    kamado_artifact = artifacts[f"evidence-{kamado_key}-20260806"]
+    assert kamado_observation["amount_minor"] == 16500
+    assert kamado_observation["availability_state"] == (
+        "sequential_shipment_after_late_september"
+    )
+    assert kamado_variant["attributes"]["model_code"] == "ACT-01"
+    assert kamado_variant["attributes"]["capacity"] == "three cups"
+    assert "9月下旬以降" in kamado_variant["attributes"]["availability_state"]
+    assert kamado_observation["tax_state"] == "included"
+
+    nori_observation = observations[
+        "observation-maruyama-gokujo-kontobi-nori-5-sheets-20260806"
+    ]
+    yuba_observation = observations[
+        "observation-yubaya-kyoto-dried-yuba-100g-20260806"
+    ]
+    assert nori_observation["tax_state"] == "included"
+    assert yuba_observation["tax_state"] == "included"
+
+    yanagiba = products["product-sakai-takayuki-ginsan-yanagiba-270mm"]
+    manufacturers = _id_index(registry["manufacturers"])
+    brands = _id_index(registry["brands"])
+    assert yanagiba["brand_id"] == "brand-sakai-takayuki"
+    assert yanagiba["manufacturer_id"] == "manufacturer-aoki-hamono"
+    assert brands["brand-sakai-takayuki"]["name"]["en"] == "Sakai Takayuki"
+    assert manufacturers["manufacturer-aoki-hamono"]["name"]["en"] == (
+        "Aoki Hamono"
+    )
+    assert "manufacturer-sakai-takayuki" not in manufacturers
+
+    kamado_serialized = json.dumps(
+        [kamado_product, kamado_variant, kamado_observation, kamado_artifact],
+        ensure_ascii=False,
+    ).lower()
+    for wrong_scope in (
+        "mid-september",
+        "preorder",
+        "restock",
+        "four cups",
+        "four-cup model",
+        "4-cup",
+    ):
+        assert wrong_scope not in kamado_serialized
 
 
 def test_product_variant_sku_and_observation_are_separate_identity_layers(

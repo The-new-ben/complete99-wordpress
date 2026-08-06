@@ -4,6 +4,11 @@ Classification: private internal planning document. This is not public website c
 
 Date: 2026-08-06
 
+Historical snapshot notice: this document records the pre-1.11.0 Phase 1 plan.
+The implemented Japanese premium-market tranche, current v11/v5 registry counts
+and activation boundary are documented in
+`docs/japanese-premium-market-tranche-2026-08-06.md`.
+
 ## 1. Decision summary
 
 Complete99 remains one WordPress and WooCommerce system with several deliberately separated authorities:

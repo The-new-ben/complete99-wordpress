@@ -19,8 +19,8 @@ DIGEST_FIXTURE = ROOT / "tests" / "fixtures" / "complete99-public-read-model-dig
 PHP_RUNTIME_BOOTSTRAP = r"""
 define('ABSPATH', __DIR__);
 define('COMPLETE99_PLATFORM_DIR', '__PLUGIN_PATH__/');
-define('COMPLETE99_PLATFORM_VERSION', '1.10.0');
-define('COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.10.0');
+define('COMPLETE99_PLATFORM_VERSION', '1.11.0');
+define('COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.11.0');
 define('C99_DIGEST_FIXTURE', '__FIXTURE_PATH__');
 
 class WP_Error {
@@ -381,8 +381,8 @@ class LiveReadModelContracts(unittest.TestCase):
         );
         $health = static function($model = null) {
             c99_reset_runtime($model);
-            $GLOBALS['c99_persisted_options']['complete99_platform_version'] = serialize('1.10.0');
-            $GLOBALS['c99_persisted_options']['complete99_last_deployment_id'] = serialize('c99-wp-1.10.0');
+            $GLOBALS['c99_persisted_options']['complete99_platform_version'] = serialize('1.11.0');
+            $GLOBALS['c99_persisted_options']['complete99_last_deployment_id'] = serialize('c99-wp-1.11.0');
             return Complete99_REST::health()->data['read_model'];
         };
         $valid_health = $health($valid);
@@ -786,7 +786,7 @@ class LiveReadModelContracts(unittest.TestCase):
         $malicious_schema['schema'] = 'private-schema';
         $malicious_schema = c99_sign_read_model($malicious_schema);
         c99_reset_runtime($malicious_schema);
-        $c99_persisted_options['complete99_platform_version'] = serialize('1.10.0');
+        $c99_persisted_options['complete99_platform_version'] = serialize('1.11.0');
         $health = Complete99_REST::health()->data['read_model'];
         $catalog = Complete99_REST::public_catalog()->data;
 

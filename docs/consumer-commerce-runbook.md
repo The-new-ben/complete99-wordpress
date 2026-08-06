@@ -1,7 +1,23 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-06
-Release target: Complete99 Platform 1.10.0
+Release target: Complete99 Platform 1.11.0
+
+## Current 1.11.0 Japanese premium-market boundary
+
+Release 1.11.0 adds 12 private source-market candidates, eight knowledge
+subjects, five draft bundles and nine draft merchandising relationships. The
+commerce graph now contains 22 products, 22 variants, 22 SKUs, 23 evidence
+artifacts, 22 market observations, 17 draft offers, eight bundles and 14
+merchandising relationships. Entity Studio resolves 144 subjects and 53 product
+identities with 36 live prices and 17 private planning prices.
+
+All 12 new candidates are `research_candidate`, use planning stock zero, have
+no WooCommerce product code and have no active channel offer. Their private
+source-market projection is `held`. The projection layer accepts only the exact
+explicit value `public`; missing, malformed or unknown values remain private.
+The 36-product public catalog, public routes, live stock, POS projection and
+disabled payment state remain unchanged.
 
 ## Current 1.10.0 private planning boundary
 
