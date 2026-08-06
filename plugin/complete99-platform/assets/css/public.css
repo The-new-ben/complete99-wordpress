@@ -71,6 +71,21 @@ html[dir="rtl"] body.complete99-public {
 	box-shadow: 0 0 0 6px var(--c99-focus);
 }
 
+.c99-culinary-museum a:focus-visible,
+.c99-culinary-museum button:focus-visible {
+	outline: 3px solid #0a2f22;
+	outline-offset: 3px;
+	box-shadow: 0 0 0 6px #fff, 0 0 0 8px #0a2f22;
+}
+
+.c99-culinary-museum .c99-museum-section > h4 {
+	margin-bottom: 22px;
+	color: var(--c99-focus);
+	font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+	font-weight: 800;
+	line-height: 1.2;
+}
+
 .complete99-public h1,
 .complete99-public h2,
 .complete99-public h3,

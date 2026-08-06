@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.5.1
+Release target: Complete99 Platform 1.6.0
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.5.1
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.5.1 and its versioned package URL.
+- The public update manifest matches version 1.6.0 and its versioned package URL.
 - An exactly equivalent read-model retry repeats all public cache purges,
   reports `write_changed=false`, and can recover after a prior purge failure.
 - A fresh model with older or changed dish copy falls back to the packaged menu;
@@ -33,7 +33,7 @@ Release target: Complete99 Platform 1.5.1
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
-- The fourteen bilingual museum-preview routes resolve from public projections,
+- The twenty-four bilingual museum-preview routes resolve from public projections,
   emit canonical and hreflang metadata, remain `noindex,follow`, and are absent
   from the museum sitemap provider until their separate index gate is approved.
 - Public museum responses cannot expose visual prompts, supplier terms, landed
@@ -62,7 +62,7 @@ Release target: Complete99 Platform 1.5.1
   bilingual consumer copy.
 - Public copy explains food directly and does not narrate templates, publishing
   systems or future content mechanics.
-- The 30 selected catalog images render as normal product media with no public
+- The 32 selected catalog images render as normal product media with no public
   archive label, caveat or unusual treatment.
 - A live read-model image appears only with approved provenance and public-use
   rights.
@@ -88,7 +88,7 @@ Release target: Complete99 Platform 1.5.1
 
 - WooCommerce 10.9.4 is installed from the pinned official package and the
   full installed tree matches the expected digest.
-- The public store contains exactly 30 owner-authorized catalog products and is indexable.
+- The public store contains exactly 32 owner-authorized catalog products and is indexable.
 - Every product has its exact SKU, researched opening price, normal image,
   category, tags, stock authority and a reciprocal dish or science-entity relation.
 - New products begin with stock 1. Reapplying the catalog preserves operational
@@ -99,7 +99,7 @@ Release target: Complete99 Platform 1.5.1
 - Selecting a pantry filter visually hides every nonmatching product card. The
   result count, selected button and URL parameter remain synchronized.
 - Changing the cart language to English, emptying the cart and returning to
-  either store keeps all 30 products available. Receipt identity uses raw
+  either store keeps all 32 products available. Receipt identity uses raw
   WooCommerce edit values and cannot change with customer-session filters.
 - The public Complete99 store is never the native WooCommerce Shop page.
 - Native product, taxonomy and Shop pages redirect to the curated store without

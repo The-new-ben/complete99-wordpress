@@ -51,7 +51,8 @@ class CulinaryMuseumFrontendContracts(unittest.TestCase):
         self.assertIn("self::market_value_label( $item['availability'], $is_he )", frontend)
         self.assertIn("private static function relationship_label", frontend)
         self.assertEqual(2, frontend.count("self::relationship_label("))
-        self.assertIn("מרכזי תוכן וענפי ידע", frontend)
+        self.assertIn("מסלולים להמשך", frontend)
+        self.assertIn("Ways to explore", frontend)
         self.assertNotIn("$is_he ? 'Hubs & Spokes' : 'Hubs & Spokes'", frontend)
 
     def test_bilingual_seo_evidence_and_accessibility_are_explicit(self) -> None:

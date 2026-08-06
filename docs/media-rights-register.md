@@ -95,14 +95,14 @@ Registry:
 
 - `plugin/complete99-platform/data/generated-asset-manifest.php`
 
-The library contains 54 source PNG files and 54 matched WebP delivery files.
+The library contains 56 source PNG files and 56 matched WebP delivery files.
 They were created with OpenAI's built-in image generation between 2026-07-30
 and 2026-08-06 for Complete99. The set covers dishes, ingredient and product
 references, kitchen preparation, group meals, knowledge-centre visuals, pantry
 architecture, and delivery concepts.
 
-Thirty individually approved asset records map one-to-one to the current
-30-product public catalog. Approval as a public catalog illustration does not
+Thirty-two individually approved asset records map one-to-one to the current
+32-product public catalog. Approval as a public catalog illustration does not
 turn an unbranded generated vessel into documentary evidence of a supplier's
 actual package or label.
 
@@ -125,6 +125,36 @@ are recorded in the generated asset manifest.
 These assets must not be used with fabricated badges, medical claims,
 certifications, supplier branding, current availability statements, or a
 public add-to-cart control before the corresponding acceptance gates pass.
+
+### Release 1.6.0 product additions
+
+OpenAI's built-in image generation created the following two source PNG files
+for Complete99 on 2026-08-06 in generation session
+`019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b`. The project records use provenance
+`openai-imagegen-session`, model family `openai-imagegen`, and human review date
+`2026-08-06`. Their WebP files are public delivery illustrations. Both are 1536
+by 1024 pixels, 8-bit sRGB, with no resize or crop.
+
+| Asset | Generated source | Entity and product binding | Public-use boundary |
+|---|---|---|---|
+| Fresh Japanese wasabi 250 g | `exec-9741b8dc-ea99-4b77-a0c0-8daa47c3d914.png` | `ingredient-fresh-wasabi`; `product-fresh-japanese-wasabi-250g` | Unbranded public catalog illustration, not supplier packaging, lot or origin evidence |
+| Stainless-steel wasabi grater | `exec-e4af75cb-9603-48c5-a2b6-720b48fb290b.png` | `equipment-wasabi-grater`; `product-hagane-zame-large` | Unbranded public catalog illustration, not a manufacturer mark or food-contact certificate |
+
+#### Bilingual alt text
+
+| Project basename | Hebrew alt | English alt |
+|---|---|---|
+| `c99-ingredient-fresh-wasabi-250g-v01` | שורשי וואסבי יפני טרי ללא אריזה, מסודרים לצילום מוצר קולינרי | Unpackaged fresh Japanese wasabi rhizomes arranged for a culinary product photograph |
+| `c99-equipment-hagane-zame-pro-v01` | מגררת וואסבי מנירוסטה ללא מיתוג ומברשת במבוק על משטח אבן כהה | Unbranded stainless-steel wasabi grater and bamboo brush on a dark stone surface |
+
+#### Artifact integrity
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-ingredient-fresh-wasabi-250g-v01.png` | PNG | 1536x1024 | 2,332,512 | `9130c1cf59404d36088c644eb2da2c4e7841de197b16cb0e9cfa5af76b14a47e` |
+| `c99-ingredient-fresh-wasabi-250g-v01.webp` | WebP | 1536x1024 | 195,916 | `0927c2f5ce94433d97b8c7f5175c9c1f29dede80edbce3242265497cf94de5c3` |
+| `c99-equipment-hagane-zame-pro-v01.png` | PNG | 1536x1024 | 2,630,971 | `e176209cb92ac1c027420909633510697a294304394d991f924e435c057f3a4c` |
+| `c99-equipment-hagane-zame-pro-v01.webp` | WebP | 1536x1024 | 252,714 | `0101ca2bd2dec07d7cfb47d99ce2b9202d41f98984f716c064967299c951bedc` |
 
 ### Release 1.5.0 product additions
 

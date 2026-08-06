@@ -20,27 +20,33 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v4"
-EXPECTED_VERSION = "japanese-pilot-2026.08.06.v7"
+EXPECTED_VERSION = "japanese-pilot-2026.08.06.v8"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
+    "hub-japanese-equipment",
     "hub-japanese-food-science",
     "hub-japanese-ingredients",
     "hub-japanese-techniques",
     "guide-umami-synergy",
+    "guide-wasabi-aitc",
     "ingredient-kombu",
     "ingredient-katsuobushi",
     "ingredient-kioke-shoyu",
     "ingredient-fresh-wasabi",
     "ingredient-kito-yuzu",
     "ingredient-hon-mirin",
+    "molecule-allyl-isothiocyanate",
     "preparation-ichiban-dashi",
+    "equipment-wasabi-grater",
 }
 EXPECTED_PUBLIC_OFFER_CODES = {
     "ingredient-kombu": "product-rishiri-kombu-100g",
     "ingredient-katsuobushi": "product-honkarebushi-200g",
     "ingredient-kioke-shoyu": "product-yamaroku-tsurubishio-500ml",
+    "ingredient-fresh-wasabi": "product-fresh-japanese-wasabi-250g",
     "ingredient-kito-yuzu": "product-kito-yuzu-juice-100ml",
+    "equipment-wasabi-grater": "product-hagane-zame-large",
 }
 EXPECTED_CLUSTERS = {
     "cluster-culinary-science-museum",
@@ -724,6 +730,64 @@ def test_reviewed_public_pilot_has_only_approved_offers_and_no_indexing(
             )
 
 
+def test_wasabi_public_slice_has_owned_routes_sources_and_independent_offer_boundary(
+    science_payload: dict,
+) -> None:
+    registry = science_payload["registry"]
+    by_id = {entity["id"]: entity for entity in registry["entities"]}
+    sources = registry["sources"]
+
+    equipment_hub = by_id["hub-japanese-equipment"]
+    guide = by_id["guide-wasabi-aitc"]
+    molecule = by_id["molecule-allyl-isothiocyanate"]
+    grater = by_id["equipment-wasabi-grater"]
+    wasabi = by_id["ingredient-fresh-wasabi"]
+
+    assert equipment_hub["seo"]["route_mode"] == "section"
+    assert equipment_hub["seo"]["owner_entity_id"] == "cuisine-japanese-washoku"
+    assert guide["seo"]["route_mode"] == "standalone"
+    assert guide["seo"]["canonical_path"] == {
+        "he": "/knowledge/wasabi-aitc-pungency/",
+        "en": "/en/knowledge/wasabi-aitc-pungency/",
+    }
+    assert molecule["seo"]["route_mode"] == "section"
+    assert molecule["seo"]["owner_entity_id"] == "guide-wasabi-aitc"
+    assert grater["seo"]["route_mode"] == "standalone"
+
+    for entity in (equipment_hub, guide, molecule, grater):
+        assert entity["publication"]["public_page"] is True
+        assert entity["publication"]["search_index"] is False
+        assert entity["index_policy"] == "noindex_until_longform_review"
+
+    yamamoto = sources["yamamoto-haganezame-spec"]
+    assert yamamoto["type"] == "official_business"
+    assert yamamoto["url"] == (
+        "https://www.yamamotofoods.co.jp/haganezame/jp/spec/"
+    )
+    assert any(
+        "yamamoto-haganezame-spec" in fact["source_ids"]
+        for fact in grater["facts"]
+        if fact["public_safe"]
+    )
+    assert any(
+        relation["target_id"] == "equipment-wasabi-grater"
+        and relation["public_safe"]
+        and "yamamoto-haganezame-spec" in relation["source_ids"]
+        for relation in wasabi["relations"]
+    )
+
+    assert wasabi["commerce"]["woo_product_code"] == (
+        "product-fresh-japanese-wasabi-250g"
+    )
+    assert grater["commerce"]["woo_product_code"] == "product-hagane-zame-large"
+    for entity in (wasabi, grater):
+        assert entity["commerce"]["state"] == "active_offer"
+        assert entity["commerce"]["public_offer_allowed"] is True
+        assert entity["commerce"]["business_model"]["pricing_state"] == (
+            "approved_sell_price"
+        )
+
+
 def test_public_culinary_test_gates_distinguish_dishes_recipes_and_noindex_guides(
     science_payload: dict,
     science_v4_contract_payload: dict,
@@ -1018,6 +1082,24 @@ def test_every_entity_has_five_profiles_and_complete_business_model(
         assert set(model["margin_scenario"]) == MARGIN_SCENARIO_FIELDS
 
 
+def test_approved_sell_prices_do_not_imply_unverified_profitability(
+    science_payload: dict,
+) -> None:
+    for entity in science_payload["registry"]["entities"]:
+        model = entity["commerce"]["business_model"]
+        if model["pricing_state"] != "approved_sell_price":
+            continue
+        scenario = model["margin_scenario"]
+        if scenario["confidence"] != "pending":
+            continue
+        basis_he = scenario["basis"]["he"]
+        basis_en = scenario["basis"]["en"]
+        assert "\u05e8\u05d5\u05d5\u05d7\u05d9\u05d5\u05ea" in basis_he, entity["id"]
+        assert "profitability" in basis_en, entity["id"]
+        assert "\u05dc\u05e4\u05e0\u05d9 \u05d0\u05d9\u05e9\u05d5\u05e8 \u05de\u05d7\u05d9\u05e8 \u05de\u05db\u05d9\u05e8\u05d4" not in basis_he, entity["id"]
+        assert "before a sell price is approved" not in basis_en, entity["id"]
+
+
 def test_every_fact_has_scientific_measurements_contract(
     science_payload: dict,
 ) -> None:
@@ -1180,7 +1262,7 @@ echo json_encode(array(
         "dish_schema": "complete99-dish-entity-tree-registry/v1",
         "dish_count": 12,
         "product_schema": "complete99-catalog-product-seeds/v1",
-        "product_count": 30,
+        "product_count": 32,
         "asset_schema": "complete99-generated-asset-manifest/v1",
-        "asset_count": 54,
+        "asset_count": 56,
     }

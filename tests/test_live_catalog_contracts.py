@@ -58,6 +58,8 @@ EXPECTED_PRICES = {
     "product-honkarebushi-200g": "219.00",
     "product-yamaroku-tsurubishio-500ml": "149.00",
     "product-kito-yuzu-juice-100ml": "64.00",
+    "product-fresh-japanese-wasabi-250g": "399.00",
+    "product-hagane-zame-large": "699.00",
 }
 
 EXPECTED_DISHES = {
@@ -83,6 +85,7 @@ SAFE_STORE_FILTERS = {
     "bakery",
     "regulated",
     "japanese-pantry",
+    "equipment",
 }
 
 
@@ -154,6 +157,7 @@ class WP_Error {{
 function is_wp_error($value) {{ return $value instanceof WP_Error; }}
 class Complete99_Commerce {{
     const PRODUCT_APPROVED = '_complete99_store_approved';
+    const PRODUCT_KIND = '_complete99_product_kind';
     const STOCK_AUTHORITY = '_complete99_stock_authority';
     const LABEL_REVIEWED = '_complete99_product_label_reviewed';
     const ORIGIN_REVIEWED = '_complete99_product_origin_reviewed';
@@ -175,6 +179,16 @@ class Complete99_Commerce {{
     const FULFILMENT_EN = '_complete99_product_fulfilment_en';
     const ORIGIN_HE = '_complete99_product_origin_he';
     const ORIGIN_EN = '_complete99_product_origin_en';
+    const MODEL_HE = '_complete99_product_model_he';
+    const MODEL_EN = '_complete99_product_model_en';
+    const MATERIAL_HE = '_complete99_product_material_he';
+    const MATERIAL_EN = '_complete99_product_material_en';
+    const DIMENSIONS_HE = '_complete99_product_dimensions_he';
+    const DIMENSIONS_EN = '_complete99_product_dimensions_en';
+    const CARE_HE = '_complete99_product_care_he';
+    const CARE_EN = '_complete99_product_care_en';
+    const SAFETY_HE = '_complete99_product_safety_he';
+    const SAFETY_EN = '_complete99_product_safety_en';
 }}
 $c99_fake_language = 'he';
 $c99_fake_getter_contexts = array();
@@ -246,6 +260,7 @@ foreach ($bundle['products'] as $code => $record) {{
     $products[$code] = array(
         'price' => $record['price'],
         'ingredient' => $record['ingredient'],
+        'product_kind' => $record['product_kind'],
         'classification' => $record['classification'],
         'name' => $record['name'],
         'package' => $record['package'],
@@ -413,11 +428,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_5_1(self) -> None:
+    def test_release_version_is_exact_1_6_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.5\.1$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.5.1' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.5.1' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.6\.0$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.6.0' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.6.0' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -493,7 +508,7 @@ echo wp_json_encode(array(
     def test_runtime_bundle_has_exact_allowlist_and_price_map(self) -> None:
         products = self.bundle["products"]
         price_registry = self.bundle["prices"]
-        self.assertEqual(30, len(products))
+        self.assertEqual(32, len(products))
         self.assertEqual(set(EXPECTED_PRICES), set(products))
         self.assertEqual(EXPECTED_PRICES, {code: row["price"] for code, row in products.items()})
         self.assertEqual("complete99-live-catalog-prices/v1", price_registry["schema"])
@@ -568,6 +583,8 @@ echo wp_json_encode(array(
             "japanese_taste": {"int.japanesetaste.com"},
             "yamaroku_direct": {"yama-roku.net"},
             "ogon_no_mura_direct": {"shop.ogonnomura.jp"},
+            "the_wasabi_company": {"www.thewasabicompany.co.uk"},
+            "yamamoto_foods_official": {"www.yamamotofoods.co.jp"},
         }
         source_urls = set()
         for code, product in self.bundle["products"].items():
@@ -586,7 +603,45 @@ echo wp_json_encode(array(
             self.assertIn(checked, {date(2026, 7, 31), date(2026, 8, 6)}, code)
             self.assertLessEqual(updated, checked, code)
             source_urls.add(evidence["source_url"])
-        self.assertEqual(30, len(source_urls))
+        self.assertEqual(32, len(source_urls))
+
+    def test_import_source_price_and_fx_evidence_remains_distinct_from_public_price(self) -> None:
+        cases = {
+            "product-fresh-japanese-wasabi-250g": (
+                "399.00",
+                "252.81",
+                "62.50",
+                "GBP",
+                "4.0450",
+                "ILS_per_GBP",
+            ),
+            "product-hagane-zame-large": (
+                "699.00",
+                "324.79",
+                "17050",
+                "JPY",
+                "1.9049",
+                "ILS_per_100_JPY",
+            ),
+        }
+        for code, expected in cases.items():
+            with self.subTest(product=code):
+                public_price, observed, amount, currency, rate, basis = expected
+                product = self.bundle["products"][code]
+                evidence = product["price_evidence"]
+                self.assertEqual(public_price, product["price"])
+                self.assertEqual(observed, evidence["observed_price"])
+                self.assertNotEqual(public_price, observed)
+                self.assertEqual(amount, evidence["source_price"]["amount"])
+                self.assertEqual(currency, evidence["source_price"]["currency"])
+                self.assertEqual(rate, evidence["fx_conversion"]["rate"])
+                self.assertEqual(basis, evidence["fx_conversion"]["basis"])
+                self.assertEqual("2026-08-05", evidence["fx_conversion"]["rate_date"])
+                self.assertEqual(observed, evidence["fx_conversion"]["converted_amount_ils"])
+                self.assertEqual(
+                    "https://www.boi.org.il/roles/markets/exchangerates/",
+                    evidence["fx_conversion"]["source_url"],
+                )
 
     def test_relations_are_complete_reciprocal_and_have_unique_anchors(self) -> None:
         product_relations = self.bundle["relations"]["products"]
@@ -600,7 +655,7 @@ echo wp_json_encode(array(
             dishes = relation["dish_slugs"]
             science_entity_id = relation.get("science_entity_id", "")
             related_product_codes = relation.get("related_product_codes", [])
-            self.assertRegex(ingredient, r"^ingredient-[a-z0-9-]+$", code)
+            self.assertRegex(ingredient, r"^(?:ingredient|equipment)-[a-z0-9-]+$", code)
             self.assertTrue(dishes or science_entity_id, code)
             if science_entity_id:
                 self.assertRegex(
@@ -621,12 +676,13 @@ echo wp_json_encode(array(
             for dish in dishes:
                 self.assertIn(code, dish_relations[dish], f"{code} -> {dish}")
 
-        self.assertEqual(30, len(set(ingredient_codes)))
+        self.assertEqual(32, len(set(ingredient_codes)))
         self.assertEqual(
             {
                 "product-kito-yuzu-juice-100ml",
                 "product-rishiri-kombu-100g",
                 "product-honkarebushi-200g",
+                "product-fresh-japanese-wasabi-250g",
             },
             set(
                 product_relations["product-yamaroku-tsurubishio-500ml"][
@@ -702,8 +758,8 @@ echo wp_json_encode(array(
             self.assertTrue(asset["alt"]["en"].strip(), code)
             hashes.add(asset["sha256"])
             filenames.add(asset["filename"])
-        self.assertEqual(30, len(hashes))
-        self.assertEqual(30, len(filenames))
+        self.assertEqual(32, len(hashes))
+        self.assertEqual(32, len(filenames))
 
     def test_product_policy_is_bilingual_and_taxonomy_bounded(self) -> None:
         policy = self.bundle["policy"]
@@ -718,10 +774,21 @@ echo wp_json_encode(array(
         self.assertEqual("taxable", policy["tax_status"])
         self.assertEqual(set(EXPECTED_PRICES), set(policy["products"]))
         self.assertEqual(
-            {"pantry", "bakery", "produce", "eggs", "protein", "japanese-pantry"},
+            {
+                "pantry",
+                "bakery",
+                "produce",
+                "eggs",
+                "protein",
+                "japanese-pantry",
+                "japanese-equipment",
+            },
             set(policy["categories"]),
         )
-        self.assertEqual({"ambient", "fresh", "chilled", "frozen"}, set(policy["shipping_classes"]))
+        self.assertEqual(
+            {"ambient", "fresh", "chilled", "frozen", "equipment"},
+            set(policy["shipping_classes"]),
+        )
         self.assertEqual(
             {
                 "ambient",
@@ -744,6 +811,8 @@ echo wp_json_encode(array(
                 "yuzu",
                 "citrus",
                 "premium",
+                "wasabi",
+                "equipment",
             },
             set(policy["tags"]),
         )
@@ -762,21 +831,97 @@ echo wp_json_encode(array(
             self.assertIn(product["shipping_class"], policy["shipping_classes"], code)
             self.assertTrue(product["tags"], code)
             self.assertTrue(set(product["tags"]).issubset(policy["tags"]), code)
-            for field in ("ingredients", "allergens", "storage"):
-                self.assertTrue(product[field]["he"].strip(), f"{code}:{field}:he")
-                self.assertTrue(product[field]["en"].strip(), f"{code}:{field}:en")
+            self.assertIn(product["product_kind"], {"food", "equipment"}, code)
+            if product["product_kind"] == "food":
+                for field in ("ingredients", "allergens", "storage"):
+                    self.assertTrue(product[field]["he"].strip(), f"{code}:{field}:he")
+                    self.assertTrue(product[field]["en"].strip(), f"{code}:{field}:en")
+                for field in ("model", "material", "dimensions", "care", "safety"):
+                    self.assertEqual("", product[field]["he"], f"{code}:{field}:he")
+                    self.assertEqual("", product[field]["en"], f"{code}:{field}:en")
+            else:
+                for field in ("ingredients", "allergens", "storage"):
+                    self.assertEqual("", product[field]["he"], f"{code}:{field}:he")
+                    self.assertEqual("", product[field]["en"], f"{code}:{field}:en")
+                for field in ("model", "material", "dimensions", "care", "safety"):
+                    self.assertTrue(product[field]["he"].strip(), f"{code}:{field}:he")
+                    self.assertTrue(product[field]["en"].strip(), f"{code}:{field}:en")
             self.assertTrue(self.bundle["products"][code]["name"]["he"].strip(), code)
             self.assertTrue(self.bundle["products"][code]["name"]["en"].strip(), code)
             self.assertTrue(self.bundle["products"][code]["package"]["he"].strip(), code)
             self.assertTrue(self.bundle["products"][code]["package"]["en"].strip(), code)
 
+        wasabi = policy["products"]["product-fresh-japanese-wasabi-250g"]
+        self.assertIn("\u05ea\u05d5\u05d5\u05d9\u05ea \u05d4\u05de\u05d5\u05e6\u05e8", wasabi["allergens"]["he"])
+        self.assertIn("supplied product label", wasabi["allergens"]["en"])
+        self.assertNotIn("\u05dc\u05d0 \u05d9\u05d3\u05d5\u05e2 \u05e2\u05dc \u05d0\u05dc\u05e8\u05d2\u05df", wasabi["allergens"]["he"])
+        self.assertNotIn("No inherent allergen", wasabi["allergens"]["en"])
+
         for marker in (
             "Complete99_Commerce::PRODUCT_APPROVED      => 'yes'",
+            "Complete99_Commerce::PRODUCT_KIND          => $record['product_kind']",
             "Complete99_Commerce::LABEL_REVIEWED        => ! empty( $bundle['policy']['supplier_label_reviewed'] ) ? 'yes' : 'no'",
             "Complete99_Commerce::ORIGIN_REVIEWED       => ! empty( $bundle['policy']['country_of_origin_reviewed'] ) ? 'yes' : 'no'",
             "Complete99_Commerce::CHECKOUT_ELIGIBLE     => ! empty( $bundle['policy']['checkout_eligible'] ) ? 'yes' : 'no'",
         ):
             self.assertIn(marker, self.live_catalog)
+
+    def test_typed_product_meta_is_registered_saved_materialized_and_signed(self) -> None:
+        exact_meta = {
+            "PRODUCT_KIND": "_complete99_product_kind",
+            "MODEL_HE": "_complete99_product_model_he",
+            "MODEL_EN": "_complete99_product_model_en",
+            "MATERIAL_HE": "_complete99_product_material_he",
+            "MATERIAL_EN": "_complete99_product_material_en",
+            "DIMENSIONS_HE": "_complete99_product_dimensions_he",
+            "DIMENSIONS_EN": "_complete99_product_dimensions_en",
+            "CARE_HE": "_complete99_product_care_he",
+            "CARE_EN": "_complete99_product_care_en",
+            "SAFETY_HE": "_complete99_product_safety_he",
+            "SAFETY_EN": "_complete99_product_safety_en",
+        }
+        for constant, meta_key in exact_meta.items():
+            with self.subTest(constant=constant):
+                self.assertRegex(
+                    self.commerce,
+                    rf"const\s+{constant}\s*=\s*'{re.escape(meta_key)}';",
+                )
+                self.assertIn(f"Complete99_Commerce::{constant}", self.live_catalog)
+
+        readiness_fields = self.commerce.split(
+            "public static function render_product_readiness_fields", 1
+        )[1].split("public static function save_product_readiness_fields", 1)[0]
+        readiness_save = self.commerce.split(
+            "public static function save_product_readiness_fields", 1
+        )[1].split("private static function mark_commerce_configuration_dirty", 1)[0]
+        copy_contract = self.commerce.split(
+            "private static function product_copy_matches_declared_languages", 1
+        )[1].split("public static function storefront_product_ids", 1)[0]
+        for constant in exact_meta:
+            self.assertIn(f"self::{constant}", readiness_fields)
+            self.assertIn(f"self::{constant}", readiness_save)
+        self.assertIn("array( 'food', 'equipment' )", copy_contract)
+        self.assertIn("if ( 'food' === $product_kind )", copy_contract)
+        for constant in (
+            "INGREDIENTS_HE",
+            "INGREDIENTS_EN",
+            "ALLERGENS_HE",
+            "ALLERGENS_EN",
+            "STORAGE_HE",
+            "STORAGE_EN",
+            "MODEL_HE",
+            "MODEL_EN",
+            "MATERIAL_HE",
+            "MATERIAL_EN",
+            "DIMENSIONS_HE",
+            "DIMENSIONS_EN",
+            "CARE_HE",
+            "CARE_EN",
+            "SAFETY_HE",
+            "SAFETY_EN",
+        ):
+            self.assertIn(f"self::{constant}", copy_contract)
+        self.assertIn("'professional_equipment'      => 'equipment'", self.live_catalog)
 
     def test_public_store_is_never_the_native_woocommerce_shop_page(self) -> None:
         pages = self.live_catalog.split("private static function ensure_woocommerce_pages", 1)[
@@ -1349,10 +1494,10 @@ echo wp_json_encode(array(
         ):
             self.assertNotIn(stale, self.consumer_content.lower())
         for current in (
-            "The pantry presents 30 products",
+            "The pantry presents 32 culinary products",
             "Products can be added to the cart",
             "Electronic payment will open after the payment provider is connected",
-            "המזווה מציג 30 מוצרים",
+            "המזווה מציג 32 מוצרי קולינריה",
             "אפשר להוסיף מוצרים לסל",
             "סליקה אלקטרונית תיפתח לאחר חיבור ספק הסליקה",
         ):

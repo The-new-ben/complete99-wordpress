@@ -691,9 +691,9 @@ final class Complete99_Consumer {
 				<?php if ( Complete99_Commerce::can_preview_commerce() && ! $catalog_ready ) : ?>
 					<p class="c99-commerce-preview-note"><?php echo esc_html( $is_he ? 'תצוגת קבלה פרטית. החנות עדיין סגורה לציבור.' : 'Private acceptance preview. The store is still closed to the public.' ); ?></p>
 				<?php endif; ?>
-				<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'המזווה פתוח' : 'The pantry is open' ); ?></p>
+				<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'החנות פתוחה' : 'The store is open' ); ?></p>
 				<h1><?php echo esc_html( $post->post_title ); ?></h1>
-				<p class="c99-hero-summary"><?php echo esc_html( $is_he ? 'מוצרי מזווה עם מחיר, משקל, רכיבים, מלאי ותנאי קבלה עדכניים.' : 'Pantry goods with current price, weight, ingredients, stock and fulfilment details.' ); ?></p>
+				<p class="c99-hero-summary"><?php echo esc_html( $is_he ? 'חומרי גלם וציוד למטבח עם מחיר, מפרט, מלאי ותנאי קבלה עדכניים.' : 'Food ingredients and kitchen equipment with current price, specifications, stock and fulfilment details.' ); ?></p>
 				<div class="c99-hero-actions">
 					<?php if ( $cart_ready ) : ?>
 					<a class="c99-button c99-button-primary" href="<?php echo esc_url( $cart_url ); ?>"><?php echo esc_html( $is_he ? 'לסל' : 'View cart' ); ?></a>
@@ -715,8 +715,8 @@ final class Complete99_Consumer {
 			<div class="c99-container">
 				<div class="c99-consumer-section-heading">
 					<div>
-						<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מה אפשר לקחת הביתה' : 'What you can take home' ); ?></p>
-						<h2 id="c99-live-store-title"><?php echo esc_html( $is_he ? 'מוצרי המזווה' : 'Pantry goods' ); ?></h2>
+						<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מה אפשר לקחת למטבח' : 'What you can bring into the kitchen' ); ?></p>
+						<h2 id="c99-live-store-title"><?php echo esc_html( $is_he ? 'חומרי גלם וציוד למטבח' : 'Food ingredients and kitchen equipment' ); ?></h2>
 					</div>
 					<a class="c99-text-link" href="<?php echo esc_url( self::route( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'חזרה למנות' : 'Back to the dishes' ); ?></a>
 				</div>
@@ -768,6 +768,7 @@ final class Complete99_Consumer {
 			'fresh-produce'   => $is_he ? 'תוצרת טרייה' : 'Fresh produce',
 			'chilled-frozen'  => $is_he ? 'קירור והקפאה' : 'Chilled and frozen',
 			'bakery'          => $is_he ? 'מאפים' : 'Bakery',
+			'equipment'       => $is_he ? 'ציוד למטבח' : 'Kitchen equipment',
 			'regulated'       => $is_he ? 'בפיקוח' : 'Regulated',
 		);
 		?>
@@ -797,6 +798,14 @@ final class Complete99_Consumer {
 		$allergens   = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::ALLERGENS_HE : Complete99_Commerce::ALLERGENS_EN, true );
 		$storage     = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::STORAGE_HE : Complete99_Commerce::STORAGE_EN, true );
 		$fulfilment  = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::FULFILMENT_HE : Complete99_Commerce::FULFILMENT_EN, true );
+		$product_kind = sanitize_key( (string) get_post_meta( $product_id, '_complete99_product_kind', true ) );
+		$product_kind = 'equipment' === $product_kind ? 'equipment' : 'food';
+		$is_equipment = 'equipment' === $product_kind;
+		$model        = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_model_he' : '_complete99_product_model_en', true );
+		$material     = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_material_he' : '_complete99_product_material_en', true );
+		$dimensions   = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_dimensions_he' : '_complete99_product_dimensions_en', true );
+		$care         = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_care_he' : '_complete99_product_care_en', true );
+		$safety       = (string) get_post_meta( $product_id, $is_he ? '_complete99_product_safety_he' : '_complete99_product_safety_en', true );
 		$facet_tokens = array_values(
 			array_filter(
 				array_map(
@@ -828,9 +837,13 @@ final class Complete99_Consumer {
 			'fresh-produce'  => $is_he ? 'תוצרת טרייה' : 'Fresh produce',
 			'chilled-frozen' => $is_he ? 'קירור והקפאה' : 'Chilled and frozen',
 			'bakery'         => $is_he ? 'מאפים' : 'Bakery',
+			'equipment'      => $is_he ? 'ציוד למטבח' : 'Kitchen equipment',
 			'regulated'      => $is_he ? 'בפיקוח' : 'Regulated',
 		);
-		$display_facet = in_array( 'japanese-pantry', $facet_tokens, true ) ? 'japanese-pantry' : ( $facet_tokens[0] ?? '' );
+		$display_facet = $is_equipment
+			? 'equipment'
+			: ( in_array( 'japanese-pantry', $facet_tokens, true ) ? 'japanese-pantry' : ( $facet_tokens[0] ?? '' ) );
+		$model_or_format = '' !== trim( $model ) ? $model : $package;
 		$action_url  = add_query_arg(
 			array(
 				'add-to-cart' => absint( $product_id ),
@@ -850,14 +863,24 @@ final class Complete99_Consumer {
 				<h3><?php echo esc_html( $name ); ?></h3>
 				<p><?php echo esc_html( $description ); ?></p>
 				<dl class="c99-store-product-facts">
-					<div><dt><?php echo esc_html( $is_he ? 'כמות נטו' : 'Net quantity' ); ?></dt><dd><?php echo esc_html( $package ); ?></dd></div>
-					<div><dt><?php echo esc_html( $is_he ? 'רכיבים' : 'Ingredients' ); ?></dt><dd><?php echo esc_html( $ingredients ); ?></dd></div>
-					<div><dt><?php echo esc_html( $is_he ? 'אלרגנים' : 'Allergens' ); ?></dt><dd><?php echo esc_html( $allergens ); ?></dd></div>
-					<div><dt><?php echo esc_html( $is_he ? 'אחסון' : 'Storage' ); ?></dt><dd><?php echo esc_html( $storage ); ?></dd></div>
-					<div><dt><?php echo esc_html( $is_he ? 'איסוף עצמי' : 'Pickup' ); ?></dt><dd><?php echo esc_html( $fulfilment ); ?></dd></div>
+					<?php if ( $is_equipment ) : ?>
+						<div><dt><?php echo esc_html( $is_he ? 'סוג מוצר' : 'Product kind' ); ?></dt><dd><?php echo esc_html( $is_he ? 'ציוד' : 'Equipment' ); ?></dd></div>
+						<?php if ( '' !== trim( $model_or_format ) ) : ?><div><dt><?php echo esc_html( $is_he ? 'דגם או פורמט' : 'Model or format' ); ?></dt><dd><?php echo esc_html( $model_or_format ); ?></dd></div><?php endif; ?>
+						<?php if ( '' !== trim( $material ) ) : ?><div><dt><?php echo esc_html( $is_he ? 'חומר' : 'Material' ); ?></dt><dd><?php echo esc_html( $material ); ?></dd></div><?php endif; ?>
+						<?php if ( '' !== trim( $dimensions ) ) : ?><div><dt><?php echo esc_html( $is_he ? 'מידות' : 'Dimensions' ); ?></dt><dd><?php echo esc_html( $dimensions ); ?></dd></div><?php endif; ?>
+						<?php if ( '' !== trim( $care ) ) : ?><div><dt><?php echo esc_html( $is_he ? 'טיפול ותחזוקה' : 'Care' ); ?></dt><dd><?php echo esc_html( $care ); ?></dd></div><?php endif; ?>
+						<?php if ( '' !== trim( $safety ) ) : ?><div><dt><?php echo esc_html( $is_he ? 'בטיחות' : 'Safety' ); ?></dt><dd><?php echo esc_html( $safety ); ?></dd></div><?php endif; ?>
+						<?php if ( '' !== trim( $fulfilment ) ) : ?><div><dt><?php echo esc_html( $is_he ? 'מסירה ואיסוף' : 'Fulfilment' ); ?></dt><dd><?php echo esc_html( $fulfilment ); ?></dd></div><?php endif; ?>
+					<?php else : ?>
+						<div><dt><?php echo esc_html( $is_he ? 'כמות נטו' : 'Net quantity' ); ?></dt><dd><?php echo esc_html( $package ); ?></dd></div>
+						<div><dt><?php echo esc_html( $is_he ? 'רכיבים' : 'Ingredients' ); ?></dt><dd><?php echo esc_html( $ingredients ); ?></dd></div>
+						<div><dt><?php echo esc_html( $is_he ? 'אלרגנים' : 'Allergens' ); ?></dt><dd><?php echo esc_html( $allergens ); ?></dd></div>
+						<div><dt><?php echo esc_html( $is_he ? 'אחסון' : 'Storage' ); ?></dt><dd><?php echo esc_html( $storage ); ?></dd></div>
+						<div><dt><?php echo esc_html( $is_he ? 'איסוף עצמי' : 'Pickup' ); ?></dt><dd><?php echo esc_html( $fulfilment ); ?></dd></div>
+					<?php endif; ?>
 				</dl>
-				<div class="c99-store-product-relations" aria-label="<?php echo esc_attr( $is_he ? 'קשרים קולינריים' : 'Culinary connections' ); ?>">
-					<a href="<?php echo esc_url( $guide_url ); ?>"><?php echo esc_html( $is_he ? 'מדריך המרכיב' : 'Ingredient guide' ); ?></a>
+				<div class="c99-store-product-relations" aria-label="<?php echo esc_attr( $is_equipment ? ( $is_he ? 'קשרים למוצר' : 'Product connections' ) : ( $is_he ? 'קשרים קולינריים' : 'Culinary connections' ) ); ?>">
+					<a href="<?php echo esc_url( $guide_url ); ?>"><?php echo esc_html( $is_equipment ? ( $is_he ? 'מדריך הציוד' : 'Equipment guide' ) : ( $is_he ? 'מדריך המרכיב' : 'Ingredient guide' ) ); ?></a>
 					<?php foreach ( (array) ( $relations['dish_slugs'] ?? array() ) as $dish_slug ) : ?>
 						<?php $related_dish = self::dish_by_slug( $dish_slug ); ?>
 						<?php if ( ! empty( $related_dish ) ) : ?><a href="<?php echo esc_url( Complete99_Frontend::live_dish_url( $dish_slug, $lang ) ); ?>"><?php echo esc_html( $is_he ? $related_dish['name_he'] : $related_dish['name_en'] ); ?></a><?php endif; ?>

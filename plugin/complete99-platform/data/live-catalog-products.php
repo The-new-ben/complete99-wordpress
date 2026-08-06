@@ -11,8 +11,10 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$c99_live_product = static function ( $weight_kg, $category, $tags, $shipping_class, $ingredients_he, $ingredients_en, $allergens_he, $allergens_en, $storage_he, $storage_en, $description_he = '', $description_en = '' ) {
+$c99_live_product = static function ( $weight_kg, $category, $tags, $shipping_class, $ingredients_he, $ingredients_en, $allergens_he, $allergens_en, $storage_he, $storage_en, $description_he = '', $description_en = '', $product_kind = 'food', $equipment = array() ) {
+	$product_kind = 'equipment' === $product_kind ? 'equipment' : 'food';
 	return array(
+		'product_kind'  => $product_kind,
 		'weight_kg'      => (string) $weight_kg,
 		'category'       => $category,
 		'tags'           => array_values( $tags ),
@@ -20,6 +22,11 @@ $c99_live_product = static function ( $weight_kg, $category, $tags, $shipping_cl
 		'ingredients'    => array( 'he' => $ingredients_he, 'en' => $ingredients_en ),
 		'allergens'      => array( 'he' => $allergens_he, 'en' => $allergens_en ),
 		'storage'        => array( 'he' => $storage_he, 'en' => $storage_en ),
+		'model'          => 'equipment' === $product_kind ? $equipment['model'] : array( 'he' => '', 'en' => '' ),
+		'material'       => 'equipment' === $product_kind ? $equipment['material'] : array( 'he' => '', 'en' => '' ),
+		'dimensions'     => 'equipment' === $product_kind ? $equipment['dimensions'] : array( 'he' => '', 'en' => '' ),
+		'care'           => 'equipment' === $product_kind ? $equipment['care'] : array( 'he' => '', 'en' => '' ),
+		'safety'         => 'equipment' === $product_kind ? $equipment['safety'] : array( 'he' => '', 'en' => '' ),
 		'description'    => array( 'he' => $description_he, 'en' => $description_en ),
 	);
 };
@@ -58,6 +65,7 @@ return array(
 		'eggs' => array( 'name' => 'ביצים | Eggs', 'slug' => 'complete99-eggs' ),
 		'protein' => array( 'name' => 'בשר, עוף ודגים | Meat, poultry and fish', 'slug' => 'complete99-protein' ),
 		'japanese-pantry' => array( 'name' => 'המזווה היפני | Japanese pantry', 'slug' => 'complete99-japanese-pantry' ),
+		'japanese-equipment' => array( 'name' => 'ציוד יפני מקצועי | Professional Japanese equipment', 'slug' => 'complete99-japanese-equipment' ),
 	),
 	'tags'               => array(
 		'ambient' => array( 'name' => 'מדף | Ambient', 'slug' => 'complete99-ambient' ),
@@ -80,12 +88,15 @@ return array(
 		'yuzu' => array( 'name' => 'יוזו | Yuzu', 'slug' => 'complete99-yuzu' ),
 		'citrus' => array( 'name' => 'הדרים | Citrus', 'slug' => 'complete99-citrus' ),
 		'premium' => array( 'name' => 'פרימיום | Premium', 'slug' => 'complete99-premium' ),
+		'wasabi' => array( 'name' => 'וואסבי | Wasabi', 'slug' => 'complete99-wasabi' ),
+		'equipment' => array( 'name' => 'ציוד מקצועי | Professional equipment', 'slug' => 'complete99-equipment' ),
 	),
 	'shipping_classes'   => array(
 		'ambient' => array( 'name' => 'משלוח מדף | Ambient delivery', 'slug' => 'complete99-ambient-delivery' ),
 		'fresh' => array( 'name' => 'משלוח טרי | Fresh delivery', 'slug' => 'complete99-fresh-delivery' ),
 		'chilled' => array( 'name' => 'שרשרת קירור | Chilled delivery', 'slug' => 'complete99-chilled-delivery' ),
 		'frozen' => array( 'name' => 'שרשרת הקפאה | Frozen delivery', 'slug' => 'complete99-frozen-delivery' ),
+		'equipment' => array( 'name' => 'ציוד מטבח | Kitchen equipment delivery', 'slug' => 'complete99-equipment-delivery' ),
 	),
 	'products'           => array(
 		'product-tahini-500g' => $c99_live_product( '0.500', 'pantry', array( 'ambient', 'condiment' ), 'ambient', 'שומשום טחון.', 'Ground sesame seeds.', 'מכיל שומשום. יש לבדוק את הצהרת האלרגנים שעל האריזה.', 'Contains sesame. Check the allergen declaration on the pack.', $ambient_he, $ambient_en ),
@@ -143,6 +154,42 @@ return array(
 			'Store as directed on the label and refrigerate after opening. Use within the shelf life shown on the bottle.',
 			'מיץ יוזו ראשון בעל חומציות בהירה וארומה הדרית מורכבת. מיועד לרטבים, ויניגרט, דאשי, קינוחים ומשקאות ללא צורך להוסיף ממתיקים למוצר עצמו.',
 			'First-press yuzu juice with bright acidity and a layered citrus aroma. Intended for sauces, vinaigrettes, dashi, desserts and drinks without adding sweetener to the product itself.'
+		),
+		'product-fresh-japanese-wasabi-250g' => $c99_live_product(
+			'0.250',
+			'japanese-pantry',
+			array( 'fresh', 'chilled', 'produce', 'japanese', 'wasabi', 'premium' ),
+			'chilled',
+			'קני שורש וואסבי יפני טריים במשקל כולל של 250 גרם. מספר הקנים וגודלם עשויים להשתנות.',
+			'Fresh Japanese wasabi rhizomes with a total pack weight of 250 g. Rhizome count and individual size may vary.',
+			'מידע האלרגנים נקבע לפי תווית המוצר המסופק. יש לבדוק את פרטי הספק ואת תנאי הטיפול לפני שימוש.',
+			'Allergen information is determined by the supplied product label. Check the supplier information and handling conditions before use.',
+			'יש לשמור בקירור. יש לפעול לפי הוראות הספק ולצרוך במסגרת חיי המדף של המשלוח שהתקבל.',
+			'Keep refrigerated. Follow the supplier instructions and use within the shelf life of the received shipment.',
+			'קני שורש וואסבי יפני טרי המיועדים לגירור סמוך להגשה. המרקם והחריפות מתפתחים בזמן הגירור, ולכן המוצר מתאים לסושי, סשימי, רטבים, חמאה מתובלת ומנות דגים ובשר.',
+			'Fresh Japanese wasabi rhizomes intended for grating close to service. Texture and pungency develop during grating, making the product suited to sushi, sashimi, sauces, compound butter, fish and meat dishes.'
+		),
+		'product-hagane-zame-large' => $c99_live_product(
+			'0.156',
+			'japanese-equipment',
+			array( 'japanese', 'wasabi', 'premium', 'equipment' ),
+			'equipment',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'',
+			'מגררת וואסבי מקצועית מפלדת אל-חלד, בדגם Hagane-zame Pro הגדול. משטח הגירור הרחב מיועד להכנת משחת וואסבי טרייה במרקם דק ואחיד סמוך להגשה.',
+			'A professional stainless-steel wasabi grater in the large Hagane-zame Pro format. Its wide grating surface is designed for preparing a fine, even fresh-wasabi paste close to service.',
+			'equipment',
+			array(
+				'model'      => array( 'he' => 'Hagane-zame Pro, דגם גדול', 'en' => 'Hagane-zame Pro, large model' ),
+				'material'   => array( 'he' => 'פלדת אל-חלד', 'en' => 'Stainless steel' ),
+				'dimensions' => array( 'he' => 'גוף 26.0 על 11.0 על 0.1 ס״מ; משטח גירור 16.0 על 11.0 ס״מ; משקל כ-156 גרם.', 'en' => 'Body 26.0 by 11.0 by 0.1 cm; grating surface 16.0 by 11.0 cm; approximately 156 g.' ),
+				'care'       => array( 'he' => 'לאחר השימוש לשטוף במים, להבריש בעדינות בכמה כיוונים, לספוג את המים ולייבש לפני אחסון. היצרן מציין התאמה למדיח כלים.', 'en' => 'After use, rinse with water, brush gently in several directions, blot away moisture and dry before storage. The maker states that dishwasher cleaning is supported.' ),
+				'safety'     => array( 'he' => 'משטח הגירור חד. יש לאחוז בידית, להרחיק אצבעות מהשיניים ולנקות במברשת במקום ביד חשופה.', 'en' => 'The grating surface is sharp. Hold the handle, keep fingers clear of the teeth and clean with a brush rather than a bare hand.' ),
+			)
 		),
 	),
 );

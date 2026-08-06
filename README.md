@@ -11,17 +11,19 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.5.1`. Production truth comes
+The source tree targets Complete99 Platform `1.6.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.5.1 preserves the 1.5.0 catalog and science pilot and adds complete
-bilingual public labels for culinary entity types, relationship paths,
-evidence classes and the current Japanese taxonomy. It provides:
+Release 1.6.0 extends the consumer store and Japanese science pilot with a
+complete fresh-wasabi vertical slice. It adds typed food and equipment product
+contracts, two owner-authorized WooCommerce offers, source-led pricing,
+dedicated imagery and bilingual science routes. It provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
-- exactly 30 owner-authorized WooCommerce ingredient products;
+- exactly 32 owner-authorized WooCommerce culinary products, including food
+  ingredients and professional preparation equipment;
 - one normal public WebP image for every product, without an archive label,
   disclaimer or unusual public treatment;
 - researched price evidence dated between 2026-07-31 and 2026-08-06 and an
@@ -50,8 +52,9 @@ evidence classes and the current Japanese taxonomy. It provides:
   source-market observations for the first reviewed Japanese entities;
 - an explicit `noindex,follow` gate for the museum preview until long-form
   editorial review is approved, with sitemap exclusion enforced independently;
-- reciprocal store and science links for the first active Japanese pantry
-  offers, using stable product-code anchors and safe public projections;
+- reciprocal store and science links for fresh Japanese wasabi, its AITC
+  chemistry, preparation guide and professional grater, using stable
+  product-code anchors and safe public projections;
 - 44 by 44 CSS-pixel targets for museum breadcrumbs and evidence citations;
 - deterministic deployment, exact package verification, fail-closed recovery
   markers and independent live acceptance.

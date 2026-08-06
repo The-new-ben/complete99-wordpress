@@ -54,17 +54,21 @@ class MarketCatalogContracts(unittest.TestCase):
         self.assertFalse(self.registry["stock_policy"]["public_stock_claim"])
         self.assertFalse(self.registry["stock_policy"]["public_sale"])
 
-    def test_all_30_products_have_unique_price_stock_and_sources(self):
-        self.assertEqual(30, len(self.products))
-        self.assertEqual(30, len(self.by_code))
+    def test_all_32_products_have_unique_price_stock_and_sources(self):
+        self.assertEqual(32, len(self.products))
+        self.assertEqual(32, len(self.by_code))
         for product in self.products:
             with self.subTest(product=product["product_code"]):
                 self.assertRegex(
                     product["product_code"], r"^product-[a-z0-9]+(?:-[a-z0-9]+)*$"
                 )
+                self.assertIn(product["product_kind"], {"food", "equipment"})
+                entity_prefix = (
+                    "ingredient" if product["product_kind"] == "food" else "equipment"
+                )
                 self.assertRegex(
                     product["ingredient_code"],
-                    r"^ingredient-[a-z0-9]+(?:-[a-z0-9]+)*$",
+                    rf"^{entity_prefix}-[a-z0-9]+(?:-[a-z0-9]+)*$",
                 )
                 self.assertGreater(product["evaluation_price_ils"], 0)
                 self.assertEqual(1, product["evaluation_stock"])
@@ -90,6 +94,22 @@ class MarketCatalogContracts(unittest.TestCase):
                 )
                 self.assertTrue(product["acceptance_gates"])
                 self.assertFalse(any(product["acceptance_gates"].values()))
+                if product["product_kind"] == "food":
+                    self.assertIsNone(product["equipment_specification"])
+                    self.assertIsInstance(product["ingredient_statement"], dict)
+                    self.assertIsInstance(product["allergen_statement"], dict)
+                else:
+                    self.assertIsNone(product["ingredient_statement"])
+                    self.assertIsNone(product["allergen_statement"])
+                    self.assertIsNone(product["nutrition_panel"])
+                    self.assertIsNone(product["kosher_certificate"])
+                    for field in ("model", "material", "dimensions", "care", "safety"):
+                        self.assertTrue(
+                            product["equipment_specification"][field]["he"].strip()
+                        )
+                        self.assertTrue(
+                            product["equipment_specification"][field]["en"].strip()
+                        )
 
     def test_researched_reference_prices_are_exact(self):
         expected = {
@@ -103,6 +123,8 @@ class MarketCatalogContracts(unittest.TestCase):
             "product-honkarebushi-200g": 219.00,
             "product-yamaroku-tsurubishio-500ml": 149.00,
             "product-kito-yuzu-juice-100ml": 64.00,
+            "product-fresh-japanese-wasabi-250g": 399.00,
+            "product-hagane-zame-large": 699.00,
         }
         for code, price in expected.items():
             with self.subTest(product=code):
@@ -149,13 +171,59 @@ class MarketCatalogContracts(unittest.TestCase):
             / "generated"
         )
         bound = [item for item in self.products if item["image_asset"]]
-        self.assertEqual(30, len(bound))
+        self.assertEqual(32, len(bound))
         for product in bound:
             with self.subTest(product=product["product_code"]):
                 self.assertEqual(
                     "evaluation_asset_held_for_review", product["image_state"]
                 )
                 self.assertTrue((generated / product["image_asset"]).is_file())
+
+    def test_imported_wasabi_slice_keeps_source_observation_separate_from_price(self):
+        cases = {
+            "product-fresh-japanese-wasabi-250g": {
+                "public_price": 399.00,
+                "observed_ils": 252.81,
+                "source_amount": "62.50",
+                "currency": "GBP",
+                "rate": "4.0450",
+                "basis": "ILS_per_GBP",
+            },
+            "product-hagane-zame-large": {
+                "public_price": 699.00,
+                "observed_ils": 324.79,
+                "source_amount": "17050",
+                "currency": "JPY",
+                "rate": "1.9049",
+                "basis": "ILS_per_100_JPY",
+            },
+        }
+        for code, expected in cases.items():
+            with self.subTest(product=code):
+                product = self.by_code[code]
+                observation = product["market_observation"]
+                self.assertEqual(expected["public_price"], product["evaluation_price_ils"])
+                self.assertEqual(expected["observed_ils"], observation["observed_price_ils"])
+                self.assertNotEqual(
+                    product["evaluation_price_ils"], observation["observed_price_ils"]
+                )
+                self.assertEqual(
+                    expected["source_amount"], observation["source_price"]["amount"]
+                )
+                self.assertEqual(
+                    expected["currency"], observation["source_price"]["currency"]
+                )
+                self.assertEqual(expected["rate"], observation["fx_conversion"]["rate"])
+                self.assertEqual(expected["basis"], observation["fx_conversion"]["basis"])
+                self.assertEqual("2026-08-05", observation["fx_conversion"]["rate_date"])
+                self.assertEqual(
+                    f"{expected['observed_ils']:.2f}",
+                    observation["fx_conversion"]["converted_amount_ils"],
+                )
+                self.assertEqual(
+                    "https://www.boi.org.il/roles/markets/exchangerates/",
+                    observation["fx_conversion"]["source_url"],
+                )
 
     def test_no_em_dash_or_public_availability_claims(self):
         source = SEEDS.read_text(encoding="utf-8")

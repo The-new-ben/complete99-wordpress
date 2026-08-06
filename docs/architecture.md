@@ -29,7 +29,7 @@ Large raw media streams may use purpose-built storage, and credentials stay in
 server-side secret stores. WordPress retains the canonical entity identity,
 evidence reference, authorization state and publication decision.
 
-Release 1.5.1 installs infrastructure only and does not install or assign
+Release 1.6.0 installs infrastructure only and does not install or assign
 Complete99 worker roles. Commerce order, refund, fulfilment and stock events use
 an unassigned private outbox until a later operating decision.
 

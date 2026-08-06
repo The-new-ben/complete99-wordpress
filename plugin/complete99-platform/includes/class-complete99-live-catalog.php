@@ -21,7 +21,7 @@ final class Complete99_Live_Catalog {
 	const OPTION_PICKUP_INSTANCE = 'complete99_live_catalog_pickup_instance';
 	const OPTION_PUBLIC_ADDRESS  = 'complete99_live_catalog_public_address';
 	const LOCK_TIMEOUT    = 10;
-	const EXPECTED_COUNT  = 30;
+	const EXPECTED_COUNT  = 32;
 	const RECOVERY_STATES = array(
 		'materializing',
 		'commit_unverified',
@@ -86,6 +86,8 @@ final class Complete99_Live_Catalog {
 		'product-honkarebushi-200g',
 		'product-yamaroku-tsurubishio-500ml',
 		'product-kito-yuzu-juice-100ml',
+		'product-fresh-japanese-wasabi-250g',
+		'product-hagane-zame-large',
 	);
 	const DISH_SLUGS = array(
 		'sabich',
@@ -808,7 +810,7 @@ final class Complete99_Live_Catalog {
 				|| $expected !== $policy_codes
 				|| $expected !== $relation_codes
 				|| $expected_dishes !== $dish_slugs ) {
-				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 30-product coverage.' );
+				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 32-product coverage.' );
 			}
 
 			$products      = array();
@@ -820,7 +822,44 @@ final class Complete99_Live_Catalog {
 				$price      = (string) $price_registry['prices'][ $code ];
 				$asset_name = sanitize_file_name( (string) ( $seed['image_asset'] ?? '' ) );
 				$science_entity_id = sanitize_key( (string) ( $relation['science_entity_id'] ?? '' ) );
+				$product_kind = sanitize_key( (string) ( $seed['product_kind'] ?? '' ) );
+				$public_product_kind = sanitize_key( (string) ( $public['product_kind'] ?? '' ) );
+				$food_fields = array( 'ingredients', 'allergens', 'storage' );
+				$equipment_fields = array( 'model', 'material', 'dimensions', 'care', 'safety' );
+				$typed_copy_valid = in_array( $product_kind, array( 'food', 'equipment' ), true )
+					&& $product_kind === $public_product_kind;
+				if ( $typed_copy_valid && 'food' === $product_kind ) {
+					foreach ( $food_fields as $field ) {
+						$typed_copy_valid = $typed_copy_valid
+							&& '' !== trim( (string) ( $public[ $field ]['he'] ?? '' ) )
+							&& '' !== trim( (string) ( $public[ $field ]['en'] ?? '' ) );
+					}
+					foreach ( $equipment_fields as $field ) {
+						$typed_copy_valid = $typed_copy_valid
+							&& '' === trim( (string) ( $public[ $field ]['he'] ?? '' ) )
+							&& '' === trim( (string) ( $public[ $field ]['en'] ?? '' ) );
+					}
+					$typed_copy_valid = $typed_copy_valid && null === ( $seed['equipment_specification'] ?? null );
+				} elseif ( $typed_copy_valid ) {
+					foreach ( $food_fields as $field ) {
+						$typed_copy_valid = $typed_copy_valid
+							&& '' === trim( (string) ( $public[ $field ]['he'] ?? '' ) )
+							&& '' === trim( (string) ( $public[ $field ]['en'] ?? '' ) );
+					}
+					foreach ( $equipment_fields as $field ) {
+						$typed_copy_valid = $typed_copy_valid
+							&& '' !== trim( (string) ( $public[ $field ]['he'] ?? '' ) )
+							&& '' !== trim( (string) ( $public[ $field ]['en'] ?? '' ) );
+					}
+					$typed_copy_valid = $typed_copy_valid
+						&& is_array( $seed['equipment_specification'] ?? null )
+						&& hash_equals(
+							self::digest( $seed['equipment_specification'] ),
+							self::digest( array_intersect_key( $public, array_flip( $equipment_fields ) ) )
+						);
+				}
 				if ( 1 !== preg_match( '/\A\d+\.\d{2}\z/', $price ) || (float) $price <= 0
+					|| ! $typed_copy_valid
 					|| ! isset( $assets[ $asset_name ] )
 					|| ! is_array( $public )
 					|| ! is_array( $relation )
@@ -829,7 +868,6 @@ final class Complete99_Live_Catalog {
 					|| ! is_array( $relation['dish_slugs'] )
 					|| ( empty( $relation['dish_slugs'] ) && '' === $science_entity_id )
 					|| ( '' !== $science_entity_id && 1 !== preg_match( '/\A[a-z0-9][a-z0-9-]{4,99}\z/', $science_entity_id ) )
-					|| ! isset( $public['ingredients']['he'], $public['ingredients']['en'], $public['allergens']['he'], $public['allergens']['en'], $public['storage']['he'], $public['storage']['en'] )
 					|| ! isset( $policy['categories'][ $public['category'] ], $policy['shipping_classes'][ $public['shipping_class'] ] )
 					|| ! is_array( $public['tags'] )
 					|| '' === trim( (string) $public['weight_kg'] )
@@ -880,6 +918,39 @@ final class Complete99_Live_Catalog {
 				$observed_price = $seed['market_observation']['observed_price_ils'] ?? null;
 				$range_low      = $seed['market_observation']['range_low_ils'] ?? null;
 				$range_high     = $seed['market_observation']['range_high_ils'] ?? null;
+				$source_price   = $seed['market_observation']['source_price'] ?? array();
+				$fx_conversion  = $seed['market_observation']['fx_conversion'] ?? array();
+				$source_evidence_valid = empty( $source_price ) && empty( $fx_conversion );
+				if ( is_array( $source_price ) && is_array( $fx_conversion ) && ! empty( $source_price ) && ! empty( $fx_conversion ) ) {
+					$source_amount = $source_price['amount'] ?? null;
+					$source_currency = (string) ( $source_price['currency'] ?? '' );
+					$fx_rate = $fx_conversion['rate'] ?? null;
+					$fx_basis = (string) ( $fx_conversion['basis'] ?? '' );
+					$fx_rate_date = (string) ( $fx_conversion['rate_date'] ?? '' );
+					$converted_amount = $fx_conversion['converted_amount_ils'] ?? null;
+					$calculated_amount = 'GBP' === $source_currency && 'ILS_per_GBP' === $fx_basis
+						? (float) $source_amount * (float) $fx_rate
+						: ( 'JPY' === $source_currency && 'ILS_per_100_JPY' === $fx_basis
+							? ( (float) $source_amount / 100 ) * (float) $fx_rate
+							: -1 );
+					$source_evidence_valid = is_numeric( $source_amount )
+						&& 0 < (float) $source_amount
+						&& is_numeric( $fx_rate )
+						&& 0 < (float) $fx_rate
+						&& is_numeric( $converted_amount )
+						&& 'included' === (string) ( $source_price['tax_state'] ?? '' )
+						&& '' !== trim( (string) ( $source_price['availability_state'] ?? '' ) )
+						&& 'https' === strtolower( (string) parse_url( (string) ( $fx_conversion['source_url'] ?? '' ), PHP_URL_SCHEME ) )
+						&& 'www.boi.org.il' === strtolower( (string) parse_url( (string) ( $fx_conversion['source_url'] ?? '' ), PHP_URL_HOST ) )
+						&& self::is_valid_date( $fx_rate_date )
+						&& self::is_valid_date( (string) ( $fx_conversion['checked_at'] ?? '' ) )
+						&& $fx_rate_date <= (string) ( $fx_conversion['checked_at'] ?? '' )
+						&& $accessed_at === (string) ( $fx_conversion['checked_at'] ?? '' )
+						&& '' !== trim( (string) ( $fx_conversion['formula'] ?? '' ) )
+						&& 0 <= $calculated_amount
+						&& abs( round( $calculated_amount, 2 ) - (float) $converted_amount ) < 0.005
+						&& abs( (float) $converted_amount - (float) $observed_price ) < 0.005;
+				}
 				if ( 1 !== preg_match( '/\A[a-f0-9]{64}\z/', $sha )
 					|| ! in_array( $code, $related, true )
 					|| 'owner_approved' !== (string) ( $asset['review_state'] ?? '' )
@@ -898,6 +969,7 @@ final class Complete99_Live_Catalog {
 					|| (float) $range_low > (float) $range_high
 					|| (float) $observed_price < (float) $range_low
 					|| (float) $observed_price > (float) $range_high
+					|| ! $source_evidence_valid
 					|| ! is_file( $path )
 					|| ! is_readable( $path )
 					|| ! hash_equals( $sha, (string) hash_file( 'sha256', $path ) ) ) {
@@ -906,6 +978,7 @@ final class Complete99_Live_Catalog {
 				$products[ $code ] = array(
 					'code'          => $code,
 					'ingredient'    => (string) $seed['ingredient_code'],
+					'product_kind'  => $product_kind,
 					'name'          => $seed['name'],
 					'package'       => $seed['package_label'],
 					'classification'=> (string) $seed['classification'],
@@ -918,6 +991,8 @@ final class Complete99_Live_Catalog {
 						'range_low'      => number_format( (float) $range_low, 2, '.', '' ),
 						'range_high'     => number_format( (float) $range_high, 2, '.', '' ),
 						'selection_rule' => (string) $price_registry['evidence']['selection_rule'],
+						'source_price'   => $source_price,
+						'fx_conversion'  => $fx_conversion,
 					),
 					'public'        => $public,
 					'relations'     => $relation,
@@ -1568,6 +1643,7 @@ final class Complete99_Live_Catalog {
 				self::META_PRICE_SOURCE                    => (string) $bundle['price_registry']['price_scope'],
 				self::META_SYNC_ENABLED                    => 'yes',
 				Complete99_Commerce::PRODUCT_APPROVED      => 'yes',
+				Complete99_Commerce::PRODUCT_KIND          => $record['product_kind'],
 				Complete99_Commerce::STOCK_AUTHORITY       => 'woocommerce',
 				Complete99_Commerce::LABEL_REVIEWED        => ! empty( $bundle['policy']['supplier_label_reviewed'] ) ? 'yes' : 'no',
 				Complete99_Commerce::ORIGIN_REVIEWED       => ! empty( $bundle['policy']['country_of_origin_reviewed'] ) ? 'yes' : 'no',
@@ -1590,6 +1666,16 @@ final class Complete99_Live_Catalog {
 				Complete99_Commerce::FULFILMENT_EN         => (string) $bundle['policy']['fulfilment']['en'],
 				Complete99_Commerce::ORIGIN_HE             => '',
 				Complete99_Commerce::ORIGIN_EN             => '',
+				Complete99_Commerce::MODEL_HE              => (string) ( $public['model']['he'] ?? '' ),
+				Complete99_Commerce::MODEL_EN              => (string) ( $public['model']['en'] ?? '' ),
+				Complete99_Commerce::MATERIAL_HE           => (string) ( $public['material']['he'] ?? '' ),
+				Complete99_Commerce::MATERIAL_EN           => (string) ( $public['material']['en'] ?? '' ),
+				Complete99_Commerce::DIMENSIONS_HE         => (string) ( $public['dimensions']['he'] ?? '' ),
+				Complete99_Commerce::DIMENSIONS_EN         => (string) ( $public['dimensions']['en'] ?? '' ),
+				Complete99_Commerce::CARE_HE               => (string) ( $public['care']['he'] ?? '' ),
+				Complete99_Commerce::CARE_EN               => (string) ( $public['care']['en'] ?? '' ),
+				Complete99_Commerce::SAFETY_HE             => (string) ( $public['safety']['he'] ?? '' ),
+				Complete99_Commerce::SAFETY_EN             => (string) ( $public['safety']['en'] ?? '' ),
 				'_complete99_catalog_ingredient_code'      => $record['ingredient'],
 				'_complete99_live_catalog_asset_sha256'    => $record['asset']['sha256'],
 				'_complete99_live_catalog_relation_digest' => self::digest( $record['relations'] ),
@@ -1614,8 +1700,21 @@ final class Complete99_Live_Catalog {
 		$definitions = array(
 			array( 'אריזה | Package', $record['package']['he'] . ' | ' . $record['package']['en'] ),
 			array( 'סוג מוצר | Product type', $policy['categories'][ $record['public']['category'] ]['name'] ),
-			array( 'אחסון | Storage', $record['public']['storage']['he'] . ' | ' . $record['public']['storage']['en'] ),
 		);
+		if ( 'equipment' === (string) ( $record['product_kind'] ?? '' ) ) {
+			$definitions = array_merge(
+				$definitions,
+				array(
+					array( 'דגם | Model', $record['public']['model']['he'] . ' | ' . $record['public']['model']['en'] ),
+					array( 'חומר | Material', $record['public']['material']['he'] . ' | ' . $record['public']['material']['en'] ),
+					array( 'מידות | Dimensions', $record['public']['dimensions']['he'] . ' | ' . $record['public']['dimensions']['en'] ),
+					array( 'טיפול | Care', $record['public']['care']['he'] . ' | ' . $record['public']['care']['en'] ),
+					array( 'בטיחות | Safety', $record['public']['safety']['he'] . ' | ' . $record['public']['safety']['en'] ),
+				)
+			);
+		} else {
+			$definitions[] = array( 'אחסון | Storage', $record['public']['storage']['he'] . ' | ' . $record['public']['storage']['en'] );
+		}
 		$attributes = array();
 		foreach ( $definitions as $position => $definition ) {
 			$attribute = new WC_Product_Attribute();
@@ -1637,6 +1736,7 @@ final class Complete99_Live_Catalog {
 			'chilled_or_frozen_sensitive' => 'chilled-frozen',
 			'bakery_short_shelf_life'     => 'bakery',
 			'regulated_category'          => 'regulated',
+			'professional_equipment'      => 'equipment',
 		);
 		return isset( $facets[ $classification ] ) ? $facets[ $classification ] : '';
 	}
@@ -1645,6 +1745,9 @@ final class Complete99_Live_Catalog {
 		$facets = array_filter( array( self::facet_for_classification( $record['classification'] ?? '' ) ) );
 		if ( 'japanese-pantry' === (string) ( $record['public']['category'] ?? '' ) ) {
 			$facets[] = 'japanese-pantry';
+		}
+		if ( 'japanese-equipment' === (string) ( $record['public']['category'] ?? '' ) ) {
+			$facets[] = 'equipment';
 		}
 		return implode( ' ', array_values( array_unique( $facets ) ) );
 	}
@@ -1684,6 +1787,7 @@ final class Complete99_Live_Catalog {
 			self::META_PRICE_SOURCE,
 			self::META_SYNC_ENABLED,
 			Complete99_Commerce::PRODUCT_APPROVED,
+			Complete99_Commerce::PRODUCT_KIND,
 			Complete99_Commerce::STOCK_AUTHORITY,
 			Complete99_Commerce::LABEL_REVIEWED,
 			Complete99_Commerce::ORIGIN_REVIEWED,
@@ -1706,6 +1810,16 @@ final class Complete99_Live_Catalog {
 			Complete99_Commerce::FULFILMENT_EN,
 			Complete99_Commerce::ORIGIN_HE,
 			Complete99_Commerce::ORIGIN_EN,
+			Complete99_Commerce::MODEL_HE,
+			Complete99_Commerce::MODEL_EN,
+			Complete99_Commerce::MATERIAL_HE,
+			Complete99_Commerce::MATERIAL_EN,
+			Complete99_Commerce::DIMENSIONS_HE,
+			Complete99_Commerce::DIMENSIONS_EN,
+			Complete99_Commerce::CARE_HE,
+			Complete99_Commerce::CARE_EN,
+			Complete99_Commerce::SAFETY_HE,
+			Complete99_Commerce::SAFETY_EN,
 			'_complete99_live_catalog_relation_digest',
 			'_complete99_live_catalog_facet',
 			'_complete99_live_catalog_package_he',

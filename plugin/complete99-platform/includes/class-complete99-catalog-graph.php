@@ -185,7 +185,7 @@ final class Complete99_Catalog_Graph {
 	}
 
 	/**
-	 * Sanitize an exact evidence-bound ingredient code.
+	 * Sanitize an exact evidence-bound culinary entity code.
 	 *
 	 * @param mixed $value Candidate value.
 	 * @return string
@@ -193,7 +193,7 @@ final class Complete99_Catalog_Graph {
 	public static function sanitize_ingredient_code( $value ) {
 		return is_string( $value )
 			&& strlen( $value ) <= 160
-			&& 1 === preg_match( '/\Aingredient-[a-z0-9]+(?:-[a-z0-9]+)*\z/', $value )
+			&& 1 === preg_match( '/\A(?:ingredient|equipment)-[a-z0-9]+(?:-[a-z0-9]+)*\z/', $value )
 				? $value
 				: '';
 	}

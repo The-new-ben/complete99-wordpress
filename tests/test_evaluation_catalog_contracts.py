@@ -189,7 +189,7 @@ echo json_encode($public, JSON_THROW_ON_ERROR);
         ):
             self.assertNotIn(private_marker, serialized)
 
-    def test_current_registry_has_28_strict_private_evaluation_seeds(self) -> None:
+    def test_current_registry_has_32_strict_private_evaluation_seeds(self) -> None:
         result = self.run_php(
             """
 $registry = require $c99_catalog_data_path;
@@ -221,10 +221,10 @@ echo json_encode(array(
 """
         )
         self.assertTrue(result["valid"])
-        self.assertEqual(30, result["count"])
-        self.assertEqual(30, result["unique_codes"])
+        self.assertEqual(32, result["count"])
+        self.assertEqual(32, result["unique_codes"])
         self.assertTrue(result["all_stock_one"])
-        self.assertEqual(30, len(result["prices"]))
+        self.assertEqual(32, len(result["prices"]))
         self.assertRegex(result["digest"], r"^[a-f0-9]{64}$")
         self.assertFalse(result["global_public_sale"])
         self.assertFalse(result["global_public_stock"])
@@ -273,6 +273,26 @@ $bad['products'][1]['relations']['verified_ingredient_codes'] = array(
 );
 $mutations['duplicate_ingredient_code'] = $bad;
 
+$bad = $registry;
+$bad['products'][30]['market_observation']['fx_conversion']['rate'] = 'not-a-rate';
+$mutations['bad_fx_rate'] = $bad;
+
+$bad = $registry;
+$bad['products'][30]['market_observation']['fx_conversion']['converted_amount_ils'] = '252.80';
+$mutations['bad_fx_result'] = $bad;
+
+$bad = $registry;
+$bad['products'][30]['market_observation']['fx_conversion']['rate_date'] = '2026-08-07';
+$mutations['future_fx_rate_date'] = $bad;
+
+$bad = $registry;
+unset($bad['products'][30]['market_observation']['fx_conversion']['rate_date']);
+$mutations['missing_fx_rate_date'] = $bad;
+
+$bad = $registry;
+$bad['products'][30]['market_observation']['fx_conversion']['source_url'] = $bad['market_transparency_sources']['the_wasabi_company'];
+$mutations['non_boi_fx_source'] = $bad;
+
 $out = array();
 foreach ($mutations as $name => $candidate) {
     $validation = Complete99_Evaluation_Catalog::validate_registry($candidate);
@@ -293,6 +313,11 @@ echo json_encode($out, JSON_THROW_ON_ERROR);
                 "completed_gate": True,
                 "duplicate_product_code": True,
                 "duplicate_ingredient_code": True,
+                "bad_fx_rate": True,
+                "bad_fx_result": True,
+                "future_fx_rate_date": True,
+                "missing_fx_rate_date": True,
+                "non_boi_fx_source": True,
             },
             result,
         )
@@ -355,6 +380,7 @@ echo json_encode(array(
         Complete99_Evaluation_Catalog::sanitize_product_code('product-tahini-500g'),
         Complete99_Evaluation_Catalog::sanitize_product_code('Tahini'),
         Complete99_Evaluation_Catalog::sanitize_ingredient_code('ingredient-tahini'),
+        Complete99_Evaluation_Catalog::sanitize_ingredient_code('equipment-wasabi-grater'),
         Complete99_Evaluation_Catalog::sanitize_https_url('http://example.test'),
         Complete99_Evaluation_Catalog::sanitize_date('2026-02-30'),
         Complete99_Evaluation_Catalog::sanitize_price('14.249'),
@@ -400,6 +426,7 @@ echo json_encode(array(
                 "product-tahini-500g",
                 "",
                 "ingredient-tahini",
+                "equipment-wasabi-grater",
                 "",
                 "",
                 "",
@@ -501,10 +528,10 @@ echo json_encode(array(
 """
         )
         self.assertEqual("", result["error"])
-        self.assertEqual(30, result["seed_count"])
-        self.assertEqual(60, result["post_count"])
-        self.assertEqual(30, result["ingredient_count"])
-        self.assertEqual(30, result["plan_count"])
+        self.assertEqual(32, result["seed_count"])
+        self.assertEqual(64, result["post_count"])
+        self.assertEqual(32, result["ingredient_count"])
+        self.assertEqual(32, result["plan_count"])
         self.assertEqual(0, result["woo_count"])
         self.assertFalse(result["woo_materialized"])
         self.assertTrue(result["same_ids"])
@@ -517,7 +544,7 @@ echo json_encode(array(
             result["receipt_schema"],
         )
         self.assertEqual("success", result["receipt_status"])
-        self.assertEqual([30, 30, 30, 0], result["receipt_counts"])
+        self.assertEqual([32, 32, 32, 0], result["receipt_counts"])
         self.assertRegex(result["receipt_digest"], r"^[a-f0-9]{64}$")
         self.assertLessEqual(result["receipt_size"], 1024)
 
@@ -582,7 +609,7 @@ echo json_encode(array(
         self.assertFalse(result["woo_materialized"])
         self.assertEqual(0, result["woo_count"])
         self.assertEqual(0, result["product_objects"])
-        self.assertEqual(60, result["post_count"])
+        self.assertEqual(64, result["post_count"])
         self.assertTrue(result["no_products"])
         self.assertTrue(result["canonical"])
         self.assertTrue(result["same_ids"])
@@ -641,7 +668,7 @@ echo json_encode(array(
         self.assertTrue(result["ready"]["ready"])
         self.assertTrue(result["ready"]["receipt"]["valid"])
         self.assertEqual(
-            {"ingredient_count": 30, "product_plan_count": 30},
+            {"ingredient_count": 32, "product_plan_count": 32},
             result["ready"]["materialized"],
         )
         self.assertNotIn("price", result["ready_json"].lower())
@@ -744,13 +771,13 @@ echo json_encode(array(
 """
         )
         self.assertEqual("", result["error"])
-        self.assertEqual(90, result["post_count"])
-        self.assertEqual(30, result["product_count"])
+        self.assertEqual(96, result["post_count"])
+        self.assertEqual(32, result["product_count"])
         self.assertTrue(result["same_product_ids"])
         self.assertTrue(result["exact"])
         self.assertTrue(result["held"])
         self.assertTrue(result["non_product_private"])
-        self.assertEqual([30, 30, 30, 30], result["receipt_counts"])
+        self.assertEqual([32, 32, 32, 32], result["receipt_counts"])
         self.assertTrue(result["receipt_woo"])
 
     def test_duplicate_and_nonmanaged_bindings_fail_before_catalog_writes(
@@ -948,10 +975,10 @@ echo json_encode(array(
                 )
                 self.assertEqual("", result["error"])
                 self.assertEqual(order, result["order"])
-                self.assertEqual(90, result["post_count"])
-                self.assertEqual(30, result["product_records"])
+                self.assertEqual(96, result["post_count"])
+                self.assertEqual(32, result["product_records"])
                 self.assertEqual(0, result["published_records"])
-                self.assertEqual(30, result["evaluation_products"])
+                self.assertEqual(32, result["evaluation_products"])
                 self.assertEqual(7, result["shared_products"])
                 self.assertTrue(result["shared_bindings_exact"])
                 self.assertTrue(result["held_fields_intact"])
@@ -1121,13 +1148,13 @@ echo json_encode(array(
     def assert_shared_order_result(self, result: dict, order: str) -> None:
         self.assertEqual("", result["error"])
         self.assertEqual(order, result["order"])
-        self.assertEqual(60, result["post_count"])
-        self.assertEqual(30, result["ingredient_records"])
-        self.assertEqual(30, result["plan_records"])
+        self.assertEqual(64, result["post_count"])
+        self.assertEqual(32, result["ingredient_records"])
+        self.assertEqual(32, result["plan_records"])
         self.assertEqual(0, result["product_records"])
         self.assertEqual(0, result["published_records"])
-        self.assertEqual(30, result["evaluation_ingredient_bindings"])
-        self.assertEqual(30, result["evaluation_plan_bindings"])
+        self.assertEqual(32, result["evaluation_ingredient_bindings"])
+        self.assertEqual(32, result["evaluation_plan_bindings"])
         self.assertEqual(7, result["graph_overlap_count"])
         self.assertEqual(7, result["shared_ingredient_count"])
         self.assertEqual(7, result["shared_plan_count"])

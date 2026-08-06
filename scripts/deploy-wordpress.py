@@ -39,6 +39,7 @@ BOOTSTRAP_SNIPPET_KNOWN_ID = 5
 MIN_PACKAGE_UPLOAD_BYTES = 2 * 1024 * 1024
 MAX_PACKAGE_UPLOAD_BYTES = 32 * 1024 * 1024
 PACKAGE_UPLOAD_HEADROOM_BYTES = 64 * 1024
+EXPECTED_CATALOG_PRODUCT_COUNT = 32
 CATALOG_PRODUCT_CODES = frozenset(
     {
         "product-tahini-500g",
@@ -71,8 +72,12 @@ CATALOG_PRODUCT_CODES = frozenset(
         "product-honkarebushi-200g",
         "product-yamaroku-tsurubishio-500ml",
         "product-kito-yuzu-juice-100ml",
+        "product-fresh-japanese-wasabi-250g",
+        "product-hagane-zame-large",
     }
 )
+if len(CATALOG_PRODUCT_CODES) != EXPECTED_CATALOG_PRODUCT_COUNT:
+    raise RuntimeError("The deployment catalog diagnostic allowlist count differs")
 _CATALOG_CAUSES_BY_STAGE = {
     "request": {
         "complete99_live_catalog_confirmation_required",

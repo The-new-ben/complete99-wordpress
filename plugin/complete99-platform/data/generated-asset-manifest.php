@@ -1071,6 +1071,52 @@ $c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
 	'Generic product photography generated for Complete99; no branded supplier packaging is depicted.'
 );
 
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-ingredient-fresh-wasabi-250g-v01',
+	'fresh-japanese-wasabi-250g',
+	'קני שורש וואסבי יפני טרי, 250 גרם',
+	'Fresh Japanese wasabi rhizomes, 250 g',
+	'ingredient',
+	'c99-ingredient-fresh-wasabi-250g-v01.png',
+	'9130c1cf59404d36088c644eb2da2c4e7841de197b16cb0e9cfa5af76b14a47e',
+	'c99-ingredient-fresh-wasabi-250g-v01.webp',
+	'0927c2f5ce94433d97b8c7f5175c9c1f29dede80edbce3242265497cf94de5c3',
+	1536,
+	1024,
+	'3:2',
+	array( 'ingredient-fresh-wasabi' ),
+	array( 'product-fresh-japanese-wasabi-250g' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג אריזת ספק ממותגת.',
+	'Generic product photography generated for Complete99; no branded supplier packaging is depicted.',
+	'קני שורש וואסבי יפני טריים על משטח אבן כהה לצד שבבי קרח ועלי וואסבי',
+	'Fresh Japanese wasabi rhizomes on dark stone beside ice chips and wasabi leaves',
+	'Commercial culinary studio photograph of fresh Japanese wasabi rhizomes, realistic knobbled green skin and cut-stem detail, arranged on a dark stone surface beside a few ice chips and fresh wasabi leaves, cool side lighting, premium Japanese pantry styling, centered square-safe composition, natural color, highly detailed food texture.',
+	'No text, logos, labels, packaging, certification marks, people, hands, horseradish paste, plastic-looking skin, duplicate rhizomes or fake Japanese writing.'
+);
+
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-equipment-hagane-zame-pro-v01',
+	'hagane-zame-pro-large',
+	'מגררת וואסבי Hagane-zame Pro גדולה',
+	'Hagane-zame Pro large wasabi grater',
+	'equipment',
+	'c99-equipment-hagane-zame-pro-v01.png',
+	'e176209cb92ac1c027420909633510697a294304394d991f924e435c057f3a4c',
+	'c99-equipment-hagane-zame-pro-v01.webp',
+	'0101ca2bd2dec07d7cfb47d99ce2b9202d41f98984f716c064967299c951bedc',
+	1536,
+	1024,
+	'3:2',
+	array( 'equipment-wasabi-grater' ),
+	array( 'product-hagane-zame-large' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג אריזת ספק ממותגת.',
+	'Generic product photography generated for Complete99; no branded supplier packaging is depicted.',
+	'מגררת וואסבי מקצועית מפלדת אל-חלד על משטח אבן לצד קנה שורש וואסבי טרי',
+	'Professional stainless-steel wasabi grater on stone beside a fresh wasabi rhizome',
+	'Commercial culinary studio photograph of one professional large stainless-steel Japanese wasabi grater with a broad fine-toothed grating surface and handle, shown on a dark stone worktop beside one fresh wasabi rhizome and a small mound of freshly grated wasabi, precise metallic texture, soft dramatic side lighting, premium chef-equipment styling, centered square-safe composition.',
+	'No text, logos, labels, packaging, certification marks, people, hands, sharkskin, rust, damaged teeth, duplicate tools or fake Japanese writing.'
+);
+
 /*
  * The owner explicitly approved the listed generic ingredient visuals for
  * normal public catalog use on their recorded authorization dates. They remain
@@ -1108,6 +1154,8 @@ $c99_public_catalog_assets = array(
 	'c99-ingredient-katsuobushi-evaluation-v01.webp',
 	'c99-ingredient-kioke-shoyu-evaluation-v01.webp',
 	'c99-ingredient-kito-yuzu-juice-evaluation-v01.webp',
+	'c99-ingredient-fresh-wasabi-250g-v01.webp',
+	'c99-equipment-hagane-zame-pro-v01.webp',
 );
 
 $c99_public_catalog_asset_authorized_at = array_fill_keys( $c99_public_catalog_assets, '2026-07-31' );
@@ -1115,6 +1163,8 @@ $c99_public_catalog_asset_authorized_at['c99-ingredient-rishiri-kombu-evaluation
 $c99_public_catalog_asset_authorized_at['c99-ingredient-katsuobushi-evaluation-v01.webp'] = '2026-08-06';
 $c99_public_catalog_asset_authorized_at['c99-ingredient-kioke-shoyu-evaluation-v01.webp'] = '2026-08-06';
 $c99_public_catalog_asset_authorized_at['c99-ingredient-kito-yuzu-juice-evaluation-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-ingredient-fresh-wasabi-250g-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-equipment-hagane-zame-pro-v01.webp'] = '2026-08-06';
 
 foreach ( $c99_generated_asset_manifest['assets'] as &$c99_asset_record ) {
 	if ( ! in_array( $c99_asset_record['filename'], $c99_public_catalog_assets, true ) ) {

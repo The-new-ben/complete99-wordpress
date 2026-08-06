@@ -34,6 +34,7 @@ final class Complete99_Commerce {
 	const OPTION_EVER_LAUNCHED = 'complete99_commerce_ever_launched';
 	const OPTION_LAUNCH_AUDIT = 'complete99_commerce_launch_audit';
 	const PRODUCT_APPROVED   = '_complete99_store_approved';
+	const PRODUCT_KIND       = '_complete99_product_kind';
 	const STOCK_AUTHORITY    = '_complete99_stock_authority';
 	const NAME_HE            = '_complete99_product_name_he';
 	const NAME_EN            = '_complete99_product_name_en';
@@ -49,6 +50,16 @@ final class Complete99_Commerce {
 	const FULFILMENT_EN      = '_complete99_product_fulfilment_en';
 	const ORIGIN_HE          = '_complete99_product_origin_he';
 	const ORIGIN_EN          = '_complete99_product_origin_en';
+	const MODEL_HE           = '_complete99_product_model_he';
+	const MODEL_EN           = '_complete99_product_model_en';
+	const MATERIAL_HE        = '_complete99_product_material_he';
+	const MATERIAL_EN        = '_complete99_product_material_en';
+	const DIMENSIONS_HE      = '_complete99_product_dimensions_he';
+	const DIMENSIONS_EN      = '_complete99_product_dimensions_en';
+	const CARE_HE            = '_complete99_product_care_he';
+	const CARE_EN            = '_complete99_product_care_en';
+	const SAFETY_HE          = '_complete99_product_safety_he';
+	const SAFETY_EN          = '_complete99_product_safety_en';
 	const LABEL_REVIEWED     = '_complete99_product_label_reviewed';
 	const ORIGIN_REVIEWED    = '_complete99_product_origin_reviewed';
 	const CHECKOUT_ELIGIBLE  = '_complete99_product_checkout_eligible';
@@ -264,6 +275,7 @@ final class Complete99_Commerce {
 		$fields = array(
 			'_complete99_product_status'      => 'string',
 			'_complete99_product_sku'         => 'string',
+			'_complete99_product_kind'        => 'string',
 			'_complete99_product_name_he'     => 'string',
 			'_complete99_product_name_en'     => 'string',
 			'_complete99_product_unit'        => 'string',
@@ -275,6 +287,16 @@ final class Complete99_Commerce {
 			'_complete99_product_storage'     => 'string',
 			'_complete99_product_stock_source'=> 'string',
 			'_complete99_product_rights'      => 'string',
+			'_complete99_product_model_he'    => 'string',
+			'_complete99_product_model_en'    => 'string',
+			'_complete99_product_material_he' => 'string',
+			'_complete99_product_material_en' => 'string',
+			'_complete99_product_dimensions_he' => 'string',
+			'_complete99_product_dimensions_en' => 'string',
+			'_complete99_product_care_he'     => 'string',
+			'_complete99_product_care_en'     => 'string',
+			'_complete99_product_safety_he'   => 'string',
+			'_complete99_product_safety_en'   => 'string',
 		);
 		foreach ( $fields as $key => $type ) {
 			register_post_meta(
@@ -307,6 +329,16 @@ final class Complete99_Commerce {
 			self::FULFILMENT_EN,
 			self::ORIGIN_HE,
 			self::ORIGIN_EN,
+			self::MODEL_HE,
+			self::MODEL_EN,
+			self::MATERIAL_HE,
+			self::MATERIAL_EN,
+			self::DIMENSIONS_HE,
+			self::DIMENSIONS_EN,
+			self::CARE_HE,
+			self::CARE_EN,
+			self::SAFETY_HE,
+			self::SAFETY_EN,
 		);
 		foreach ( $product_text_fields as $key ) {
 			register_post_meta(
@@ -324,7 +356,7 @@ final class Complete99_Commerce {
 			);
 		}
 
-		foreach ( array( self::PRODUCT_APPROVED, self::STOCK_AUTHORITY, self::LABEL_REVIEWED, self::ORIGIN_REVIEWED, self::CHECKOUT_ELIGIBLE, self::RIGHTS_REVIEWED, self::TAX_REVIEWED, self::MEDIA_PUBLIC_SAFE ) as $key ) {
+		foreach ( array( self::PRODUCT_APPROVED, self::PRODUCT_KIND, self::STOCK_AUTHORITY, self::LABEL_REVIEWED, self::ORIGIN_REVIEWED, self::CHECKOUT_ELIGIBLE, self::RIGHTS_REVIEWED, self::TAX_REVIEWED, self::MEDIA_PUBLIC_SAFE ) as $key ) {
 			register_post_meta(
 				'product',
 				$key,
@@ -377,6 +409,17 @@ final class Complete99_Commerce {
 			return;
 		}
 		echo '<div class="options_group">';
+		woocommerce_wp_select(
+			array(
+				'id'          => self::PRODUCT_KIND,
+				'label'       => 'Complete99 product kind',
+				'description' => 'Food uses ingredient, allergen and storage copy. Equipment uses model, material, dimensions, care and safety copy.',
+				'options'     => array(
+					'food'      => 'Food',
+					'equipment' => 'Equipment',
+				),
+			)
+		);
 		woocommerce_wp_text_input(
 			array(
 				'id'          => self::NAME_HE,
@@ -405,6 +448,16 @@ final class Complete99_Commerce {
 				self::FULFILMENT_EN  => 'Pickup and delivery terms in English',
 				self::ORIGIN_HE      => 'Country of origin in Hebrew',
 				self::ORIGIN_EN      => 'Country of origin in English',
+				self::MODEL_HE       => 'Equipment model in Hebrew',
+				self::MODEL_EN       => 'Equipment model in English',
+				self::MATERIAL_HE    => 'Equipment material in Hebrew',
+				self::MATERIAL_EN    => 'Equipment material in English',
+				self::DIMENSIONS_HE  => 'Equipment dimensions in Hebrew',
+				self::DIMENSIONS_EN  => 'Equipment dimensions in English',
+				self::CARE_HE        => 'Equipment care in Hebrew',
+				self::CARE_EN        => 'Equipment care in English',
+				self::SAFETY_HE      => 'Equipment safety in Hebrew',
+				self::SAFETY_EN      => 'Equipment safety in English',
 			) as $id => $label
 		) {
 			woocommerce_wp_textarea_input(
@@ -476,6 +529,16 @@ final class Complete99_Commerce {
 			self::FULFILMENT_EN,
 			self::ORIGIN_HE,
 			self::ORIGIN_EN,
+			self::MODEL_HE,
+			self::MODEL_EN,
+			self::MATERIAL_HE,
+			self::MATERIAL_EN,
+			self::DIMENSIONS_HE,
+			self::DIMENSIONS_EN,
+			self::CARE_HE,
+			self::CARE_EN,
+			self::SAFETY_HE,
+			self::SAFETY_EN,
 		);
 		foreach ( $text_fields as $key ) {
 			$value = isset( $_POST[ $key ] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -483,6 +546,10 @@ final class Complete99_Commerce {
 				: '';
 			$product->update_meta_data( $key, $value );
 		}
+		$product_kind = isset( $_POST[ self::PRODUCT_KIND ] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			? sanitize_key( wp_unslash( $_POST[ self::PRODUCT_KIND ] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
+			: 'food';
+		$product->update_meta_data( self::PRODUCT_KIND, 'equipment' === $product_kind ? 'equipment' : 'food' );
 		$approved = isset( $_POST[ self::PRODUCT_APPROVED ] ) ? 'yes' : 'no'; // phpcs:ignore WordPress.Security.NonceVerification.Missing
 		$authority = isset( $_POST[ self::STOCK_AUTHORITY ] ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
 			? sanitize_key( wp_unslash( $_POST[ self::STOCK_AUTHORITY ] ) ) // phpcs:ignore WordPress.Security.NonceVerification.Missing
@@ -805,6 +872,7 @@ final class Complete99_Commerce {
 			'_product_attributes',
 			'_purchase_note',
 			self::PRODUCT_APPROVED,
+			self::PRODUCT_KIND,
 			self::STOCK_AUTHORITY,
 			self::NAME_HE,
 			self::NAME_EN,
@@ -820,6 +888,16 @@ final class Complete99_Commerce {
 			self::FULFILMENT_EN,
 			self::ORIGIN_HE,
 			self::ORIGIN_EN,
+			self::MODEL_HE,
+			self::MODEL_EN,
+			self::MATERIAL_HE,
+			self::MATERIAL_EN,
+			self::DIMENSIONS_HE,
+			self::DIMENSIONS_EN,
+			self::CARE_HE,
+			self::CARE_EN,
+			self::SAFETY_HE,
+			self::SAFETY_EN,
 			self::LABEL_REVIEWED,
 			self::ORIGIN_REVIEWED,
 			self::CHECKOUT_ELIGIBLE,
@@ -1504,22 +1582,49 @@ final class Complete99_Commerce {
 	}
 
 	private static function product_copy_matches_declared_languages( $product_id ) {
+		$product_kind = sanitize_key( (string) get_post_meta( $product_id, self::PRODUCT_KIND, true ) );
+		if ( ! in_array( $product_kind, array( 'food', 'equipment' ), true ) ) {
+			return false;
+		}
 		$contracts = array(
 			array( self::NAME_HE, 'he', 2, 55 ),
 			array( self::NAME_EN, 'en', 2, 55 ),
 			array( self::DESCRIPTION_HE, 'he', 12, 60 ),
 			array( self::DESCRIPTION_EN, 'en', 12, 60 ),
-			array( self::INGREDIENTS_HE, 'he', 2, 60 ),
-			array( self::INGREDIENTS_EN, 'en', 2, 60 ),
-			array( self::ALLERGENS_HE, 'he', 2, 60 ),
-			array( self::ALLERGENS_EN, 'en', 2, 60 ),
-			array( self::STORAGE_HE, 'he', 3, 60 ),
-			array( self::STORAGE_EN, 'en', 3, 60 ),
 			array( self::FULFILMENT_HE, 'he', 3, 60 ),
 			array( self::FULFILMENT_EN, 'en', 3, 60 ),
 			array( self::ORIGIN_HE, 'he', 2, 60 ),
 			array( self::ORIGIN_EN, 'en', 2, 60 ),
 		);
+		if ( 'food' === $product_kind ) {
+			$contracts = array_merge(
+				$contracts,
+				array(
+					array( self::INGREDIENTS_HE, 'he', 2, 60 ),
+					array( self::INGREDIENTS_EN, 'en', 2, 60 ),
+					array( self::ALLERGENS_HE, 'he', 2, 60 ),
+					array( self::ALLERGENS_EN, 'en', 2, 60 ),
+					array( self::STORAGE_HE, 'he', 3, 60 ),
+					array( self::STORAGE_EN, 'en', 3, 60 ),
+				)
+			);
+		} else {
+			$contracts = array_merge(
+				$contracts,
+				array(
+					array( self::MODEL_HE, 'he', 2, 45 ),
+					array( self::MODEL_EN, 'en', 2, 45 ),
+					array( self::MATERIAL_HE, 'he', 2, 60 ),
+					array( self::MATERIAL_EN, 'en', 2, 60 ),
+					array( self::DIMENSIONS_HE, 'he', 3, 45 ),
+					array( self::DIMENSIONS_EN, 'en', 3, 45 ),
+					array( self::CARE_HE, 'he', 8, 60 ),
+					array( self::CARE_EN, 'en', 8, 60 ),
+					array( self::SAFETY_HE, 'he', 6, 60 ),
+					array( self::SAFETY_EN, 'en', 6, 60 ),
+				)
+			);
+		}
 		foreach ( $contracts as $contract ) {
 			list( $key, $lang, $minimum_expected, $minimum_share ) = $contract;
 			$value = (string) get_post_meta( $product_id, $key, true );
@@ -3961,6 +4066,7 @@ final class Complete99_Commerce {
 		}
 		$product_meta_keys = array(
 			self::PRODUCT_APPROVED,
+			self::PRODUCT_KIND,
 			self::STOCK_AUTHORITY,
 			self::NAME_HE,
 			self::NAME_EN,
@@ -3976,6 +4082,16 @@ final class Complete99_Commerce {
 			self::FULFILMENT_EN,
 			self::ORIGIN_HE,
 			self::ORIGIN_EN,
+			self::MODEL_HE,
+			self::MODEL_EN,
+			self::MATERIAL_HE,
+			self::MATERIAL_EN,
+			self::DIMENSIONS_HE,
+			self::DIMENSIONS_EN,
+			self::CARE_HE,
+			self::CARE_EN,
+			self::SAFETY_HE,
+			self::SAFETY_EN,
 			self::LABEL_REVIEWED,
 			self::ORIGIN_REVIEWED,
 			self::CHECKOUT_ELIGIBLE,
