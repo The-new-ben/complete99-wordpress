@@ -93,12 +93,14 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.10.0, require the Entity Studio contracts to prove private
+3. For release 1.11.0, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
    bounded API pagination, orphan-dossier audit access and fail-closed
-   observation identity collisions.
+   observation identity collisions. Require culinary-science registry v11 and
+   culinary-commerce registry v5, exact 2026-08-06 evidence chronology and
+   evidence-class alignment with each source type.
 4. Require the public read-model integrity tests to prove
    recursive canonical hashing, exclusion of the top-level `digest` field,
    `hash_equals` verification and fail-closed handling of missing, malformed,
@@ -113,9 +115,11 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    Require the four 1.9.0 additions to have exact product codes, prices, one
    unit of opening stock, disabled backorders, image hashes, relations and
    dated market evidence. Confirm all 32 earlier products keep their current
-   operational stock rather than being reset. Confirm the five 1.10.0 planning
-   offers remain private drafts, zero new offers are active and price-basis
-   coverage is exactly 41 of 41 product identities.
+   operational stock rather than being reset. Confirm all 17 planning offers
+   remain private drafts, all 12 new candidates have planning stock zero and no
+   WooCommerce code, zero new offers are active and price-basis coverage is
+   exactly 53 of 53 product identities. Confirm only the exact explicit
+   `public_market_projection=public` value can enter the public projection.
 8. Build twice and require identical bytes:
 
    `python scripts/build-plugin-zip.py --verify-reproducible`

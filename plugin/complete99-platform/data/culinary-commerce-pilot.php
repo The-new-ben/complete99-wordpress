@@ -322,6 +322,27 @@ $listings = array(
 	),
 );
 
+$public_market_projection_keys = array(
+	'rishiri-kombu-100g',
+	'honkarebushi-belly-200g',
+	'fukumitsuya-hon-mirin-3y-720ml',
+	'fukumitsuya-hon-mirin-10y-720ml',
+	'yamaroku-tsurubishio-500ml',
+	'fresh-japanese-wasabi-250g',
+	'kito-yuzu-juice-100ml',
+	'kito-yuzu-juice-720ml',
+	'hagane-zame-large',
+);
+foreach ( $listings as &$public_market_listing ) {
+	$public_market_listing['attributes']['public_market_projection'] = in_array( $public_market_listing['key'], $public_market_projection_keys, true )
+		? 'public'
+		: 'held';
+}
+unset( $public_market_listing );
+
+$c99_japanese_premium_commerce = require __DIR__ . '/culinary-commerce/japanese-premium-market-tranche.php';
+$listings = array_merge( $listings, $c99_japanese_premium_commerce['listings'] );
+
 $products = array();
 $variants = array();
 $skus = array();
@@ -420,6 +441,7 @@ foreach ( $listings as $listing ) {
 		'supersedes_id'        => '',
 	);
 }
+$evidence_artifacts[] = $c99_japanese_premium_commerce['fx_evidence_artifact'];
 
 $bundle_component = static function ( $sku_id ) {
 	return array(
@@ -432,6 +454,7 @@ $bundle_component = static function ( $sku_id ) {
 };
 
 $draft_channel_offer = static function ( $key, $sku_id, $price_minor, $evidence_artifact_id, $category_he, $category_en, $subcategory_he, $subcategory_en, $food_tags, $allergens = array() ) use ( $c99_commerce_text ) {
+	$evidence_artifact_ids = is_array( $evidence_artifact_id ) ? $evidence_artifact_id : array( $evidence_artifact_id );
 	return array(
 		'id'                      => 'offer-plan-' . $key . '-il-web-v1',
 		'sku_id'                  => $sku_id,
@@ -452,7 +475,7 @@ $draft_channel_offer = static function ( $key, $sku_id, $price_minor, $evidence_
 		'woo_product_code'        => '',
 		'landed_cost_scenario_id' => '',
 		'margin_scenario_id'      => '',
-		'evidence_artifact_ids'   => array( $evidence_artifact_id ),
+		'evidence_artifact_ids'   => $evidence_artifact_ids,
 		'valid_from'              => '',
 		'valid_until'             => '',
 		'kiosk_projection'        => array(
@@ -475,12 +498,26 @@ $draft_channel_offers = array(
 	$draft_channel_offer( 'kito-yuzu-juice-720ml', 'sku-kito-yuzu-juice-720ml', 19900, 'evidence-kito-yuzu-juice-720ml-20260806', 'המזווה היפני', 'Japanese pantry', 'יוזו והדרים', 'Yuzu and citrus', array( 'yuzu', 'citrus', 'seasoning' ) ),
 	$draft_channel_offer( 'umezawa-hangiri-36cm', 'sku-umezawa-hangiri-36cm', 64900, 'evidence-umezawa-hangiri-36cm-20260806', 'ציוד מקצועי', 'Professional equipment', 'כלי אורז וסושי', 'Rice and sushi tools', array( 'hangiri', 'sushi', 'rice-tools' ) ),
 );
+foreach ( $c99_japanese_premium_commerce['offer_configs'] as $premium_offer_config ) {
+	$draft_channel_offers[] = $draft_channel_offer(
+		$premium_offer_config['key'],
+		$premium_offer_config['sku_id'],
+		$premium_offer_config['price_minor'],
+		$premium_offer_config['evidence_artifact_ids'],
+		$premium_offer_config['category_he'],
+		$premium_offer_config['category_en'],
+		$premium_offer_config['subcategory_he'],
+		$premium_offer_config['subcategory_en'],
+		$premium_offer_config['food_tags'],
+		$premium_offer_config['allergens']
+	);
+}
 
 return array(
 	'schema'                     => 'complete99-culinary-commerce-registry/v2',
-	'version'                    => 'japanese-commerce-pilot-2026.08.06.v4',
+	'version'                    => 'japanese-commerce-pilot-2026.08.06.v5',
 	'generated_at'               => '2026-08-06',
-	'knowledge_registry_version' => 'japanese-pilot-2026.08.06.v10',
+	'knowledge_registry_version' => 'japanese-pilot-2026.08.06.v11',
 	'controlled_vocabulary'      => array(
 		'product_states'           => array( 'research_candidate', 'verified_product', 'active', 'retired' ),
 		'variant_states'           => array( 'research_candidate', 'verified_variant', 'active', 'retired' ),
@@ -511,62 +548,62 @@ return array(
 		'price_bases'              => array( 'gross_tax_inclusive', 'tax_exclusive', 'net_revenue' ),
 		'integration_consumer_states' => array( 'contract_required', 'active', 'disabled' ),
 	),
-	'countries'                  => array(
+	'countries'                  => array_merge( array(
 		array( 'id' => 'country-il', 'iso2' => 'IL', 'name' => $c99_commerce_text( 'ישראל', 'Israel' ) ),
 		array( 'id' => 'country-jp', 'iso2' => 'JP', 'name' => $c99_commerce_text( 'יפן', 'Japan' ) ),
 		array( 'id' => 'country-us', 'iso2' => 'US', 'name' => $c99_commerce_text( 'ארצות הברית', 'United States' ) ),
 		array( 'id' => 'country-gb', 'iso2' => 'GB', 'name' => $c99_commerce_text( 'בריטניה', 'United Kingdom' ) ),
-	),
-	'currencies'                 => array(
+	), $c99_japanese_premium_commerce['countries'] ),
+	'currencies'                 => array_merge( array(
 		array( 'id' => 'currency-ils', 'code' => 'ILS', 'minor_unit_digits' => 2 ),
 		array( 'id' => 'currency-jpy', 'code' => 'JPY', 'minor_unit_digits' => 0 ),
 		array( 'id' => 'currency-usd', 'code' => 'USD', 'minor_unit_digits' => 2 ),
 		array( 'id' => 'currency-gbp', 'code' => 'GBP', 'minor_unit_digits' => 2 ),
-	),
-	'locales'                    => array(
+	), $c99_japanese_premium_commerce['currencies'] ),
+	'locales'                    => array_merge( array(
 		array( 'id' => 'locale-he-il', 'bcp47' => 'he-IL', 'language_code' => 'he', 'country_id' => 'country-il', 'label' => $c99_commerce_text( 'עברית ישראל', 'Hebrew, Israel' ), 'content_state' => 'reviewed_bilingual', 'path_prefix' => '' ),
 		array( 'id' => 'locale-en-il', 'bcp47' => 'en-IL', 'language_code' => 'en', 'country_id' => 'country-il', 'label' => $c99_commerce_text( 'אנגלית ישראל', 'English, Israel' ), 'content_state' => 'reviewed_bilingual', 'path_prefix' => '/en/' ),
 		array( 'id' => 'locale-ja-jp', 'bcp47' => 'ja-JP', 'language_code' => 'ja', 'country_id' => 'country-jp', 'label' => $c99_commerce_text( 'יפנית יפן', 'Japanese, Japan' ), 'content_state' => 'source_language', 'path_prefix' => '' ),
 		array( 'id' => 'locale-en-us', 'bcp47' => 'en-US', 'language_code' => 'en', 'country_id' => 'country-us', 'label' => $c99_commerce_text( 'אנגלית ארצות הברית', 'English, United States' ), 'content_state' => 'source_language', 'path_prefix' => '' ),
 		array( 'id' => 'locale-en-gb', 'bcp47' => 'en-GB', 'language_code' => 'en', 'country_id' => 'country-gb', 'label' => $c99_commerce_text( 'אנגלית בריטניה', 'English, United Kingdom' ), 'content_state' => 'source_language', 'path_prefix' => '' ),
-	),
-	'tax_zones'                  => array(
+	), $c99_japanese_premium_commerce['locales'] ),
+	'tax_zones'                  => array_merge( array(
 		array( 'id' => 'tax-zone-il-research', 'country_id' => 'country-il', 'state' => 'review_required', 'basis' => $c99_commerce_text( 'סיווג מס, מע״מ ומכס יאומתו לפי ה-SKU ומסלול היבוא לפני הצעת מכירה.', 'Tax, VAT and customs treatment require SKU-level and import-route review before a sell offer.' ), 'evidence_source_ids' => array(), 'review_at' => '2026-09-06' ),
 		array( 'id' => 'tax-zone-jp-observation', 'country_id' => 'country-jp', 'state' => 'review_required', 'basis' => $c99_commerce_text( 'סטטוס המס נשמר בכל תצפית פריט ואינו מוכלל לשוק כולו.', 'Tax status is retained per item observation and is not generalized to the entire market.' ), 'evidence_source_ids' => array( 'rishiri-kombu-100g-listing-2026', 'yamaroku-product-listing-2026', 'kito-yuzu-juice-100ml-listing-2026', 'kito-yuzu-juice-720ml-listing-2026' ), 'review_at' => '2026-09-06' ),
 		array( 'id' => 'tax-zone-us-observation', 'country_id' => 'country-us', 'state' => 'unknown', 'basis' => $c99_commerce_text( 'המס הסופי לא היה גלוי בתצפיות ולכן אין הנחת מס לשוק.', 'Final tax was not visible in the observations, so no market-wide tax assumption is made.' ), 'evidence_source_ids' => array( 'honkarebushi-200g-listing-2026', 'fukumitsuya-hon-mirin-3y-listing-2026', 'fukumitsuya-hon-mirin-10y-listing-2026', 'umezawa-hangiri-36cm-listing-2026' ), 'review_at' => '2026-09-06' ),
 		array( 'id' => 'tax-zone-gb-observation', 'country_id' => 'country-gb', 'state' => 'review_required', 'basis' => $c99_commerce_text( 'VAT כלול נצפה בפריטים המדויקים בלבד ואינו קובע טיפול מס להצעה אחרת.', 'VAT included was observed only on the exact items and does not determine tax treatment for another offer.' ), 'evidence_source_ids' => array( 'fresh-japanese-wasabi-250g-listing-2026', 'hagane-zame-large-listing-2026' ), 'review_at' => '2026-09-06' ),
-	),
-	'markets'                    => array(
+	), $c99_japanese_premium_commerce['tax_zones'] ),
+	'markets'                    => array_merge( array(
 		array( 'id' => 'market-il-launch', 'label' => $c99_commerce_text( 'שוק ההשקה בישראל', 'Israel launch market' ), 'country_id' => 'country-il', 'currency_id' => 'currency-ils', 'locale_ids' => array( 'locale-he-il', 'locale-en-il' ), 'tax_zone_ids' => array( 'tax-zone-il-research' ), 'seller_of_record_id' => '', 'fulfillment_region_ids' => array(), 'purpose' => 'launch_preparation', 'state' => 'launch_preparation' ),
 		array( 'id' => 'market-jp-source', 'label' => $c99_commerce_text( 'שוק מקור יפן', 'Japan source market' ), 'country_id' => 'country-jp', 'currency_id' => 'currency-jpy', 'locale_ids' => array( 'locale-ja-jp' ), 'tax_zone_ids' => array( 'tax-zone-jp-observation' ), 'seller_of_record_id' => '', 'fulfillment_region_ids' => array(), 'purpose' => 'source_price_observation', 'state' => 'source_observation' ),
 		array( 'id' => 'market-us-source', 'label' => $c99_commerce_text( 'שוק מקור ארצות הברית', 'United States source market' ), 'country_id' => 'country-us', 'currency_id' => 'currency-usd', 'locale_ids' => array( 'locale-en-us' ), 'tax_zone_ids' => array( 'tax-zone-us-observation' ), 'seller_of_record_id' => '', 'fulfillment_region_ids' => array(), 'purpose' => 'source_price_observation', 'state' => 'source_observation' ),
 		array( 'id' => 'market-gb-source', 'label' => $c99_commerce_text( 'שוק מקור בריטניה', 'United Kingdom source market' ), 'country_id' => 'country-gb', 'currency_id' => 'currency-gbp', 'locale_ids' => array( 'locale-en-gb' ), 'tax_zone_ids' => array( 'tax-zone-gb-observation' ), 'seller_of_record_id' => '', 'fulfillment_region_ids' => array(), 'purpose' => 'source_price_observation', 'state' => 'source_observation' ),
-	),
+	), $c99_japanese_premium_commerce['markets'] ),
 	'channels'                   => array(
 		array( 'id' => 'channel-woo-web-il', 'label' => $c99_commerce_text( 'חנות WooCommerce באתר', 'WooCommerce web store' ), 'channel_type' => 'web', 'market_ids' => array( 'market-il-launch' ), 'catalog_authority' => 'woocommerce', 'price_authority' => 'woocommerce', 'inventory_authority' => 'woocommerce', 'order_authority' => 'woocommerce', 'hierarchy_depth' => 6, 'connector_profile_id' => 'connector-woocommerce-internal', 'state' => 'configured_no_offers' ),
 		array( 'id' => 'channel-myshop-kiosk-il', 'label' => $c99_commerce_text( 'קיוסק מגע MyShop', 'MyShop touch kiosk' ), 'channel_type' => 'kiosk', 'market_ids' => array( 'market-il-launch' ), 'catalog_authority' => 'woocommerce', 'price_authority' => 'woocommerce', 'inventory_authority' => 'woocommerce', 'order_authority' => 'woocommerce', 'hierarchy_depth' => 2, 'connector_profile_id' => 'connector-myshop-contract-pending', 'state' => 'contract_required' ),
 		array( 'id' => 'channel-myshop-pos-il', 'label' => $c99_commerce_text( 'קופת MyShop', 'MyShop POS' ), 'channel_type' => 'pos', 'market_ids' => array( 'market-il-launch' ), 'catalog_authority' => 'woocommerce', 'price_authority' => 'woocommerce', 'inventory_authority' => 'woocommerce', 'order_authority' => 'woocommerce', 'hierarchy_depth' => 2, 'connector_profile_id' => 'connector-myshop-contract-pending', 'state' => 'contract_required' ),
 		array( 'id' => 'channel-woo-b2b-il', 'label' => $c99_commerce_text( 'ערוץ B2B ב-WooCommerce', 'WooCommerce B2B channel' ), 'channel_type' => 'b2b', 'market_ids' => array( 'market-il-launch' ), 'catalog_authority' => 'woocommerce', 'price_authority' => 'woocommerce', 'inventory_authority' => 'woocommerce', 'order_authority' => 'woocommerce', 'hierarchy_depth' => 6, 'connector_profile_id' => 'connector-woocommerce-internal', 'state' => 'configured_no_offers' ),
 	),
-	'sellers'                    => array(
+	'sellers'                    => array_merge( array(
 		array( 'id' => 'seller-rishiri-kombu-direct', 'name' => $c99_commerce_text( 'החנות הישירה Rishiri Kombu', 'Rishiri Kombu direct shop' ), 'seller_type' => 'producer_retailer', 'country_id' => 'country-jp', 'science_entity_id' => '', 'legal_identity_state' => 'listing_named', 'source_ids' => array( 'rishiri-kombu-100g-listing-2026' ), 'status' => 'market_source_only' ),
-		array( 'id' => 'seller-japanese-taste', 'name' => $c99_commerce_text( 'ג׳פניז טייסט', 'Japanese Taste' ), 'seller_type' => 'retailer', 'country_id' => 'country-jp', 'science_entity_id' => '', 'legal_identity_state' => 'listing_named', 'source_ids' => array( 'honkarebushi-200g-listing-2026', 'fukumitsuya-hon-mirin-3y-listing-2026', 'fukumitsuya-hon-mirin-10y-listing-2026', 'umezawa-hangiri-36cm-listing-2026' ), 'status' => 'market_source_only' ),
+		array( 'id' => 'seller-japanese-taste', 'name' => $c99_commerce_text( 'ג׳פניז טייסט', 'Japanese Taste' ), 'seller_type' => 'retailer', 'country_id' => 'country-jp', 'science_entity_id' => '', 'legal_identity_state' => 'listing_named', 'source_ids' => array_merge( array( 'honkarebushi-200g-listing-2026', 'fukumitsuya-hon-mirin-3y-listing-2026', 'fukumitsuya-hon-mirin-10y-listing-2026', 'umezawa-hangiri-36cm-listing-2026' ), $c99_japanese_premium_commerce['seller_source_extensions']['seller-japanese-taste'] ), 'status' => 'market_source_only' ),
 		array( 'id' => 'seller-yamaroku-direct', 'name' => $c99_commerce_text( 'יאמארוקו סויה', 'Yamaroku Soy Sauce' ), 'seller_type' => 'producer_retailer', 'country_id' => 'country-jp', 'science_entity_id' => 'producer-yamaroku-shoyu', 'legal_identity_state' => 'listing_named', 'source_ids' => array( 'yamaroku-product-listing-2026' ), 'status' => 'market_source_only' ),
 		array( 'id' => 'seller-wasabi-company-gb', 'name' => $c99_commerce_text( 'דה וואסבי קומפני', 'The Wasabi Company' ), 'seller_type' => 'retailer', 'country_id' => 'country-gb', 'science_entity_id' => '', 'legal_identity_state' => 'listing_named', 'source_ids' => array( 'fresh-japanese-wasabi-250g-listing-2026', 'hagane-zame-large-listing-2026' ), 'status' => 'market_source_only' ),
 		array( 'id' => 'seller-ogon-no-mura', 'name' => $c99_commerce_text( 'אוגון נו מורה', 'Ogon no Mura' ), 'seller_type' => 'producer_retailer', 'country_id' => 'country-jp', 'science_entity_id' => '', 'legal_identity_state' => 'listing_named', 'source_ids' => array( 'kito-yuzu-juice-100ml-listing-2026', 'kito-yuzu-juice-720ml-listing-2026' ), 'status' => 'market_source_only' ),
-	),
-	'brands'                     => array(
+	), $c99_japanese_premium_commerce['sellers'] ),
+	'brands'                     => array_merge( array(
 		array( 'id' => 'brand-fukumitsuya', 'name' => $c99_commerce_text( 'פוקומיצויה', 'Fukumitsuya' ), 'owner_seller_id' => '', 'identity_state' => 'listing_named', 'source_ids' => array( 'fukumitsuya-hon-mirin-3y-listing-2026', 'fukumitsuya-hon-mirin-10y-listing-2026' ) ),
 		array( 'id' => 'brand-yamaroku', 'name' => $c99_commerce_text( 'יאמארוקו', 'Yamaroku' ), 'owner_seller_id' => 'seller-yamaroku-direct', 'identity_state' => 'listing_named', 'source_ids' => array( 'yamaroku-product-listing-2026' ) ),
 		array( 'id' => 'brand-umezawa', 'name' => $c99_commerce_text( 'אומזאווה', 'Umezawa' ), 'owner_seller_id' => '', 'identity_state' => 'listing_named', 'source_ids' => array( 'umezawa-hangiri-36cm-listing-2026' ) ),
 		array( 'id' => 'brand-yamamoto-foods', 'name' => $c99_commerce_text( 'יממוטו פודס', 'Yamamoto Foods' ), 'owner_seller_id' => '', 'identity_state' => 'listing_named', 'source_ids' => array( 'hagane-zame-large-listing-2026' ) ),
-	),
-	'manufacturers'              => array(
+	), $c99_japanese_premium_commerce['brands'] ),
+	'manufacturers'              => array_merge( array(
 		array( 'id' => 'manufacturer-fukumitsuya', 'name' => $c99_commerce_text( 'פוקומיצויה', 'Fukumitsuya' ), 'seller_id' => '', 'country_id' => 'country-jp', 'science_entity_id' => '', 'identity_state' => 'listing_named', 'source_ids' => array( 'fukumitsuya-hon-mirin-3y-listing-2026', 'fukumitsuya-hon-mirin-10y-listing-2026' ) ),
 		array( 'id' => 'manufacturer-yamaroku', 'name' => $c99_commerce_text( 'יאמארוקו סויה', 'Yamaroku Soy Sauce' ), 'seller_id' => 'seller-yamaroku-direct', 'country_id' => 'country-jp', 'science_entity_id' => 'producer-yamaroku-shoyu', 'identity_state' => 'listing_named', 'source_ids' => array( 'yamaroku-product-listing-2026' ) ),
 		array( 'id' => 'manufacturer-umezawa', 'name' => $c99_commerce_text( 'אומזאווה', 'Umezawa' ), 'seller_id' => '', 'country_id' => 'country-jp', 'science_entity_id' => '', 'identity_state' => 'listing_named', 'source_ids' => array( 'umezawa-hangiri-36cm-listing-2026' ) ),
 		array( 'id' => 'manufacturer-yamamoto-foods', 'name' => $c99_commerce_text( 'יממוטו פודס', 'Yamamoto Foods' ), 'seller_id' => '', 'country_id' => 'country-jp', 'science_entity_id' => '', 'identity_state' => 'listing_named', 'source_ids' => array( 'hagane-zame-large-listing-2026' ) ),
-	),
+	), $c99_japanese_premium_commerce['manufacturers'] ),
 	'products'                   => $products,
 	'variants'                   => $variants,
 	'skus'                       => $skus,
@@ -576,7 +613,7 @@ return array(
 	'channel_offers'             => $draft_channel_offers,
 	'landed_cost_scenarios'      => array(),
 	'margin_scenarios'           => array(),
-	'bundles'                    => array(
+	'bundles'                    => array_merge( array(
 		array(
 			'id'                    => 'bundle-dashi-foundation-draft',
 			'name'                  => $c99_commerce_text( 'ערכת יסודות דאשי', 'Dashi foundations bundle' ),
@@ -613,14 +650,14 @@ return array(
 			'evidence_artifact_ids' => array( 'evidence-fresh-japanese-wasabi-250g-20260806', 'evidence-hagane-zame-large-20260806' ),
 			'review_at'             => '2026-09-06',
 		),
-	),
-	'merchandising_edges'        => array(
+	), $c99_japanese_premium_commerce['bundles'] ),
+	'merchandising_edges'        => array_merge( array(
 		array( 'id' => 'edge-mirin-3y-to-10y', 'type' => 'upsell', 'source_sku_id' => 'sku-fukumitsuya-hon-mirin-3y-720ml', 'target_sku_id' => 'sku-fukumitsuya-hon-mirin-10y-720ml', 'reason' => $c99_commerce_text( 'אותו יצרן ואותו נפח עם תקופת הבשלה ארוכה יותר.', 'The same maker and volume with a longer maturation period.' ), 'evidence_artifact_ids' => array( 'evidence-fukumitsuya-hon-mirin-3y-720ml-20260806', 'evidence-fukumitsuya-hon-mirin-10y-720ml-20260806' ), 'state' => 'draft' ),
 		array( 'id' => 'edge-yuzu-100-to-720', 'type' => 'upsell', 'source_sku_id' => 'sku-kito-yuzu-juice-100ml', 'target_sku_id' => 'sku-kito-yuzu-juice-720ml', 'reason' => $c99_commerce_text( 'נפח מקצועי גדול יותר עם מחיר מנורמל נמוך יותר בתצפית המקור.', 'A larger professional format with a lower normalized source-observation price.' ), 'evidence_artifact_ids' => array( 'evidence-kito-yuzu-juice-100ml-20260806', 'evidence-kito-yuzu-juice-720ml-20260806' ), 'state' => 'draft' ),
 		array( 'id' => 'edge-kombu-to-katsuobushi', 'type' => 'cross_sell', 'source_sku_id' => 'sku-rishiri-kombu-100g', 'target_sku_id' => 'sku-honkarebushi-belly-200g', 'reason' => $c99_commerce_text( 'שני חומרי גלם משלימים לבניית דאשי קלאסי.', 'Complementary ingredients for building classical dashi.' ), 'evidence_artifact_ids' => array( 'evidence-rishiri-kombu-100g-20260806', 'evidence-honkarebushi-belly-200g-20260806' ), 'state' => 'draft' ),
 		array( 'id' => 'edge-wasabi-to-grater', 'type' => 'cross_sell', 'source_sku_id' => 'sku-fresh-japanese-wasabi-250g', 'target_sku_id' => 'sku-hagane-zame-large', 'reason' => $c99_commerce_text( 'כלי ייעודי משלים את הכנת קנה השורש הטרי.', 'A dedicated tool complements preparation of the fresh rhizome.' ), 'evidence_artifact_ids' => array( 'evidence-fresh-japanese-wasabi-250g-20260806', 'evidence-hagane-zame-large-20260806' ), 'state' => 'draft' ),
 		array( 'id' => 'edge-shoyu-to-wasabi', 'type' => 'cross_sell', 'source_sku_id' => 'sku-yamaroku-tsurubishio-500ml', 'target_sku_id' => 'sku-fresh-japanese-wasabi-250g', 'reason' => $c99_commerce_text( 'צמד תיבול בעל שימוש קולינרי משלים בהגשת סושי וסשימי.', 'A complementary seasoning pair for sushi and sashimi service.' ), 'evidence_artifact_ids' => array( 'evidence-yamaroku-tsurubishio-500ml-20260806', 'evidence-fresh-japanese-wasabi-250g-20260806' ), 'state' => 'draft' ),
-	),
+	), $c99_japanese_premium_commerce['merchandising_edges'] ),
 	'connector_profiles'         => array(
 		array(
 			'id'                   => 'connector-woocommerce-internal',

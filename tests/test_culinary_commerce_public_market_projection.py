@@ -47,12 +47,37 @@ function is_wp_error($value) {{ return $value instanceof WP_Error; }}
 function wp_json_encode($value, $flags = 0) {{ return json_encode($value, $flags); }}
 require '{science_class}';
 require '{commerce_class}';
+
+function c99_projection_for_variant_policy($mode) {{
+    $registry = Complete99_Culinary_Commerce::registry(true);
+    foreach ($registry['variants'] as &$variant) {{
+        if ('variant-rishiri-kombu-100g' !== $variant['id']) {{ continue; }}
+        if ('missing' === $mode) {{
+            unset($variant['attributes']['public_market_projection']);
+        }} else {{
+            $variant['attributes']['public_market_projection'] = $mode;
+        }}
+    }}
+    unset($variant);
+    $cache = new ReflectionProperty(Complete99_Culinary_Commerce::class, 'registry_cache');
+    $cache->setAccessible(true);
+    $cache->setValue(null, $registry);
+    $rows = Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-kombu', 'en');
+    $cache->setValue(null, null);
+    return $rows;
+}}
+
 $result = array(
+    'policy_explicit_public' => c99_projection_for_variant_policy('public'),
+    'policy_missing' => c99_projection_for_variant_policy('missing'),
+    'policy_invalid' => c99_projection_for_variant_policy('unexpected'),
+    'policy_held' => c99_projection_for_variant_policy('held'),
     'kombu_he' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-kombu', 'he'),
     'kombu_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-kombu', 'en'),
     'shoyu_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-kioke-shoyu', 'en'),
     'wasabi_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-fresh-wasabi', 'en'),
     'yuzu_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-kito-yuzu', 'en'),
+    'yakinori_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-yakinori', 'en'),
     'hub_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('hub-japanese-ingredients', 'en'),
     'missing_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-not-present', 'en'),
     'invalid_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('../private', 'en'),
@@ -142,7 +167,16 @@ def test_projection_returns_all_dated_variants_for_linked_entity(projection):
     assert {row["normalized_unit"] for row in yuzu} == {"l"}
 
 
+def test_projection_policy_is_explicit_and_fail_closed(projection):
+    assert projection["policy_explicit_public"] == projection["kombu_en"]
+    assert len(projection["policy_explicit_public"]) == 1
+    assert projection["policy_missing"] == []
+    assert projection["policy_invalid"] == []
+    assert projection["policy_held"] == []
+
+
 def test_projection_fails_closed_for_unlinked_or_invalid_entity(projection):
+    assert projection["yakinori_en"] == []
     assert projection["hub_en"] == []
     assert projection["missing_en"] == []
     assert projection["invalid_en"] == []

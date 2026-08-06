@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 16:48:48"
+RELEASE_LAST_UPDATED = "2026-08-06 21:50:30"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,13 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Added 12 source-bound Japanese premium pantry and professional-tool candidates, eight knowledge subjects, five draft bundles and nine draft merchandising relationships.</li>"
+                "<li>Expanded Entity Studio to 144 subjects and 53 product identities with 36 live WooCommerce prices, 17 private planning prices and complete 53 of 53 price-basis coverage.</li>"
+                "<li>Made public source-market projection fail closed so only the exact explicit value public is eligible, while all new candidates remain held with planning stock zero and no WooCommerce code or active offer.</li>"
+                "<li>Preserved the exact 36-product public store, 22 public science entities, all public routes, live stock, POS behavior and disabled payment state unchanged.</li>"
+                "</ul>"
+                "<h4>1.10.0</h4>"
                 "<ul>"
                 "<li>Added a private administrator-only Entity Studio inside WordPress for modular culinary, scientific and commercial dossiers.</li>"
                 "<li>Added five evidence-bound private draft planning offers, bringing commercial price identity coverage to 41 of 41 products while activating no new offers.</li>"

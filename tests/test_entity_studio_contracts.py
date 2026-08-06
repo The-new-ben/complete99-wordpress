@@ -593,8 +593,8 @@ def test_subject_index_joins_science_catalog_commerce_and_price_evidence():
     )
     result = json.loads(payload)
 
-    assert result["subject_count"] == 114
-    assert result["product_count"] == 41
+    assert result["subject_count"] == 144
+    assert result["product_count"] == 53
     assert result["observation_count"] >= 46
     assert result["rice"]["domain"] == "catalog"
     assert result["rice"]["current_price_minor"] == 14900

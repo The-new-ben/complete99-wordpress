@@ -554,8 +554,8 @@ $sources = array(
 	'bank-israel-exchange-rates-20260806' => array(
 		'type'         => 'official_government',
 		'publisher'    => 'Bank of Israel',
-		'title'        => 'Representative exchange rates, August 6 2026',
-		'url'          => 'https://www.boi.org.il/roles/markets/exchangerates/',
+		'title'        => 'Representative exchange-rates API, official update August 6 2026',
+		'url'          => 'https://boi.org.il/PublicApi/GetExchangeRates',
 		'published_at' => '2026-08-06',
 		'retrieved_at' => '2026-08-06',
 	),
@@ -2145,6 +2145,58 @@ $entities[] = $retail_listing( array(
 	'cross_sell_ids' => array( 'ingredient-fresh-wasabi' ), 'prompt_en' => 'Private editorial cutout specification for one unbranded large stainless steel wasabi grater, 26 by 11 cm, neutral background, no copied packaging, logos or text.',
 ) );
 
+$c99_japanese_premium_tranche = require __DIR__ . '/culinary-science/collections/japanese-premium-market-tranche.php';
+foreach ( $c99_japanese_premium_tranche['entities'] as &$premium_dated_entity ) {
+	$premium_dated_entity['trust']['substantive_updated_at'] = '2026-08-06';
+	$premium_dated_entity['review']['reviewed_at'] = '2026-08-06';
+	foreach ( $premium_dated_entity['relations'] as &$premium_dated_relation ) {
+		$premium_dated_relation['valid_from'] = '2026-08-06';
+	}
+	unset( $premium_dated_relation );
+}
+unset( $premium_dated_entity );
+foreach ( $c99_japanese_premium_tranche['enrichments'] as &$premium_dated_enrichment ) {
+	foreach ( $premium_dated_enrichment['relations'] as &$premium_dated_relation ) {
+		$premium_dated_relation['valid_from'] = '2026-08-06';
+	}
+	unset( $premium_dated_relation );
+}
+unset( $premium_dated_enrichment );
+foreach ( $c99_japanese_premium_tranche['sources'] as $premium_source_id => $premium_source ) {
+	if ( isset( $sources[ $premium_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Japanese premium tranche source ID: ' . $premium_source_id );
+	}
+	$sources[ $premium_source_id ] = $premium_source;
+}
+foreach ( $entities as &$premium_existing_entity ) {
+	if ( ! isset( $c99_japanese_premium_tranche['enrichments'][ $premium_existing_entity['id'] ] ) ) {
+		continue;
+	}
+	$premium_enrichment = $c99_japanese_premium_tranche['enrichments'][ $premium_existing_entity['id'] ];
+	$premium_existing_entity['facts'] = array_merge( $premium_existing_entity['facts'], $premium_enrichment['facts'] );
+	$premium_existing_entity['relations'] = array_merge( $premium_existing_entity['relations'], $premium_enrichment['relations'] );
+	$premium_existing_entity['trust']['substantive_updated_at'] = '2026-08-06';
+	$premium_existing_entity['review']['reviewed_at'] = '2026-08-06';
+}
+unset( $premium_existing_entity );
+$entities = array_merge( $entities, $c99_japanese_premium_tranche['entities'] );
+foreach ( $c99_japanese_premium_tranche['entities'] as $premium_tranche_entity ) {
+	if ( 'retail_listing' !== $premium_tranche_entity['type'] ) {
+		continue;
+	}
+	foreach ( $entities as &$premium_subject_entity ) {
+		if ( $premium_subject_entity['id'] !== $premium_tranche_entity['parent_id'] ) {
+			continue;
+		}
+		$premium_subject_entity['commerce']['business_model']['observation_entity_ids'][] = $premium_tranche_entity['id'];
+		$premium_subject_entity['commerce']['business_model']['observation_entity_ids'] = array_values(
+			array_unique( $premium_subject_entity['commerce']['business_model']['observation_entity_ids'] )
+		);
+		break;
+	}
+	unset( $premium_subject_entity );
+}
+
 /* A dated, non-public multi-listing price observation. */
 $yanagiba_measurement = array(
 	'kind'            => 'range',
@@ -2269,6 +2321,7 @@ $parent_overrides = array(
 	'institution-basque-culinary-center' => 'hub-global-culinary-institutions',
 	'market-observation-tsubaya-yanagiba-2026-08-06' => 'equipment-shop-tsubaya',
 );
+$parent_overrides = array_replace( $parent_overrides, $c99_japanese_premium_tranche['parent_overrides'] );
 foreach ( $entities as &$entity ) {
 	if ( in_array( $entity['id'], array( 'restaurant-myojaku', 'restaurant-nishiazabu-sushi-shin' ), true ) ) {
 		$entity['relations'][] = $c99_relation(
@@ -2430,6 +2483,7 @@ $section_owner_map = array(
 	'market-kappabashi-dougu' => 'guide-japanese-markets',
 	'equipment-shop-tsubaya' => 'guide-japanese-markets',
 );
+$section_owner_map = array_replace( $section_owner_map, $c99_japanese_premium_tranche['section_owner_map'] );
 
 $private_route_types = array( 'retail_listing', 'market_observation', 'guide_edition', 'restaurant', 'culinary_institution', 'producer', 'supplier' );
 foreach ( $entities as &$entity ) {
@@ -2754,7 +2808,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'japanese-pilot-2026.08.06.v10',
+	'version'       => 'japanese-pilot-2026.08.06.v11',
 	'generated_at'  => '2026-08-06',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',
