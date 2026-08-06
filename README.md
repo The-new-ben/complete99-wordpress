@@ -11,19 +11,19 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.3.14`. Production truth comes
+The source tree targets Complete99 Platform `1.4.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.3.14 provides:
+Release 1.4.0 provides:
 
 - Hebrew at the root and a mirrored English hierarchy under `/en/`;
 - exactly 12 public dish records and reciprocal bilingual dish pages;
-- exactly 26 owner-authorized WooCommerce ingredient products;
+- exactly 28 owner-authorized WooCommerce ingredient products;
 - one normal public WebP image for every product, without an archive label,
   disclaimer or unusual public treatment;
-- researched price evidence dated 2026-07-31 and an owner-authorized opening
-  retail price for every product;
+- researched price evidence dated between 2026-07-31 and 2026-08-06 and an
+  owner-authorized opening retail price for every product;
 - one unit of opening stock for every newly created product, managed by
   WooCommerce with backorders disabled;
 - durable product, price, image, taxonomy and dish-relation receipts;
@@ -48,6 +48,8 @@ Release 1.3.14 provides:
   source-market observations for the first reviewed Japanese entities;
 - an explicit `noindex,follow` gate for the museum preview until long-form
   editorial review is approved, with sitemap exclusion enforced independently;
+- reciprocal store and science links for the first active Japanese pantry
+  offers, using stable product-code anchors and safe public projections;
 - 44 by 44 CSS-pixel targets for museum breadcrumbs and evidence citations;
 - deterministic deployment, exact package verification, fail-closed recovery
   markers and independent live acceptance.

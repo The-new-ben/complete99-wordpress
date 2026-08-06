@@ -95,9 +95,9 @@ Registry:
 
 - `plugin/complete99-platform/data/generated-asset-manifest.php`
 
-The library contains 50 source PNG files and 50 matched WebP delivery files.
+The library contains 52 source PNG files and 52 matched WebP delivery files.
 They were created with OpenAI's built-in image generation between 2026-07-30
-and 2026-07-31 for Complete99. The set covers dishes, ingredient and product
+and 2026-08-06 for Complete99. The set covers dishes, ingredient and product
 references, kitchen preparation, group meals, knowledge-centre visuals, pantry
 architecture, and delivery concepts.
 

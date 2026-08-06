@@ -939,8 +939,8 @@ return array(
 	'store' => array(
 		'title'   => array( 'he' => 'המזווה של קומפלט 99', 'en' => 'The Complete99 pantry' ),
 		'excerpt' => array(
-			'he' => '26 מוצרי מזווה וחומרי גלם עם תמונה, מחיר, משקל, רכיבים, אלרגנים, מלאי והוספה לסל.',
-			'en' => 'Shop 26 pantry goods and ingredients with an image, price, weight, ingredients, allergens, stock and add-to-cart.',
+			'he' => '28 מוצרי מזווה וחומרי גלם עם תמונה, מחיר, משקל, רכיבים, אלרגנים, מלאי והוספה לסל.',
+			'en' => 'Shop 28 pantry goods and ingredients with an image, price, weight, ingredients, allergens, stock and add-to-cart.',
 		),
 		'content' => array(
 			'he' => $c99_consumer_page(
@@ -1118,7 +1118,7 @@ return array(
 					array(
 						'חנות המזווה',
 						array(
-							'המזווה מציג 26 מוצרים עם תמונה, מחיר, משקל, רכיבים, אלרגנים, אחסון ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
+							'המזווה מציג 28 מוצרים עם תמונה, מחיר, משקל, רכיבים, אלרגנים, אחסון ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
 							'סליקה אלקטרונית תיפתח לאחר חיבור ספק הסליקה. עד אז הסל משמש להכנת ההזמנה, והאישור הסופי נעשה בשיחה עם קומפלט 99 לאחר בדיקת המלאי ותנאי הקבלה.',
 						)
 					),
@@ -1157,7 +1157,7 @@ return array(
 					array(
 						'The pantry shop',
 						array(
-							'The pantry presents 26 products with an image, price, weight, ingredients, allergens, storage and stock. Products can be added to the cart, quantities changed and items removed.',
+							'The pantry presents 28 products with an image, price, weight, ingredients, allergens, storage and stock. Products can be added to the cart, quantities changed and items removed.',
 							'Electronic payment will open after the payment provider is connected. Until then, the cart prepares the order and final confirmation takes place in a call with Complete99 after stock and fulfilment are checked.',
 						)
 					),

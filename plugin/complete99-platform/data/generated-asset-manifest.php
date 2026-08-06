@@ -70,7 +70,7 @@ $c99_generated_asset = static function (
 
 $c99_generated_asset_manifest = array(
 	'schema'      => 'complete99-generated-asset-manifest/v1',
-	'reviewed_at' => '2026-07-31',
+	'reviewed_at' => '2026-08-06',
 	'assets'      => array(
 		$c99_generated_asset(
 			'c99-concept-condiment-trio-v01',
@@ -975,11 +975,49 @@ $c99_generated_asset_manifest = array(
 	),
 );
 
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-ingredient-rishiri-kombu-v01',
+	'rishiri-kombu',
+	'קומבו רישירי טבעי',
+	'Natural Rishiri kombu',
+	'ingredient',
+	'c99-ingredient-rishiri-kombu-evaluation-v01.png',
+	'30259469c6a3a6c8ec191c74c3dea72898c5df059082b4993eeebfd8a8deb54f',
+	'c99-ingredient-rishiri-kombu-evaluation-v01.webp',
+	'8bcc4e042fbed3cf12d3094e951faabbba40f884a3d79175292283a584a5c3bf',
+	1536,
+	1024,
+	'3:2',
+	array( 'ingredient-kombu' ),
+	array( 'product-rishiri-kombu-100g' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג אריזת ספק ממותגת.',
+	'Generic product photography generated for Complete99; no branded supplier packaging is depicted.'
+);
+
+$c99_generated_asset_manifest['assets'][] = $c99_generated_asset(
+	'c99-ingredient-katsuobushi-v01',
+	'honkarebushi-katsuobushi',
+	'בלוק קצואובושי הונקרבושי',
+	'Honkarebushi katsuobushi block',
+	'ingredient',
+	'c99-ingredient-katsuobushi-evaluation-v01.png',
+	'd2f37b6e4f1890a1fb1489ccbd8f6d9dd8fc2a7f92afeb7ce4041f9b5709edd4',
+	'c99-ingredient-katsuobushi-evaluation-v01.webp',
+	'a48c8adf8f92b0c425301ff5cfff502301af0babb059cf446aa100c1fdd91b8e',
+	1536,
+	1024,
+	'3:2',
+	array( 'ingredient-katsuobushi' ),
+	array( 'product-honkarebushi-200g' ),
+	'צילום מוצר גנרי שנוצר עבור Complete99 ואינו מציג אריזת ספק ממותגת.',
+	'Generic product photography generated for Complete99; no branded supplier packaging is depicted.'
+);
+
 /*
- * The owner explicitly approved these exact 26 generic ingredient visuals for
- * normal public catalog use on 2026-07-31. They remain illustrations rather
- * than branded supplier-pack photographs, but no public caveat, archive label
- * or special presentation is required or permitted.
+ * The owner explicitly approved the listed generic ingredient visuals for
+ * normal public catalog use on their recorded authorization dates. They remain
+ * illustrations rather than branded supplier-pack photographs, but no public
+ * caveat, archive label or special presentation is required or permitted.
  */
 $c99_public_catalog_assets = array(
 	'c99-ingredient-tahini-evaluation-v01.webp',
@@ -1008,7 +1046,13 @@ $c99_public_catalog_assets = array(
 	'c99-supply-olive-oil-evaluation-v01.webp',
 	'c99-supply-salt-pickles-evaluation-v01.webp',
 	'c99-ingredient-chicken-liver-evaluation-v01.webp',
+	'c99-ingredient-rishiri-kombu-evaluation-v01.webp',
+	'c99-ingredient-katsuobushi-evaluation-v01.webp',
 );
+
+$c99_public_catalog_asset_authorized_at = array_fill_keys( $c99_public_catalog_assets, '2026-07-31' );
+$c99_public_catalog_asset_authorized_at['c99-ingredient-rishiri-kombu-evaluation-v01.webp'] = '2026-08-06';
+$c99_public_catalog_asset_authorized_at['c99-ingredient-katsuobushi-evaluation-v01.webp'] = '2026-08-06';
 
 foreach ( $c99_generated_asset_manifest['assets'] as &$c99_asset_record ) {
 	if ( ! in_array( $c99_asset_record['filename'], $c99_public_catalog_assets, true ) ) {
@@ -1017,7 +1061,7 @@ foreach ( $c99_generated_asset_manifest['assets'] as &$c99_asset_record ) {
 	$c99_asset_record['review_state']          = 'owner_approved';
 	$c99_asset_record['usage_state']           = 'public';
 	$c99_asset_record['presentation_scope']    = 'public_catalog_illustration';
-	$c99_asset_record['owner_authorized_at']   = '2026-07-31';
+	$c99_asset_record['owner_authorized_at']   = $c99_public_catalog_asset_authorized_at[ $c99_asset_record['filename'] ];
 	$c99_asset_record['visual_caveat']         = array( 'he' => '', 'en' => '' );
 	$c99_asset_record['visual_caveats']        = array();
 	$c99_asset_record['rights']                = 'OpenAI generated for Complete99; owner-authorized public publication';

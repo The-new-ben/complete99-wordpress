@@ -47,16 +47,16 @@ class MarketCatalogContracts(unittest.TestCase):
         self.assertEqual(
             "complete99-catalog-product-seeds/v1", self.registry["schema"]
         )
-        self.assertEqual("2026-07-31", self.registry["registry_reviewed_at"])
+        self.assertEqual("2026-08-06", self.registry["registry_reviewed_at"])
         self.assertEqual("ILS", self.registry["currency"])
         self.assertEqual("private_market_benchmark", self.registry["price_scope"])
         self.assertEqual(1, self.registry["stock_policy"]["evaluation_quantity"])
         self.assertFalse(self.registry["stock_policy"]["public_stock_claim"])
         self.assertFalse(self.registry["stock_policy"]["public_sale"])
 
-    def test_all_26_products_have_unique_price_stock_and_sources(self):
-        self.assertEqual(26, len(self.products))
-        self.assertEqual(26, len(self.by_code))
+    def test_all_28_products_have_unique_price_stock_and_sources(self):
+        self.assertEqual(28, len(self.products))
+        self.assertEqual(28, len(self.by_code))
         for product in self.products:
             with self.subTest(product=product["product_code"]):
                 self.assertRegex(
@@ -80,7 +80,10 @@ class MarketCatalogContracts(unittest.TestCase):
                 parsed = urlparse(observation["source_url"])
                 self.assertEqual("https", parsed.scheme)
                 self.assertTrue(parsed.hostname)
-                self.assertEqual("2026-07-31", observation["checked_at"])
+                self.assertIn(
+                    observation["checked_at"],
+                    {"2026-07-31", "2026-08-06"},
+                )
                 self.assertGreater(observation["observed_price_ils"], 0)
                 self.assertGreaterEqual(
                     observation["range_high_ils"], observation["range_low_ils"]
@@ -96,6 +99,8 @@ class MarketCatalogContracts(unittest.TestCase):
             "product-ground-beef-1kg": 64.90,
             "product-olive-oil-750ml": 46.90,
             "product-chicken-liver-1kg": 24.90,
+            "product-rishiri-kombu-100g": 89.00,
+            "product-honkarebushi-200g": 219.00,
         }
         for code, price in expected.items():
             with self.subTest(product=code):
@@ -142,7 +147,7 @@ class MarketCatalogContracts(unittest.TestCase):
             / "generated"
         )
         bound = [item for item in self.products if item["image_asset"]]
-        self.assertEqual(26, len(bound))
+        self.assertEqual(28, len(bound))
         for product in bound:
             with self.subTest(product=product["product_code"]):
                 self.assertEqual(

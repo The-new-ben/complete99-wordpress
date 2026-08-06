@@ -521,6 +521,25 @@ body.c99-culinary-museum {
 	line-height: 1.65;
 }
 
+.c99-museum-offer {
+	border-color: rgba(41, 98, 69, .34);
+	background: linear-gradient(145deg, rgba(236, 247, 239, .98), rgba(255, 253, 248, .98));
+}
+
+.c99-museum-offer-price {
+	margin-bottom: 10px;
+	color: var(--c99-museum-forest);
+	font-size: 1.9rem !important;
+	font-weight: 900;
+	line-height: 1.1 !important;
+}
+
+.c99-museum-offer .c99-button {
+	width: 100%;
+	margin-top: 8px;
+	justify-content: center;
+}
+
 .c99-museum-market {
 	border-color: rgba(229, 184, 61, .55);
 	background:

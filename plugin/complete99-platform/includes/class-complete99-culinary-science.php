@@ -1592,6 +1592,16 @@ final class Complete99_Culinary_Science {
 			&& method_exists( 'Complete99_Culinary_Commerce', 'public_market_context_for_science_entity' ) ) {
 			$market_context = Complete99_Culinary_Commerce::public_market_context_for_science_entity( $entity['id'], $lang );
 		}
+		$offer = array();
+		if ( true === $entity['commerce']['public_offer_allowed'] && '' !== $entity['commerce']['woo_product_code'] ) {
+			$product_code = $entity['commerce']['woo_product_code'];
+			$store_path   = 'en' === $lang ? '/en/store/' : '/store/';
+			$offer = array(
+				'product_code' => $product_code,
+				'store_path'   => $store_path . '#c99-product-code-' . preg_replace( '/[^a-z0-9-]/', '', $product_code ),
+				'label'        => 'he' === $lang ? 'למוצר במזווה' : 'View in the pantry',
+			);
+		}
 
 		return array(
 			'id'           => $entity['id'],
@@ -1636,6 +1646,7 @@ final class Complete99_Culinary_Science {
 			'internal_links' => $internal_links,
 			'visual'       => $visual,
 			'market_context' => is_array( $market_context ) ? $market_context : array(),
+			'offer'        => $offer,
 			'safety_notes' => $safety,
 			'sources'      => $sources,
 			'trust'        => array(

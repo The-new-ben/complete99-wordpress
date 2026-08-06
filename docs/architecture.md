@@ -7,7 +7,7 @@ strict public and private surface split.
 
 1. **Public WordPress site**: a bilingual culinary consumer website for food,
    dishes, ingredients, traditions, practical guides, the restaurant story,
-   contact information, ordering continuation and a held pantry.
+   contact information, ordering continuation and a curated pantry.
 2. **Private WordPress control plane**: WooCommerce owns catalog identity, stock,
    carts and orders. The plugin owns the versioned culinary graph, evidence,
    publication gates, market observations, supplier and landed-cost models,
@@ -29,7 +29,7 @@ Large raw media streams may use purpose-built storage, and credentials stay in
 server-side secret stores. WordPress retains the canonical entity identity,
 evidence reference, authorization state and publication decision.
 
-Release 1.3.14 installs infrastructure only and does not install or assign
+Release 1.4.0 installs infrastructure only and does not install or assign
 Complete99 worker roles. Commerce order, refund, fulfilment and stock events use
 an unassigned private outbox until a later operating decision.
 

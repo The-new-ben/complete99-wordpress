@@ -67,6 +67,8 @@ CATALOG_PRODUCT_CODES = frozenset(
         "product-olive-oil-750ml",
         "product-pickles-brine-320g",
         "product-chicken-liver-1kg",
+        "product-rishiri-kombu-100g",
+        "product-honkarebushi-200g",
     }
 )
 _CATALOG_CAUSES_BY_STAGE = {
