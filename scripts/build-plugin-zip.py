@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 10:24:49"
+RELEASE_LAST_UPDATED = "2026-08-06 11:25:03"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,12 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Introduced the modular culinary-science v5 ownership and public-exposure contracts for safe multi-cuisine expansion.</li>"
+                "<li>Added a bilingual Japanese Foundations Lab with curated canonical links, accessible filters and collection schema.</li>"
+                "<li>Kept the new Lab outside search indexing while preserving strict separation from suppliers, costs, margins and private records.</li>"
+                "</ul>"
+                "<h4>1.6.1</h4>"
                 "<ul>"
                 "<li>Expanded the consumer breadcrumb and live cart-status links to the 44 by 44 CSS-pixel acceptance target.</li>"
                 "<li>Added release contracts for both corrected targets after live desktop, mobile and 200 percent zoom acceptance.</li>"

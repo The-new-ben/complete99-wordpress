@@ -14,16 +14,24 @@ PLUGIN = ROOT / "plugin" / "complete99-platform"
 BOOTSTRAP = PLUGIN / "complete99-platform.php"
 SCIENCE_CLASS = PLUGIN / "includes" / "class-complete99-culinary-science.php"
 SCIENCE_DATA = PLUGIN / "data" / "culinary-science-pilot.php"
+SCIENCE_FOUNDATIONS_COLLECTION = (
+    PLUGIN
+    / "data"
+    / "culinary-science"
+    / "collections"
+    / "japanese-foundations-lab.php"
+)
 PLATFORM_CLASS = PLUGIN / "includes" / "class-complete99-platform.php"
 REST_CLASS = PLUGIN / "includes" / "class-complete99-rest.php"
 REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
-EXPECTED_SCHEMA = "complete99-culinary-science-registry/v4"
-EXPECTED_VERSION = "japanese-pilot-2026.08.06.v8"
+EXPECTED_SCHEMA = "complete99-culinary-science-registry/v5"
+EXPECTED_VERSION = "japanese-pilot-2026.08.06.v9"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
+    "hub-japanese-foundations-lab",
     "hub-japanese-equipment",
     "hub-japanese-food-science",
     "hub-japanese-ingredients",
@@ -122,6 +130,10 @@ EXPECTED_CANONICAL_OWNERS = {
     "cuisine-japanese-washoku": (
         "cuisine",
         "/museum/japanese-culinary-science/",
+    ),
+    "hub-japanese-foundations-lab": (
+        "topic_hub",
+        "/museum/japanese-culinary-science/foundations/",
     ),
     "hub-global-culinary-institutions": (
         "topic_hub",
@@ -247,7 +259,7 @@ echo json_encode(array(
 
 
 @pytest.fixture(scope="module")
-def science_v4_contract_payload() -> dict:
+def science_v5_contract_payload() -> dict:
     plugin_path = _php_path(PLUGIN) + "/"
     class_path = _php_path(SCIENCE_CLASS)
     data_path = _php_path(SCIENCE_DATA)
@@ -637,6 +649,7 @@ echo json_encode(array(
         BOOTSTRAP,
         SCIENCE_CLASS,
         SCIENCE_DATA,
+        SCIENCE_FOUNDATIONS_COLLECTION,
         PLATFORM_CLASS,
         REST_CLASS,
         REVIEW_LAB,
@@ -664,7 +677,7 @@ def test_php_80_list_fallback_accepts_an_empty_list() -> None:
     ) in source
 
 
-def test_registry_v4_directly_validates_with_minimum_complete_pilot(
+def test_registry_v5_directly_validates_with_minimum_complete_pilot(
     science_payload: dict,
 ) -> None:
     assert science_payload["valid"], science_payload["validation_error"]
@@ -790,7 +803,7 @@ def test_wasabi_public_slice_has_owned_routes_sources_and_independent_offer_boun
 
 def test_public_culinary_test_gates_distinguish_dishes_recipes_and_noindex_guides(
     science_payload: dict,
-    science_v4_contract_payload: dict,
+    science_v5_contract_payload: dict,
 ) -> None:
     public_by_id = {
         entity["id"]: entity
@@ -812,7 +825,7 @@ def test_public_culinary_test_gates_distinguish_dishes_recipes_and_noindex_guide
         if requires_test:
             assert entity["review"]["culinary_test_status"] == "tested"
 
-    cases = science_v4_contract_payload["culinary_gate_cases"]
+    cases = science_v5_contract_payload["culinary_gate_cases"]
     assert cases["dish_without_test"] == {
         "valid": False,
         "code": "complete99_science_registry_invalid",
@@ -835,7 +848,7 @@ def test_public_culinary_test_gates_distinguish_dishes_recipes_and_noindex_guide
     }
 
 
-def test_v4_media_rights_and_taxonomy_shapes_are_complete(
+def test_v5_media_rights_and_taxonomy_shapes_are_complete(
     science_payload: dict,
 ) -> None:
     registry = science_payload["registry"]
@@ -877,10 +890,10 @@ def test_v4_media_rights_and_taxonomy_shapes_are_complete(
                 assert note["source_ids"], (entity["id"], note["code"])
 
 
-def test_v4_rights_compliance_and_taxonomy_mutations_fail_closed(
-    science_v4_contract_payload: dict,
+def test_v5_rights_compliance_and_taxonomy_mutations_fail_closed(
+    science_v5_contract_payload: dict,
 ) -> None:
-    mutations = science_v4_contract_payload["mutations"]
+    mutations = science_v5_contract_payload["mutations"]
 
     assert mutations["approved_without_cleared_rights"]["path"].endswith(
         ".visual.approved_without_cleared_rights"
@@ -901,9 +914,9 @@ def test_v4_rights_compliance_and_taxonomy_mutations_fail_closed(
 
 
 def test_public_graph_rejects_every_private_reference_class(
-    science_v4_contract_payload: dict,
+    science_v5_contract_payload: dict,
 ) -> None:
-    assert science_v4_contract_payload["graph_errors"] == {
+    assert science_v5_contract_payload["graph_errors"] == {
         "private_parent": (
             "registry.entities.ingredient-kombu.public_parent_private"
         ),
@@ -925,10 +938,10 @@ def test_public_graph_rejects_every_private_reference_class(
 
 
 def test_public_projection_omits_private_profiles_and_private_taxonomy(
-    science_v4_contract_payload: dict,
+    science_v5_contract_payload: dict,
 ) -> None:
-    assert science_v4_contract_payload["profile_candidate"]["valid"] is True
-    profile_projection = science_v4_contract_payload["profile_projection"]
+    assert science_v5_contract_payload["profile_candidate"]["valid"] is True
+    profile_projection = science_v5_contract_payload["profile_projection"]
     assert "cultural" in profile_projection["profiles"]
     assert "structural" not in profile_projection["profiles"]
     assert profile_projection["profiles"]["cultural"]["fact_ids"] == [
@@ -938,8 +951,8 @@ def test_public_projection_omits_private_profiles_and_private_taxonomy(
     for profile in profile_projection["profiles"].values():
         assert set(profile["fact_ids"]).issubset(public_fact_ids)
 
-    assert science_v4_contract_payload["taxonomy_candidate"]["valid"] is True
-    taxonomy = science_v4_contract_payload["taxonomy_projection"]["taxonomy"]
+    assert science_v5_contract_payload["taxonomy_candidate"]["valid"] is True
+    taxonomy = science_v5_contract_payload["taxonomy_projection"]["taxonomy"]
     assert taxonomy == {
         "category_path": ["world-cuisines", "japan"],
         "attributes": {"pa_flavor_profile": ["umami"]},

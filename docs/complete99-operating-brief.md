@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-06
-Status: bilingual culinary release 1.6.1, 12 dishes, 32-product store and public Japanese culinary-science preview
+Status: release 1.7.0 candidate, 12 dishes, 32-product store and bilingual Japanese Foundations Lab
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future

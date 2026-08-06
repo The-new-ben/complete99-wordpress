@@ -748,7 +748,7 @@ final class Complete99_Live_Catalog {
 				|| 'complete99-live-catalog-products/v1' !== ( $policy['schema'] ?? '' )
 				|| 'complete99-live-catalog-relations/v1' !== ( $relations['schema'] ?? '' )
 				|| 'complete99-generated-asset-manifest/v1' !== ( $asset_manifest['schema'] ?? '' )
-				|| 'complete99-culinary-science-registry/v4' !== ( $science_registry['schema'] ?? '' )
+				|| 'complete99-culinary-science-registry/v5' !== ( $science_registry['schema'] ?? '' )
 				|| 'ILS' !== ( $price_registry['currency'] ?? '' )
 				|| 'owner_authorized_opening_retail_price_informed_by_market_observation' !== ( $price_registry['price_scope'] ?? '' )
 				|| ! is_array( $price_registry['evidence'] ?? null )

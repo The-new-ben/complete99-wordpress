@@ -1,9 +1,16 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-06
-Release target: Complete99 Platform 1.6.1
+Release target: Complete99 Platform 1.7.0
 
-## Current 1.6.1 catalog boundary
+## Current 1.7.0 catalog boundary
+
+Release 1.7.0 preserves all 32 WooCommerce offers and introduces a modular
+Japanese Foundations Lab over the reviewed public science graph. It does not
+publish candidate supplier offers, landed costs, margins or future product
+prices. Those records remain private inputs for a later approved channel offer.
+The Lab remains noindex and does not change the canonical owner or commercial
+state of any member entity.
 
 Release 1.6.1 preserves the 1.6.0 catalog and adds the strict 44 by 44
 CSS-pixel target to the consumer breadcrumb and live cart-status links.

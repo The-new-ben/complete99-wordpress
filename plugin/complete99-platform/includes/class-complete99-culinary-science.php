@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * in the administrator-only editorial snapshot.
  */
 final class Complete99_Culinary_Science {
-	const REGISTRY_SCHEMA = 'complete99-culinary-science-registry/v4';
+	const REGISTRY_SCHEMA = 'complete99-culinary-science-registry/v5';
 	const REST_NAMESPACE  = 'complete99/v1';
 	const DATA_FILE       = 'culinary-science-pilot.php';
 
@@ -155,7 +155,7 @@ final class Complete99_Culinary_Science {
 		try {
 			self::assert_exact_keys(
 				$registry,
-				array( 'schema', 'version', 'generated_at', 'locales', 'surface_class', 'controlled_vocabulary', 'sources', 'entities' ),
+				array( 'schema', 'version', 'generated_at', 'locales', 'surface_class', 'controlled_vocabulary', 'sources', 'entities', 'collections' ),
 				'registry'
 			);
 			if ( self::REGISTRY_SCHEMA !== $registry['schema'] ) {
@@ -271,6 +271,7 @@ final class Complete99_Culinary_Science {
 				self::validate_entity_graph( $entity, $entities_by_id, $children_by_parent, $registry['controlled_vocabulary'] );
 				self::assert_parent_chain_is_acyclic( $entity_id, $entities_by_id );
 			}
+			self::validate_collections( $registry['collections'], $entities_by_id );
 		} catch ( Throwable $error ) {
 			return new WP_Error(
 				'complete99_science_registry_invalid',
@@ -383,6 +384,14 @@ final class Complete99_Culinary_Science {
 			}
 		}
 		self::assert_date( $publication['approved_at'], $path . '.approved_at', true );
+		$exposure_requested = 'approved_public' === $publication['state']
+			|| $publication['public_api']
+			|| $publication['public_page']
+			|| $publication['search_index'];
+		$denial_reason = self::public_exposure_denial_reason( $entity );
+		if ( $exposure_requested && '' !== $denial_reason ) {
+			throw new RuntimeException( $path . '.public_exposure_denied.' . $denial_reason );
+		}
 		if ( $publication['public_api'] || $publication['public_page'] || $publication['search_index'] ) {
 			if ( 'approved_public' !== $publication['state'] || '' === $publication['approved_at'] ) {
 				throw new RuntimeException( $path . '.exposure_without_approval' );
@@ -1118,6 +1127,181 @@ final class Complete99_Culinary_Science {
 		}
 	}
 
+	private static function validate_collections( $collections, $entities_by_id ) {
+		self::assert_list( $collections, 'registry.collections', false );
+		$collection_keys = array();
+		$translation_groups = array();
+		$owner_ids = array();
+		foreach ( $collections as $offset => $collection ) {
+			$path = 'registry.collections.' . $offset;
+			self::assert_exact_keys(
+				$collection,
+				array( 'key', 'owner_entity_id', 'navigation', 'translation_group_id', 'route', 'index_reason', 'receipt', 'display', 'public_projection' ),
+				$path
+			);
+			self::assert_identifier( $collection['key'], $path . '.key', 100 );
+			self::assert_entity_id( $collection['owner_entity_id'], $path . '.owner_entity_id' );
+			self::assert_identifier( $collection['translation_group_id'], $path . '.translation_group_id', 120 );
+			if ( isset( $collection_keys[ $collection['key'] ] ) ) {
+				throw new RuntimeException( $path . '.duplicate_key' );
+			}
+			if ( isset( $translation_groups[ $collection['translation_group_id'] ] ) ) {
+				throw new RuntimeException( $path . '.duplicate_translation_group' );
+			}
+			if ( isset( $owner_ids[ $collection['owner_entity_id'] ] ) ) {
+				throw new RuntimeException( $path . '.duplicate_owner' );
+			}
+			$collection_keys[ $collection['key'] ] = true;
+			$translation_groups[ $collection['translation_group_id'] ] = true;
+			$owner_ids[ $collection['owner_entity_id'] ] = true;
+
+			self::assert_exact_keys( $collection['navigation'], array( 'parent_entity_id', 'group_order', 'member_ids_by_group' ), $path . '.navigation' );
+			self::assert_entity_id( $collection['navigation']['parent_entity_id'], $path . '.navigation.parent_entity_id' );
+			self::assert_identifier_list( $collection['navigation']['group_order'], $path . '.navigation.group_order', false );
+			self::assert_exact_keys(
+				$collection['navigation']['member_ids_by_group'],
+				$collection['navigation']['group_order'],
+				$path . '.navigation.member_ids_by_group'
+			);
+
+			self::assert_exact_keys( $collection['route'], array( 'mode', 'canonical_path' ), $path . '.route' );
+			if ( 'standalone' !== $collection['route']['mode'] ) {
+				throw new RuntimeException( $path . '.route.mode' );
+			}
+			self::assert_translation( $collection['route']['canonical_path'], $path . '.route.canonical_path', 300 );
+			if ( ! preg_match( '#^/museum/(?:[a-z0-9-]+/)+$#', $collection['route']['canonical_path']['he'] )
+				|| ! preg_match( '#^/en/museum/(?:[a-z0-9-]+/)+$#', $collection['route']['canonical_path']['en'] ) ) {
+				throw new RuntimeException( $path . '.route.canonical_path' );
+			}
+			self::assert_translation( $collection['index_reason'], $path . '.index_reason', 500 );
+
+			self::assert_exact_keys( $collection['receipt'], array( 'state', 'recorded_at', 'membership_digest' ), $path . '.receipt' );
+			self::assert_identifier( $collection['receipt']['state'], $path . '.receipt.state', 100 );
+			self::assert_date( $collection['receipt']['recorded_at'], $path . '.receipt.recorded_at' );
+			if ( 1 !== preg_match( '/\Asha256:[a-f0-9]{64}\z/', $collection['receipt']['membership_digest'] ) ) {
+				throw new RuntimeException( $path . '.receipt.membership_digest' );
+			}
+
+			self::assert_exact_keys( $collection['display'], array( 'title', 'description', 'hero_entity_id', 'groups' ), $path . '.display' );
+			self::assert_translation( $collection['display']['title'], $path . '.display.title', 200 );
+			self::assert_translation( $collection['display']['description'], $path . '.display.description', 900 );
+			self::assert_entity_id( $collection['display']['hero_entity_id'], $path . '.display.hero_entity_id' );
+			self::assert_list( $collection['display']['groups'], $path . '.display.groups', false );
+			$display_group_ids = array();
+			foreach ( $collection['display']['groups'] as $group_offset => $group ) {
+				$group_path = $path . '.display.groups.' . $group_offset;
+				self::assert_exact_keys( $group, array( 'id', 'label', 'description' ), $group_path );
+				self::assert_identifier( $group['id'], $group_path . '.id', 80 );
+				self::assert_translation( $group['label'], $group_path . '.label', 120 );
+				self::assert_translation( $group['description'], $group_path . '.description', 500 );
+				$display_group_ids[] = $group['id'];
+			}
+			if ( $display_group_ids !== array_values( $collection['navigation']['group_order'] ) ) {
+				throw new RuntimeException( $path . '.display.group_order' );
+			}
+
+			self::assert_exact_keys( $collection['public_projection'], array( 'enabled', 'schema' ), $path . '.public_projection' );
+			if ( ! is_bool( $collection['public_projection']['enabled'] )
+				|| 'complete99-culinary-collection-public/v1' !== $collection['public_projection']['schema'] ) {
+				throw new RuntimeException( $path . '.public_projection' );
+			}
+
+			$owner_id = $collection['owner_entity_id'];
+			if ( ! isset( $entities_by_id[ $owner_id ] ) ) {
+				throw new RuntimeException( $path . '.unknown_owner' );
+			}
+			$owner = $entities_by_id[ $owner_id ];
+			if ( 'topic_hub' !== $owner['type']
+				|| 'standalone' !== $owner['seo']['route_mode']
+				|| $owner_id !== $owner['seo']['owner_entity_id']
+				|| $collection['route']['canonical_path'] !== $owner['seo']['canonical_path']
+				|| $collection['navigation']['parent_entity_id'] !== $owner['parent_id']
+				|| $collection['display']['title'] !== $owner['name'] ) {
+				throw new RuntimeException( $path . '.owner_contract' );
+			}
+
+			$hero_id = $collection['display']['hero_entity_id'];
+			if ( ! isset( $entities_by_id[ $hero_id ] ) || ! self::is_public_entity( $entities_by_id[ $hero_id ] ) ) {
+				throw new RuntimeException( $path . '.display.hero_not_public' );
+			}
+			if ( $collection['public_projection']['enabled']
+				&& ( ! self::is_public_entity( $owner )
+					|| 'noindex_until_longform_review' !== $owner['index_policy']
+					|| true === $owner['publication']['search_index'] ) ) {
+				throw new RuntimeException( $path . '.public_owner_contract' );
+			}
+
+			if ( 'japanese-foundations-lab' === $collection['key'] ) {
+				self::assert_exact_list(
+					$collection['navigation']['group_order'],
+					array( 'ingredients', 'food_science', 'techniques', 'equipment' ),
+					$path . '.navigation.group_order'
+				);
+			}
+			$allowed_group_types = array(
+				'ingredients'  => array( 'ingredient' ),
+				'food_science' => array( 'guide', 'molecule', 'reaction', 'standard' ),
+				'techniques'   => array( 'preparation', 'technique' ),
+				'equipment'    => array( 'equipment' ),
+			);
+			$member_ids = array();
+			foreach ( $collection['navigation']['group_order'] as $group_id ) {
+				if ( ! isset( $allowed_group_types[ $group_id ] ) ) {
+					throw new RuntimeException( $path . '.navigation.unknown_group' );
+				}
+				$group_members = $collection['navigation']['member_ids_by_group'][ $group_id ];
+				self::assert_identifier_list( $group_members, $path . '.navigation.member_ids_by_group.' . $group_id, false );
+				foreach ( $group_members as $member_id ) {
+					if ( isset( $member_ids[ $member_id ] ) ) {
+						throw new RuntimeException( $path . '.navigation.duplicate_member' );
+					}
+					if ( ! isset( $entities_by_id[ $member_id ] ) ) {
+						throw new RuntimeException( $path . '.navigation.unknown_member' );
+					}
+					$member = $entities_by_id[ $member_id ];
+					if ( ! in_array( $member['type'], $allowed_group_types[ $group_id ], true ) ) {
+						throw new RuntimeException( $path . '.navigation.member_type' );
+					}
+					if ( '' !== self::public_exposure_denial_reason( $member )
+						|| ! self::is_public_entity( $member ) ) {
+						throw new RuntimeException( $path . '.navigation.member_not_public' );
+					}
+					if ( $member_id === $owner_id
+						|| $member['parent_id'] === $owner_id
+						|| $member['seo']['owner_entity_id'] === $owner_id
+						|| ! in_array( $member['seo']['route_mode'], array( 'standalone', 'section' ), true ) ) {
+						throw new RuntimeException( $path . '.navigation.presentation_only' );
+					}
+					$member_ids[ $member_id ] = true;
+				}
+			}
+			if ( $collection['receipt']['membership_digest'] !== self::collection_membership_digest( $collection ) ) {
+				throw new RuntimeException( $path . '.receipt.membership_mismatch' );
+			}
+		}
+	}
+
+	private static function collection_membership_digest( $collection ) {
+		$tokens = array();
+		foreach ( $collection['navigation']['group_order'] as $group_id ) {
+			foreach ( $collection['navigation']['member_ids_by_group'][ $group_id ] as $member_id ) {
+				$tokens[] = $group_id . ':' . $member_id;
+			}
+		}
+		$basis = $collection['key'] . '|' . $collection['owner_entity_id'] . '|' . implode( '|', $tokens );
+		return 'sha256:' . hash( 'sha256', $basis );
+	}
+
+	private static function public_exposure_denial_reason( $entity ) {
+		if ( in_array( $entity['type'], array( 'supplier', 'retail_listing', 'market_observation', 'guide_edition', 'visual_asset' ), true ) ) {
+			return 'entity_type_' . $entity['type'];
+		}
+		if ( 'compliance_rule' === $entity['type'] && 'public_discovery' !== $entity['surface_class'] ) {
+			return 'private_compliance';
+		}
+		return '';
+	}
+
 	private static function entity_parent_chain( $entity_id, $entities_by_id ) {
 		$chain  = array();
 		$cursor = $entity_id;
@@ -1335,7 +1519,8 @@ final class Complete99_Culinary_Science {
 	}
 
 	private static function is_public_entity( $entity ) {
-		if ( 'public_discovery' !== $entity['surface_class']
+		if ( '' !== self::public_exposure_denial_reason( $entity )
+			|| 'public_discovery' !== $entity['surface_class']
 			|| 'approved_public' !== $entity['publication']['state']
 			|| true !== $entity['publication']['public_api']
 			|| true !== $entity['publication']['public_page']
@@ -1486,7 +1671,7 @@ final class Complete99_Culinary_Science {
 		);
 		$he_url = home_url( $owner['seo']['canonical_path']['he'] );
 		$en_url = home_url( $owner['seo']['canonical_path']['en'] );
-		return array(
+		$bundle = array(
 			'schema'         => 'complete99-culinary-science-page-bundle/v1',
 			'version'        => $registry['version'],
 			'language'       => $lang,
@@ -1496,6 +1681,79 @@ final class Complete99_Culinary_Science {
 			'canonical_url'  => 'he' === $lang ? $he_url : $en_url,
 			'alternates'     => array( 'he' => $he_url, 'en' => $en_url, 'x-default' => $he_url ),
 			'indexable'      => true === $owner['publication']['search_index'] && 'index' === $owner['index_policy'],
+		);
+		$collection = self::public_collection_projection_for_owner( $owner['id'], $registry, $lang );
+		if ( ! empty( $collection ) ) {
+			$bundle['collection'] = $collection;
+		}
+		return $bundle;
+	}
+
+	private static function public_collection_projection_for_owner( $owner_id, $registry, $lang ) {
+		$collection = null;
+		foreach ( $registry['collections'] as $candidate ) {
+			if ( $owner_id === $candidate['owner_entity_id'] && true === $candidate['public_projection']['enabled'] ) {
+				$collection = $candidate;
+				break;
+			}
+		}
+		if ( ! is_array( $collection ) ) {
+			return array();
+		}
+		$public_by_id = self::public_entity_index( $registry );
+		if ( ! isset( $public_by_id[ $owner_id ] ) ) {
+			return array();
+		}
+
+		$display_groups = array();
+		foreach ( $collection['display']['groups'] as $group ) {
+			$display_groups[ $group['id'] ] = $group;
+		}
+		$groups = array();
+		$members = array();
+		$member_ids = array();
+		foreach ( $collection['navigation']['group_order'] as $group_id ) {
+			$group = $display_groups[ $group_id ];
+			$groups[] = array(
+				'id'          => $group_id,
+				'label'       => $group['label'][ $lang ],
+				'description' => $group['description'][ $lang ],
+			);
+			foreach ( $collection['navigation']['member_ids_by_group'][ $group_id ] as $member_id ) {
+				if ( ! isset( $public_by_id[ $member_id ] ) ) {
+					return array();
+				}
+				$member = $public_by_id[ $member_id ];
+				$record = array(
+					'id'              => $member_id,
+					'group_id'        => $group_id,
+					'name'            => $member['name'][ $lang ],
+					'summary'         => $member['summary'][ $lang ],
+					'entity_type'     => $member['type'],
+					'canonical_path'  => $member['seo']['canonical_path'][ $lang ],
+					'owner_entity_id' => $member['seo']['owner_entity_id'],
+					'route_mode'      => $member['seo']['route_mode'],
+					'approved_public' => true,
+				);
+				if ( 'section' === $member['seo']['route_mode'] ) {
+					$record['fragment'] = $member['seo']['section_id'];
+				}
+				$members[] = $record;
+				$member_ids[] = $member_id;
+			}
+		}
+		$alternate_lang = 'he' === $lang ? 'en' : 'he';
+		return array(
+			'schema'               => $collection['public_projection']['schema'],
+			'key'                  => $collection['key'],
+			'language'             => $lang,
+			'translation_group_id' => $collection['translation_group_id'],
+			'canonical_path'       => $collection['route']['canonical_path'][ $lang ],
+			'alternate_path'       => $collection['route']['canonical_path'][ $alternate_lang ],
+			'approved_public'      => true,
+			'groups'               => $groups,
+			'members'              => $members,
+			'parity_member_ids'    => array( 'he' => $member_ids, 'en' => $member_ids ),
 		);
 	}
 
@@ -1591,6 +1849,7 @@ final class Complete99_Culinary_Science {
 		$asset_stem = 'c99-science-' . $asset_slug . '-v01';
 		$asset_base = defined( 'COMPLETE99_PLATFORM_URL' ) ? COMPLETE99_PLATFORM_URL : '';
 		$visual_alts = array(
+			'hub-japanese-foundations-lab' => array( 'he' => 'שולחן יסודות המטבח היפני עם אורז בהאנגירי, קומבו, קצואובושי, שויו, יוזו, וואסבי, קוג׳י, נורי, כלי מדידה וסכין יפנית', 'en' => 'Japanese culinary foundations table with rice in a hangiri, kombu, katsuobushi, shoyu, yuzu, wasabi, koji, nori, measurement tools and a Japanese knife' ),
 			'hub-japanese-techniques' => array( 'he' => 'האנגירי עם אורז, דאשי, קומבו, קצואובושי, קוג׳י, סכין וכלי מדידה', 'en' => 'Hangiri with rice, dashi, kombu, katsuobushi, koji, knife and measurement tools' ),
 			'hub-japanese-food-science' => array( 'he' => 'דאשי, קומבו, קצואובושי, שויו, יוזו, אורז וקוג׳י לצד כלי מדידה', 'en' => 'Dashi, kombu, katsuobushi, shoyu, yuzu, rice and koji beside measurement tools' ),
 			'preparation-ichiban-dashi' => array( 'he' => 'איצ׳יבאן דאשי צלול לצד קומבו ושבבי קצואובושי', 'en' => 'Clear ichiban dashi beside kombu and katsuobushi shavings' ),

@@ -16,6 +16,8 @@ final class Complete99_Culinary_Museum_Frontend {
 	const LANGUAGE_VAR    = 'complete99_culinary_museum_lang';
 	const TEMPLATE_FILE   = 'templates/culinary-museum.php';
 	const STYLESHEET_FILE = 'assets/css/culinary-museum.css';
+	const COLLECTION_SCHEMA       = 'complete99-culinary-collection-public/v1';
+	const COLLECTION_FILTER_QUERY = 'foundation-group';
 
 	private static $booted      = false;
 	private static $bundle      = array();
@@ -132,6 +134,9 @@ final class Complete99_Culinary_Museum_Frontend {
 		$classes[] = 'complete99-lang-' . $lang;
 		$classes[] = 'en' === $lang ? 'complete99-ltr' : 'complete99-rtl';
 		$classes[] = 'c99-museum-type-' . sanitize_html_class( (string) self::$bundle['entity']['type'] );
+		if ( ! empty( self::approved_collection_projection( self::$bundle ) ) ) {
+			$classes[] = 'c99-foundations-lab-page';
+		}
 
 		return array_values( array_unique( $classes ) );
 	}
@@ -251,6 +256,11 @@ final class Complete99_Culinary_Museum_Frontend {
 		if ( ! self::is_renderable_bundle( $bundle, $bundle['canonical_path'] ) ) {
 			return;
 		}
+		$collection = self::approved_collection_projection( $bundle );
+		if ( ! empty( $collection ) ) {
+			self::render_collection_page( $bundle, $collection );
+			return;
+		}
 
 		$entity = $bundle['entity'];
 		$lang   = $bundle['language'];
@@ -292,6 +302,102 @@ final class Complete99_Culinary_Museum_Frontend {
 			</aside>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render the Japanese Foundations Lab from its approved public projection.
+	 * Member order is presentation order only and never changes entity ownership.
+	 */
+	private static function render_collection_page( $bundle, $collection ) {
+		$entity       = $bundle['entity'];
+		$lang         = $bundle['language'];
+		$is_he        = 'he' === $lang;
+		$member_count = count( $collection['members'] );
+		?>
+		<section class="c99-museum-hero c99-foundations-hero">
+			<div class="c99-container">
+				<?php self::render_breadcrumbs( $entity, $bundle ); ?>
+				<div class="c99-museum-hero-grid">
+					<div class="c99-museum-hero-copy">
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מעבדת יסודות המטבח היפני' : 'Japanese Foundations Lab' ); ?></p>
+						<h1><?php echo esc_html( isset( $entity['seo']['h1'] ) ? $entity['seo']['h1'] : $entity['name'] ); ?></h1>
+						<p class="c99-museum-lede"><?php echo esc_html( isset( $entity['seo']['opening'] ) ? $entity['seo']['opening'] : $entity['summary'] ); ?></p>
+						<div class="c99-museum-fact-strip" aria-label="<?php echo esc_attr( $is_he ? 'פרטי האוסף' : 'Collection details' ); ?>">
+							<span><strong><?php echo esc_html( $member_count ); ?></strong> <?php echo esc_html( $is_he ? 'נושאים מקושרים' : 'connected topics' ); ?></span>
+							<span><strong><?php echo esc_html( count( $collection['groups'] ) ); ?></strong> <?php echo esc_html( $is_he ? 'תחומי יסוד' : 'foundation groups' ); ?></span>
+							<span><strong><?php echo esc_html( $is_he ? 'עודכן' : 'Updated' ); ?></strong> <time datetime="<?php echo esc_attr( $entity['trust']['substantive_updated_at'] ); ?>"><?php echo esc_html( $entity['trust']['substantive_updated_at'] ); ?></time></span>
+						</div>
+					</div>
+					<?php self::render_visual( $entity, true ); ?>
+				</div>
+			</div>
+		</section>
+
+		<div class="c99-container c99-foundations-layout">
+			<div class="c99-foundations-main">
+				<section class="c99-foundations-lab" aria-labelledby="c99-foundations-title" data-c99-foundations-filter data-c99-foundations-canonical-url="<?php echo esc_url( $bundle['canonical_url'] ); ?>" data-c99-foundations-query="<?php echo esc_attr( self::COLLECTION_FILTER_QUERY ); ?>">
+					<div class="c99-foundations-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מפת היסודות' : 'Foundations map' ); ?></p>
+							<h2 id="c99-foundations-title"><?php echo esc_html( $is_he ? 'ארבע דרכים להעמיק במטבח היפני' : 'Four ways to explore Japanese cuisine' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'בחרו תחום וגלו כיצד חומרי גלם, מדע, טכניקות וכלים מתחברים זה לזה.' : 'Choose a field and discover how ingredients, science, techniques and tools connect.' ); ?></p>
+					</div>
+
+					<div class="c99-foundations-filter-shell">
+						<div class="c99-foundations-filter-bar" role="group" aria-label="<?php echo esc_attr( $is_he ? 'סינון נושאי יסוד' : 'Filter foundation topics' ); ?>">
+							<button type="button" class="c99-foundations-filter is-active" data-c99-foundations-filter-reset data-c99-foundations-filter-value="all" aria-controls="c99-foundations-grid" aria-pressed="true"><?php echo esc_html( $is_he ? 'הכל' : 'All' ); ?></button>
+							<?php foreach ( $collection['groups'] as $group ) : ?>
+								<button type="button" class="c99-foundations-filter" data-c99-foundations-filter-button="<?php echo esc_attr( $group['id'] ); ?>" data-c99-foundations-filter-value="<?php echo esc_attr( $group['id'] ); ?>" aria-controls="c99-foundations-grid" aria-pressed="false"><?php echo esc_html( $group['label'] ); ?></button>
+							<?php endforeach; ?>
+						</div>
+						<p class="c99-foundations-result-count"><span data-c99-foundations-filter-count aria-live="polite" aria-atomic="true"><?php echo esc_html( self::collection_count_label( $member_count, $lang ) ); ?></span></p>
+					</div>
+
+					<div class="c99-foundations-group-guide">
+						<?php foreach ( $collection['groups'] as $group ) : ?>
+							<article data-c99-foundations-group-guide="<?php echo esc_attr( $group['id'] ); ?>">
+								<h3><?php echo esc_html( $group['label'] ); ?></h3>
+								<p><?php echo esc_html( $group['description'] ); ?></p>
+							</article>
+						<?php endforeach; ?>
+					</div>
+
+					<div id="c99-foundations-grid" class="c99-foundations-grid" data-c99-foundations-grid>
+						<?php foreach ( $collection['members'] as $member ) : ?>
+							<?php $url = self::collection_member_url( $member ); ?>
+							<article class="c99-foundations-card" data-c99-foundations-member data-c99-foundations-group="<?php echo esc_attr( $member['group_id'] ); ?>">
+								<a href="<?php echo esc_url( $url ); ?>">
+									<span class="c99-foundations-card-type"><?php echo esc_html( self::entity_type_label( $member['entity_type'], $lang ) ); ?></span>
+									<h3><?php echo esc_html( $member['name'] ); ?></h3>
+									<p><?php echo esc_html( $member['summary'] ); ?></p>
+									<strong><?php echo esc_html( $is_he ? 'לנושא המלא' : 'Explore the full topic' ); ?></strong>
+								</a>
+							</article>
+						<?php endforeach; ?>
+					</div>
+					<p class="c99-foundations-empty" data-c99-foundations-filter-empty hidden><?php echo esc_html( $is_he ? 'אין נושאים תואמים בסינון הזה.' : 'No topics match this filter.' ); ?></p>
+				</section>
+
+				<?php self::render_profiles( $entity, 2 ); ?>
+				<?php self::render_facts( $entity, 2 ); ?>
+				<?php self::render_sources( $entity, 2 ); ?>
+			</div>
+			<aside class="c99-museum-side-column c99-foundations-side" aria-label="<?php echo esc_attr( $is_he ? 'מידע משלים' : 'Supporting information' ); ?>">
+				<?php self::render_taxonomy( $entity ); ?>
+				<?php self::render_safety( $entity ); ?>
+				<?php self::render_trust( $entity, $bundle ); ?>
+			</aside>
+		</div>
+		<?php
+	}
+
+	private static function collection_count_label( $count, $lang ) {
+		$count = max( 0, absint( $count ) );
+		if ( 'he' === $lang ) {
+			return 1 === $count ? 'נושא אחד מוצג' : $count . ' נושאים מוצגים';
+		}
+		return 1 === $count ? '1 topic shown' : $count . ' topics shown';
 	}
 
 	private static function render_offer( $entity ) {
@@ -691,12 +797,183 @@ final class Complete99_Culinary_Museum_Frontend {
 		return $map;
 	}
 
+	/**
+	 * Accept only the compact public collection contract attached to this page.
+	 * The renderer never derives members from the private registry.
+	 */
+	private static function approved_collection_projection( $bundle ) {
+		if ( ! is_array( $bundle ) || ! isset( $bundle['collection'] ) || ! is_array( $bundle['collection'] ) ) {
+			return array();
+		}
+		$collection = $bundle['collection'];
+		$expected   = array(
+			'schema',
+			'key',
+			'language',
+			'translation_group_id',
+			'canonical_path',
+			'alternate_path',
+			'approved_public',
+			'groups',
+			'members',
+			'parity_member_ids',
+		);
+		if ( ! self::has_exact_keys( $collection, $expected )
+			|| self::COLLECTION_SCHEMA !== $collection['schema']
+			|| true !== $collection['approved_public']
+			|| ! isset( $bundle['language'], $bundle['canonical_path'], $bundle['alternates'] )
+			|| $collection['language'] !== $bundle['language']
+			|| $collection['canonical_path'] !== $bundle['canonical_path']
+			|| ! is_string( $collection['key'] )
+			|| ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $collection['key'] )
+			|| ! is_string( $collection['translation_group_id'] )
+			|| ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $collection['translation_group_id'] )
+			|| ! self::is_collection_path( $collection['canonical_path'], $collection['language'] )
+			|| ! self::is_collection_path( $collection['alternate_path'], 'he' === $collection['language'] ? 'en' : 'he' )
+			|| ! self::is_same_site_url( $bundle['alternates'][ 'he' === $collection['language'] ? 'en' : 'he' ], $collection['alternate_path'] )
+			|| ! self::is_list( $collection['groups'] )
+			|| ! self::is_list( $collection['members'] )
+			|| ! is_array( $collection['parity_member_ids'] ) ) {
+			return array();
+		}
+
+		$expected_group_ids = array( 'ingredients', 'food_science', 'techniques', 'equipment' );
+		$actual_group_ids   = array();
+		if ( 4 !== count( $collection['groups'] ) ) {
+			return array();
+		}
+		foreach ( $collection['groups'] as $group ) {
+			if ( ! is_array( $group )
+				|| ! self::has_exact_keys( $group, array( 'id', 'label', 'description' ) )
+				|| ! is_string( $group['id'] )
+				|| ! is_string( $group['label'] )
+				|| ! is_string( $group['description'] )
+				|| '' === trim( $group['label'] )
+				|| '' === trim( $group['description'] ) ) {
+				return array();
+			}
+			$actual_group_ids[] = $group['id'];
+		}
+		if ( $expected_group_ids !== $actual_group_ids ) {
+			return array();
+		}
+
+		$member_ids       = array();
+		$member_targets   = array();
+		$populated_groups = array_fill_keys( $expected_group_ids, false );
+		$blocked_types    = array(
+			'supplier',
+			'producer',
+			'market_observation',
+			'retail_listing',
+			'equipment_shop',
+			'guide_edition',
+			'visual_asset',
+			'compliance_rule',
+		);
+		foreach ( $collection['members'] as $member ) {
+			if ( ! is_array( $member )
+				|| ! self::has_exact_keys(
+					$member,
+					array( 'id', 'group_id', 'name', 'summary', 'entity_type', 'canonical_path', 'owner_entity_id', 'route_mode', 'approved_public' ),
+					array( 'fragment' )
+				)
+				|| true !== $member['approved_public']
+				|| ! is_string( $member['id'] )
+				|| ! is_string( $member['owner_entity_id'] )
+				|| ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $member['id'] )
+				|| ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $member['owner_entity_id'] )
+				|| ! in_array( $member['group_id'], $expected_group_ids, true )
+				|| ! is_string( $member['name'] )
+				|| ! is_string( $member['summary'] )
+				|| '' === trim( $member['name'] )
+				|| '' === trim( $member['summary'] )
+				|| ! is_string( $member['entity_type'] )
+				|| in_array( $member['entity_type'], $blocked_types, true )
+				|| ! in_array( $member['route_mode'], array( 'standalone', 'section' ), true )
+				|| ! self::is_collection_path( $member['canonical_path'], $collection['language'] ) ) {
+				return array();
+			}
+
+			$fragment = isset( $member['fragment'] ) ? (string) $member['fragment'] : '';
+			if ( ( 'standalone' === $member['route_mode'] && ( $member['id'] !== $member['owner_entity_id'] || '' !== $fragment ) )
+				|| ( 'section' === $member['route_mode'] && ( $member['id'] === $member['owner_entity_id'] || ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $fragment ) ) ) ) {
+				return array();
+			}
+			$target = self::collection_member_url( $member );
+			if ( '' === $target || isset( $member_ids[ $member['id'] ] ) || isset( $member_targets[ $target ] ) ) {
+				return array();
+			}
+			$member_ids[ $member['id'] ]       = true;
+			$member_targets[ $target ]         = true;
+			$populated_groups[ $member['group_id'] ] = true;
+		}
+		if ( empty( $member_ids ) || in_array( false, $populated_groups, true ) ) {
+			return array();
+		}
+
+		$parity = $collection['parity_member_ids'];
+		if ( ! self::has_exact_keys( $parity, array( 'he', 'en' ) )
+			|| ! self::is_list( $parity['he'] )
+			|| ! self::is_list( $parity['en'] )
+			|| $parity['he'] !== $parity['en']
+			|| array_keys( $member_ids ) !== $parity[ $collection['language'] ]
+			|| count( array_unique( $parity['he'] ) ) !== count( $parity['he'] ) ) {
+			return array();
+		}
+
+		return $collection;
+	}
+
+	private static function has_exact_keys( $value, $required, $optional = array() ) {
+		if ( ! is_array( $value ) || self::is_list( $value ) ) {
+			return false;
+		}
+		$actual = array_keys( $value );
+		foreach ( $required as $key ) {
+			if ( ! array_key_exists( $key, $value ) ) {
+				return false;
+			}
+		}
+		return empty( array_diff( $actual, array_merge( $required, $optional ) ) );
+	}
+
+	private static function is_collection_path( $path, $language ) {
+		if ( ! is_string( $path )
+			|| ! preg_match( '#^/(?:[a-z0-9-]+/)+$#', $path )
+			|| ( 'en' === $language && 0 !== strpos( $path, '/en/' ) )
+			|| ( 'he' === $language && 0 === strpos( $path, '/en/' ) ) ) {
+			return false;
+		}
+		return true;
+	}
+
+	private static function collection_member_url( $member ) {
+		if ( ! is_array( $member ) || empty( $member['canonical_path'] ) ) {
+			return '';
+		}
+		$path = (string) $member['canonical_path'];
+		if ( ! preg_match( '#^/(?:[a-z0-9-]+/)+$#', $path ) ) {
+			return '';
+		}
+		$url      = home_url( $path );
+		$fragment = isset( $member['fragment'] ) ? (string) $member['fragment'] : '';
+		if ( '' !== $fragment ) {
+			if ( ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $fragment ) ) {
+				return '';
+			}
+			$url .= '#' . $fragment;
+		}
+		return $url;
+	}
+
 	private static function schema_graph( $bundle ) {
 		$entity      = $bundle['entity'];
+		$collection  = self::approved_collection_projection( $bundle );
 		$description = isset( $entity['seo']['meta_description'] ) ? (string) $entity['seo']['meta_description'] : (string) $entity['summary'];
 		$schema_type = isset( $entity['seo']['schema_type'] ) ? (string) $entity['seo']['schema_type'] : 'WebPage';
 		$page_types  = array( 'WebPage', 'CollectionPage', 'Article', 'ProfilePage' );
-		$page_type   = in_array( $schema_type, $page_types, true ) ? $schema_type : 'WebPage';
+		$page_type   = ! empty( $collection ) ? 'CollectionPage' : ( in_array( $schema_type, $page_types, true ) ? $schema_type : 'WebPage' );
 		$breadcrumbs = array();
 		foreach ( $entity['seo']['visible_breadcrumbs'] as $offset => $item ) {
 			$breadcrumbs[] = array(
@@ -803,6 +1080,33 @@ final class Complete99_Culinary_Museum_Frontend {
 			}
 		}
 
+		$collection_list = array();
+		if ( ! empty( $collection ) ) {
+			$list_id       = $bundle['canonical_url'] . '#foundations-item-list';
+			$list_elements = array();
+			foreach ( $collection['members'] as $offset => $member ) {
+				$member_url = self::collection_member_url( $member );
+				$list_elements[] = array(
+					'@type'    => 'ListItem',
+					'position' => $offset + 1,
+					'item'     => array(
+						'@id'         => $member_url,
+						'url'         => $member_url,
+						'name'        => $member['name'],
+						'description' => $member['summary'],
+					),
+				);
+			}
+			$collection_list = array(
+				'@type'           => 'ItemList',
+				'@id'             => $list_id,
+				'name'            => $entity['name'],
+				'numberOfItems'   => count( $list_elements ),
+				'itemListElement' => $list_elements,
+			);
+			$page['mainEntity'] = array( '@id' => $list_id );
+		}
+
 		$graph = array(
 			array(
 				'@type' => 'Organization',
@@ -826,6 +1130,9 @@ final class Complete99_Culinary_Museum_Frontend {
 			),
 		);
 		$graph = array_merge( $graph, $owned_entities );
+		if ( ! empty( $collection_list ) ) {
+			$graph[] = $collection_list;
+		}
 
 		return array(
 			'@context' => 'https://schema.org',
@@ -865,6 +1172,9 @@ final class Complete99_Culinary_Museum_Frontend {
 			return false;
 		}
 		$expected = array( 'schema', 'version', 'language', 'entity', 'sections', 'canonical_path', 'canonical_url', 'alternates', 'indexable' );
+		if ( array_key_exists( 'collection', $bundle ) ) {
+			$expected[] = 'collection';
+		}
 		$actual   = array_keys( $bundle );
 		sort( $actual, SORT_STRING );
 		sort( $expected, SORT_STRING );
@@ -906,6 +1216,9 @@ final class Complete99_Culinary_Museum_Frontend {
 			if ( ! is_array( $section ) || empty( $section['id'] ) || empty( $section['seo'] ) ) {
 				return false;
 			}
+		}
+		if ( array_key_exists( 'collection', $bundle ) && empty( self::approved_collection_projection( $bundle ) ) ) {
+			return false;
 		}
 		return true;
 	}

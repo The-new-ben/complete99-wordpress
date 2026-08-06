@@ -2026,6 +2026,10 @@ $entities[] = $c99_entity( array(
 	'asset_state' => 'spec_ready', 'rights_method' => 'generated_concept_with_human_review',
 ) );
 
+$c99_foundations_lab_module = require __DIR__ . '/culinary-science/collections/japanese-foundations-lab.php';
+$entities[]                  = $c99_foundations_lab_module['entity'];
+$collections                 = array( $c99_foundations_lab_module['collection'] );
+
 /*
  * SEO architecture is computed from one explicit parent map. The same chain
  * drives canonical paths, breadcrumbs, expected child coverage and the public
@@ -2182,6 +2186,7 @@ unset( $entity );
 $canonical_overrides = array(
 	'museum-culinary-science' => $c99_text( '/museum/', '/en/museum/' ),
 	'cuisine-japanese-washoku' => $c99_text( '/museum/japanese-culinary-science/', '/en/museum/japanese-culinary-science/' ),
+	'hub-japanese-foundations-lab' => $c99_text( '/museum/japanese-culinary-science/foundations/', '/en/museum/japanese-culinary-science/foundations/' ),
 	'hub-global-culinary-institutions' => $c99_text( '/museum/global-culinary-institutions/', '/en/museum/global-culinary-institutions/' ),
 	'tradition-washoku' => $c99_text( '/traditions/washoku/', '/en/traditions/washoku/' ),
 	'dish-edomae-nigiri' => $c99_text( '/dishes/edomae-nigiri/', '/en/dishes/edomae-nigiri/' ),
@@ -2291,6 +2296,21 @@ foreach ( $entities as &$entity ) {
 	if ( $entity['seo']['canonical_path']['he'] !== $section[2]['he'] ) {
 		$breadcrumbs[] = array( 'key' => $section[0], 'label' => $section[1], 'path' => $section[2] );
 	}
+	if ( '' !== $entity['parent_id'] && isset( $entity_offsets[ $entity['parent_id'] ] ) ) {
+		$parent         = $entities[ $entity_offsets[ $entity['parent_id'] ] ];
+		$parent_path_he = $parent['seo']['canonical_path']['he'];
+		$section_root   = rtrim( $section[2]['he'], '/' ) . '/';
+		if ( 'standalone' === $parent['seo']['route_mode']
+			&& $parent_path_he !== $section[2]['he']
+			&& $parent_path_he !== $entity['seo']['canonical_path']['he']
+			&& 0 === strpos( $parent_path_he, $section_root ) ) {
+			$breadcrumbs[] = array(
+				'key'   => 'parent-' . $parent['id'],
+				'label' => $parent['name'],
+				'path'  => $parent['seo']['canonical_path'],
+			);
+		}
+	}
 	$breadcrumbs[] = array( 'key' => 'current-' . $entity['id'], 'label' => $entity['name'], 'path' => $entity['seo']['canonical_path'] );
 	$entity['seo']['visible_breadcrumbs'] = $breadcrumbs;
 }
@@ -2357,6 +2377,7 @@ unset( $entity );
 $public_pilot_ids = array(
 	'museum-culinary-science',
 	'cuisine-japanese-washoku',
+	'hub-japanese-foundations-lab',
 	'hub-japanese-equipment',
 	'hub-japanese-ingredients',
 	'hub-japanese-techniques',
@@ -2376,7 +2397,8 @@ $public_pilot_ids = array(
 $public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
 $public_semantic_allowlists = array(
 	'museum-culinary-science' => array( 'cuisine-japanese-washoku' ),
-	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'guide-wasabi-aitc', 'equipment-wasabi-grater' ),
+	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-foundations-lab', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'guide-wasabi-aitc', 'equipment-wasabi-grater' ),
+	'hub-japanese-foundations-lab' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'guide-umami-synergy', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'preparation-ichiban-dashi', 'equipment-wasabi-grater' ),
 	'hub-japanese-equipment' => array( 'cuisine-japanese-washoku', 'equipment-wasabi-grater', 'ingredient-fresh-wasabi', 'guide-wasabi-aitc' ),
 	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
 	'hub-japanese-techniques' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'hub-japanese-food-science' ),
@@ -2396,6 +2418,7 @@ $public_semantic_allowlists = array(
 $public_asset_receipts = array(
 	'museum-culinary-science' => 'sha256:ee2441315d9c03074bbe88bba7408e66e06323a4906d1c5310574028d970f18b',
 	'cuisine-japanese-washoku' => 'sha256:98558d16ea7975b78ba7b925ea2a4b3a7dc0f6158a42e94855f30f73f7fa644c',
+	'hub-japanese-foundations-lab' => 'sha256:8dcc708e53538ed4a0044d3cd79704f1d9e02ff01142b8f5f486192e3595e180',
 	'hub-japanese-ingredients' => 'sha256:76cc7ecfebd4eac9ecb9ed6a670cee097941a99637fbc2446b00eb7692848e10',
 	'ingredient-kombu' => 'sha256:046d2ba7f392efa8076afc3acae177604e27cbe77ef3d8c626fc2974abe8ac4e',
 	'ingredient-katsuobushi' => 'sha256:a48c8adf8f92b0c425301ff5cfff502301af0babb059cf446aa100c1fdd91b8e',
@@ -2442,6 +2465,7 @@ $entities[ $equipment_hub_offset ]['facts'][0]['source_ids'] = array( 'kappabash
 $entities[ $equipment_hub_offset ]['facts'][0]['public_safe'] = true;
 
 $public_meta_descriptions = array(
+	'hub-japanese-foundations-lab' => $c99_text( 'יסודות המטבח היפני במסלול אחד: חומרי גלם, מדע הטעם, טכניקות הכנה וכלים מקצועיים, עם קישורים ישירים לכל מדריך ודף מרכיב.', 'Japanese culinary foundations in one path: ingredients, flavor science, preparation techniques and professional tools, with direct links to every guide and ingredient page.' ),
 	'hub-japanese-food-science' => $c99_text( 'מדע המזון היפני: אומאמי, גלוטמט, IMP, קוג׳י, התססה, דאשי ומדידות, עם מקורות וקשרים למנות ולחומרי גלם.', 'Japanese food science: umami, glutamate, IMP, koji, fermentation, dashi and measurements, with sources and links to ingredients and dishes.' ),
 	'hub-japanese-techniques' => $c99_text( 'טכניקות בישול יפניות: דאשי, אורז, חיתוך, קוג׳י והתססה במפת ידע שמפרידה חומר, זמן, טמפרטורה, כלי ותוצאה.', 'Japanese culinary techniques: dashi, rice, cutting, koji and fermentation in a knowledge map separating material, time, temperature, tool and result.' ),
 	'hub-japanese-equipment' => $c99_text( 'כלי מטבח יפניים להכנה מדויקת: בחירה לפי פעולה, חומר, מידה, תחזוקה ומפרט דגם, עם קישורים לחומרי גלם ולטכניקות מתאימות.', 'Japanese culinary tools for precise preparation: choose by task, material, size, care and model specification, with links to suitable ingredients and techniques.' ),
@@ -2518,8 +2542,8 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 }
 
 return array(
-	'schema'        => 'complete99-culinary-science-registry/v4',
-	'version'       => 'japanese-pilot-2026.08.06.v8',
+	'schema'        => 'complete99-culinary-science-registry/v5',
+	'version'       => 'japanese-pilot-2026.08.06.v9',
 	'generated_at'  => '2026-08-06',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',
@@ -2548,6 +2572,7 @@ return array(
 		'publication_states' => array( 'research_draft', 'private_preview', 'approved_public' ),
 		'route_modes' => array( 'standalone', 'section', 'private' ),
 	),
-	'sources'  => $sources,
-	'entities' => $entities,
+	'sources'     => $sources,
+	'entities'    => $entities,
+	'collections' => $collections,
 );
