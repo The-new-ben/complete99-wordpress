@@ -56,6 +56,8 @@ EXPECTED_PRICES = {
     "product-chicken-liver-1kg": "17.90",
     "product-rishiri-kombu-100g": "89.00",
     "product-honkarebushi-200g": "219.00",
+    "product-yamaroku-tsurubishio-500ml": "149.00",
+    "product-kito-yuzu-juice-100ml": "64.00",
 }
 
 EXPECTED_DISHES = {
@@ -80,6 +82,7 @@ SAFE_STORE_FILTERS = {
     "chilled-frozen",
     "bakery",
     "regulated",
+    "japanese-pantry",
 }
 
 
@@ -255,6 +258,7 @@ foreach ($bundle['products'] as $code => $record) {{
             'sha256' => $record['asset']['sha256'],
             'width' => $record['asset']['width'],
             'height' => $record['asset']['height'],
+            'alt' => $record['asset']['alt'],
         ),
     );
 }}
@@ -409,11 +413,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_4_0(self) -> None:
+    def test_release_version_is_exact_1_5_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.4\.0$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.4.0' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.4.0' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.5\.0$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.5.0' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.5.0' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -489,7 +493,7 @@ echo wp_json_encode(array(
     def test_runtime_bundle_has_exact_allowlist_and_price_map(self) -> None:
         products = self.bundle["products"]
         price_registry = self.bundle["prices"]
-        self.assertEqual(28, len(products))
+        self.assertEqual(30, len(products))
         self.assertEqual(set(EXPECTED_PRICES), set(products))
         self.assertEqual(EXPECTED_PRICES, {code: row["price"] for code, row in products.items()})
         self.assertEqual("complete99-live-catalog-prices/v1", price_registry["schema"])
@@ -562,6 +566,8 @@ echo wp_json_encode(array(
             "carrefour": {"www.carrefour.co.il"},
             "rishiri_kombu_direct": {"www.rishirikonbu.com"},
             "japanese_taste": {"int.japanesetaste.com"},
+            "yamaroku_direct": {"yama-roku.net"},
+            "ogon_no_mura_direct": {"shop.ogonnomura.jp"},
         }
         source_urls = set()
         for code, product in self.bundle["products"].items():
@@ -580,7 +586,7 @@ echo wp_json_encode(array(
             self.assertIn(checked, {date(2026, 7, 31), date(2026, 8, 6)}, code)
             self.assertLessEqual(updated, checked, code)
             source_urls.add(evidence["source_url"])
-        self.assertEqual(28, len(source_urls))
+        self.assertEqual(30, len(source_urls))
 
     def test_relations_are_complete_reciprocal_and_have_unique_anchors(self) -> None:
         product_relations = self.bundle["relations"]["products"]
@@ -593,6 +599,7 @@ echo wp_json_encode(array(
             ingredient = relation["ingredient_code"]
             dishes = relation["dish_slugs"]
             science_entity_id = relation.get("science_entity_id", "")
+            related_product_codes = relation.get("related_product_codes", [])
             self.assertRegex(ingredient, r"^ingredient-[a-z0-9-]+$", code)
             self.assertTrue(dishes or science_entity_id, code)
             if science_entity_id:
@@ -603,11 +610,36 @@ echo wp_json_encode(array(
                 )
             self.assertEqual(len(dishes), len(set(dishes)), code)
             self.assertTrue(set(dishes).issubset(EXPECTED_DISHES), code)
+            self.assertEqual(
+                len(related_product_codes), len(set(related_product_codes)), code
+            )
+            self.assertNotIn(code, related_product_codes)
+            self.assertTrue(
+                set(related_product_codes).issubset(EXPECTED_PRICES), code
+            )
             ingredient_codes.append(ingredient)
             for dish in dishes:
                 self.assertIn(code, dish_relations[dish], f"{code} -> {dish}")
 
-        self.assertEqual(28, len(set(ingredient_codes)))
+        self.assertEqual(30, len(set(ingredient_codes)))
+        self.assertEqual(
+            {
+                "product-kito-yuzu-juice-100ml",
+                "product-rishiri-kombu-100g",
+                "product-honkarebushi-200g",
+            },
+            set(
+                product_relations["product-yamaroku-tsurubishio-500ml"][
+                    "related_product_codes"
+                ]
+            ),
+        )
+        self.assertEqual(
+            ["product-yamaroku-tsurubishio-500ml"],
+            product_relations["product-kito-yuzu-juice-100ml"][
+                "related_product_codes"
+            ],
+        )
         for dish, codes in dish_relations.items():
             self.assertTrue(codes, dish)
             self.assertEqual(len(codes), len(set(codes)), dish)
@@ -666,10 +698,12 @@ echo wp_json_encode(array(
             self.assertGreaterEqual(asset["width"], 1000, code)
             self.assertGreaterEqual(asset["height"], 700, code)
             self.assertGreater(path.stat().st_size, 50_000, code)
+            self.assertRegex(asset["alt"]["he"], r"[\u0590-\u05ff]", code)
+            self.assertTrue(asset["alt"]["en"].strip(), code)
             hashes.add(asset["sha256"])
             filenames.add(asset["filename"])
-        self.assertEqual(28, len(hashes))
-        self.assertEqual(28, len(filenames))
+        self.assertEqual(30, len(hashes))
+        self.assertEqual(30, len(filenames))
 
     def test_product_policy_is_bilingual_and_taxonomy_bounded(self) -> None:
         policy = self.bundle["policy"]
@@ -702,6 +736,14 @@ echo wp_json_encode(array(
                 "japanese",
                 "dashi",
                 "fish",
+                "fermentation",
+                "shoyu",
+                "soy",
+                "wheat",
+                "seasoning",
+                "yuzu",
+                "citrus",
+                "premium",
             },
             set(policy["tags"]),
         )
@@ -1015,7 +1057,9 @@ echo wp_json_encode(array(
             1
         ].split("private static function product_identity", 1)[0]
         filter_codes = set(re.findall(r"^\s*'([a-z][a-z-]+)'\s*=>", filters, re.MULTILINE))
-        mapped_facets = set(re.findall(r"=>\s*'([a-z][a-z-]+)'", facet_map))
+        mapped_facets = set(
+            re.findall(r"(?:=>|\[\]\s*=)\s*'([a-z][a-z-]+)'", facet_map)
+        )
         self.assertEqual(SAFE_STORE_FILTERS, filter_codes)
         self.assertEqual(SAFE_STORE_FILTERS - {"all"}, mapped_facets)
         for marker in (
@@ -1030,7 +1074,7 @@ echo wp_json_encode(array(
         badge_block = product_card.split('<div class="c99-store-product-badges">', 1)[1].split(
             "</div>", 1
         )[0]
-        self.assertIn("$facet_labels[ $facet ]", badge_block)
+        self.assertIn("$facet_labels[ $display_facet ]", badge_block)
         self.assertIn("$package", badge_block)
         for unsupported_badge in ("vegan", "vegetarian", "gluten-free", "kosher", "healthy", "medical"):
             self.assertNotIn(unsupported_badge, badge_block.lower())
@@ -1305,10 +1349,10 @@ echo wp_json_encode(array(
         ):
             self.assertNotIn(stale, self.consumer_content.lower())
         for current in (
-            "The pantry presents 28 products",
+            "The pantry presents 30 products",
             "Products can be added to the cart",
             "Electronic payment will open after the payment provider is connected",
-            "המזווה מציג 28 מוצרים",
+            "המזווה מציג 30 מוצרים",
             "אפשר להוסיף מוצרים לסל",
             "סליקה אלקטרונית תיפתח לאחר חיבור ספק הסליקה",
         ):

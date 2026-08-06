@@ -2,7 +2,7 @@
 
 ## Scope and provenance
 
-This register covers nine visual assets for the culinary
+This register covers thirteen visual assets for the culinary
 science pilot. OpenAI's built-in image generation tool created the source PNG
 files for Complete99 on 2026-08-06. The original generated PNG bytes are
 preserved in the plugin. Each project PNG has the same SHA256 digest as its
@@ -12,13 +12,17 @@ ImageMagick 7.1.2 Q16-HDRI produced the delivery derivatives. WebP files use
 quality 88 with encoding method 6. AVIF files use quality 70. Every artifact is
 1536 by 1024 pixels, 8-bit sRGB. No resize or crop was applied.
 
-Public-use status for all nine assets is `project-generated`. The eight assets
-whose entities passed the public projection gate are approved for use as
-editorial visuals on the matching Complete99 culinary science page. The
-ichiban dashi asset remains an internal editorial asset until the corresponding
-recipe passes its culinary test and publication gates. None of these images is
+Public-use status for all thirteen assets is `project-generated`. All thirteen
+entities passed the current public projection gate and are approved for use as
+editorial visuals on their matching Complete99 culinary science pages. The
+ichiban dashi source is reused from the earlier pilot without regeneration and
+is newly public in release 1.5.0. None of these images is
 documentary evidence of a supplier, package, SKU, stock level, certification,
 laboratory measurement, or health outcome.
+
+For public science pages, `rights_receipt_digest` binds the exact delivered
+WebP file. The retained PNG hash proves source integrity, while the AVIF hash
+proves the optional alternate delivery derivative.
 
 ## Asset map
 
@@ -35,12 +39,65 @@ All project artifacts are under:
 | Culinary science museum | `exec-6c6d5ae6-5c27-4a56-8f65-780861240b58.png` | `c99-science-culinary-science-museum-v01` | Premium editorial gateway to the culinary science museum and international pantry | Project-generated, approved for matching editorial page |
 | Japanese washoku | `exec-aea08f55-0c1d-44ba-9b64-fbe612e2f710.png` | `c99-science-japanese-washoku-v01` | Refined visual introduction to Japanese washoku heritage and culinary practice | Project-generated, approved for matching editorial page |
 | Japanese premium ingredients | `exec-f8d5636c-754e-41d9-a8f0-9b71f8174f9b.png` | `c99-science-japanese-premium-ingredients-v01` | Curated Japanese pantry scene connecting premium ingredients as one knowledge hub | Project-generated, approved for matching editorial page |
+| Japanese culinary techniques | `exec-798ec497-a7c4-4c38-8bed-bf33ccef0bd1.png` | `c99-science-japanese-culinary-techniques-v01` | Technique-hub still life linking rice handling, dashi extraction, cutting, time, temperature and tools | Project-generated, approved for matching editorial page |
+| Japanese food science | `exec-529258eb-e9e9-4bd6-9ba1-7fbb00109b54.png` | `c99-science-japanese-food-science-v01` | Science-hub still life linking ingredients, fermentation substrates, measurement and flavor extraction | Project-generated, approved for matching editorial page |
 | Kombu | `exec-679bceca-ddfa-4fc7-9b8d-a0b6b4820f4c.png` | `c99-science-kombu-v01` | Culinary studio study of kombu texture, preparation context, and umami role | Project-generated, approved for matching editorial page |
 | Kioke shoyu | `exec-5e185809-3ecc-4721-b90c-4eaa6ee08d9f.png` | `c99-science-kioke-shoyu-v01` | Culinary studio study of traditionally barrel-aged shoyu, color, and serving context | Project-generated, approved for matching editorial page |
 | Fresh wasabi rhizome | `exec-f58c65cf-c744-42e0-83af-33c1a5ff86e7.png` | `c99-science-fresh-wasabi-rhizome-v01` | Culinary studio study of a fresh wasabi rhizome and careful grating context | Project-generated, approved for matching editorial page |
 | Kito yuzu | `exec-346464a6-b9f0-4ca4-96a0-561ba193fcda.png` | `c99-science-kito-yuzu-v01` | Culinary studio study of fresh Kito yuzu, peel, juice, and aromatic context | Project-generated, approved for matching editorial page |
+| Hon mirin | `exec-ea527d0c-0190-459e-af8e-29ef6d01ec7b.png` | `c99-science-hon-mirin-v01` | Editorial ingredient study of amber hon mirin, glutinous rice and rice koji | Project-generated, approved for matching editorial page |
 | Katsuobushi | `exec-562a63db-fdd5-4757-be3b-6020bd2e9d41.png` | `c99-science-katsuobushi-v01` | Culinary studio study of a whole smoked bonito block, shaved curls, and the shaving tool | Project-generated, approved for matching editorial page |
-| Ichiban dashi | `exec-d25a8ee3-da63-470e-9a25-c3c8c26f1fbd.png` | `c99-science-ichiban-dashi-v01` | Culinary studio study of clear first-extraction dashi with kombu and katsuobushi context | Project-generated, internal editorial asset pending recipe gate |
+| Ichiban dashi | `exec-d25a8ee3-da63-470e-9a25-c3c8c26f1fbd.png` | `c99-science-ichiban-dashi-v01` | Culinary studio study of clear first-extraction dashi with kombu and katsuobushi context | Existing project-generated source, approved for matching editorial page in 1.5.0 |
+| Glutamate and IMP umami synergy | `exec-7bf4b49a-e6bb-49d7-a714-79eee12e5c4e.png` | `c99-science-umami-synergy-glutamate-imp-v01` | Editorial visualization linking representative molecular models with kombu, katsuobushi and dashi | Project-generated, approved for matching editorial page |
+
+## Release 1.5.0 alt and prompt register
+
+The following bilingual alt text describes visible content without presenting
+an editorial visualization as a laboratory measurement or supplier record.
+
+| Project basename | Hebrew alt | English alt |
+|---|---|---|
+| `c99-science-japanese-culinary-techniques-v01` | כלי עבודה וטכניקות בישול יפניות: אורז בהאנגירי, דאשי, קומבו, קצואובושי, קוג׳י, סכין, מדחום וטיימר | Japanese culinary tools and techniques with rice in a hangiri, dashi, kombu, katsuobushi, koji, a knife, thermometer and timer |
+| `c99-science-japanese-food-science-v01` | מדע המזון היפני עם דאשי, קומבו, קצואובושי, שויו, אורז, קוג׳י, סויה, חיטה, יוזו וכלי מדידה | Japanese food science still life with dashi, kombu, katsuobushi, shoyu, rice, koji, soybeans, wheat, yuzu and measuring tools |
+| `c99-science-hon-mirin-v01` | הון מירין ענברי בקנקן זכוכית ובקערית קרמיקה, לצד אורז דביק וקוג׳י אורז | Amber hon mirin in a glass carafe and ceramic dish beside glutinous rice and rice koji |
+| `c99-science-umami-synergy-glutamate-imp-v01` | הדמיה מערכתית של מודלים מולקולריים לגלוטמט ו-IMP מעל דאשי, קומבו וקצואובושי | Editorial visualization of molecular models representing glutamate and IMP above dashi, kombu and katsuobushi |
+
+The current prompt of record for each new science asset is:
+
+Japanese culinary techniques:
+
+```text
+Museum-grade commercial editorial composition representing Japanese culinary techniques, clear visual hierarchy, authentic culinary materials, restrained natural light, no logos, no embedded text, no invented certification marks.
+```
+
+Japanese food science:
+
+```text
+Museum-grade commercial editorial composition representing Japanese food science, clear visual hierarchy, authentic culinary materials, restrained natural light, no logos, no embedded text, no invented certification marks.
+```
+
+Hon mirin:
+
+```text
+Amber hon mirin in a clear unbranded glass vessel beside glutinous rice and rice koji, soft backlight revealing viscosity and warm color, precise Japanese culinary studio styling, no labels, no bottle branding.
+```
+
+Glutamate and IMP umami synergy:
+
+```text
+Editorial culinary science visualization of glutamate and IMP molecular models beside kombu, katsuobushi and clear dashi, accurate atom conventions, museum-grade dark background, no health claims, text or labels.
+```
+
+All four use the shared negative prompt of record:
+
+```text
+No text, no logos, no certification seals, no false brand packaging, no watermarks, no distorted utensils or hands.
+```
+
+The reused ichiban dashi visual keeps its existing prompt and source bytes. Its
+current public alt is `איצ׳יבאן דאשי צלול בכלי זכוכית לצד קומבו וקצואובושי` in
+Hebrew and `Clear ichiban dashi in a glass vessel beside kombu and
+katsuobushi` in English.
 
 ## Artifact integrity register
 
@@ -73,11 +130,23 @@ All project artifacts are under:
 | `c99-science-ichiban-dashi-v01.png` | PNG | 1536x1024 | 2,400,377 | `5d5c24588e071243b3a44ad4bb56617d5b266bb88d8eaa0611455159167a47cd` |
 | `c99-science-ichiban-dashi-v01.webp` | WebP | 1536x1024 | 148,964 | `28eb6c05cec30ba9f4fb986c12afc31b8dd9c3cf2c90a3ec2a25400482a847e2` |
 | `c99-science-ichiban-dashi-v01.avif` | AVIF | 1536x1024 | 78,823 | `f21766a4ce0aa0f5e8f81c54e7a98ff0fb8f841d09d4329bc440302b896cb604` |
+| `c99-science-japanese-culinary-techniques-v01.png` | PNG | 1536x1024 | 2,768,564 | `79bafc95b1366747c35427cba8be7d1273200199df8c602d67ca8bf9a813300c` |
+| `c99-science-japanese-culinary-techniques-v01.webp` | WebP | 1536x1024 | 280,378 | `2eda7710abfa5ce35e1634fecdf69a57efdf3875638889c217bba804d44027b4` |
+| `c99-science-japanese-culinary-techniques-v01.avif` | AVIF | 1536x1024 | 201,844 | `9707538d51c7088f32a1ef824e8c46d36a86da0e2be2d26bfbff9efb43c84894` |
+| `c99-science-japanese-food-science-v01.png` | PNG | 1536x1024 | 2,469,999 | `b0ae4081aa28d1af78c8bc9ea03779755e873954993c2dd95bd005100bb68625` |
+| `c99-science-japanese-food-science-v01.webp` | WebP | 1536x1024 | 214,184 | `41affd1d16f01e9aeb418d05139d0df6aad5bee4c02df88473ea2c33c516c49b` |
+| `c99-science-japanese-food-science-v01.avif` | AVIF | 1536x1024 | 162,428 | `37aad62b0ae0dab54aa82e23f9c07c68fa43f014c4cdfb54032dc37f0f54c507` |
+| `c99-science-hon-mirin-v01.png` | PNG | 1536x1024 | 2,032,609 | `74c72b476a16d6950783d433ce1152ec3d44ecf619e994e37ce94ac5355b0480` |
+| `c99-science-hon-mirin-v01.webp` | WebP | 1536x1024 | 107,164 | `c8808bebd8f92d7ebfd4b78d3ab3853ebff56fbe00e8d98c3433db75d4de97d0` |
+| `c99-science-hon-mirin-v01.avif` | AVIF | 1536x1024 | 86,254 | `3915d6ecefcdb70e77c9849067cd4133d9f5646224be8b5cc1354b013cebc289` |
+| `c99-science-umami-synergy-glutamate-imp-v01.png` | PNG | 1536x1024 | 2,419,166 | `37f0feebd4be1e67e549f04b8de62d6f62a0f8bbd337d22f295b606dbd4aed40` |
+| `c99-science-umami-synergy-glutamate-imp-v01.webp` | WebP | 1536x1024 | 175,826 | `cff653805e2e90b3ee4d565cdfdd21c8ac4e13782441860bd81a98516d1c7cd5` |
+| `c99-science-umami-synergy-glutamate-imp-v01.avif` | AVIF | 1536x1024 | 143,835 | `2823d4f7ad334c0be2dd8494e4544115d6d13ab91d560514ed17f78d977e0d14` |
 
 ## Validation record
 
-- All 27 artifacts decode successfully with ImageMagick.
-- Format signatures resolve as nine PNG, nine WebP, and nine AVIF files.
+- All 39 artifacts decode successfully with ImageMagick.
+- Format signatures resolve as thirteen PNG, thirteen WebP, and thirteen AVIF files.
 - Every decoded artifact reports 1536 by 1024 pixels, 8-bit sRGB.
 - Each retained project PNG is byte-identical to its generated source according
   to SHA256.

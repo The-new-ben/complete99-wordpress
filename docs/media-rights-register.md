@@ -95,11 +95,16 @@ Registry:
 
 - `plugin/complete99-platform/data/generated-asset-manifest.php`
 
-The library contains 52 source PNG files and 52 matched WebP delivery files.
+The library contains 54 source PNG files and 54 matched WebP delivery files.
 They were created with OpenAI's built-in image generation between 2026-07-30
 and 2026-08-06 for Complete99. The set covers dishes, ingredient and product
 references, kitchen preparation, group meals, knowledge-centre visuals, pantry
 architecture, and delivery concepts.
+
+Thirty individually approved asset records map one-to-one to the current
+30-product public catalog. Approval as a public catalog illustration does not
+turn an unbranded generated vessel into documentary evidence of a supplier's
+actual package or label.
 
 Every file is an illustrative evaluation asset. It is not documentary evidence
 of a current menu presentation, supplier item, package, stock condition,
@@ -120,6 +125,67 @@ are recorded in the generated asset manifest.
 These assets must not be used with fabricated badges, medical claims,
 certifications, supplier branding, current availability statements, or a
 public add-to-cart control before the corresponding acceptance gates pass.
+
+### Release 1.5.0 product additions
+
+OpenAI's built-in image generation created the following two source PNG files
+for Complete99 on 2026-08-06 in generation session
+`019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b`. The project PNG files are
+byte-identical to the named generated sources. The project records use
+provenance `openai-imagegen-session`, model family `openai-imagegen`, and human
+review date `2026-08-06`. Their WebP files are the public delivery artifacts.
+Both are 1536 by 1024 pixels, 8-bit sRGB, with no resize or crop.
+
+Generated sources are retained under:
+
+`C:\Users\pro\.codex\generated_images\019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b\`
+
+| Asset | Generated source | Entity and product binding | Public-use boundary |
+|---|---|---|---|
+| Kioke shoyu 500 ml | `exec-5abe1f0f-a61f-438b-a42f-d9858918f3e2.png` | `ingredient-kioke-shoyu`; `product-yamaroku-tsurubishio-500ml` | Unbranded public catalog illustration, not the supplier package |
+| Yuzu juice 100 ml | `exec-775117f7-6bea-42a4-8e95-2baa5c0f90cc.png` | `ingredient-kito-yuzu`; `product-kito-yuzu-juice-100ml` | Unbranded public catalog illustration, not the supplier package or a GI mark |
+
+#### Bilingual alt text
+
+| Project basename | Hebrew alt | English alt |
+|---|---|---|
+| `c99-ingredient-kioke-shoyu-evaluation-v01` | בקבוק שויו קיוקה בנפח 500 מ״ל ללא מיתוג, לצד קערית שויו וחבית עץ ברקע | Unbranded 500 ml kioke shoyu bottle beside a bowl of shoyu with a wooden barrel in the background |
+| `c99-ingredient-kito-yuzu-juice-evaluation-v01` | בקבוק מיץ יוזו בנפח 100 מ״ל ללא מיתוג, לצד פרי יוזו שלם וחצוי | Unbranded 100 ml yuzu juice bottle beside a whole and halved yuzu |
+
+#### Prompt records
+
+Kioke shoyu prompt:
+
+```text
+Commercial culinary product photograph of one unbranded 500 ml glass bottle filled with deep ruby-brown kioke-fermented shoyu, beside a dark stoneware bowl and cedar kioke barrel, premium Japanese pantry styling, all essential content inside a centered square-safe crop.
+```
+
+Kioke shoyu negative prompt:
+
+```text
+No text, logos, labels, certification seals, barcodes, people, hands, drinking scene, copied packaging or fake Japanese writing.
+```
+
+Yuzu juice prompt:
+
+```text
+Commercial culinary product photograph of one unbranded 100 ml clear glass bottle filled with pale golden yuzu juice beside a whole and halved yuzu, accurate peel and juice textures, premium Japanese pantry styling, all essential content inside a centered square-safe crop.
+```
+
+Yuzu juice negative prompt:
+
+```text
+No text, logos, labels, GI mark, certification seals, barcodes, people, hands, lemon substitution, copied packaging or fake Japanese writing.
+```
+
+#### Artifact integrity
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-ingredient-kioke-shoyu-evaluation-v01.png` | PNG | 1536x1024 | 1,984,172 | `5db441b80e2e98bbe32ca62a8f21e6be292a118ff5428614569d17dc9b7acf64` |
+| `c99-ingredient-kioke-shoyu-evaluation-v01.webp` | WebP | 1536x1024 | 99,044 | `c37b56c5d7228b290e54a5adcf4204d75d35699339a6a3b2ca3cd16b23d168dc` |
+| `c99-ingredient-kito-yuzu-juice-evaluation-v01.png` | PNG | 1536x1024 | 1,929,717 | `6aa616b91498cada0abf0252b588f2eaebf1effbdd24fedd98ec49b335c65e3a` |
+| `c99-ingredient-kito-yuzu-juice-evaluation-v01.webp` | WebP | 1536x1024 | 90,002 | `1769dcc6124bd751da014e6451728b7cde1982f666a9795ad87c8f5391c61d1b` |
 
 ## Current Complete99 mark
 

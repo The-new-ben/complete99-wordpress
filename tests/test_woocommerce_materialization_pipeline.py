@@ -221,9 +221,9 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
             "6e58fc3ba9b18d1c9aee6b0227d3c3c09e4fe2c1332823bd2e0ac54ffcff64a9",
             COMMERCE.WOOCOMMERCE_PACKAGE_SHA256,
         )
-        self.assertEqual(28, COMMERCE.EXPECTED_PRODUCT_COUNT)
-        self.assertEqual(28, len(COMMERCE.EXPECTED_PRODUCT_CODES))
-        self.assertEqual(28, len(set(COMMERCE.EXPECTED_PRODUCT_CODES)))
+        self.assertEqual(30, COMMERCE.EXPECTED_PRODUCT_COUNT)
+        self.assertEqual(30, len(COMMERCE.EXPECTED_PRODUCT_CODES))
+        self.assertEqual(30, len(set(COMMERCE.EXPECTED_PRODUCT_CODES)))
         self.assertEqual(
             {
                 "product-tahini-500g": "11.00",
@@ -254,6 +254,8 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
                 "product-chicken-liver-1kg": "17.90",
                 "product-rishiri-kombu-100g": "89.00",
                 "product-honkarebushi-200g": "219.00",
+                "product-yamaroku-tsurubishio-500ml": "149.00",
+                "product-kito-yuzu-juice-100ml": "64.00",
             },
             COMMERCE.EXPECTED_ILS_PRICES,
         )
@@ -597,9 +599,9 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
                 StaleMarkerClient(), token, deployment_id, target_host
             )
 
-    def test_catalog_dry_run_requires_all_28_stock_price_and_asset_actions(self) -> None:
+    def test_catalog_dry_run_requires_all_30_stock_price_and_asset_actions(self) -> None:
         verified = COMMERCE.verify_catalog_dry_run(dry_run_response())
-        self.assertEqual(28, verified["product_count"])
+        self.assertEqual(30, verified["product_count"])
         self.assertFalse(verified["write_performed"])
 
         wrong_count = dry_run_response()
@@ -641,7 +643,7 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
 
         client = CatalogClient()
         result = COMMERCE.materialize_catalog(client, TEST_DEPLOYMENT_ID)
-        self.assertEqual(28, result["status"]["product_count"])
+        self.assertEqual(30, result["status"]["product_count"])
         self.assertTrue(
             result["apply"]["page_cache_purge"]["upress"]["request_completed"]
         )

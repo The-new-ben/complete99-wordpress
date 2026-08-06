@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 04:30:00"
+RELEASE_LAST_UPDATED = "2026-08-06 12:00:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,13 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the bilingual pantry from 28 to 30 owner-authorized products with kioke-fermented shoyu and Kito yuzu juice.</li>"
+                "<li>Added dated producer evidence, owner-authorized ILS prices, opening stock, original product imagery and reciprocal culinary-science links.</li>"
+                "<li>Expanded the public Japanese culinary-science pilot to 13 reviewed entities, including techniques, food science, hon mirin, ichiban dashi and umami synergy.</li>"
+                "<li>Added localized image alternatives, liquid net quantities, Japanese-pantry filtering and contextual related-product continuation.</li>"
+                "</ul>"
+                "<h4>1.4.0</h4>"
                 "<ul>"
                 "<li>Expanded the bilingual pantry from 26 to 28 owner-authorized products with Rishiri kombu and Honkarebushi katsuobushi.</li>"
                 "<li>Added current dated market evidence, opening ILS prices, stock, exact image receipts and fail-closed deployment coverage for both products.</li>"

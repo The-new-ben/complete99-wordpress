@@ -764,6 +764,7 @@ final class Complete99_Consumer {
 		$filters = array(
 			'all'             => $is_he ? 'הכול' : 'All',
 			'pantry'          => $is_he ? 'מזווה' : 'Pantry',
+			'japanese-pantry' => $is_he ? 'מזווה יפני' : 'Japanese pantry',
 			'fresh-produce'   => $is_he ? 'תוצרת טרייה' : 'Fresh produce',
 			'chilled-frozen'  => $is_he ? 'קירור והקפאה' : 'Chilled and frozen',
 			'bakery'          => $is_he ? 'מאפים' : 'Bakery',
@@ -796,7 +797,15 @@ final class Complete99_Consumer {
 		$allergens   = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::ALLERGENS_HE : Complete99_Commerce::ALLERGENS_EN, true );
 		$storage     = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::STORAGE_HE : Complete99_Commerce::STORAGE_EN, true );
 		$fulfilment  = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::FULFILMENT_HE : Complete99_Commerce::FULFILMENT_EN, true );
-		$facet       = sanitize_key( (string) get_post_meta( $product_id, '_complete99_live_catalog_facet', true ) );
+		$facet_tokens = array_values(
+			array_filter(
+				array_map(
+					'sanitize_key',
+					preg_split( '/\s+/', trim( (string) get_post_meta( $product_id, '_complete99_live_catalog_facet', true ) ) ) ?: array()
+				)
+			)
+		);
+		$facet       = implode( ' ', array_unique( $facet_tokens ) );
 		$package     = (string) get_post_meta( $product_id, $is_he ? '_complete99_live_catalog_package_he' : '_complete99_live_catalog_package_en', true );
 		$product_code= (string) get_post_meta( $product_id, '_complete99_catalog_product_code', true );
 		$relations   = class_exists( 'Complete99_Live_Catalog' ) ? Complete99_Live_Catalog::relations_for_product_code( $product_code ) : array();
@@ -809,14 +818,19 @@ final class Complete99_Consumer {
 			}
 		}
 		$can_purchase = Complete99_Commerce::cart_is_ready() && $product->is_in_stock() && $product->is_purchasable();
+		$image_alt    = (string) get_post_meta( $product->get_image_id(), $is_he ? '_complete99_attachment_alt_he' : '_complete99_attachment_alt_en', true );
+		if ( '' === trim( $image_alt ) ) {
+			$image_alt = $name;
+		}
 		$facet_labels = array(
 			'pantry'         => $is_he ? 'מזווה' : 'Pantry',
+			'japanese-pantry'=> $is_he ? 'מזווה יפני' : 'Japanese pantry',
 			'fresh-produce'  => $is_he ? 'תוצרת טרייה' : 'Fresh produce',
 			'chilled-frozen' => $is_he ? 'קירור והקפאה' : 'Chilled and frozen',
 			'bakery'         => $is_he ? 'מאפים' : 'Bakery',
 			'regulated'      => $is_he ? 'בפיקוח' : 'Regulated',
 		);
-		$weight_unit = (string) get_option( 'woocommerce_weight_unit', 'kg' );
+		$display_facet = in_array( 'japanese-pantry', $facet_tokens, true ) ? 'japanese-pantry' : ( $facet_tokens[0] ?? '' );
 		$action_url  = add_query_arg(
 			array(
 				'add-to-cart' => absint( $product_id ),
@@ -826,17 +840,17 @@ final class Complete99_Consumer {
 		);
 		?>
 		<article id="c99-product-code-<?php echo esc_attr( sanitize_html_class( $product_code ) ); ?>" class="c99-store-product-card" data-c99-product-card data-c99-product-facets="<?php echo esc_attr( $facet ); ?>" data-c99-product-id="<?php echo esc_attr( $product_id ); ?>" tabindex="-1">
-			<figure><?php echo wp_get_attachment_image( $product->get_image_id(), 'woocommerce_thumbnail', false, array( 'alt' => $name, 'loading' => 'lazy', 'decoding' => 'async' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></figure>
+			<figure><?php echo wp_get_attachment_image( $product->get_image_id(), 'woocommerce_thumbnail', false, array( 'alt' => $image_alt, 'loading' => 'lazy', 'decoding' => 'async' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></figure>
 			<div class="c99-store-product-copy">
 				<p class="c99-store-product-status"><?php echo esc_html( $product->is_in_stock() ? ( $is_he ? 'במלאי' : 'In stock' ) : ( $is_he ? 'אזל זמנית' : 'Temporarily out of stock' ) ); ?></p>
 				<div class="c99-store-product-badges">
-					<?php if ( isset( $facet_labels[ $facet ] ) ) : ?><span><?php echo esc_html( $facet_labels[ $facet ] ); ?></span><?php endif; ?>
+					<?php if ( isset( $facet_labels[ $display_facet ] ) ) : ?><span><?php echo esc_html( $facet_labels[ $display_facet ] ); ?></span><?php endif; ?>
 					<?php if ( '' !== trim( $package ) ) : ?><span><?php echo esc_html( $package ); ?></span><?php endif; ?>
 				</div>
 				<h3><?php echo esc_html( $name ); ?></h3>
 				<p><?php echo esc_html( $description ); ?></p>
 				<dl class="c99-store-product-facts">
-					<div><dt><?php echo esc_html( $is_he ? 'משקל' : 'Weight' ); ?></dt><dd><?php echo esc_html( wc_format_localized_decimal( $product->get_weight() ) . ' ' . $weight_unit ); ?></dd></div>
+					<div><dt><?php echo esc_html( $is_he ? 'כמות נטו' : 'Net quantity' ); ?></dt><dd><?php echo esc_html( $package ); ?></dd></div>
 					<div><dt><?php echo esc_html( $is_he ? 'רכיבים' : 'Ingredients' ); ?></dt><dd><?php echo esc_html( $ingredients ); ?></dd></div>
 					<div><dt><?php echo esc_html( $is_he ? 'אלרגנים' : 'Allergens' ); ?></dt><dd><?php echo esc_html( $allergens ); ?></dd></div>
 					<div><dt><?php echo esc_html( $is_he ? 'אחסון' : 'Storage' ); ?></dt><dd><?php echo esc_html( $storage ); ?></dd></div>
@@ -847,6 +861,14 @@ final class Complete99_Consumer {
 					<?php foreach ( (array) ( $relations['dish_slugs'] ?? array() ) as $dish_slug ) : ?>
 						<?php $related_dish = self::dish_by_slug( $dish_slug ); ?>
 						<?php if ( ! empty( $related_dish ) ) : ?><a href="<?php echo esc_url( Complete99_Frontend::live_dish_url( $dish_slug, $lang ) ); ?>"><?php echo esc_html( $is_he ? $related_dish['name_he'] : $related_dish['name_en'] ); ?></a><?php endif; ?>
+					<?php endforeach; ?>
+					<?php foreach ( (array) ( $relations['related_product_codes'] ?? array() ) as $related_product_code ) : ?>
+						<?php
+						$related_product_code = sanitize_key( (string) $related_product_code );
+						$related_product_id   = function_exists( 'wc_get_product_id_by_sku' ) ? absint( wc_get_product_id_by_sku( $related_product_code ) ) : 0;
+						$related_name         = $related_product_id ? (string) get_post_meta( $related_product_id, $is_he ? Complete99_Commerce::NAME_HE : Complete99_Commerce::NAME_EN, true ) : '';
+						?>
+						<?php if ( '' !== $related_product_code && '' !== trim( $related_name ) ) : ?><a href="<?php echo esc_url( self::route( 'store', $lang ) . '#c99-product-code-' . sanitize_html_class( $related_product_code ) ); ?>"><?php echo esc_html( $related_name ); ?></a><?php endif; ?>
 					<?php endforeach; ?>
 				</div>
 				<div class="c99-store-product-purchase">

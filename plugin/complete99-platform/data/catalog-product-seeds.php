@@ -252,6 +252,16 @@ $c99_products = array(
 		'packaged_shelf_stable', 'כ-200 גרם', 'Approx. 200 g', 99.03, 99.03, 240.00, 495.15, 'ILS_per_kg_source_conversion', 219.00,
 		'https://int.japanesetaste.com/products/honkarebushi-whole-japanese-katsuobushi-block-bonito-belly-200g', 'japanese_taste', '2026-08-06', array(), array( 'fish_allergen', 'animal_derived_food_import_review', 'import_label_review' ), '2026-08-06'
 	),
+	$c99_product(
+		'product-yamaroku-tsurubishio-500ml', 'ingredient-kioke-shoyu', 'Yamaroku Tsuru-bishio שויו קיוקה 500 מ״ל', 'Yamaroku Tsuru-bishio kioke shoyu 500 ml', 'Yamaroku producer benchmark',
+		'packaged_shelf_stable', '500 מ״ל', '500 ml', 36.27, 36.27, 122.29, 72.54, 'ILS_per_litre_source_conversion', 149.00,
+		'https://yama-roku.net/product', 'yamaroku_direct', '2026-08-06', array(), array( 'soy_allergen', 'wheat_allergen', 'import_label_review', 'supplier_pack_photography_required' ), '2026-08-06'
+	),
+	$c99_product(
+		'product-kito-yuzu-juice-100ml', 'ingredient-kito-yuzu', 'Ogon no Mura מיץ Kito Yuzu ראשון 100 מ״ל', 'Ogon no Mura Kito Yuzu first-press juice 100 ml', 'Ogon no Mura producer benchmark',
+		'packaged_shelf_stable', '100 מ״ל', '100 ml', 13.69, 13.69, 64.00, 136.90, 'ILS_per_litre_source_conversion', 64.00,
+		'https://shop.ogonnomura.jp/view/item/000000000364', 'ogon_no_mura_direct', '2026-08-06', array(), array( 'import_label_review', 'processed_gi_representation_review', 'refrigerate_after_opening' ), '2026-08-06'
+	),
 );
 
 $c99_candidate_relations = array(
@@ -322,6 +332,8 @@ $c99_evaluation_image_bindings = array(
 	'product-chicken-liver-1kg'  => 'c99-ingredient-chicken-liver-evaluation-v01.webp',
 	'product-rishiri-kombu-100g' => 'c99-ingredient-rishiri-kombu-evaluation-v01.webp',
 	'product-honkarebushi-200g'  => 'c99-ingredient-katsuobushi-evaluation-v01.webp',
+	'product-yamaroku-tsurubishio-500ml' => 'c99-ingredient-kioke-shoyu-evaluation-v01.webp',
+	'product-kito-yuzu-juice-100ml' => 'c99-ingredient-kito-yuzu-juice-evaluation-v01.webp',
 );
 
 foreach ( $c99_products as &$c99_seed_product ) {
@@ -359,6 +371,8 @@ return array(
 		'bank_of_israel_fx'          => 'https://www.boi.org.il/roles/markets/exchangerates/',
 		'israel_food_import'         => 'https://www.gov.il/en/departments/units/import-food-inspection-unit',
 		'rishiri_kombu_direct'       => 'https://www.rishirikonbu.com/',
+		'yamaroku_direct'             => 'https://yama-roku.net/product',
+		'ogon_no_mura_direct'         => 'https://shop.ogonnomura.jp/view/item/000000000364',
 		'japanese_taste'             => 'https://int.japanesetaste.com/',
 	),
 	'classification_rules'         => $c99_classification_rules,

@@ -18,16 +18,23 @@ BUILDER = ROOT / "scripts" / "build-plugin-zip.py"
 PUBLIC_IDS = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
+    "hub-japanese-food-science",
     "hub-japanese-ingredients",
+    "hub-japanese-techniques",
+    "guide-umami-synergy",
     "ingredient-kombu",
     "ingredient-katsuobushi",
     "ingredient-kioke-shoyu",
     "ingredient-fresh-wasabi",
     "ingredient-kito-yuzu",
+    "ingredient-hon-mirin",
+    "preparation-ichiban-dashi",
 }
 PUBLIC_OFFER_CODES = {
     "ingredient-kombu": "product-rishiri-kombu-100g",
     "ingredient-katsuobushi": "product-honkarebushi-200g",
+    "ingredient-kioke-shoyu": "product-yamaroku-tsurubishio-500ml",
+    "ingredient-kito-yuzu": "product-kito-yuzu-juice-100ml",
 }
 PUBLIC_PROJECTION_KEYS = {
     "id",
@@ -127,7 +134,13 @@ $paths = array(
     '/ingredients/fresh-wasabi-rhizome/',
     '/en/ingredients/fresh-wasabi-rhizome/',
     '/ingredients/kito-yuzu/',
-    '/en/ingredients/kito-yuzu/'
+    '/en/ingredients/kito-yuzu/',
+    '/ingredients/hon-mirin/',
+    '/en/ingredients/hon-mirin/',
+    '/knowledge/ichiban-dashi/',
+    '/en/knowledge/ichiban-dashi/',
+    '/knowledge/umami-synergy-glutamate-imp/',
+    '/en/knowledge/umami-synergy-glutamate-imp/'
 );
 $bundles = array();
 foreach ($paths as $path) {{
@@ -171,7 +184,15 @@ def test_exact_reviewed_public_cohort_and_noindex_boundary(pilot_payload: dict) 
 
 def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict) -> None:
     assert pilot_payload["invalid"] == []
-    assert len(pilot_payload["bundles"]) == 14
+    assert len(pilot_payload["bundles"]) == 20
+    public_standalone = {
+        entity["id"]
+        for entity in pilot_payload["registry"]["entities"]
+        if entity["publication"]["public_page"]
+        and entity["seo"]["route_mode"] == "standalone"
+    }
+    assert len(public_standalone) == 10
+    assert len(pilot_payload["bundles"]) == 2 * len(public_standalone)
     for path, bundle in pilot_payload["bundles"].items():
         assert bundle["canonical_path"] == path
         assert bundle["canonical_url"] == "https://complete99.test" + path
@@ -205,7 +226,7 @@ def _mapping_keys(value: object) -> set[str]:
     return keys
 
 
-def test_public_projections_expose_only_two_safe_offer_references(
+def test_public_projections_expose_only_four_safe_offer_references(
     pilot_payload: dict,
 ) -> None:
     seen: dict[tuple[str, str], dict] = {}
@@ -235,15 +256,22 @@ def test_public_projections_expose_only_two_safe_offer_references(
         assert offer["label"].strip()
 
 
-def test_cuisine_owns_the_public_ingredient_section(pilot_payload: dict) -> None:
+def test_cuisine_owns_the_three_public_pilot_sections(pilot_payload: dict) -> None:
     cuisine = pilot_payload["bundles"]["/museum/japanese-culinary-science/"]
     assert [section["id"] for section in cuisine["sections"]] == [
-        "hub-japanese-ingredients"
+        "hub-japanese-food-science",
+        "hub-japanese-ingredients",
+        "hub-japanese-techniques",
     ]
-    section = cuisine["sections"][0]
-    assert section["seo"]["route_mode"] == "section"
-    assert section["seo"]["owner_entity_id"] == "cuisine-japanese-washoku"
-    assert section["seo"]["section_id"] == "japanese-premium-ingredients"
+    expected_section_ids = {
+        "hub-japanese-food-science": "japanese-food-science",
+        "hub-japanese-ingredients": "japanese-premium-ingredients",
+        "hub-japanese-techniques": "japanese-culinary-techniques",
+    }
+    for section in cuisine["sections"]:
+        assert section["seo"]["route_mode"] == "section"
+        assert section["seo"]["owner_entity_id"] == "cuisine-japanese-washoku"
+        assert section["seo"]["section_id"] == expected_section_ids[section["id"]]
 
 
 def test_every_public_projection_has_a_digest_matched_generated_asset(

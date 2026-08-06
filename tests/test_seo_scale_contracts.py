@@ -100,8 +100,8 @@ echo json_encode($selected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             )
         ).lower()
         for marker in (
-            "28 מוצרי מזווה וחומרי גלם",
-            "shop 28 pantry goods and ingredients",
+            "30 מוצרי מזווה וחומרי גלם",
+            "shop 30 pantry goods and ingredients",
             "add products, change quantities and remove items",
             "electronic payment will open after the payment provider is connected",
         ):
