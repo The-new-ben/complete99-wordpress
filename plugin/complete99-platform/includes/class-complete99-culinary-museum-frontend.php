@@ -461,7 +461,7 @@ final class Complete99_Culinary_Museum_Frontend {
 		?>
 		<section class="c99-museum-section c99-museum-map" aria-labelledby="c99-museum-map-title">
 			<div class="c99-museum-section-heading">
-				<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'Hubs & Spokes' : 'Hubs & Spokes' ); ?></p>
+				<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מרכזי תוכן וענפי ידע' : 'Hubs and spokes' ); ?></p>
 				<h2 id="c99-museum-map-title"><?php echo esc_html( $is_he ? 'מפת הידע של הנושא' : 'The subject knowledge map' ); ?></h2>
 			</div>
 			<div class="c99-museum-section-stack">
@@ -507,7 +507,7 @@ final class Complete99_Culinary_Museum_Frontend {
 						<?php $url = self::internal_url( isset( $link['url'] ) ? $link['url'] : '' ); ?>
 						<?php if ( '' === $url ) { continue; } ?>
 						<a class="c99-museum-link-card" href="<?php echo esc_url( $url ); ?>">
-							<span><?php echo esc_html( self::machine_label( isset( $link['relationship'] ) ? $link['relationship'] : 'related' ) ); ?></span>
+							<span><?php echo esc_html( self::relationship_label( isset( $link['relationship'] ) ? $link['relationship'] : 'related', $lang ) ); ?></span>
 							<strong><?php echo esc_html( isset( $link['anchor'] ) ? $link['anchor'] : $link['context'] ); ?></strong>
 							<?php if ( ! empty( $link['context'] ) && $link['context'] !== $link['anchor'] ) : ?><small><?php echo esc_html( $link['context'] ); ?></small><?php endif; ?>
 						</a>
@@ -518,7 +518,7 @@ final class Complete99_Culinary_Museum_Frontend {
 				<div class="c99-museum-relation-list">
 					<?php foreach ( $relations as $relation ) : ?>
 						<article>
-							<p class="c99-museum-card-label"><?php echo esc_html( self::machine_label( $relation['type'] ) ); ?></p>
+							<p class="c99-museum-card-label"><?php echo esc_html( self::relationship_label( $relation['type'], $lang ) ); ?></p>
 							<p><?php echo esc_html( $relation['note'] ); ?><?php self::render_source_markers( $relation['source_ids'], $source_map, $entity['id'] ); ?></p>
 							<?php if ( ! empty( $target_urls[ $relation['target_id'] ] ) ) : ?><a class="c99-museum-source-link" href="<?php echo esc_url( $target_urls[ $relation['target_id'] ] ); ?>"><?php echo esc_html( 'he' === $lang ? 'לישות המקושרת' : 'Open connected entity' ); ?></a><?php endif; ?>
 						</article>
@@ -917,17 +917,24 @@ final class Complete99_Culinary_Museum_Frontend {
 
 	private static function evidence_label( $evidence, $lang ) {
 		$labels = array(
-			'peer_reviewed'       => array( 'מחקר שעבר ביקורת עמיתים', 'Peer-reviewed study' ),
-			'peer_reviewed_paper' => array( 'מאמר שעבר ביקורת עמיתים', 'Peer-reviewed paper' ),
-			'peer_reviewed_context'=> array( 'הקשר מחקרי', 'Peer-reviewed context' ),
-			'official_source'      => array( 'מקור רשמי', 'Official source' ),
-			'official_government'  => array( 'מקור ממשלתי רשמי', 'Official government source' ),
-			'official_organization'=> array( 'מקור ארגוני רשמי', 'Official organization source' ),
-			'official_standard'    => array( 'תקן רשמי', 'Official standard' ),
-			'conference_proceeding'=> array( 'פרסום כנס', 'Conference proceeding' ),
+			'peer_reviewed'          => array( 'מחקר שעבר ביקורת עמיתים', 'Peer-reviewed study' ),
+			'peer_reviewed_paper'    => array( 'מאמר שעבר ביקורת עמיתים', 'Peer-reviewed paper' ),
+			'peer_reviewed_context'  => array( 'הקשר מחקרי', 'Peer-reviewed context' ),
+			'official_source'         => array( 'מקור רשמי', 'Official source' ),
+			'third_party_guide'       => array( 'מדריך צד שלישי', 'Third-party guide' ),
+			'conference_context'      => array( 'הקשר מכנס מקצועי', 'Conference context' ),
+			'regulatory_standard'     => array( 'תקן רגולטורי', 'Regulatory standard' ),
+			'supplier_declaration'    => array( 'הצהרת ספק', 'Supplier declaration' ),
+			'lot_coa'                 => array( 'תעודת אנליזה לאצווה', 'Lot certificate of analysis' ),
+			'market_observation'      => array( 'תצפית שוק מתוארכת', 'Dated market observation' ),
+			'editorial_inference'     => array( 'הסקה מערכתית', 'Editorial inference' ),
+			'official_government'     => array( 'מקור ממשלתי רשמי', 'Official government source' ),
+			'official_organization'   => array( 'מקור ארגוני רשמי', 'Official organization source' ),
+			'official_standard'       => array( 'תקן רשמי', 'Official standard' ),
+			'conference_proceeding'   => array( 'פרסום כנס', 'Conference proceeding' ),
 			'official_market_listing' => array( 'רישום שוק רשמי', 'Official market listing' ),
-			'official_business'    => array( 'מקור עסקי רשמי', 'Official business source' ),
-			'regulatory_guidance'  => array( 'הנחיה רגולטורית', 'Regulatory guidance' ),
+			'official_business'       => array( 'מקור עסקי רשמי', 'Official business source' ),
+			'regulatory_guidance'     => array( 'הנחיה רגולטורית', 'Regulatory guidance' ),
 		);
 		return isset( $labels[ $evidence ] ) ? $labels[ $evidence ][ 'he' === $lang ? 0 : 1 ] : self::machine_label( $evidence );
 	}
@@ -938,15 +945,83 @@ final class Complete99_Culinary_Museum_Frontend {
 
 	private static function entity_type_label( $type, $lang ) {
 		$labels = array(
-			'topic_hub'  => array( 'מרכז ידע', 'Knowledge hub' ),
-			'cuisine'    => array( 'מטבח ותרבות', 'Cuisine and culture' ),
-			'ingredient' => array( 'חומר גלם', 'Ingredient' ),
-			'dish'       => array( 'מנה', 'Dish' ),
-			'technique'  => array( 'טכניקה', 'Technique' ),
-			'equipment'  => array( 'ציוד', 'Equipment' ),
-			'institution'=> array( 'מוסד', 'Institution' ),
+			'topic_hub'              => array( 'מרכז ידע', 'Knowledge hub' ),
+			'cuisine'                => array( 'מטבח ותרבות', 'Cuisine and culture' ),
+			'tradition'              => array( 'מסורת', 'Tradition' ),
+			'dish'                   => array( 'מנה', 'Dish' ),
+			'preparation'            => array( 'הכנה', 'Preparation' ),
+			'ingredient'             => array( 'חומר גלם', 'Ingredient' ),
+			'molecule'               => array( 'מולקולה', 'Molecule' ),
+			'reaction'               => array( 'תגובה כימית', 'Chemical reaction' ),
+			'technique'              => array( 'טכניקה', 'Technique' ),
+			'guide'                  => array( 'מדריך', 'Guide' ),
+			'comparison'             => array( 'השוואה', 'Comparison' ),
+			'equipment'              => array( 'ציוד', 'Equipment' ),
+			'material_specification' => array( 'מפרט חומר', 'Material specification' ),
+			'quality_grade'          => array( 'דרגת איכות', 'Quality grade' ),
+			'culinary_institution'   => array( 'מוסד קולינרי', 'Culinary institution' ),
+			'institution'            => array( 'מוסד', 'Institution' ),
+			'restaurant'             => array( 'מסעדה', 'Restaurant' ),
+			'market'                 => array( 'שוק', 'Market' ),
+			'equipment_shop'         => array( 'חנות ציוד', 'Equipment shop' ),
+			'producer'               => array( 'יצרן', 'Producer' ),
+			'supplier'               => array( 'ספק', 'Supplier' ),
+			'market_observation'     => array( 'תצפית שוק', 'Market observation' ),
+			'retail_listing'         => array( 'רישום קמעונאי', 'Retail listing' ),
+			'standard'               => array( 'תקן', 'Standard' ),
+			'geographical_indication' => array( 'ציון גאוגרפי', 'Geographical indication' ),
+			'guide_edition'          => array( 'מהדורת מדריך', 'Guide edition' ),
+			'alternative'            => array( 'חלופה', 'Alternative' ),
+			'visual_asset'           => array( 'נכס חזותי', 'Visual asset' ),
+			'compliance_rule'        => array( 'כלל ציות', 'Compliance rule' ),
 		);
-		return isset( $labels[ $type ] ) ? $labels[ $type ][ 'he' === $lang ? 0 : 1 ] : self::machine_label( $type );
+		return isset( $labels[ $type ] )
+			? $labels[ $type ][ 'he' === $lang ? 0 : 1 ]
+			: ( 'he' === $lang ? 'ישות קולינרית' : self::machine_label( $type ) );
+	}
+
+	private static function relationship_label( $value, $lang ) {
+		$key = strtolower( trim( str_replace( '_', '-', (string) $value ) ) );
+		$labels = array(
+			'related'           => array( 'קשר נוסף', 'Related' ),
+			'part-of'           => array( 'חלק מתוך', 'Part of' ),
+			'contains'          => array( 'מכיל', 'Contains' ),
+			'used-in'           => array( 'משמש בתוך', 'Used in' ),
+			'requires'          => array( 'דורש', 'Requires' ),
+			'produced-by'       => array( 'מיוצר על ידי', 'Produced by' ),
+			'sold-by'           => array( 'נמכר על ידי', 'Sold by' ),
+			'sourced-from'      => array( 'מסופק ממקור', 'Sourced from' ),
+			'observed-at'       => array( 'נצפה אצל', 'Observed at' ),
+			'graded-as'         => array( 'מדורג בתור', 'Graded as' ),
+			'specified-by'      => array( 'מוגדר על ידי', 'Specified by' ),
+			'certified-by'      => array( 'מאושר על ידי', 'Certified by' ),
+			'recognized-in'     => array( 'מוכר במסגרת', 'Recognized in' ),
+			'recognizes'        => array( 'מכיר בישות', 'Recognizes' ),
+			'complements'       => array( 'משלים', 'Complements' ),
+			'substitutes'       => array( 'חלופה עבור', 'Substitutes' ),
+			'upgrades-to'       => array( 'משתדרג אל', 'Upgrades to' ),
+			'located-at'        => array( 'נמצא ב', 'Located at' ),
+			'supported-by'      => array( 'נתמך על ידי', 'Supported by' ),
+			'benchmarks'        => array( 'משמש אמת מידה', 'Benchmarks' ),
+			'teaches'           => array( 'מלמד', 'Teaches' ),
+			'serves'            => array( 'מגיש', 'Serves' ),
+			'references'        => array( 'מפנה אל', 'References' ),
+			'parent-context'    => array( 'חזרה לנושא האב', 'Parent topic' ),
+			'child-discovery'   => array( 'המשך לתת-נושא', 'Explore subtopic' ),
+			'curated-discovery' => array( 'המשך מומלץ', 'Recommended next' ),
+			'cross-sell'        => array( 'השלמה קולינרית', 'Culinary pairing' ),
+			'up-sell'           => array( 'חלופת פרימיום', 'Premium alternative' ),
+		);
+		if ( 0 === strpos( $key, 'related-' ) ) {
+			$base_key = substr( $key, strlen( 'related-' ) );
+			if ( isset( $labels[ $base_key ] ) ) {
+				return $labels[ $base_key ][ 'he' === $lang ? 0 : 1 ];
+			}
+		}
+		if ( isset( $labels[ $key ] ) ) {
+			return $labels[ $key ][ 'he' === $lang ? 0 : 1 ];
+		}
+		return 'he' === $lang ? 'קשר נוסף' : ucwords( trim( str_replace( '-', ' ', $key ) ) );
 	}
 
 	private static function machine_label( $value ) {
@@ -962,41 +1037,90 @@ final class Complete99_Culinary_Museum_Frontend {
 			'pa-flavor-profile' => array( 'פרופיל טעם', 'Flavor profile' ),
 			'pa-allergens' => array( 'אלרגנים', 'Allergens' ),
 			'pa-storage-type' => array( 'סוג אחסון', 'Storage type' ),
+			'pa-material' => array( 'חומר', 'Material' ),
+			'pa-steel' => array( 'סוג פלדה', 'Steel type' ),
+			'pa-handedness' => array( 'יד דומיננטית', 'Handedness' ),
+			'pa-quality-grade' => array( 'דרגת איכות', 'Quality grade' ),
+			'pa-market' => array( 'שוק', 'Market' ),
+			'pa-institution-type' => array( 'סוג מוסד', 'Institution type' ),
 			'pa-equipment-required' => array( 'ציוד נדרש', 'Equipment required' ),
 			'part-of' => array( 'חלק מתוך', 'Part of' ),
-			'contains' => array( 'מכיל ומקשר', 'Contains' ),
+			'contains' => array( 'מכיל', 'Contains' ),
 			'used-in' => array( 'משמש בתוך', 'Used in' ),
 			'requires' => array( 'דורש', 'Requires' ),
 			'produced-by' => array( 'מיוצר על ידי', 'Produced by' ),
 			'complements' => array( 'משלים', 'Complements' ),
 			'supported-by' => array( 'נתמך על ידי', 'Supported by' ),
-			'parent-context' => array( 'נושא אב', 'Parent context' ),
-			'curated-discovery' => array( 'המשך מומלץ', 'Curated discovery' ),
+			'parent-context' => array( 'חזרה לנושא האב', 'Parent topic' ),
+			'curated-discovery' => array( 'המשך מומלץ', 'Recommended next' ),
 			'world-cuisines' => array( 'מטבחי עולם', 'World cuisines' ),
 			'culinary-museum' => array( 'מוזיאון קולינרי', 'Culinary museum' ),
+			'culinary-science' => array( 'מדע הקולינריה', 'Culinary science' ),
+			'knowledge-graph' => array( 'גרף ידע', 'Knowledge graph' ),
+			'topic-clusters' => array( 'אשכולות נושא', 'Topic clusters' ),
+			'topic-cluster' => array( 'אשכול נושא', 'Topic cluster' ),
 			'japanese-cuisine' => array( 'מטבח יפני', 'Japanese cuisine' ),
+			'japanese-heritage' => array( 'מורשת יפנית', 'Japanese heritage' ),
+			'japanese-culinary-techniques' => array( 'טכניקות קולינריות יפניות', 'Japanese culinary techniques' ),
+			'japanese-premium-ingredients' => array( 'חומרי גלם יפניים מובחרים', 'Japanese premium ingredients' ),
+			'japanese-food-science' => array( 'מדע האוכל היפני', 'Japanese food science' ),
 			'japan' => array( 'יפן', 'Japan' ),
+			'washoku' => array( 'וואשוקו', 'Washoku' ),
+			'seasonality' => array( 'עונתיות', 'Seasonality' ),
 			'knowledge' => array( 'מרכז הידע', 'Knowledge' ),
 			'food-science' => array( 'מדע המזון', 'Food science' ),
 			'taste' => array( 'טעם', 'Taste' ),
 			'umami' => array( 'אומאמי', 'Umami' ),
 			'dashi' => array( 'דאשי', 'Dashi' ),
+			'dashi-ingredients' => array( 'חומרי גלם לדאשי', 'Dashi ingredients' ),
 			'first-stock' => array( 'ציר ראשון', 'First stock' ),
+			'controlled-water-extraction' => array( 'מיצוי מבוקר במים', 'Controlled water extraction' ),
 			'sauces-and-fermentation' => array( 'רטבים והתססות', 'Sauces and fermentation' ),
 			'shoyu' => array( 'שויו', 'Shoyu' ),
 			'kioke' => array( 'קיוקה', 'Kioke' ),
+			'kombu' => array( 'קומבו', 'Kombu' ),
+			'katsuobushi' => array( 'קצואובושי', 'Katsuobushi' ),
+			'bonito' => array( 'בוניטו', 'Bonito' ),
+			'seaweed' => array( 'אצת ים', 'Seaweed' ),
+			'smoking' => array( 'עישון', 'Smoking' ),
 			'seasonings' => array( 'תיבול', 'Seasonings' ),
 			'mirin' => array( 'מירין', 'Mirin' ),
+			'hon-mirin' => array( 'הון מירין', 'Hon mirin' ),
+			'alcohol' => array( 'אלכוהול', 'Alcohol' ),
+			'glaze' => array( 'זיגוג', 'Glaze' ),
 			'citrus' => array( 'הדרים', 'Citrus' ),
 			'yuzu' => array( 'יוזו', 'Yuzu' ),
+			'kito' => array( 'קיטו', 'Kito' ),
+			'kito-gi' => array( 'ציון גאוגרפי קיטו', 'Kito geographical indication' ),
+			'gi' => array( 'GI', 'GI' ),
 			'product-specific' => array( 'לפי המוצר', 'Product-specific' ),
+			'product-specific-kito-eligibility-required' => array( 'נדרשת התאמה למפרט קיטו', 'Product-specific Kito eligibility required' ),
+			'dried-seaweed-product-specific' => array( 'אצת ים מיובשת לפי המוצר', 'Dried seaweed, product-specific' ),
+			'cooked-smoked-dried-product-specific' => array( 'מבושל, מעושן ומיובש לפי המוצר', 'Cooked, smoked and dried, product-specific' ),
+			'eutrema-japonicum-product-specific' => array( 'Eutrema japonicum לפי המוצר', 'Eutrema japonicum, product-specific' ),
+			'whole-fruit-or-derived-product' => array( 'פרי שלם או מוצר נגזר', 'Whole fruit or derived product' ),
 			'koji-fermentation' => array( 'התססת קוג׳י', 'Koji fermentation' ),
 			'koji-saccharification-in-alcohol' => array( 'סכריפיקציית קוג׳י באלכוהול', 'Koji saccharification in alcohol' ),
 			'kioke-wooden-barrel' => array( 'חבית עץ קיוקה', 'Kioke wooden barrel' ),
 			'verify-sku-label' => array( 'לפי תווית המוצר', 'Verify SKU label' ),
 			'product-label-required' => array( 'נדרשת תווית מוצר', 'Product label required' ),
+			'refrigerated-perishable' => array( 'מתכלה בקירור', 'Refrigerated perishable' ),
+			'volatile-pungency' => array( 'חריפות נדיפה', 'Volatile pungency' ),
+			'fresh-aromatics' => array( 'ארומטים טריים', 'Fresh aromatics' ),
+			'fresh-rhizome' => array( 'קנה שורש טרי', 'Fresh rhizome' ),
+			'wasabi' => array( 'וואסבי', 'Wasabi' ),
 			'aromatic-citrus' => array( 'הדרי ארומטי', 'Aromatic citrus' ),
 			'umami-synergy' => array( 'סינרגיית אומאמי', 'Umami synergy' ),
+			'fermentation' => array( 'התססה', 'Fermentation' ),
+			'koji' => array( 'קוג׳י', 'Koji' ),
+			'glutamate' => array( 'גלוטמט', 'Glutamate' ),
+			'imp' => array( 'IMP', 'IMP' ),
+			'aitc' => array( 'AITC', 'AITC' ),
+			'myrosinase' => array( 'מירוזינאז', 'Myrosinase' ),
+			'limonene' => array( 'לימונן', 'Limonene' ),
+			'yuzunone' => array( 'יוזונון', 'Yuzunone' ),
+			't1r1-t1r3' => array( 'T1R1/T1R3', 'T1R1/T1R3' ),
+			'fish' => array( 'דגים', 'Fish' ),
 		);
 		if ( isset( $labels[ $key ] ) ) {
 			return $labels[ $key ][ 'he' === $lang ? 0 : 1 ];

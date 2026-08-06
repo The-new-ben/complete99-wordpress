@@ -1,12 +1,14 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-06
-Release target: Complete99 Platform 1.5.0
+Release target: Complete99 Platform 1.5.1
 
-## Current 1.5.0 catalog boundary
+## Current 1.5.1 catalog boundary
 
-Release 1.5.0 supersedes the earlier evaluation-only pantry state described in
-the historical sections below.
+Release 1.5.1 preserves the 1.5.0 catalog boundary and localizes the complete
+public culinary-museum entity and relationship vocabularies, current Japanese
+taxonomy and evidence classes. It supersedes the earlier evaluation-only
+pantry state described in the historical sections below.
 
 - WooCommerce 10.9.4 is installed from the exact pinned official package.
 - The curated public store contains exactly 30 owner-authorized ingredient products.
@@ -53,7 +55,7 @@ suppliers, costs, campaigns and operating dashboards stay private. Their legacy
 seed records are migrated to private status and removed from public navigation,
 search ownership and sitemaps.
 
-No Complete99 worker role is installed or assigned by release 1.5.0. The private
+No Complete99 worker role is installed or assigned by release 1.5.1. The private
 commerce outbox reports `unassigned_infrastructure` until a later, separately
 approved operating decision.
 
