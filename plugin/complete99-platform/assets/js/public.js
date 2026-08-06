@@ -355,3 +355,114 @@
 	});
 	applyFilter(validRequested ? requested : 'all', false);
 }());
+
+(function () {
+	'use strict';
+
+	var shell = document.querySelector('[data-c99-foundations-filter]');
+	var grid = shell ? shell.querySelector('[data-c99-foundations-grid]') : null;
+	if (!shell || !grid) {
+		return;
+	}
+
+	var buttons = Array.prototype.slice.call(
+		shell.querySelectorAll('[data-c99-foundations-filter-reset], [data-c99-foundations-filter-button]')
+	);
+	var cards = Array.prototype.slice.call(grid.querySelectorAll('[data-c99-foundations-member]'));
+	var count = shell.querySelector('[data-c99-foundations-filter-count]');
+	var empty = shell.querySelector('[data-c99-foundations-filter-empty]');
+	var canonical = shell.getAttribute('data-c99-foundations-canonical-url') || window.location.href;
+	var queryName = shell.getAttribute('data-c99-foundations-query') || 'foundation-group';
+	var language = (document.documentElement.lang || 'he').toLowerCase();
+	var isRtl = (document.documentElement.dir || '').toLowerCase() === 'rtl';
+
+	function buttonValue(button) {
+		return button.getAttribute('data-c99-foundations-filter-value') || 'all';
+	}
+
+	function matches(card, group) {
+		return group === 'all' || card.getAttribute('data-c99-foundations-group') === group;
+	}
+
+	function announce(total) {
+		if (!count) {
+			return;
+		}
+		if (language.indexOf('he') === 0) {
+			count.textContent = total === 1 ? 'נושא אחד מוצג' : total + ' נושאים מוצגים';
+			return;
+		}
+		count.textContent = total === 1 ? '1 topic shown' : total + ' topics shown';
+	}
+
+	function updateAddress(group) {
+		if (!window.history || typeof window.history.replaceState !== 'function') {
+			return;
+		}
+		var url = new URL(canonical, window.location.origin);
+		if (group !== 'all') {
+			url.searchParams.set(queryName, group);
+		}
+		window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+	}
+
+	function applyFilter(group, updateUrl) {
+		var visible = 0;
+		buttons.forEach(function (button) {
+			var selected = buttonValue(button) === group;
+			button.classList.toggle('is-active', selected);
+			button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+		});
+		cards.forEach(function (card) {
+			var visibleCard = matches(card, group);
+			card.hidden = !visibleCard;
+			if (visibleCard) {
+				visible += 1;
+			}
+		});
+		if (empty) {
+			empty.hidden = visible !== 0;
+		}
+		announce(visible);
+		if (updateUrl) {
+			updateAddress(group);
+		}
+	}
+
+	buttons.forEach(function (button, index) {
+		button.addEventListener('click', function () {
+			applyFilter(buttonValue(button), true);
+		});
+		button.addEventListener('keydown', function (event) {
+			var next = index;
+			if (event.key === 'ArrowRight') {
+				next = (index + (isRtl ? -1 : 1) + buttons.length) % buttons.length;
+			} else if (event.key === 'ArrowLeft') {
+				next = (index + (isRtl ? 1 : -1) + buttons.length) % buttons.length;
+			} else if (event.key === 'ArrowDown') {
+				next = (index + 1) % buttons.length;
+			} else if (event.key === 'ArrowUp') {
+				next = (index - 1 + buttons.length) % buttons.length;
+			} else if (event.key === 'Home') {
+				next = 0;
+			} else if (event.key === 'End') {
+				next = buttons.length - 1;
+			} else {
+				return;
+			}
+			event.preventDefault();
+			buttons[next].focus();
+			applyFilter(buttonValue(buttons[next]), true);
+		});
+	});
+
+	var requested = new URL(window.location.href).searchParams.get(queryName);
+	var validRequested = buttons.some(function (button) {
+		return buttonValue(button) === requested;
+	});
+	var initial = validRequested ? requested : 'all';
+	applyFilter(initial, false);
+	if (requested && !validRequested) {
+		updateAddress('all');
+	}
+}());

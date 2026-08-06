@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.6.1
+Release target: Complete99 Platform 1.7.0
 
 ## Automated gates
 
@@ -13,7 +13,14 @@ Release target: Complete99 Platform 1.6.1
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.6.1 and its versioned package URL.
+- The public update manifest matches version 1.7.0 and its versioned package URL.
+- The Japanese Foundations Lab renders only the approved public collection
+  projection and rejects malformed or private collection fields.
+- Hebrew and English Lab routes expose reciprocal canonicals and hreflang,
+  visible breadcrumbs, accessible group filters and CollectionPage plus
+  ItemList schema that matches visible cards.
+- Lab filter query state never creates a second canonical URL, and all Lab
+  variants remain noindex until the editorial search-intent gate is approved.
 - Consumer breadcrumb and live cart-status links expose a minimum 44 by 44
   CSS-pixel target.
 - An exactly equivalent read-model retry repeats all public cache purges,

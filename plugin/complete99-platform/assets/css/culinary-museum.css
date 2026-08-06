@@ -671,6 +671,253 @@ body.c99-culinary-museum {
 	font-size: 14px;
 }
 
+.c99-foundations-layout {
+	display: grid;
+	padding-block: clamp(58px, 7vw, 104px);
+	align-items: start;
+	gap: clamp(42px, 6vw, 84px);
+	grid-template-columns: minmax(0, 1fr) minmax(290px, 340px);
+}
+
+.c99-foundations-main {
+	display: grid;
+	min-width: 0;
+	gap: clamp(58px, 7vw, 94px);
+}
+
+.c99-foundations-lab {
+	--c99-foundations-pad: clamp(26px, 4.5vw, 54px);
+	position: relative;
+	padding: var(--c99-foundations-pad);
+	border: 1px solid rgba(7, 63, 45, .16);
+	border-radius: 32px;
+	background:
+		linear-gradient(145deg, rgba(255, 253, 248, .98), rgba(250, 245, 233, .94));
+	box-shadow: var(--c99-museum-shadow);
+}
+
+.c99-foundations-heading {
+	display: grid;
+	margin-bottom: 28px;
+	align-items: end;
+	gap: 24px;
+	grid-template-columns: minmax(0, 1fr) minmax(260px, .62fr);
+}
+
+.c99-foundations-heading h2 {
+	max-width: 17ch;
+	margin: 0;
+	color: var(--c99-museum-forest);
+	font-size: clamp(2rem, 3.5vw, 3.55rem);
+	line-height: 1.08;
+}
+
+.c99-foundations-heading > p {
+	margin: 0;
+	color: #52625b;
+	font-size: 1.05rem;
+	line-height: 1.7;
+}
+
+.c99-foundations-filter-shell {
+	position: sticky;
+	z-index: 3;
+	top: 112px;
+	display: flex;
+	min-height: 70px;
+	margin: 0 calc(0px - var(--c99-foundations-pad)) 28px;
+	padding: 12px var(--c99-foundations-pad);
+	align-items: center;
+	justify-content: space-between;
+	gap: 14px;
+	border-block: 1px solid rgba(7, 63, 45, .12);
+	background: rgba(255, 253, 248, .95);
+	backdrop-filter: blur(14px);
+}
+
+.admin-bar .c99-foundations-filter-shell {
+	top: 144px;
+}
+
+.c99-foundations-filter-bar {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.c99-foundations-filter {
+	display: inline-flex;
+	min-width: 44px;
+	min-height: 44px;
+	padding: 8px 15px;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid rgba(7, 63, 45, .22);
+	border-radius: 999px;
+	background: #fff;
+	color: var(--c99-museum-forest);
+	cursor: pointer;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 850;
+	line-height: 1.2;
+	transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.c99-foundations-filter:hover,
+.c99-foundations-filter.is-active,
+.c99-foundations-filter[aria-pressed="true"] {
+	border-color: var(--c99-museum-forest);
+	background: var(--c99-museum-forest);
+	color: #fff;
+}
+
+.c99-foundations-filter:focus-visible {
+	outline: 3px solid var(--c99-museum-rust);
+	outline-offset: 3px;
+}
+
+.c99-foundations-result-count {
+	margin: 0;
+	color: #5e6e67;
+	font-size: 14px;
+	font-weight: 800;
+	white-space: nowrap;
+}
+
+.c99-foundations-group-guide {
+	display: grid;
+	margin-bottom: 24px;
+	gap: 10px;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.c99-foundations-group-guide article {
+	min-width: 0;
+	padding: 16px;
+	border: 1px solid var(--c99-museum-soft-line);
+	border-radius: 16px;
+	background: rgba(255, 255, 255, .72);
+}
+
+.c99-foundations-group-guide h3 {
+	margin: 0 0 7px;
+	color: var(--c99-museum-forest);
+	font-size: .96rem;
+}
+
+.c99-foundations-group-guide p {
+	margin: 0;
+	color: #607069;
+	font-size: 13px;
+	line-height: 1.55;
+}
+
+.c99-foundations-grid {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.c99-foundations-card {
+	min-width: 0;
+}
+
+.c99-foundations-card[hidden] {
+	display: none !important;
+}
+
+.c99-foundations-card a {
+	position: relative;
+	display: flex;
+	min-height: 238px;
+	padding: 24px;
+	flex-direction: column;
+	border: 1px solid rgba(7, 63, 45, .16);
+	border-radius: 22px;
+	background: #fff;
+	box-shadow: var(--c99-museum-small-shadow);
+	color: inherit;
+	text-decoration: none;
+	transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.c99-foundations-card a::before {
+	width: 42px;
+	height: 5px;
+	margin-bottom: 22px;
+	border-radius: 999px;
+	background: var(--c99-museum-citrus);
+	content: "";
+}
+
+.c99-foundations-card[data-c99-foundations-group="food_science"] a::before {
+	background: var(--c99-museum-green);
+}
+
+.c99-foundations-card[data-c99-foundations-group="techniques"] a::before {
+	background: var(--c99-museum-rust);
+}
+
+.c99-foundations-card[data-c99-foundations-group="equipment"] a::before {
+	background: var(--c99-museum-moss);
+}
+
+.c99-foundations-card a:hover {
+	border-color: rgba(7, 63, 45, .42);
+	box-shadow: 0 20px 46px rgba(22, 49, 39, .15);
+	transform: translateY(-3px);
+}
+
+.c99-foundations-card a:focus-visible {
+	outline: 3px solid var(--c99-museum-rust);
+	outline-offset: 3px;
+}
+
+.c99-foundations-card-type {
+	margin-bottom: 9px;
+	color: var(--c99-museum-rust);
+	font-size: .76rem;
+	font-weight: 900;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+}
+
+[dir="rtl"] .c99-foundations-card-type {
+	letter-spacing: .025em;
+}
+
+.c99-foundations-card h3 {
+	margin: 0 0 11px;
+	color: var(--c99-museum-forest);
+	font-size: clamp(1.25rem, 2vw, 1.65rem);
+	line-height: 1.25;
+}
+
+.c99-foundations-card p {
+	margin: 0 0 22px;
+	color: #52625b;
+	line-height: 1.65;
+}
+
+.c99-foundations-card strong {
+	min-height: 44px;
+	margin-top: auto;
+	color: var(--c99-museum-green);
+	font-size: 14px;
+	line-height: 44px;
+}
+
+.c99-foundations-empty {
+	margin: 18px 0 0;
+	padding: 18px;
+	border-radius: 14px;
+	background: var(--c99-museum-cream);
+	font-weight: 800;
+	text-align: center;
+}
+
 @media (max-width: 1120px) {
 	.c99-museum-hero-grid {
 		grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr);
@@ -680,6 +927,10 @@ body.c99-culinary-museum {
 		grid-template-columns: minmax(0, 1fr) 310px;
 	}
 
+	.c99-foundations-layout {
+		grid-template-columns: minmax(0, 1fr) 300px;
+	}
+
 	.c99-museum-side-column {
 		position: static;
 	}
@@ -687,7 +938,8 @@ body.c99-culinary-museum {
 
 @media (max-width: 920px) {
 	.c99-museum-hero-grid,
-	.c99-museum-layout {
+	.c99-museum-layout,
+	.c99-foundations-layout {
 		grid-template-columns: minmax(0, 1fr);
 	}
 
@@ -713,6 +965,14 @@ body.c99-culinary-museum {
 	.c99-museum-trust {
 		grid-column: span 2;
 	}
+
+	.c99-foundations-group-guide {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.c99-foundations-side {
+		position: static;
+	}
 }
 
 @media (max-width: 680px) {
@@ -732,8 +992,36 @@ body.c99-culinary-museum {
 	.c99-museum-link-grid,
 	.c99-museum-measurements,
 	.c99-museum-side-column,
-	.c99-museum-subsection-intro {
+	.c99-museum-subsection-intro,
+	.c99-foundations-heading,
+	.c99-foundations-grid,
+	.c99-foundations-group-guide {
 		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.c99-foundations-lab {
+		padding: 22px;
+		border-radius: 22px;
+	}
+
+	.c99-foundations-filter-shell {
+		position: static;
+		margin: 0 -22px 24px;
+		padding: 12px 22px;
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.c99-foundations-filter-bar {
+		width: 100%;
+	}
+
+	.c99-foundations-filter {
+		flex: 1 1 auto;
+	}
+
+	.c99-foundations-result-count {
+		white-space: normal;
 	}
 
 	.c99-museum-profile-card:first-child,
@@ -779,11 +1067,14 @@ body.c99-culinary-museum {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.c99-museum-link-card {
+	.c99-museum-link-card,
+	.c99-foundations-filter,
+	.c99-foundations-card a {
 		transition: none;
 	}
 
-	.c99-museum-link-card:hover {
+	.c99-museum-link-card:hover,
+	.c99-foundations-card a:hover {
 		transform: none;
 	}
 }
@@ -796,7 +1087,13 @@ body.c99-culinary-museum {
 	.c99-museum-link-card,
 	.c99-museum-evidence-card,
 	.c99-museum-side-card,
-	.c99-museum-visual img {
+	.c99-museum-visual img,
+	.c99-foundations-lab,
+	.c99-foundations-card a {
 		box-shadow: none;
+	}
+
+	.c99-foundations-filter-shell {
+		position: static;
 	}
 }

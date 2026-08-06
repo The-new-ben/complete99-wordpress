@@ -217,6 +217,42 @@ No text, logos, labels, GI mark, certification seals, barcodes, people, hands, l
 | `c99-ingredient-kito-yuzu-juice-evaluation-v01.png` | PNG | 1536x1024 | 1,929,717 | `6aa616b91498cada0abf0252b588f2eaebf1effbdd24fedd98ec49b335c65e3a` |
 | `c99-ingredient-kito-yuzu-juice-evaluation-v01.webp` | WebP | 1536x1024 | 90,002 | `1769dcc6124bd751da014e6451728b7cde1982f666a9795ad87c8f5391c61d1b` |
 
+### Release 1.7.0 Japanese Foundations Lab hero
+
+OpenAI's built-in image generation created the source PNG for Complete99 on
+2026-08-06 in generation session
+`019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b`. The project PNG is byte-identical to
+`exec-454b3339-1383-46b8-a6b5-db783d516d9f.png`. The image was visually
+reviewed before WebP and AVIF conversion. It contains no third-party packaging,
+logos, labels, certification marks or copied artwork.
+
+Binding: `hub-japanese-foundations-lab`.
+
+Hebrew alt text: שולחן יסודות המטבח היפני עם אורז בהאנגירי, קומבו, קצואובושי,
+שויו, יוזו, וואסבי, קוג׳י, נורי, כלי מדידה וסכין יפנית.
+
+English alt text: Japanese culinary foundations table with rice in a hangiri,
+kombu, katsuobushi, shoyu, yuzu, wasabi, koji, nori, measurement tools and a
+Japanese knife.
+
+Prompt:
+
+```text
+Create an original museum-quality culinary studio photograph that brings together the foundations of Japanese cooking as one coherent working table. Show an open sawara hangiri with glossy seasoned sushi rice, Rishiri kombu, katsuobushi shavings, kioke shoyu, yuzu, a fresh wasabi rhizome and stainless-steel grater, rice koji, roasted nori, a safely placed Japanese chef knife, a small measuring beaker and a digital probe thermometer. Use a wide elevated three-quarter composition, soft directional light, warm cedar and dark charcoal surfaces, Michelin-level food styling and physically plausible textures.
+```
+
+Negative constraints:
+
+```text
+No people, hands, text, Japanese characters, labels, logos, trademarks, certification seals, packaging, watermark, floating molecules, impossible utensils, distorted knife or duplicated objects.
+```
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-science-japanese-foundations-lab-v01.png` | PNG | 1536x1024 | 3,118,586 | `aeb206fe349fef86b799187491786d6a0c366bf982ecf549221663d6ed26468c` |
+| `c99-science-japanese-foundations-lab-v01.webp` | WebP | 1536x1024 | 369,064 | `8dcc708e53538ed4a0044d3cd79704f1d9e02ff01142b8f5f486192e3595e180` |
+| `c99-science-japanese-foundations-lab-v01.avif` | AVIF | 1536x1024 | 249,067 | `4f009241170b342b89985568af98fdc902a38dd956e2799dc0048c80e4c541c4` |
+
 ## Current Complete99 mark
 
 File: `plugin/complete99-platform/assets/images/complete99-mark.svg`

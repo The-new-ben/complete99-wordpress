@@ -19,6 +19,7 @@ BUILDER = ROOT / "scripts" / "build-plugin-zip.py"
 PUBLIC_IDS = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
+    "hub-japanese-foundations-lab",
     "hub-japanese-equipment",
     "hub-japanese-food-science",
     "hub-japanese-ingredients",
@@ -98,6 +99,46 @@ PRIVATE_PROJECTION_KEYS = {
     "gross_margin_low",
     "gross_margin_high",
 }
+LAB_GROUP_MEMBERS = {
+    "ingredients": [
+        "ingredient-kombu",
+        "ingredient-katsuobushi",
+        "ingredient-kioke-shoyu",
+        "ingredient-fresh-wasabi",
+        "ingredient-kito-yuzu",
+        "ingredient-hon-mirin",
+    ],
+    "food_science": [
+        "guide-umami-synergy",
+        "guide-wasabi-aitc",
+        "molecule-allyl-isothiocyanate",
+    ],
+    "techniques": ["preparation-ichiban-dashi"],
+    "equipment": ["equipment-wasabi-grater"],
+}
+LAB_COLLECTION_KEYS = {
+    "schema",
+    "key",
+    "language",
+    "translation_group_id",
+    "canonical_path",
+    "alternate_path",
+    "approved_public",
+    "groups",
+    "members",
+    "parity_member_ids",
+}
+LAB_MEMBER_KEYS = {
+    "id",
+    "group_id",
+    "name",
+    "summary",
+    "entity_type",
+    "canonical_path",
+    "owner_entity_id",
+    "route_mode",
+    "approved_public",
+}
 
 
 def _php_path(path: Path) -> str:
@@ -132,6 +173,8 @@ $paths = array(
     '/en/museum/',
     '/museum/japanese-culinary-science/',
     '/en/museum/japanese-culinary-science/',
+    '/museum/japanese-culinary-science/foundations/',
+    '/en/museum/japanese-culinary-science/foundations/',
     '/ingredients/kombu/',
     '/en/ingredients/kombu/',
     '/ingredients/katsuobushi/',
@@ -195,21 +238,21 @@ def test_exact_reviewed_public_cohort_and_noindex_boundary(pilot_payload: dict) 
 
 def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict) -> None:
     assert pilot_payload["invalid"] == []
-    assert len(pilot_payload["bundles"]) == 24
+    assert len(pilot_payload["bundles"]) == 26
     public_standalone = {
         entity["id"]
         for entity in pilot_payload["registry"]["entities"]
         if entity["publication"]["public_page"]
         and entity["seo"]["route_mode"] == "standalone"
     }
-    assert len(public_standalone) == 12
+    assert len(public_standalone) == 13
     assert len(pilot_payload["bundles"]) == 2 * len(public_standalone)
     for path, bundle in pilot_payload["bundles"].items():
         assert bundle["canonical_path"] == path
         assert bundle["canonical_url"] == "https://complete99.test" + path
         assert bundle["indexable"] is False
         assert bundle["language"] == ("en" if path.startswith("/en/") else "he")
-        assert set(bundle) == {
+        expected_bundle_keys = {
             "schema",
             "version",
             "language",
@@ -220,9 +263,126 @@ def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict)
             "alternates",
             "indexable",
         }
+        if bundle["entity"]["id"] == "hub-japanese-foundations-lab":
+            expected_bundle_keys.add("collection")
+        assert set(bundle) == expected_bundle_keys
         entity = bundle["entity"]
         assert set(entity) == PUBLIC_PROJECTION_KEYS
         assert entity["search_index"] is False
+
+
+def test_foundations_lab_collection_is_bilingual_presentation_only(
+    pilot_payload: dict,
+) -> None:
+    he_bundle = pilot_payload["bundles"][
+        "/museum/japanese-culinary-science/foundations/"
+    ]
+    en_bundle = pilot_payload["bundles"][
+        "/en/museum/japanese-culinary-science/foundations/"
+    ]
+    expected_member_ids = [
+        member_id
+        for group_id in ("ingredients", "food_science", "techniques", "equipment")
+        for member_id in LAB_GROUP_MEMBERS[group_id]
+    ]
+
+    for language, bundle, alternate_path in (
+        (
+            "he",
+            he_bundle,
+            "/en/museum/japanese-culinary-science/foundations/",
+        ),
+        (
+            "en",
+            en_bundle,
+            "/museum/japanese-culinary-science/foundations/",
+        ),
+    ):
+        collection = bundle["collection"]
+        assert set(collection) == LAB_COLLECTION_KEYS
+        assert collection["schema"] == "complete99-culinary-collection-public/v1"
+        assert collection["key"] == "japanese-foundations-lab"
+        assert collection["language"] == language
+        assert collection["translation_group_id"] == (
+            "collection-japanese-foundations-lab"
+        )
+        assert collection["canonical_path"] == bundle["canonical_path"]
+        assert collection["alternate_path"] == alternate_path
+        assert collection["approved_public"] is True
+        assert [group["id"] for group in collection["groups"]] == [
+            "ingredients",
+            "food_science",
+            "techniques",
+            "equipment",
+        ]
+        assert all(set(group) == {"id", "label", "description"} for group in collection["groups"])
+        assert [member["id"] for member in collection["members"]] == (
+            expected_member_ids
+        )
+        assert collection["parity_member_ids"] == {
+            "he": expected_member_ids,
+            "en": expected_member_ids,
+        }
+        for member in collection["members"]:
+            expected_keys = set(LAB_MEMBER_KEYS)
+            if member["route_mode"] == "section":
+                expected_keys.add("fragment")
+                assert member["fragment"]
+                assert member["owner_entity_id"] != member["id"]
+            else:
+                assert member["route_mode"] == "standalone"
+                assert member["owner_entity_id"] == member["id"]
+            assert set(member) == expected_keys
+            assert member["approved_public"] is True
+
+    for path, bundle in pilot_payload["bundles"].items():
+        if "foundations/" not in path:
+            assert "collection" not in bundle
+
+
+def test_foundations_lab_visible_breadcrumbs_include_japanese_cuisine_parent(
+    pilot_payload: dict,
+) -> None:
+    owner = next(
+        entity
+        for entity in pilot_payload["registry"]["entities"]
+        if entity["id"] == "hub-japanese-foundations-lab"
+    )
+    breadcrumbs = owner["seo"]["visible_breadcrumbs"]
+    assert [breadcrumb["key"] for breadcrumb in breadcrumbs] == [
+        "home",
+        "museum",
+        "parent-cuisine-japanese-washoku",
+        "current-hub-japanese-foundations-lab",
+    ]
+    assert breadcrumbs[2]["path"] == {
+        "he": "/museum/japanese-culinary-science/",
+        "en": "/en/museum/japanese-culinary-science/",
+    }
+
+
+def test_foundations_lab_does_not_reparent_or_take_member_intents(
+    pilot_payload: dict,
+) -> None:
+    registry = pilot_payload["registry"]
+    collection = registry["collections"][0]
+    by_id = {entity["id"]: entity for entity in registry["entities"]}
+    owner_id = collection["owner_entity_id"]
+    member_ids = {
+        member_id
+        for members in collection["navigation"]["member_ids_by_group"].values()
+        for member_id in members
+    }
+    assert owner_id == "hub-japanese-foundations-lab"
+    assert by_id[owner_id]["parent_id"] == "cuisine-japanese-washoku"
+    assert by_id[owner_id]["seo"]["canonical_path"] == collection["route"][
+        "canonical_path"
+    ]
+    assert by_id[owner_id]["publication"]["search_index"] is False
+    for member_id in member_ids:
+        member = by_id[member_id]
+        assert member["parent_id"] != owner_id
+        assert member["seo"]["owner_entity_id"] != owner_id
 
 
 def _mapping_keys(value: object) -> set[str]:

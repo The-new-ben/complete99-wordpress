@@ -11,9 +11,17 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.6.1`. Production truth comes
+The source tree targets Complete99 Platform `1.7.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.7.0 introduces the modular culinary-science registry v5 and the
+bilingual Japanese Foundations Lab. The Lab is a curated topic collection over
+reviewed ingredient, food-science, technique and equipment entities. It owns
+its narrow discovery intent without changing the canonical ownership of its
+members. Public projections fail closed against supplier, cost, margin,
+inventory-control and other private operational records. The Lab remains
+noindex while its long-form editorial and search-intent acceptance is pending.
 
 Release 1.6.1 is the live-acceptance accessibility hotfix for the store. It
 expands the consumer breadcrumb and cart-status links to the project's strict
