@@ -209,8 +209,8 @@ def test_module_is_loaded_and_exactly_owns_the_private_foundation(
     loader = SCIENCE_DATA.read_text(encoding="utf-8")
     module = LEBANESE_MODULE.read_text(encoding="utf-8")
     assert "lebanese-foundations.php" in loader
-    assert "culinary-science-2026.08.07.v15" in module
-    assert registry["version"] == "culinary-science-2026.08.07.v15"
+    assert "culinary-science-2026.08.07.v16" in module
+    assert registry["version"] == "culinary-science-2026.08.07.v16"
     assert set(lebanese_entities) == EXPECTED_IDS
     assert len(lebanese_entities) == 82
     assert Counter(entity["type"] for entity in lebanese_entities.values()) == {

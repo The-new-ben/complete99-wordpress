@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-07
-Status: source release target 1.15.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 465 science identities, 521 Entity Studio subjects and 23 public science entities across 18 page owners per language
+Status: source release target 1.16.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 551 science identities, 607 Entity Studio subjects and 23 public science entities across 18 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -191,10 +191,11 @@ Release 1.12.0 creates contracts and checks, not worker assignments.
 - Its dossiers remain private and cannot become public pages or active offers
   through the Studio.
 
-Release 1.15.0 expands Entity Studio to 521 subjects: 465 science identities
+Release 1.16.0 expands Entity Studio to 607 subjects: 551 science identities
 plus the unchanged 56 product identities. Culinary science is registry version
-15 and culinary commerce is registry version 9. The 96 Iraqi identities do not
-create a product, price observation, offer, supplier, stock record or purchasing path. The
+16 and culinary commerce is registry version 10. The 86 new Syrian identities
+do not create a product, price observation, offer, supplier, stock record or
+purchasing path. The
 public graph remains 23 science entities across 18 canonical page owners per
 language.
 
@@ -343,6 +344,21 @@ Diyala. Jewish, Kurdish, Marsh Arab and family records remain within their
 documented scope. Shared regional dishes are connected for comparison without
 exclusive-origin claims. A central private trade rule and separate food-safety
 gates fail closed before any future commercial or operational use.
+
+Release 1.16.0 expands the Syrian graph from 196 to 282 identities and the
+cumulative science registry from 465 to 551. Entity Studio resolves 607
+subjects: 551 science identities plus the unchanged 56 product identities. The
+86 new Syrian identities are divided into 30 west and central records, 31 east
+and south records, and 25 community and institutional records. All remain
+private, `noindex` and reference-only, and create no public page, price,
+product, supplier, stock, POS row or order path.
+
+The Syrian graph distinguishes Aleppo, Damascus, Homs, Hama, Idlib, Qadmus,
+Kassab, Baniyas, Jableh, Qamishli, Deir ez-Zor, Al-Bukamal, Palmyra, Suwayda
+and Hauran. Jewish family records from Aleppo, Damascus and diaspora archives
+sit alongside Syrian-Armenian, Assyrian, Kurdish, Druze and other regional
+records. No community record replaces the wider cuisine. Four unresolved
+records remain held for botanical, preservation or exact identity review.
 
 ## 9. Integrations and future hardware
 

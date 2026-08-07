@@ -2296,6 +2296,45 @@ $c99_private_cuisine_lookup = array_replace(
 	array_fill_keys( $c99_syrian_regional_depth_module['private_entity_ids'], true )
 );
 
+$c99_syrian_west_module = require __DIR__ . '/culinary-science/cuisines/syrian-regional-expansion-west.php';
+foreach ( $c99_syrian_west_module['sources'] as $syrian_west_source_id => $syrian_west_source ) {
+	if ( isset( $sources[ $syrian_west_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Syrian west-central source ID: ' . $syrian_west_source_id );
+	}
+	$sources[ $syrian_west_source_id ] = $syrian_west_source;
+}
+$entities = array_merge( $entities, $c99_syrian_west_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_syrian_west_module['private_entity_ids'], true )
+);
+
+$c99_syrian_east_south_module = require __DIR__ . '/culinary-science/cuisines/syrian-regional-expansion-east-south.php';
+foreach ( $c99_syrian_east_south_module['sources'] as $syrian_east_south_source_id => $syrian_east_south_source ) {
+	if ( isset( $sources[ $syrian_east_south_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Syrian east-south source ID: ' . $syrian_east_south_source_id );
+	}
+	$sources[ $syrian_east_south_source_id ] = $syrian_east_south_source;
+}
+$entities = array_merge( $entities, $c99_syrian_east_south_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_syrian_east_south_module['private_entity_ids'], true )
+);
+
+$c99_syrian_community_expansion_module = require __DIR__ . '/culinary-science/cuisines/syrian-community-institutions-expansion.php';
+foreach ( $c99_syrian_community_expansion_module['sources'] as $syrian_community_source_id => $syrian_community_source ) {
+	if ( isset( $sources[ $syrian_community_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Syrian community source ID: ' . $syrian_community_source_id );
+	}
+	$sources[ $syrian_community_source_id ] = $syrian_community_source;
+}
+$entities = array_merge( $entities, $c99_syrian_community_expansion_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_syrian_community_expansion_module['private_entity_ids'], true )
+);
+
 $c99_lebanese_foundations_module = require __DIR__ . '/culinary-science/cuisines/lebanese-foundations.php';
 foreach ( $c99_lebanese_foundations_module['sources'] as $lebanese_source_id => $lebanese_source ) {
 	if ( isset( $sources[ $lebanese_source_id ] ) ) {
@@ -2941,7 +2980,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'culinary-science-2026.08.07.v15',
+	'version'       => 'culinary-science-2026.08.07.v16',
 	'generated_at'  => '2026-08-07',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',

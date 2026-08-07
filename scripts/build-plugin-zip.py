@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-07 20:15:00"
+RELEASE_LAST_UPDATED = "2026-08-07 22:15:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,14 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the bilingual culinary-science registry to 551 entities and Entity Studio to 607 subjects: 551 science identities plus 56 product identities.</li>"
+                "<li>Added 86 source-bound private Syrian regional, community and institutional identities, bringing the Syrian graph from 196 to 282 entities without adding a public offer or public route.</li>"
+                "<li>Separated Aleppo, Damascus, Homs, Hama, Idlib, Qadmus, Kassab, Baniyas, Jableh, Qamishli, Deir ez-Zor, Al-Bukamal, Palmyra, Suwayda and Hauran evidence, while retaining Jewish, Armenian, Assyrian, Kurdish, Druze and family records within their documented scope.</li>"
+                "<li>Added source-bound institutions, archives, markets and restaurant benchmarks, original visual specifications, scientific controls and four fail-closed held identities for unresolved plant, preservation or product-identity risk.</li>"
+                "<li>Preserved the exact 36-product public WooCommerce store, 23 public science entities, 18 public page owners, prices, stock, cart, disabled payment state and no-role boundary unchanged. All 86 new Syrian identities remain private and noindex.</li>"
+                "</ul>"
+                "<h4>1.15.0</h4>"
                 "<ul>"
                 "<li>Expanded the bilingual culinary-science registry to 465 entities and Entity Studio to 521 subjects: 465 science identities plus 56 product identities.</li>"
                 "<li>Added a 96-identity private Iraqi regional and community foundation with 32 dishes, 16 regional or topic hubs, 12 ingredients, eight techniques, ten traditions, four preparations, institutions, markets, restaurants, guides and one central trade-compliance rule.</li>"

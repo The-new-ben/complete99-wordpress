@@ -1,9 +1,43 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-07
-Release target: Complete99 Platform 1.15.0
+Release target: Complete99 Platform 1.16.0
 
-## Current 1.15.0 Iraqi cuisine foundation boundary
+## Current 1.16.0 Syrian regional and community expansion boundary
+
+Release 1.16.0 expands the culinary-science registry from 465 to 551 entities
+and Entity Studio from 521 to 607 subjects: 551 science identities plus the
+same 56 product identities. The registry contracts are
+`culinary-science-2026.08.07.v16` and
+`culinary-commerce-2026.08.07.v10`. The public boundary remains exactly 23
+science identities across 18 canonical page owners per language, and the
+public WooCommerce catalog remains exactly 36 owner-authorized products.
+
+The Syrian graph grows from 196 to 282 identities through three modules: 30
+west and central records, 31 east and south records, and 25 community and
+institutional records. The 86 records include 4 topic hubs, 21 dishes, 14
+ingredients, 13 techniques, 12 traditions, 7 guides, 1 preparation, 9 culinary
+institutions, 1 market and 4 restaurant benchmarks.
+
+All 86 are private, `noindex` and reference-only. None has a public page,
+public API row, WooCommerce product code, price observation, offer, stock,
+supplier, cross-sell, up-sell, import path or POS row. Restaurant and market
+records are external benchmarks rather than endorsements. Archive citations do
+not grant image rights.
+
+Regional ownership stays explicit across Aleppo, Damascus, Homs, Hama, Idlib,
+Qadmus, Kassab, Baniyas, Jableh, Qamishli, Deir ez-Zor, Al-Bukamal, Palmyra,
+Suwayda and Hauran. Jewish family records remain separate for Aleppo, Damascus
+and named diaspora sources, alongside Syrian-Armenian, Assyrian, Kurdish,
+Druze and other regional records. No family or community record is treated as
+the whole cuisine or as proof of exclusive origin.
+
+Four exact records remain held: two Arum records from Qadmus, one Palmyra
+identity guide and one Hauran identity guide. Raw meat, dairy, fermentation,
+drying, hot holding, fire, smoke, clay food contact, wild plants, foraging,
+allergens and infant-related cultural records retain fail-closed safety gates.
+
+## Historical 1.15.0 Iraqi cuisine foundation boundary
 
 Release 1.15.0 expands the culinary-science registry from 369 to 465 entities
 and Entity Studio from 425 to 521 subjects: 465 science identities plus the

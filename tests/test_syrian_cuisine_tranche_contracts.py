@@ -255,6 +255,17 @@ EXPECTED_DEPTH_BY_TYPE = {
     },
 }
 EXPECTED_DEPTH_IDS = set().union(*EXPECTED_DEPTH_BY_TYPE.values())
+EXPECTED_LEGACY_IDS = (
+    {"cuisine-syrian-regional"}
+    | EXPECTED_REGIONS
+    | EXPECTED_DISHES
+    | EXPECTED_INGREDIENTS
+    | EXPECTED_TECHNIQUES
+    | EXPECTED_TRADITIONS
+    | EXPECTED_PREPARATIONS
+    | EXPECTED_MARKET_EVIDENCE
+    | EXPECTED_DEPTH_IDS
+)
 EXPECTED_PUBLIC_JAPANESE = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
@@ -345,7 +356,7 @@ def syrian_entities(registry: dict) -> dict[str, dict]:
     return {
         entity["id"]: entity
         for entity in registry["entities"]
-        if entity["seo"]["cluster_id"] == "cluster-syrian-regional-cuisine"
+        if entity["id"] in EXPECTED_LEGACY_IDS
     }
 
 
@@ -363,7 +374,7 @@ def _one_relation(entity: dict, relation_type: str, target_id: str) -> dict:
 def test_full_syrian_foundation_inventory_is_exact(
     registry: dict, syrian_entities: dict[str, dict]
 ) -> None:
-    assert registry["version"] == "culinary-science-2026.08.07.v15"
+    assert registry["version"] == "culinary-science-2026.08.07.v16"
     assert len(syrian_entities) == 196
     by_type: dict[str, set[str]] = {}
     for entity in syrian_entities.values():
@@ -399,17 +410,7 @@ def test_full_syrian_foundation_inventory_is_exact(
     assert by_type["market_observation"] == {
         "listing-tamar-bakfar-pure-ground-sumac-100g-indexed-20260806"
     }
-    assert set(syrian_entities) == (
-        {"cuisine-syrian-regional"}
-        | EXPECTED_REGIONS
-        | EXPECTED_DISHES
-        | EXPECTED_INGREDIENTS
-        | EXPECTED_TECHNIQUES
-        | EXPECTED_TRADITIONS
-        | EXPECTED_PREPARATIONS
-        | EXPECTED_MARKET_EVIDENCE
-        | EXPECTED_DEPTH_IDS
-    )
+    assert set(syrian_entities) == EXPECTED_LEGACY_IDS
 
 
 def test_regional_depth_module_is_modular_source_bound_and_fail_closed(
