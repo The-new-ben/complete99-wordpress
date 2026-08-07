@@ -1,9 +1,45 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-07
-Release target: Complete99 Platform 1.16.0
+Release target: Complete99 Platform 1.17.0
 
-## Current 1.16.0 Syrian regional and community expansion boundary
+## Current 1.17.0 Lebanese regional and community expansion boundary
+
+Release 1.17.0 expands the culinary-science registry from 551 to 672 entities
+and Entity Studio from 607 to 728 subjects: 672 science identities plus the
+same 56 product identities. The registry contracts are
+`culinary-science-2026.08.07.v17` and
+`culinary-commerce-2026.08.07.v11`. The public boundary contains 24 science
+identities across 19 canonical page owners per language, including one
+reviewed noindex Lebanese cuisine gateway. The public WooCommerce catalog
+remains exactly 36 owner-authorized products.
+
+The Lebanese graph grows from 82 to 203 identities through two modules: 61
+coastal and northern records, and 60 Bekaa, southern and community records.
+The 121 records include 12 topic hubs, 31 dishes, 15 ingredients, 3 molecules,
+4 reactions, 14 techniques, 6 equipment records, 18 traditions, 4 markets, 10
+culinary institutions, 3 restaurant benchmarks and 1 guide.
+
+All 121 are private, `noindex` and reference-only. None has a public page,
+public API row, WooCommerce product code, price observation, offer, stock,
+supplier, cross-sell, up-sell, import path or POS row. Restaurant, institution
+and market records are external benchmarks rather than endorsements. Archive
+citations do not grant image rights.
+
+Regional ownership stays explicit across Beirut, Mount Lebanon, Chouf, Aley,
+Tripoli, Akkar, the northern coast, Bekaa, Zahle, Baalbek, Hermel, South Lebanon
+and Jabal Amel. Jewish foodways remain separate named records alongside Druze,
+Christian, Muslim, Armenian and Palestinian records. No family or community
+record is treated as the whole cuisine or as proof of exclusive origin.
+
+Twelve exact records remain held for unresolved identity, historical evidence,
+raw handling, alcohol, distillation or food-grade material verification. Fish,
+meat, dairy, fermentation, cold chain, allergens, fire, ceramic food contact,
+wild plants and calcium-oxide handling retain separate machine-readable safety
+gates. The generated Lebanese regional table is cleared for the reviewed
+gateway only and creates no product, stock or supplier claim.
+
+## Historical 1.16.0 Syrian regional and community expansion boundary
 
 Release 1.16.0 expands the culinary-science registry from 465 to 551 entities
 and Entity Studio from 521 to 607 subjects: 551 science identities plus the

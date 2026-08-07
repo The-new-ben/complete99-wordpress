@@ -794,7 +794,7 @@ foreach ( $c99_iraqi_community_entities as $entity ) {
 
 return array(
 	'schema' => 'complete99-iraqi-community-institutions-module/v1',
-	'version' => 'culinary-science-2026.08.07.v16',
+	'version' => 'culinary-science-2026.08.07.v17',
 	'sources' => $c99_iraqi_community_sources,
 	'entities' => $c99_iraqi_community_entities,
 	'private_entity_ids' => $c99_iraqi_community_ids,

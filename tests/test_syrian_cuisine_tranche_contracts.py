@@ -290,7 +290,10 @@ EXPECTED_PUBLIC_JAPANESE = {
     "molecule-allyl-isothiocyanate",
     "equipment-wasabi-grater",
 }
-EXPECTED_PUBLIC = EXPECTED_PUBLIC_JAPANESE | {"cuisine-syrian-regional"}
+EXPECTED_PUBLIC = EXPECTED_PUBLIC_JAPANESE | {
+    "cuisine-syrian-regional",
+    "cuisine-lebanese-regional",
+}
 
 
 def _php_path(path: Path) -> str:
@@ -374,7 +377,7 @@ def _one_relation(entity: dict, relation_type: str, target_id: str) -> dict:
 def test_full_syrian_foundation_inventory_is_exact(
     registry: dict, syrian_entities: dict[str, dict]
 ) -> None:
-    assert registry["version"] == "culinary-science-2026.08.07.v16"
+    assert registry["version"] == "culinary-science-2026.08.07.v17"
     assert len(syrian_entities) == 196
     by_type: dict[str, set[str]] = {}
     for entity in syrian_entities.values():
@@ -1271,7 +1274,7 @@ def test_exact_source_ledger_urls_are_retained(registry: dict) -> None:
         assert registry["sources"][source_id]["url"] == url
 
 
-def test_one_syrian_gate_is_public_and_japanese_public_set_is_unchanged(
+def test_syrian_and_lebanese_gates_are_public_and_japanese_set_is_unchanged(
     registry: dict,
 ) -> None:
     public_ids = {
@@ -1281,7 +1284,11 @@ def test_one_syrian_gate_is_public_and_japanese_public_set_is_unchanged(
         or entity["publication"]["public_page"]
     }
     assert public_ids == EXPECTED_PUBLIC
-    assert public_ids - {"cuisine-syrian-regional"} == EXPECTED_PUBLIC_JAPANESE
+    assert (
+        public_ids
+        - {"cuisine-syrian-regional", "cuisine-lebanese-regional"}
+        == EXPECTED_PUBLIC_JAPANESE
+    )
     assert len(registry["collections"]) == 1
     assert registry["collections"][0]["key"] == "japanese-foundations-lab"
     assert registry["collections"][0]["public_projection"]["enabled"] is True

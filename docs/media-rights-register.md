@@ -1,6 +1,6 @@
 # Complete99 media rights register
 
-Last updated: 2026-07-31
+Last updated: 2026-08-07
 
 This register is private operational evidence. Public pages may use neutral,
 factual alt text. They must not claim photographer ownership, current menu
@@ -48,6 +48,13 @@ Included stems:
 - `c99-food-schnitzel-pita-menu-2021-mishloha-v01`
 - `c99-food-shakshuka-plate-gallery-2021-wp-v01`
 - `c99-food-yemenite-beef-soup-menu-2021-mishloha-v01`
+
+Museum-root delivery integrity for the food-house spread:
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-food-house-spread-hero-2021-wp-v01.avif` | AVIF | 1400x788 | 87,787 | `29bdf161c6dc9ebd7d42f480ff3c3a8b82c438756c949b1418755b2f6042ca9f` |
+| `c99-food-house-spread-hero-2021-wp-v01.webp` | WebP | 1400x788 | 197,438 | `c3a1b84d874d51eb7da73c2c5ce7ee5dc640bc29dd3622bff0555030cef37090` |
 
 ## Connected-table editorial illustration
 
@@ -274,6 +281,101 @@ No people, hands, text, Japanese characters, labels, logos, trademarks, certific
 | `c99-science-japanese-foundations-lab-v01.png` | PNG | 1536x1024 | 3,118,586 | `aeb206fe349fef86b799187491786d6a0c366bf982ecf549221663d6ed26468c` |
 | `c99-science-japanese-foundations-lab-v01.webp` | WebP | 1536x1024 | 369,064 | `8dcc708e53538ed4a0044d3cd79704f1d9e02ff01142b8f5f486192e3595e180` |
 | `c99-science-japanese-foundations-lab-v01.avif` | AVIF | 1536x1024 | 249,067 | `4f009241170b342b89985568af98fdc902a38dd956e2799dc0048c80e4c541c4` |
+
+## Culinary museum world-pantry hero
+
+Source: project-generated culinary editorial image created for Complete99 on
+2026-08-07.
+
+Binding: `museum-culinary-science`.
+
+Review state: approved for the consumer-first museum root. It is an editorial
+world-pantry scene, not a photograph of the physical Complete99 premises, a
+product pack, a supplier relationship or a statement that every pictured dish
+belongs to one cuisine.
+
+Hebrew alt text: מזווה קולינרי עולמי מואר עם מדפי תבלינים, דגנים, קטניות,
+שמנים, כלי קרמיקה ושולחן מלא במנות צבעוניות.
+
+English alt text: Sunlit international culinary pantry with shelves of spices,
+grains, legumes, oils and ceramics beside a table of colorful dishes.
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-science-culinary-museum-pantry-v02.png` | PNG | 1536x1024 | 2,791,266 | `ec046fe8d939699ca236f6a78c92c627cf775dd88380f79442e0c4ef1e695c28` |
+| `c99-science-culinary-museum-pantry-v02.webp` | WebP | 1536x1024 | 274,012 | `153069cca78fb3121b0d5bdc18a55234c6e49b306592e56e691865ea146d3fd3` |
+| `c99-science-culinary-museum-pantry-v02.avif` | AVIF | 1536x1024 | 147,120 | `4f6639b7178145d2646f3ab1002b4cb14118d8c143f65de8dfb356db4471a62c` |
+
+## Lebanese regional table gateway asset
+
+Source: project-generated culinary editorial image created for Complete99 on
+2026-08-07.
+
+Binding: `cuisine-lebanese-regional`.
+
+Review state: approved for the reviewed noindex Lebanese cuisine root. It
+remains unavailable to private child records, products, supplier pages or
+commercial offers unless a separate release approves that use.
+
+Hebrew alt text: שולחן לבנוני אזורי עם מנאקיש זעתר, טאבולה, קובה אפויה, דג
+מבושל, בורגול ועדשים, טחינה וסומאק.
+
+English alt text: Lebanese regional table with zaatar manouche, tabbouleh,
+baked kibbeh, cooked fish, bulgur and lentils, tahini and sumac.
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-science-lebanese-regional-table-v01.png` | PNG | 1536x1024 | 3,636,692 | `71fd11f969f3b583781eb420a90069ce8f92c147e309a4e4e5417fa5e068970c` |
+| `c99-science-lebanese-regional-table-v01.webp` | WebP | 1536x1024 | 610,172 | `0adf73a4888d068a204d38da644ba222240ccd28b7a10ef67c20fc4f6057b37e` |
+| `c99-science-lebanese-regional-table-v01.avif` | AVIF | 1536x1024 | 479,271 | `43eb1bfdfd32fa48f9316cbe6ee707f1f345a544fe0643bd9019431d6b9209f4` |
+
+## Culinary museum store-pantry asset
+
+Source: project-generated culinary editorial image created for Complete99 on
+2026-08-07 with OpenAI's built-in image generation tool.
+
+Binding: the store doorway card on the bilingual culinary museum root.
+
+Review state: approved for that exact museum surface. The composition uses
+unbranded vessels and recognizable categories from the current 36-product
+catalog. It is not bound to an individual product page and does not replace an
+approved product image, supplier label or inventory record.
+
+Hebrew alt text: מזווה חנות עשיר עם תבלינים, דגנים, שמנים, ירקות וחומרי גלם
+יפניים.
+
+English alt text: Rich store pantry with spices, grains, oils, vegetables and
+Japanese ingredients.
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-science-museum-store-pantry-v01.png` | PNG | 1536x1024 | 2,841,762 | `2d3edf0c692cbe370cd40b7eb82e2037bf6fb26c20c26ca5ca27e226047eaa42` |
+| `c99-science-museum-store-pantry-v01.webp` | WebP | 1536x1024 | 318,398 | `a2cbec677f8497114d410ca8a9489d3ab9b3a4eba58c0bad9284729d500b4bdd` |
+| `c99-science-museum-store-pantry-v01.avif` | AVIF | 1536x1024 | 188,284 | `86c0b7b9f1f9297e4732c0af1ce447f17d2a581c776f3aa0dce7a38efa6d7315` |
+
+## Museum responsive derivatives
+
+The following files are mechanical delivery derivatives. They inherit the
+rights, editorial binding, review state and restrictions of their named source
+asset. They introduce no new depicted subject and may not be repurposed beyond
+the source asset's approved surfaces.
+
+| File | Source asset | Dimensions | SHA256 |
+|---|---|---:|---|
+| `c99-science-culinary-museum-pantry-v02-768.avif` | `c99-science-culinary-museum-pantry-v02` | 768x512 | `95d2f6451663de16d1510284c526cea1b25e14e63249d0911a15523921b7b874` |
+| `c99-science-culinary-museum-pantry-v02-768.webp` | `c99-science-culinary-museum-pantry-v02` | 768x512 | `84948cde248900d236eb1c1d9db14eb36c86d794a2da318909a7f9a481beb0dd` |
+| `c99-science-japanese-washoku-v01-768.avif` | `c99-science-japanese-washoku-v01` | 768x512 | `275502e6c97bde77e0aef90e0a6ae28dc31213669d14a1119f223b5e37141995` |
+| `c99-science-japanese-washoku-v01-768.webp` | `c99-science-japanese-washoku-v01` | 768x512 | `487e02c7f3feda156ceee31e5574f0cf390f1323adf0cc07e06b3b6e4848b86f` |
+| `c99-science-japanese-premium-ingredients-v01-768.avif` | `c99-science-japanese-premium-ingredients-v01` | 768x512 | `bc62e9a7aad4b86939b204d3e6b2dcf08b0f464bbc6f13838053f29105a0a94a` |
+| `c99-science-japanese-premium-ingredients-v01-768.webp` | `c99-science-japanese-premium-ingredients-v01` | 768x512 | `4afe255cfdd326a6cc8583cafc4bc843fc8f048310aa779c5fcbce70fa162125` |
+| `c99-science-lebanese-regional-table-v01-768.avif` | `c99-science-lebanese-regional-table-v01` | 768x512 | `d140354868087d05224d036903964371cda14fd08c6b3b1797aa8b11a9004f2b` |
+| `c99-science-lebanese-regional-table-v01-768.webp` | `c99-science-lebanese-regional-table-v01` | 768x512 | `f54db843f5f911196a7b364c0cf1e9a10f1b7ab99b43728b3f02c726362f6c34` |
+| `c99-science-syrian-regional-table-v01-768.avif` | `c99-science-syrian-regional-table-v01` | 768x512 | `8192760321be58628eee20d7e7789764bf516e187bda8572b234eaabca9443e3` |
+| `c99-science-syrian-regional-table-v01-768.webp` | `c99-science-syrian-regional-table-v01` | 768x512 | `2a8d29be2b3357fddfc65ab9bffd815de89762bd5263c0723ed2282dd12d5441` |
+| `c99-science-museum-store-pantry-v01-768.avif` | `c99-science-museum-store-pantry-v01` | 768x512 | `0d2baa8e2db35c437ffbb03697822d8b666d7e819a29516fe876f59b88b04b14` |
+| `c99-science-museum-store-pantry-v01-768.webp` | `c99-science-museum-store-pantry-v01` | 768x512 | `04ca668f64c5f3ba5b3fd40175cb6f3383a09616584f0150611fd7bd8385fcc9` |
+| `c99-food-house-spread-hero-2021-wp-v01-768.avif` | `c99-food-house-spread-hero-2021-wp-v01` | 768x432 | `d9fe624ca7c0fd0418a72519de27672165f424fa779daffe31a09c1be15844a1` |
+| `c99-food-house-spread-hero-2021-wp-v01-768.webp` | `c99-food-house-spread-hero-2021-wp-v01` | 768x432 | `ee70875d3644b3945f84ce8a5609038ff4bb22ab81cbdcef1de2faea142ec7fa` |
 
 ## Current Complete99 mark
 

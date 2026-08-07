@@ -93,21 +93,22 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.16.0, require the Entity Studio contracts to prove private
+3. For release 1.17.0, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
    bounded API pagination, orphan-dossier audit access and fail-closed
-   observation identity collisions. Require the cumulative 551-entity
-   `culinary-science-2026.08.07.v16` registry, the
-   `culinary-commerce-2026.08.07.v10` registry and the exact 607-subject Entity
-   Studio index: 551 science identities plus 56 product identities. Require
+   observation identity collisions. Require the cumulative 672-entity
+   `culinary-science-2026.08.07.v17` registry, the
+   `culinary-commerce-2026.08.07.v11` registry and the exact 728-subject Entity
+   Studio index: 672 science identities plus 56 product identities. Require
    exact evidence chronology and evidence-class alignment with each source
-   type. Require the Syrian expansion to contain exactly 86 identities in
-   three modules: 30 west and central, 31 east and south, and 25 community and
-   institutional identities. Require the new type distribution to be 4 topic
-   hubs, 21 dishes, 14 ingredients, 13 techniques, 12 traditions, 7 guides, 1
-   preparation, 9 culinary institutions, 1 market and 4 restaurants.
+   type. Require the Lebanese expansion to contain exactly 121 identities in
+   two modules: 61 coastal and northern, and 60 Bekaa, southern and community
+   identities. Require the new type distribution to be 12 topic hubs, 31
+   dishes, 15 ingredients, 3 molecules, 4 reactions, 14 techniques, 6
+   equipment records, 18 traditions, 4 markets, 10 culinary institutions, 3
+   restaurants and 1 guide.
 4. Require the public read-model integrity tests to prove
    recursive canonical hashing, exclusion of the top-level `digest` field,
    `hash_equals` verification and fail-closed handling of missing, malformed,
@@ -136,13 +137,17 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    `noindex,follow`; the other 281 Syrian entities remain private. Confirm the
    86 new records contain no price, supplier, stock, product, offer or public
    route, and confirm the four exact held identities. Confirm all
-   82 Lebanese and 96 Iraqi identities remain private, noindex and
-   reference-only. Confirm
+   202 Lebanese and all 96 Iraqi identities remain private, noindex and
+   reference-only. Confirm the reviewed Lebanese cuisine root is the only
+   public noindex gateway. Confirm the two Lebanese expansion modules contain exactly
+   61 and 60 identities, all 77 new source records are disjoint and used, all
+   121 new records contain no price, supplier, stock, product, offer or public
+   route, and the twelve exact held identities remain fail closed. Confirm
    the six dated Lebanese retail observations create no product identity,
    WooCommerce price, offer, stock, supplier, import route, landed-cost or POS
    row. Confirm only
    the exact explicit `public_market_projection=public` value can enter the
-   public projection, and require 23 public science entities across 18
+   public projection, and require 24 public science entities across 19
    canonical page owners per language.
    Require the Lebanon contracts to prove the March 2026 direct and indirect
    trade boundary, separate shared Levantine identities, no raw-meat recipe or
@@ -258,31 +263,32 @@ chooses only between finishing an already committed cleanup and rolling back an
 uncommitted mutation. It then proves its row absent and its route 404. The production
 workflow runs this command automatically after a failed deployment step.
 
-## Release 1.16.0 live verification
+## Release 1.17.0 live verification
 
 Before installation:
 
-1. Confirm the artifact, manifest and deployment marker all report `1.16.0`.
-2. Confirm contract readback reports 551 science identities, 56 product
-   identities, 607 Entity Studio subjects, 36 public WooCommerce products, 23
-   public science identities and 18 public page owners per language.
-3. Confirm the Syrian cluster reports exactly 282 identities. Confirm the 86
-   new identities and their 30, 31 and 25 module split with the documented type
+1. Confirm the artifact, manifest and deployment marker all report `1.17.0`.
+2. Confirm contract readback reports 672 science identities, 56 product
+   identities, 728 Entity Studio subjects, 36 public WooCommerce products, 24
+   public science identities and 19 public page owners per language.
+3. Confirm the Lebanese cluster reports exactly 203 identities. Confirm the 121
+   new identities and their 61 and 60 module split with the documented type
    distribution.
-4. Confirm all 86 new identities are private, noindex and reference-only, and
+4. Confirm all 121 new identities are private, noindex and reference-only, and
    contain no offer, price observation, stock, supplier, product or public
-   route. Confirm the four exact held identities remain fail closed.
-5. Confirm the Lebanese cluster remains 82 and the Iraqi cluster remains 96.
+   route. Confirm the twelve exact held identities remain fail closed.
+5. Confirm the Syrian cluster remains 282 and the Iraqi cluster remains 96.
 
 After installation and cache purge:
 
-1. Verify anonymous health returns version `1.16.0`, deployment ID
-   `c99-wp-1.16.0` and the expected database version.
-2. Verify public science remains exactly 23 and public page ownership remains
-   exactly 18 per language. No new Syrian identity may appear in public API,
-   search, sitemap, catalog, POS projection or structured data.
-3. Request representative Hebrew and English Syrian private candidates with
-   cache busting. They must remain unavailable while route mode is private.
+1. Verify anonymous health returns version `1.17.0`, deployment ID
+   `c99-wp-1.17.0` and the expected database version.
+2. Verify public science contains exactly 24 and public page ownership contains
+   exactly 19 per language. The reviewed Lebanese cuisine root must appear as
+   noindex, with no Product or Offer schema, while every child remains private.
+3. Request the Hebrew and English Lebanese cuisine gateway and representative
+   private child candidates with cache busting. The gateway must render and the
+   child candidates must remain unavailable while route mode is private.
 4. Verify the exact 36-product store, cart, stock authority and disabled payment
    state are unchanged.
 5. Run real Chrome acceptance on Hebrew and English home and store pages at
@@ -389,26 +395,28 @@ A production release is complete only when the non-secret audit JSON shows:
   version 1.9.0 additions;
 - a private Entity Studio registration and invariant check with no public route,
   no new role and no WooCommerce write;
-- exact registry receipts for culinary science v16 and culinary commerce v10,
-  with 551 science identities, 56 product identities and 607 Entity Studio
+- exact registry receipts for culinary science v17 and culinary commerce v11,
+  with 672 science identities, 56 product identities and 728 Entity Studio
   subjects;
 - exact 56 of 56 product price-basis coverage, comprising 36 live prices and 20
-  private planning prices, with zero active or draft offer added by 1.16.0;
+  private planning prices, with zero active or draft offer added by 1.17.0;
 - exact 282-identity Syrian type counts, including the 86 new private identities
   and four exact held records, with no price, product, offer, supplier, stock or
   public projection;
 - exact 96-identity Iraqi type counts and proof that all 96 remain private,
   noindex and reference-only, with no price observation, offer, stock, supplier
   or public projection;
-- exact 82-identity Lebanese type counts and proof that all 82 remain private,
-  noindex and reference-only;
+- exact 203-identity Lebanese type counts, including the 121 new private
+  identities and twelve exact held records, proof that the reviewed cuisine
+  root is the only public noindex gateway, and proof that the other 202 remain
+  private, noindex and reference-only;
 - six dated Lebanese retail observations with no product identity, offer,
   stock, supplier, import route, landed cost or public price projection;
-- 23 public science entities and 18
+- 24 public science entities and 19
   public canonical page owners per language;
-- negative public evidence for the Syrian expansion and Lebanon cluster across
-  API, search, sitemap, rendered routes, public catalog, POS and structured
-  data;
+- negative public evidence for every Syrian expansion record and every Lebanon
+  child across API, search, sitemap, rendered routes, public catalog, POS and
+  structured data, with positive evidence only for the reviewed Lebanon root;
 - `sync_configured: true` after an exact secret checkpoint, without exposing the
   value;
 - anonymous `robots.txt` content and SHA-256 matching the managed policy;

@@ -2,26 +2,26 @@
 
 ## Scope and provenance
 
-This register covers twenty visual assets for the culinary science program.
-OpenAI's built-in image generation tool created sixteen source PNG files for
-Complete99 on 2026-08-06. The original generated PNG bytes are preserved in the
-plugin. Four additional Syrian ingredient studies are documented editorial
-crops derived from the generated Syrian pantry composition.
+This register covers twenty-three full-size visual assets for the culinary
+science program plus responsive museum delivery variants. OpenAI's built-in
+image generation tool created nineteen retained source PNG files for Complete99
+between 2026-08-06 and 2026-08-07. Four additional Syrian ingredient studies
+are documented editorial crops derived from the generated Syrian pantry
+composition.
 
-ImageMagick 7.1.2 Q16-HDRI produced the delivery derivatives. WebP files use
-quality 88 with encoding method 6. The first thirteen AVIF sets use quality 70;
-the seven Syrian sets use quality 60. Every delivered artifact is 1536 by 1024
-pixels, 8-bit sRGB. The four Syrian ingredient PNGs were cropped from the
-Syrian pantry source and normalized to the common delivery canvas.
+ImageMagick 7.1.2 Q16-HDRI produced the WebP, AVIF and 768-pixel delivery
+derivatives. Full-size science assets are 1536 by 1024 pixels. Responsive
+museum candidates are 768 pixels wide and preserve their source aspect ratio.
+The four Syrian ingredient PNGs were cropped from the Syrian pantry source and
+normalized to the common full-size delivery canvas.
 
-Public-use status for the original thirteen assets is `project-generated`.
-Those thirteen entities passed the current public projection gate and are
-approved for use as editorial visuals on their matching Complete99 culinary
-science pages. The Syrian regional tasting table is approved for the noindex
-Syrian cuisine gateway; the other six Syrian assets remain held for private
-editorial review until their matching entities pass the public projection gate. The ichiban
-dashi source is reused from the earlier pilot without regeneration and was
-made public in release 1.5.0. None of these images is
+Public use follows the exact surface status in the asset map. The Syrian
+regional tasting table is approved for the noindex Syrian cuisine gateway. The
+Lebanese table, world pantry and store-pantry editorial are approved for their
+named public museum surfaces. Other Syrian assets remain held for private
+editorial review until their matching entities pass the public projection
+gate. The ichiban dashi source is reused from the earlier pilot without
+regeneration and was made public in release 1.5.0. None of these images is
 documentary evidence of a supplier, package, SKU, stock level, certification,
 laboratory measurement, or health outcome.
 
@@ -42,6 +42,8 @@ All project artifacts are under:
 | Entity visual | Generated source | Project basename | Brief prompt purpose | Public-use status |
 |---|---|---|---|---|
 | Culinary science museum | `exec-6c6d5ae6-5c27-4a56-8f65-780861240b58.png` | `c99-science-culinary-science-museum-v01` | Premium editorial gateway to the culinary science museum and international pantry | Project-generated, approved for matching editorial page |
+| Culinary museum world pantry | `exec-3ee0a776-e564-4a11-84f4-52529313a3ad.png` | `c99-science-culinary-museum-pantry-v02` | Warm, colorful walk-in world pantry and cross-cultural table for the consumer-first museum entrance | Project-generated, approved for the museum root |
+| Culinary museum store pantry | `exec-46edc6c6-c73a-4cdc-8fac-6bb6ba2ab10d.png` | `c99-science-museum-store-pantry-v01` | Premium pantry doorway using recognizable categories from the current 36-product catalog without logos, labels or invented packaging | Project-generated, approved for the museum root store card |
 | Japanese washoku | `exec-aea08f55-0c1d-44ba-9b64-fbe612e2f710.png` | `c99-science-japanese-washoku-v01` | Refined visual introduction to Japanese washoku heritage and culinary practice | Project-generated, approved for matching editorial page |
 | Japanese premium ingredients | `exec-f8d5636c-754e-41d9-a8f0-9b71f8174f9b.png` | `c99-science-japanese-premium-ingredients-v01` | Curated Japanese pantry scene connecting premium ingredients as one knowledge hub | Project-generated, approved for matching editorial page |
 | Japanese culinary techniques | `exec-798ec497-a7c4-4c38-8bed-bf33ccef0bd1.png` | `c99-science-japanese-culinary-techniques-v01` | Technique-hub still life linking rice handling, dashi extraction, cutting, time, temperature and tools | Project-generated, approved for matching editorial page |
@@ -57,6 +59,7 @@ All project artifacts are under:
 | Syrian pantry foundations | `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-syrian-pantry-foundations-v01` | Syrian pantry study with grains, souring agents, pepper, dairy, nuts, pulses and olive oil | Project-generated, held for private editorial review |
 | Syrian regional tasting table | `exec-fd973e1d-087b-453b-9666-6905552e163e.png` | `c99-science-syrian-regional-table-v01` | Regional table showing distinct cooked-food groupings without presenting one dish as all Syrian cuisine | Project-generated, approved for the noindex Syrian cuisine gateway |
 | Syrian cooking methods | `exec-25e74796-e0d9-464d-b807-4078d27c3411.png` | `c99-science-syrian-cooking-methods-v01` | Editorial kitchen study of stuffing, bulgur forming, yogurt-sauce control, charring and onion browning | Project-generated, held for private editorial review |
+| Lebanese regional table | `exec-ac5c66d6-84e4-4694-97c0-0d3a29da0084.png` | `c99-science-lebanese-regional-table-v01` | Consumer-facing regional table study connecting manouche, tabbouleh, baked kibbeh, cooked fish, grains, tahini and sumac without collapsing regional identities | Project-generated, approved for the noindex Lebanese cuisine gateway |
 | Aleppo-style pepper | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-aleppo-pepper-v01` | Focused editorial crop of the red-pepper component | Project-generated derivative, held for private editorial review |
 | Pomegranate molasses | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-pomegranate-molasses-v01` | Focused editorial crop of the dark pomegranate-molasses component | Project-generated derivative, held for private editorial review |
 | Freekeh | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-freekeh-v01` | Focused editorial crop of roasted green wheat | Project-generated derivative, held for private editorial review |
@@ -158,6 +161,51 @@ All seven Syrian sets use this negative brief:
 No text, no logos, no certification seals, no invented supplier packaging, no watermarks, no flags, no decorative ethnic stereotypes, no laboratory claims and no unsafe raw-meat serving.
 ```
 
+## Lebanese regional table alt and prompt register
+
+The Lebanese regional table is an editorial illustration approved only for the
+reviewed noindex cuisine root. It is not a product photograph, a recipe result,
+an origin verdict or a statement that every pictured food belongs to one locality.
+
+| Project basename | Hebrew alt | English alt |
+|---|---|---|
+| `c99-science-lebanese-regional-table-v01` | שולחן לבנוני אזורי עם מנאקיש זעתר, טאבולה, קובה אפויה, דג מבושל, בורגול ועדשים, טחינה וסומאק | Lebanese regional table with zaatar manouche, tabbouleh, baked kibbeh, cooked fish, bulgur and lentils, tahini and sumac |
+
+Generation brief:
+
+```text
+Museum-grade overhead commercial culinary photograph of a Lebanese regional table for a consumer food and knowledge website. Arrange zaatar manouche, finely cut tabbouleh, baked kibbeh in a metal tray, a fully cooked whole fish, bulgur with lentils, tahini, sumac and a dark fruit reduction as separate readable groupings. Use warm natural side light, a pale limestone surface, restrained handmade tableware, accurate food textures and generous negative space. Keep the composition appetizing and contemporary while preserving the foods as separate regional and culinary references, 3:2 landscape composition.
+```
+
+Negative brief:
+
+```text
+No people, hands, text, labels, logos, flags, national symbols, copied packaging, medical claims, raw-meat serving, decorative stereotypes, duplicated dishes, impossible utensils or watermark.
+```
+
+## Museum store-pantry alt and prompt register
+
+The store-pantry image is approved for the store doorway card on the bilingual
+museum root. It is an editorial category composition tied to the current
+catalog range, not a substitute for the approved image and factual label of an
+individual product.
+
+| Project basename | Hebrew alt | English alt |
+|---|---|---|
+| `c99-science-museum-store-pantry-v01` | מזווה חנות עשיר עם תבלינים, דגנים, שמנים, ירקות וחומרי גלם יפניים | Rich store pantry with spices, grains, oils, vegetables and Japanese ingredients |
+
+Generation brief:
+
+```text
+Create a premium landscape 3:2 editorial image for the Complete99 culinary museum store doorway. Show an inviting walk-in international pantry with warm oak shelves and a limestone counter, photographed like a world-class culinary retail campaign. Curate only recognizable categories that exist in the current Complete99 catalog: tahini, amba, chili sauce, extra virgin olive oil, pickled vegetables, chickpeas, bulgur, couscous, rice, hawayej, tomatoes, aubergine, parsley and beetroot, plus a refined Japanese pantry section with kombu, katsuobushi, dark shoyu in a ceramic vessel, yuzu, short-grain rice, rice koji, fresh wasabi rhizome and a stainless Japanese grater. Use unbranded ceramic bowls, glass jars and simple vessels, with no invented product packaging. Warm natural side light, deep forest green, citrus yellow and terracotta accents, rich tactile food textures, elegant but abundant, immediate appetite appeal, clear foreground-to-background depth, commercial culinary studio photography, photorealistic, crisp details, no people.
+```
+
+Negative brief:
+
+```text
+No words, letters, labels, logos, price tags, watermarks, badges, flags, religious symbols, QR codes or fake brand marks.
+```
+
 ## Artifact integrity register
 
 | File | Format | Dimensions | Bytes | SHA256 |
@@ -165,6 +213,9 @@ No text, no logos, no certification seals, no invented supplier packaging, no wa
 | `c99-science-culinary-science-museum-v01.png` | PNG | 1536x1024 | 2,649,256 | `d0c6613c3ce5d073c405f7ebae04687bc62437139304e937e690b2ae9edff4cd` |
 | `c99-science-culinary-science-museum-v01.webp` | WebP | 1536x1024 | 272,832 | `ee2441315d9c03074bbe88bba7408e66e06323a4906d1c5310574028d970f18b` |
 | `c99-science-culinary-science-museum-v01.avif` | AVIF | 1536x1024 | 190,803 | `b48db7c848a09835bcd8a32664907aa998dba89afbef3c1f0049e6a1cdc94a0e` |
+| `c99-science-culinary-museum-pantry-v02.png` | PNG | 1536x1024 | 2,791,266 | `ec046fe8d939699ca236f6a78c92c627cf775dd88380f79442e0c4ef1e695c28` |
+| `c99-science-culinary-museum-pantry-v02.webp` | WebP | 1536x1024 | 274,012 | `153069cca78fb3121b0d5bdc18a55234c6e49b306592e56e691865ea146d3fd3` |
+| `c99-science-culinary-museum-pantry-v02.avif` | AVIF | 1536x1024 | 147,120 | `4f6639b7178145d2646f3ab1002b4cb14118d8c143f65de8dfb356db4471a62c` |
 | `c99-science-japanese-washoku-v01.png` | PNG | 1536x1024 | 2,405,607 | `6963f2434e683c118d43298dea7c09e5c1537e506398551bd8e58143a12e1a59` |
 | `c99-science-japanese-washoku-v01.webp` | WebP | 1536x1024 | 193,618 | `98558d16ea7975b78ba7b925ea2a4b3a7dc0f6158a42e94855f30f73f7fa644c` |
 | `c99-science-japanese-washoku-v01.avif` | AVIF | 1536x1024 | 139,558 | `6a3cb696bd167a5cbf59d6170e75d26c31004ed7afe7a468221de84f9c7cf549` |
@@ -222,14 +273,45 @@ No text, no logos, no certification seals, no invented supplier packaging, no wa
 | `c99-science-sumac-v01.png` | PNG | 1536x1024 | 1,720,085 | `8d715c25037aae9311e0b99f2b68b2d66f614ba990892cf836a4623e3914b68b` |
 | `c99-science-sumac-v01.webp` | WebP | 1536x1024 | 156,078 | `e7a3ce7683eb9e21cba5957e008e5711bad8b60157cc4b906d48eaa975a782da` |
 | `c99-science-sumac-v01.avif` | AVIF | 1536x1024 | 79,487 | `0fafd9b1d217e7fdf379bfef575482953e0753bde7b10260d93c7bf008ff29bf` |
+| `c99-science-lebanese-regional-table-v01.png` | PNG | 1536x1024 | 3,636,692 | `71fd11f969f3b583781eb420a90069ce8f92c147e309a4e4e5417fa5e068970c` |
+| `c99-science-lebanese-regional-table-v01.webp` | WebP | 1536x1024 | 610,172 | `0adf73a4888d068a204d38da644ba222240ccd28b7a10ef67c20fc4f6057b37e` |
+| `c99-science-lebanese-regional-table-v01.avif` | AVIF | 1536x1024 | 479,271 | `43eb1bfdfd32fa48f9316cbe6ee707f1f345a544fe0643bd9019431d6b9209f4` |
+| `c99-science-museum-store-pantry-v01.png` | PNG | 1536x1024 | 2,841,762 | `2d3edf0c692cbe370cd40b7eb82e2037bf6fb26c20c26ca5ca27e226047eaa42` |
+| `c99-science-museum-store-pantry-v01.webp` | WebP | 1536x1024 | 318,398 | `a2cbec677f8497114d410ca8a9489d3ab9b3a4eba58c0bad9284729d500b4bdd` |
+| `c99-science-museum-store-pantry-v01.avif` | AVIF | 1536x1024 | 188,284 | `86c0b7b9f1f9297e4732c0af1ce447f17d2a581c776f3aa0dce7a38efa6d7315` |
+
+## Responsive museum delivery variants
+
+These 768-pixel files are mechanical, aspect-ratio-preserving derivatives of
+the registered source assets. The museum picture elements publish the 768 and
+full-size candidates together, allowing the browser to choose a smaller file on
+mobile without changing the asset's editorial binding or rights state.
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-science-culinary-museum-pantry-v02-768.avif` | AVIF | 768x512 | 46,700 | `95d2f6451663de16d1510284c526cea1b25e14e63249d0911a15523921b7b874` |
+| `c99-science-culinary-museum-pantry-v02-768.webp` | WebP | 768x512 | 86,862 | `84948cde248900d236eb1c1d9db14eb36c86d794a2da318909a7f9a481beb0dd` |
+| `c99-science-japanese-washoku-v01-768.avif` | AVIF | 768x512 | 27,176 | `275502e6c97bde77e0aef90e0a6ae28dc31213669d14a1119f223b5e37141995` |
+| `c99-science-japanese-washoku-v01-768.webp` | WebP | 768x512 | 44,324 | `487e02c7f3feda156ceee31e5574f0cf390f1323adf0cc07e06b3b6e4848b86f` |
+| `c99-science-japanese-premium-ingredients-v01-768.avif` | AVIF | 768x512 | 48,309 | `bc62e9a7aad4b86939b204d3e6b2dcf08b0f464bbc6f13838053f29105a0a94a` |
+| `c99-science-japanese-premium-ingredients-v01-768.webp` | WebP | 768x512 | 74,312 | `4afe255cfdd326a6cc8583cafc4bc843fc8f048310aa779c5fcbce70fa162125` |
+| `c99-science-lebanese-regional-table-v01-768.avif` | AVIF | 768x512 | 51,137 | `d140354868087d05224d036903964371cda14fd08c6b3b1797aa8b11a9004f2b` |
+| `c99-science-lebanese-regional-table-v01-768.webp` | WebP | 768x512 | 102,490 | `f54db843f5f911196a7b364c0cf1e9a10f1b7ab99b43728b3f02c726362f6c34` |
+| `c99-science-syrian-regional-table-v01-768.avif` | AVIF | 768x512 | 46,588 | `8192760321be58628eee20d7e7789764bf516e187bda8572b234eaabca9443e3` |
+| `c99-science-syrian-regional-table-v01-768.webp` | WebP | 768x512 | 87,892 | `2a8d29be2b3357fddfc65ab9bffd815de89762bd5263c0723ed2282dd12d5441` |
+| `c99-science-museum-store-pantry-v01-768.avif` | AVIF | 768x512 | 55,270 | `0d2baa8e2db35c437ffbb03697822d8b666d7e819a29516fe876f59b88b04b14` |
+| `c99-science-museum-store-pantry-v01-768.webp` | WebP | 768x512 | 92,128 | `04ca668f64c5f3ba5b3fd40175cb6f3383a09616584f0150611fd7bd8385fcc9` |
+| `c99-food-house-spread-hero-2021-wp-v01-768.avif` | AVIF | 768x432 | 34,625 | `d9fe624ca7c0fd0418a72519de27672165f424fa779daffe31a09c1be15844a1` |
+| `c99-food-house-spread-hero-2021-wp-v01-768.webp` | WebP | 768x432 | 62,864 | `ee70875d3644b3945f84ce8a5609038ff4bb22ab81cbdcef1de2faea142ec7fa` |
 
 ## Validation record
 
-- All 60 artifacts listed in this register decode successfully with ImageMagick.
-- The registered format signatures resolve as twenty PNG, twenty WebP, and
-  twenty AVIF files.
-- Every decoded artifact reports 1536 by 1024 pixels, 8-bit sRGB.
-- Each of the sixteen retained source-composition PNGs is byte-identical to its
+- All registered full-size assets and responsive variants decode successfully
+  with ImageMagick.
+- Every museum derivative reports the documented dimensions and preserves the
+  source aspect ratio. The food-house photograph correctly retains its 1400 by
+  788 source ratio in the 768 by 432 variant.
+- Each of the nineteen retained source-composition PNGs is byte-identical to its
   generated source according to SHA256. The four ingredient PNGs are documented
   crops whose own hashes appear in this register.
 - No existing file was overwritten during import or conversion.

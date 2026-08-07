@@ -918,7 +918,990 @@ body.c99-culinary-museum {
 	text-align: center;
 }
 
+.c99-culinary-museum a:focus-visible,
+.c99-museum-home-reading summary:focus-visible {
+	outline: 3px solid var(--c99-museum-rust);
+	outline-offset: 4px;
+}
+
+.c99-museum-home-hero a:focus-visible,
+.c99-museum-home-neighbors a:focus-visible,
+.c99-lebanon-hero a:focus-visible,
+.c99-lebanon-invitation a:focus-visible {
+	outline: 3px solid #fff;
+	outline-offset: 4px;
+	box-shadow: 0 0 0 3px var(--c99-museum-citrus);
+}
+
+.c99-museum-home-groups a:focus-visible {
+	outline: 3px solid var(--c99-museum-forest);
+	outline-offset: 4px;
+	box-shadow: 0 0 0 3px #fff;
+}
+
+.c99-museum-home {
+	overflow: hidden;
+	background: var(--c99-museum-paper);
+}
+
+.c99-museum-home-hero {
+	position: relative;
+	padding: clamp(18px, 3vw, 34px) 0 clamp(62px, 8vw, 112px);
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 12% 15%, rgba(229, 184, 61, .24), transparent 22rem),
+		radial-gradient(circle at 88% 84%, rgba(127, 145, 63, .28), transparent 26rem),
+		var(--c99-museum-forest);
+	color: #fff;
+}
+
+.c99-museum-home-hero::after {
+	position: absolute;
+	width: 380px;
+	height: 380px;
+	border: 1px solid rgba(255, 255, 255, .12);
+	border-radius: 50%;
+	content: "";
+	inset-block-end: -260px;
+	inset-inline-start: 38%;
+	pointer-events: none;
+}
+
+.c99-museum-home-hero .c99-museum-breadcrumbs {
+	margin-bottom: clamp(24px, 4vw, 46px);
+	color: rgba(255, 255, 255, .78);
+}
+
+.c99-museum-home-hero .c99-museum-breadcrumbs a,
+.c99-museum-home-hero .c99-museum-breadcrumbs span[aria-current="page"] {
+	color: inherit;
+}
+
+.c99-museum-home-hero .c99-museum-breadcrumbs li:not(:last-child)::after {
+	color: var(--c99-museum-citrus);
+}
+
+.c99-museum-home-hero-grid {
+	display: grid;
+	align-items: center;
+	gap: clamp(40px, 7vw, 96px);
+	grid-template-columns: minmax(0, .84fr) minmax(500px, 1.16fr);
+}
+
+.c99-museum-home-hero-copy {
+	position: relative;
+	z-index: 1;
+}
+
+.c99-museum-home-hero .c99-museum-kicker {
+	color: #f7d874;
+}
+
+.c99-museum-home-hero h1 {
+	max-width: 11ch;
+	margin: 0 0 26px;
+	color: #fffdf8;
+	font-size: clamp(3rem, 6vw, 6.5rem);
+	letter-spacing: -.035em;
+	line-height: .96;
+}
+
+[dir="rtl"] .c99-museum-home-hero h1 {
+	letter-spacing: -.02em;
+}
+
+.c99-museum-home-intro {
+	max-width: 58ch;
+	margin: 0 0 34px;
+	color: rgba(255, 255, 255, .86);
+	font-size: clamp(1.12rem, 1.7vw, 1.38rem);
+	line-height: 1.75;
+}
+
+.c99-museum-home-actions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 12px;
+}
+
+.c99-museum-home-actions .c99-button,
+.c99-museum-home-groups .c99-button {
+	display: inline-flex;
+	min-width: 44px;
+	min-height: 48px;
+	padding: 12px 22px;
+	align-items: center;
+	justify-content: center;
+	border: 2px solid transparent;
+	border-radius: 999px;
+	font-weight: 900;
+	line-height: 1.2;
+	text-decoration: none;
+	transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+
+.c99-museum-home-button-primary {
+	background: var(--c99-museum-citrus);
+	color: #33260a;
+}
+
+.c99-museum-home-button-primary:hover {
+	background: #f3ca5a;
+	color: #241a04;
+	transform: translateY(-2px);
+}
+
+.c99-museum-home-button-secondary {
+	border-color: rgba(255, 255, 255, .55) !important;
+	background: transparent;
+	color: #fff;
+}
+
+.c99-museum-home-button-secondary:hover {
+	border-color: #fff !important;
+	background: rgba(255, 255, 255, .11);
+	color: #fff;
+	transform: translateY(-2px);
+}
+
+.c99-museum-home-button-light {
+	border-color: rgba(255, 255, 255, .55) !important;
+	background: #fffdf8;
+	color: var(--c99-museum-forest);
+}
+
+.c99-museum-home-button-light:hover {
+	background: #fff;
+	color: var(--c99-museum-forest);
+	transform: translateY(-2px);
+}
+
+.c99-museum-home-hero-media {
+	position: relative;
+	min-width: 0;
+}
+
+.c99-museum-home-hero-media::before {
+	position: absolute;
+	z-index: 0;
+	width: 52%;
+	height: 34%;
+	border-radius: 50%;
+	background: rgba(229, 184, 61, .28);
+	content: "";
+	filter: blur(45px);
+	inset-block-end: -8%;
+	inset-inline-end: 18%;
+}
+
+.c99-museum-home-hero .c99-museum-visual {
+	z-index: 1;
+}
+
+.c99-museum-home-hero .c99-museum-visual::before {
+	background: #d99a31;
+	opacity: .55;
+}
+
+.c99-museum-home-hero .c99-museum-visual img {
+	min-height: 480px;
+	border-color: rgba(255, 255, 255, .2);
+	object-fit: cover;
+}
+
+.c99-museum-home-hero .c99-museum-visual figcaption {
+	display: none;
+}
+
+.c99-museum-home-section {
+	padding: clamp(72px, 9vw, 130px) 0;
+}
+
+.c99-museum-home-heading {
+	display: grid;
+	margin-bottom: clamp(34px, 5vw, 58px);
+	align-items: end;
+	gap: 28px;
+	grid-template-columns: minmax(0, 1fr) minmax(280px, .55fr);
+}
+
+.c99-museum-home-heading h2,
+.c99-museum-home-neighbors h2,
+.c99-museum-home-groups h2,
+.c99-museum-home-reading h2 {
+	margin: 0;
+	color: var(--c99-museum-forest);
+	font-size: clamp(2.25rem, 4.3vw, 4.7rem);
+	letter-spacing: -.025em;
+	line-height: 1.02;
+}
+
+[dir="rtl"] .c99-museum-home-heading h2,
+[dir="rtl"] .c99-museum-home-neighbors h2,
+[dir="rtl"] .c99-museum-home-groups h2,
+[dir="rtl"] .c99-museum-home-reading h2 {
+	letter-spacing: -.012em;
+}
+
+.c99-museum-home-heading > p {
+	margin: 0;
+	color: #55655e;
+	font-size: 1.06rem;
+	line-height: 1.75;
+}
+
+.c99-museum-home-heading-centered {
+	display: block;
+	max-width: 860px;
+	margin-inline: auto;
+	text-align: center;
+}
+
+.c99-museum-home-cuisines {
+	background:
+		linear-gradient(180deg, rgba(238, 227, 207, .46), rgba(255, 253, 248, 0) 42%),
+		var(--c99-museum-paper);
+}
+
+.c99-museum-home-cuisine-grid {
+	display: grid;
+	gap: 20px;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.c99-museum-home-cuisine-card,
+.c99-museum-home-shelf-card {
+	display: flex;
+	min-width: 0;
+	overflow: hidden;
+	border: 1px solid var(--c99-museum-line);
+	border-radius: 28px;
+	background: #fff;
+	box-shadow: var(--c99-museum-small-shadow);
+	color: var(--c99-museum-ink);
+	flex-direction: column;
+	text-decoration: none;
+	transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.c99-museum-home-cuisine-card:hover,
+.c99-museum-home-shelf-card:hover {
+	border-color: rgba(7, 63, 45, .4);
+	box-shadow: 0 24px 54px rgba(22, 49, 39, .16);
+	color: var(--c99-museum-ink);
+	transform: translateY(-5px);
+}
+
+.c99-museum-home-picture {
+	display: block;
+	overflow: hidden;
+	background: var(--c99-museum-sand);
+}
+
+.c99-museum-home-picture img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform .45s ease;
+}
+
+.c99-museum-home-cuisine-card > .c99-museum-home-picture {
+	aspect-ratio: 4 / 3;
+}
+
+.c99-museum-home-cuisine-card:hover .c99-museum-home-picture img,
+.c99-museum-home-shelf-card:hover .c99-museum-home-picture img {
+	transform: scale(1.025);
+}
+
+.c99-museum-home-card-copy {
+	display: flex;
+	min-height: 270px;
+	padding: clamp(24px, 3vw, 34px);
+	flex: 1;
+	flex-direction: column;
+}
+
+.c99-museum-home-eyebrow {
+	margin-bottom: 10px;
+	color: var(--c99-museum-rust);
+	font-size: .75rem;
+	font-weight: 900;
+	letter-spacing: .1em;
+	text-transform: uppercase;
+}
+
+[dir="rtl"] .c99-museum-home-eyebrow {
+	letter-spacing: .025em;
+}
+
+.c99-museum-home-card-title {
+	margin-bottom: 14px;
+	color: var(--c99-museum-forest);
+	font-size: clamp(1.45rem, 2.3vw, 2.05rem);
+	line-height: 1.2;
+}
+
+.c99-museum-home-card-description {
+	color: #52625b;
+	font-size: 1rem;
+	line-height: 1.7;
+}
+
+.c99-museum-home-card-cta {
+	display: inline-flex;
+	min-height: 44px;
+	margin-top: auto;
+	padding-top: 20px;
+	align-items: center;
+	color: var(--c99-museum-green);
+	font-size: .95rem;
+	font-weight: 900;
+}
+
+.c99-museum-home-card-cta::after {
+	margin-inline-start: 9px;
+	content: "→";
+	font-size: 1.2rem;
+}
+
+[dir="rtl"] .c99-museum-home-card-cta::after {
+	content: "←";
+}
+
+.c99-museum-home-shelves {
+	border-block: 1px solid var(--c99-museum-soft-line);
+	background: #f7efe1;
+}
+
+.c99-museum-home-shelf-grid {
+	display: grid;
+	gap: 18px;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.c99-museum-home-shelf-card {
+	border-radius: 22px;
+}
+
+.c99-museum-home-shelf-card > .c99-museum-home-picture {
+	aspect-ratio: 5 / 4;
+}
+
+.c99-museum-home-shelf-card .c99-museum-home-card-copy {
+	min-height: 260px;
+	padding: 24px;
+}
+
+.c99-museum-home-shelf-card .c99-museum-home-card-title {
+	font-size: clamp(1.28rem, 1.9vw, 1.7rem);
+}
+
+.c99-museum-home-intents {
+	background: var(--c99-museum-paper);
+}
+
+.c99-museum-home-intent-grid {
+	display: grid;
+	gap: 12px;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.c99-museum-home-intent-grid a {
+	display: flex;
+	min-height: 210px;
+	padding: 24px;
+	border: 1px solid rgba(7, 63, 45, .14);
+	border-radius: 22px;
+	background: #fff;
+	box-shadow: 0 10px 28px rgba(22, 49, 39, .07);
+	color: inherit;
+	flex-direction: column;
+	text-decoration: none;
+	transition: background-color .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+
+.c99-museum-home-intent-grid a > span {
+	display: grid;
+	width: 44px;
+	height: 44px;
+	margin-bottom: 26px;
+	border-radius: 50%;
+	background: rgba(229, 184, 61, .2);
+	color: #69490a;
+	font-size: .8rem;
+	font-weight: 900;
+	place-items: center;
+}
+
+.c99-museum-home-intent-grid a strong {
+	margin-bottom: 9px;
+	color: var(--c99-museum-forest);
+	font-size: 1.2rem;
+	line-height: 1.25;
+}
+
+.c99-museum-home-intent-grid a small {
+	color: #607069;
+	font-size: .92rem;
+	line-height: 1.55;
+}
+
+.c99-museum-home-intent-grid a:hover {
+	border-color: var(--c99-museum-green);
+	background: var(--c99-museum-forest);
+	color: #fff;
+	transform: translateY(-3px);
+}
+
+.c99-museum-home-intent-grid a:hover strong,
+.c99-museum-home-intent-grid a:hover small {
+	color: inherit;
+}
+
+.c99-museum-home-neighbors {
+	padding-block: clamp(68px, 8vw, 112px);
+	background: var(--c99-museum-forest);
+	color: #fff;
+}
+
+.c99-museum-home-neighbors-grid {
+	display: grid;
+	align-items: center;
+	gap: clamp(42px, 7vw, 94px);
+	grid-template-columns: minmax(0, 1.08fr) minmax(340px, .92fr);
+}
+
+.c99-museum-home-neighbors-visuals {
+	display: grid;
+	min-height: 520px;
+	align-items: center;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.c99-museum-home-neighbors-visuals .c99-museum-home-picture {
+	position: relative;
+	border: 8px solid rgba(255, 255, 255, .9);
+	border-radius: 28px;
+	box-shadow: 0 30px 70px rgba(0, 0, 0, .26);
+	aspect-ratio: 3 / 4;
+}
+
+.c99-museum-home-neighbors-visuals .c99-museum-home-picture:first-child {
+	z-index: 1;
+	transform: rotate(-4deg) translateX(7%);
+}
+
+[dir="rtl"] .c99-museum-home-neighbors-visuals .c99-museum-home-picture:first-child {
+	transform: rotate(4deg) translateX(-7%);
+}
+
+.c99-museum-home-neighbors-visuals .c99-museum-home-picture:last-child {
+	transform: rotate(4deg) translateX(-7%);
+}
+
+[dir="rtl"] .c99-museum-home-neighbors-visuals .c99-museum-home-picture:last-child {
+	transform: rotate(-4deg) translateX(7%);
+}
+
+.c99-museum-home-neighbors .c99-museum-kicker {
+	color: #f7d874;
+}
+
+.c99-museum-home-neighbors h2 {
+	margin-bottom: 24px;
+	color: #fff;
+}
+
+.c99-museum-home-neighbors-copy > p:not(.c99-museum-kicker) {
+	margin-bottom: 30px;
+	color: rgba(255, 255, 255, .82);
+	font-size: 1.08rem;
+	line-height: 1.75;
+}
+
+.c99-museum-home-groups {
+	padding-block: clamp(58px, 7vw, 96px);
+	background: var(--c99-museum-citrus);
+}
+
+.c99-museum-home-groups-inner {
+	display: grid;
+	align-items: center;
+	gap: 34px;
+	grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.c99-museum-home-groups .c99-museum-kicker {
+	color: #654408;
+}
+
+.c99-museum-home-groups h2 {
+	max-width: 18ch;
+	margin-bottom: 18px;
+}
+
+.c99-museum-home-groups p:last-child {
+	max-width: 68ch;
+	margin: 0;
+	color: #4d3a13;
+	font-size: 1.05rem;
+	line-height: 1.7;
+}
+
+.c99-museum-home-groups .c99-museum-home-button-primary {
+	background: var(--c99-museum-forest);
+	color: #fff;
+	white-space: nowrap;
+}
+
+.c99-museum-home-groups .c99-museum-home-button-primary:hover {
+	background: #0b543c;
+	color: #fff;
+}
+
+.c99-museum-home-reading {
+	padding: 38px 0 72px;
+	background: #f7efe1;
+}
+
+.c99-museum-home-reading details {
+	overflow: hidden;
+	border: 1px solid var(--c99-museum-line);
+	border-radius: 22px;
+	background: rgba(255, 253, 248, .88);
+}
+
+.c99-museum-home-reading summary {
+	display: flex;
+	min-height: 72px;
+	padding: 18px 24px;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	cursor: pointer;
+	list-style-position: inside;
+}
+
+.c99-museum-home-reading summary strong {
+	color: var(--c99-museum-forest);
+	font-size: 1.08rem;
+}
+
+.c99-museum-home-reading summary span {
+	color: #607069;
+	font-size: .92rem;
+}
+
+.c99-museum-home-reading-content {
+	padding: 12px 24px 28px;
+	border-top: 1px solid var(--c99-museum-soft-line);
+}
+
+.c99-museum-home-reading h2 {
+	margin: 24px 0;
+	font-size: clamp(1.7rem, 3vw, 2.6rem);
+}
+
+.c99-museum-home-reading ol {
+	display: grid;
+	margin: 0;
+	padding: 0;
+	gap: 10px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	list-style: none;
+}
+
+.c99-museum-home-reading li {
+	padding: 18px;
+	border: 1px solid var(--c99-museum-soft-line);
+	border-radius: 14px;
+	background: #fff;
+}
+
+.c99-museum-home-reading li p {
+	margin: 0;
+	line-height: 1.6;
+}
+
+.c99-lebanon-home {
+	overflow: hidden;
+	background: #fffaf0;
+}
+
+.c99-lebanon-hero {
+	position: relative;
+	padding: clamp(18px, 3vw, 34px) 0 clamp(62px, 8vw, 112px);
+	overflow: hidden;
+	background:
+		radial-gradient(circle at 12% 12%, rgba(229, 184, 61, .28), transparent 23rem),
+		radial-gradient(circle at 88% 90%, rgba(127, 145, 63, .34), transparent 27rem),
+		#6f2f25;
+	color: #fff;
+}
+
+.c99-lebanon-hero::before {
+	position: absolute;
+	width: 430px;
+	height: 430px;
+	border: 1px solid rgba(255, 255, 255, .13);
+	border-radius: 50%;
+	content: "";
+	inset-block-start: -315px;
+	inset-inline-end: 24%;
+	pointer-events: none;
+}
+
+.c99-lebanon-hero .c99-museum-breadcrumbs {
+	margin-bottom: clamp(24px, 4vw, 46px);
+	color: rgba(255, 255, 255, .78);
+}
+
+.c99-lebanon-hero .c99-museum-breadcrumbs a,
+.c99-lebanon-hero .c99-museum-breadcrumbs span[aria-current="page"] {
+	color: inherit;
+}
+
+.c99-lebanon-hero .c99-museum-breadcrumbs li:not(:last-child)::after {
+	color: #f7d874;
+}
+
+.c99-lebanon-hero-grid {
+	display: grid;
+	align-items: center;
+	gap: clamp(42px, 7vw, 96px);
+	grid-template-columns: minmax(0, .86fr) minmax(500px, 1.14fr);
+}
+
+.c99-lebanon-hero-copy {
+	position: relative;
+	z-index: 1;
+}
+
+.c99-lebanon-hero .c99-museum-kicker {
+	color: #f8dc84;
+}
+
+.c99-lebanon-hero h1 {
+	max-width: 11ch;
+	margin: 0 0 26px;
+	color: #fffdf8;
+	font-size: clamp(3rem, 6vw, 6.4rem);
+	letter-spacing: -.035em;
+	line-height: .96;
+}
+
+[dir="rtl"] .c99-lebanon-hero h1 {
+	letter-spacing: -.018em;
+}
+
+.c99-lebanon-intro {
+	max-width: 60ch;
+	margin: 0 0 34px;
+	color: rgba(255, 255, 255, .88);
+	font-size: clamp(1.12rem, 1.7vw, 1.38rem);
+	line-height: 1.75;
+}
+
+.c99-lebanon-button-secondary {
+	border: 2px solid rgba(255, 255, 255, .62) !important;
+	background: transparent;
+	color: #fff;
+}
+
+.c99-lebanon-button-secondary:hover {
+	border-color: #fff !important;
+	background: rgba(255, 255, 255, .12);
+	color: #fff;
+	transform: translateY(-2px);
+}
+
+.c99-lebanon-hero-media {
+	position: relative;
+	min-width: 0;
+}
+
+.c99-lebanon-hero-media::after {
+	position: absolute;
+	z-index: 0;
+	width: 65%;
+	height: 45%;
+	border-radius: 50%;
+	background: rgba(229, 184, 61, .26);
+	content: "";
+	filter: blur(48px);
+	inset-block-end: -12%;
+	inset-inline-end: 12%;
+}
+
+.c99-lebanon-hero .c99-museum-visual {
+	z-index: 1;
+}
+
+.c99-lebanon-hero .c99-museum-visual::before {
+	background: #d3ad38;
+	opacity: .58;
+}
+
+.c99-lebanon-hero .c99-museum-visual img {
+	min-height: 480px;
+	border-color: rgba(255, 255, 255, .22);
+	object-fit: cover;
+}
+
+.c99-lebanon-hero .c99-museum-visual figcaption {
+	display: none;
+}
+
+.c99-lebanon-section {
+	padding: clamp(72px, 9vw, 126px) 0;
+}
+
+.c99-lebanon-heading {
+	display: grid;
+	margin-bottom: clamp(34px, 5vw, 56px);
+	align-items: end;
+	gap: 28px;
+	grid-template-columns: minmax(0, 1fr) minmax(280px, .55fr);
+}
+
+.c99-lebanon-heading h2,
+.c99-lebanon-invitation h2 {
+	margin: 0;
+	color: var(--c99-museum-forest);
+	font-size: clamp(2.25rem, 4.3vw, 4.65rem);
+	letter-spacing: -.025em;
+	line-height: 1.02;
+}
+
+[dir="rtl"] .c99-lebanon-heading h2,
+[dir="rtl"] .c99-lebanon-invitation h2 {
+	letter-spacing: -.012em;
+}
+
+.c99-lebanon-heading > p {
+	margin: 0;
+	color: #5e665d;
+	font-size: 1.06rem;
+	line-height: 1.75;
+}
+
+.c99-lebanon-places {
+	background:
+		linear-gradient(180deg, rgba(229, 184, 61, .1), transparent 36%),
+		#fffaf0;
+}
+
+.c99-lebanon-place-grid {
+	display: grid;
+	gap: 16px;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.c99-lebanon-place-grid article {
+	position: relative;
+	min-height: 260px;
+	padding: clamp(24px, 3vw, 36px);
+	overflow: hidden;
+	border: 1px solid rgba(7, 63, 45, .14);
+	border-radius: 26px;
+	background: #fff;
+	box-shadow: var(--c99-museum-small-shadow);
+}
+
+.c99-lebanon-place-grid article:nth-child(2) {
+	background: var(--c99-museum-forest);
+	color: #fff;
+}
+
+.c99-lebanon-place-grid article:nth-child(3) {
+	background: #eadba9;
+}
+
+.c99-lebanon-place-grid article > span {
+	display: grid;
+	width: 44px;
+	height: 44px;
+	margin-bottom: 42px;
+	border-radius: 50%;
+	background: rgba(229, 184, 61, .22);
+	color: #674608;
+	font-size: .8rem;
+	font-weight: 900;
+	place-items: center;
+}
+
+.c99-lebanon-place-grid article:nth-child(2) > span {
+	background: rgba(255, 255, 255, .12);
+	color: #f8dc84;
+}
+
+.c99-lebanon-place-grid h3 {
+	margin: 0 0 12px;
+	color: var(--c99-museum-forest);
+	font-size: clamp(1.55rem, 2.6vw, 2.25rem);
+}
+
+.c99-lebanon-place-grid article:nth-child(2) h3 {
+	color: #fff;
+}
+
+.c99-lebanon-place-grid p {
+	margin: 0;
+	color: #59675f;
+	line-height: 1.7;
+}
+
+.c99-lebanon-place-grid article:nth-child(2) p {
+	color: rgba(255, 255, 255, .8);
+}
+
+.c99-lebanon-doors {
+	border-block: 1px solid var(--c99-museum-soft-line);
+	background: #f3ead8;
+}
+
+.c99-lebanon-door-grid {
+	display: grid;
+	gap: 14px;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.c99-lebanon-door-grid a {
+	display: flex;
+	min-width: 0;
+	min-height: 250px;
+	padding: 26px;
+	border: 1px solid rgba(7, 63, 45, .13);
+	border-radius: 22px;
+	background: #fffdf8;
+	box-shadow: 0 12px 30px rgba(22, 49, 39, .08);
+	color: var(--c99-museum-ink);
+	flex-direction: column;
+	text-decoration: none;
+	transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+
+.c99-lebanon-door-grid a:nth-child(2),
+.c99-lebanon-door-grid a:nth-child(7) {
+	background: #f4e2a8;
+}
+
+.c99-lebanon-door-grid a:nth-child(4),
+.c99-lebanon-door-grid a:nth-child(8) {
+	background: #e6efe4;
+}
+
+.c99-lebanon-door-grid a:hover {
+	border-color: rgba(7, 63, 45, .48);
+	box-shadow: 0 20px 44px rgba(22, 49, 39, .15);
+	color: var(--c99-museum-ink);
+	transform: translateY(-4px);
+}
+
+.c99-lebanon-door-grid a > span {
+	margin-bottom: 18px;
+	color: var(--c99-museum-rust);
+	font-size: .75rem;
+	font-weight: 900;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+}
+
+[dir="rtl"] .c99-lebanon-door-grid a > span {
+	letter-spacing: .02em;
+}
+
+.c99-lebanon-door-grid a > strong {
+	margin-bottom: 10px;
+	color: var(--c99-museum-forest);
+	font-size: 1.3rem;
+	line-height: 1.25;
+}
+
+.c99-lebanon-door-grid a > small {
+	color: #5b6962;
+	font-size: .93rem;
+	line-height: 1.6;
+}
+
+.c99-lebanon-door-grid a > b {
+	display: grid;
+	width: 44px;
+	height: 44px;
+	margin-top: auto;
+	border-radius: 50%;
+	background: var(--c99-museum-forest);
+	color: #fff;
+	font-size: 1.1rem;
+	place-items: center;
+}
+
+.c99-lebanon-invitation {
+	padding: clamp(58px, 7vw, 94px) 0;
+	background: #6f2f25;
+	color: #fff;
+}
+
+.c99-lebanon-invitation-inner {
+	display: grid;
+	align-items: center;
+	gap: 36px;
+	grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.c99-lebanon-invitation .c99-museum-kicker {
+	color: #f8dc84;
+}
+
+.c99-lebanon-invitation h2 {
+	max-width: 18ch;
+	margin-bottom: 18px;
+	color: #fff;
+}
+
+.c99-lebanon-invitation p:last-child {
+	max-width: 68ch;
+	margin: 0;
+	color: rgba(255, 255, 255, .8);
+	font-size: 1.05rem;
+	line-height: 1.7;
+}
+
+.c99-lebanon-invitation .c99-button {
+	display: inline-flex;
+	min-height: 48px;
+	padding: 12px 22px;
+	align-items: center;
+	justify-content: center;
+	border-radius: 999px;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
 @media (max-width: 1120px) {
+	.c99-lebanon-hero-grid {
+		grid-template-columns: minmax(0, .92fr) minmax(420px, 1.08fr);
+	}
+
+	.c99-lebanon-door-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.c99-museum-home-hero-grid {
+		grid-template-columns: minmax(0, .92fr) minmax(420px, 1.08fr);
+	}
+
+	.c99-museum-home-shelf-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.c99-museum-home-intent-grid {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+
 	.c99-museum-hero-grid {
 		grid-template-columns: minmax(0, .9fr) minmax(420px, 1.1fr);
 	}
@@ -937,6 +1920,65 @@ body.c99-culinary-museum {
 }
 
 @media (max-width: 920px) {
+	.c99-lebanon-hero-grid,
+	.c99-lebanon-heading,
+	.c99-lebanon-invitation-inner {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.c99-lebanon-hero-copy {
+		max-width: 720px;
+	}
+
+	.c99-lebanon-hero h1 {
+		max-width: 13ch;
+	}
+
+	.c99-lebanon-hero .c99-museum-visual img {
+		min-height: 0;
+	}
+
+	.c99-lebanon-invitation-inner > .c99-button {
+		justify-self: start;
+	}
+
+	.c99-museum-home-hero-grid,
+	.c99-museum-home-heading,
+	.c99-museum-home-neighbors-grid,
+	.c99-museum-home-groups-inner {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.c99-museum-home-hero-copy {
+		max-width: 720px;
+	}
+
+	.c99-museum-home-hero h1 {
+		max-width: 13ch;
+	}
+
+	.c99-museum-home-hero .c99-museum-visual img {
+		min-height: 0;
+	}
+
+	.c99-museum-home-cuisine-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.c99-museum-home-cuisine-card:last-child {
+		display: grid;
+		grid-column: span 2;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	}
+
+	.c99-museum-home-cuisine-card:last-child > .c99-museum-home-picture {
+		aspect-ratio: auto;
+	}
+
+	.c99-museum-home-groups-inner > .c99-button {
+		justify-self: start;
+	}
+
 	.c99-museum-hero-grid,
 	.c99-museum-layout,
 	.c99-foundations-layout {
@@ -976,6 +2018,119 @@ body.c99-culinary-museum {
 }
 
 @media (max-width: 680px) {
+	.c99-lebanon-hero {
+		padding-top: 14px;
+	}
+
+	.c99-lebanon-hero h1 {
+		font-size: clamp(2.7rem, 15vw, 4.2rem);
+	}
+
+	.c99-lebanon-section {
+		padding-block: 64px;
+	}
+
+	.c99-lebanon-heading {
+		margin-bottom: 30px;
+	}
+
+	.c99-lebanon-heading h2,
+	.c99-lebanon-invitation h2 {
+		font-size: clamp(2.1rem, 11vw, 3.2rem);
+	}
+
+	.c99-lebanon-place-grid,
+	.c99-lebanon-door-grid {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.c99-lebanon-place-grid article {
+		min-height: 220px;
+	}
+
+	.c99-lebanon-door-grid a {
+		min-height: 220px;
+	}
+
+	.c99-lebanon-invitation .c99-button {
+		width: 100%;
+	}
+
+	.c99-museum-home-hero {
+		padding-top: 14px;
+	}
+
+	.c99-museum-home-hero h1 {
+		font-size: clamp(2.7rem, 15vw, 4.2rem);
+	}
+
+	.c99-museum-home-actions {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.c99-museum-home-actions .c99-button,
+	.c99-museum-home-groups .c99-button {
+		width: 100%;
+	}
+
+	.c99-museum-home-section {
+		padding-block: 64px;
+	}
+
+	.c99-museum-home-heading {
+		margin-bottom: 30px;
+	}
+
+	.c99-museum-home-heading h2,
+	.c99-museum-home-neighbors h2,
+	.c99-museum-home-groups h2 {
+		font-size: clamp(2.1rem, 11vw, 3.2rem);
+	}
+
+	.c99-museum-home-cuisine-grid,
+	.c99-museum-home-shelf-grid,
+	.c99-museum-home-intent-grid,
+	.c99-museum-home-reading ol {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.c99-museum-home-cuisine-card:last-child {
+		display: flex;
+		grid-column: auto;
+	}
+
+	.c99-museum-home-cuisine-card:last-child > .c99-museum-home-picture {
+		aspect-ratio: 4 / 3;
+	}
+
+	.c99-museum-home-card-copy,
+	.c99-museum-home-shelf-card .c99-museum-home-card-copy {
+		min-height: 0;
+	}
+
+	.c99-museum-home-intent-grid a {
+		min-height: 172px;
+	}
+
+	.c99-museum-home-neighbors-visuals {
+		min-height: 350px;
+	}
+
+	.c99-museum-home-neighbors-visuals .c99-museum-home-picture {
+		border-width: 5px;
+		border-radius: 20px;
+	}
+
+	.c99-museum-home-reading summary {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.c99-museum-home-reading-content {
+		padding-inline: 18px;
+	}
+
 	.c99-culinary-museum .c99-container {
 		width: min(100% - 28px, 1320px);
 	}
@@ -1069,12 +2224,27 @@ body.c99-culinary-museum {
 @media (prefers-reduced-motion: reduce) {
 	.c99-museum-link-card,
 	.c99-foundations-filter,
-	.c99-foundations-card a {
+	.c99-foundations-card a,
+	.c99-museum-home-actions .c99-button,
+	.c99-museum-home-cuisine-card,
+	.c99-museum-home-shelf-card,
+	.c99-museum-home-intent-grid a,
+	.c99-museum-home-picture img,
+	.c99-lebanon-door-grid a,
+	.c99-lebanon-button-secondary {
 		transition: none;
 	}
 
 	.c99-museum-link-card:hover,
-	.c99-foundations-card a:hover {
+	.c99-foundations-card a:hover,
+	.c99-museum-home-actions .c99-button:hover,
+	.c99-museum-home-cuisine-card:hover,
+	.c99-museum-home-shelf-card:hover,
+	.c99-museum-home-intent-grid a:hover,
+	.c99-museum-home-cuisine-card:hover .c99-museum-home-picture img,
+	.c99-museum-home-shelf-card:hover .c99-museum-home-picture img,
+	.c99-lebanon-door-grid a:hover,
+	.c99-lebanon-button-secondary:hover {
 		transform: none;
 	}
 }
@@ -1089,7 +2259,11 @@ body.c99-culinary-museum {
 	.c99-museum-side-card,
 	.c99-museum-visual img,
 	.c99-foundations-lab,
-	.c99-foundations-card a {
+	.c99-foundations-card a,
+	.c99-museum-home-cuisine-card,
+	.c99-museum-home-shelf-card,
+	.c99-museum-home-intent-grid a,
+	.c99-museum-home-neighbors-visuals .c99-museum-home-picture {
 		box-shadow: none;
 	}
 

@@ -2,10 +2,11 @@
 /**
  * Complete99 Lebanese regional cuisine foundation.
  *
- * Every record in this tranche is private, noindex and reference-only. The
- * module separates Lebanese regional variants from shared Levantine dish
- * families, keeps community testimony within its named scope, and blocks
- * Lebanon-origin commerce until a lawful, documented route exists.
+ * The reviewed cuisine root may be projected as a noindex public gateway.
+ * Every remaining record is private, noindex and reference-only. The module
+ * separates Lebanese regional variants from shared Levantine dish families,
+ * keeps community testimony within its named scope, and blocks Lebanon-origin
+ * commerce until a lawful, documented route exists.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -799,10 +800,16 @@ $c99_lebanese_counts = array_count_values( array_column( $c99_lebanese_entities,
 
 return array(
 	'schema' => 'complete99-lebanese-foundations-module/v1',
-	'version' => 'culinary-science-2026.08.07.v16',
+	'version' => 'culinary-science-2026.08.07.v17',
 	'sources' => $c99_lebanese_sources,
 	'entities' => $c99_lebanese_entities,
-	'private_entity_ids' => array_column( $c99_lebanese_entities, 'id' ),
+	'public_gateway_ids' => array( 'cuisine-lebanese-regional' ),
+	'private_entity_ids' => array_values(
+		array_diff(
+			array_column( $c99_lebanese_entities, 'id' ),
+			array( 'cuisine-lebanese-regional' )
+		)
+	),
 	'cluster_root_id' => 'cuisine-lebanese-regional',
 	'cluster_id' => 'cluster-lebanese-regional-cuisine',
 	'counts' => array(

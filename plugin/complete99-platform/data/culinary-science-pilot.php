@@ -671,23 +671,23 @@ $entities[] = $c99_entity(
 	array(
 		'id' => 'museum-culinary-science', 'type' => 'topic_hub', 'slug' => 'culinary-science-museum',
 		'name' => $c99_text( 'מוזיאון המדע של הקולינריה', 'Culinary Science Museum' ),
-		'summary' => $c99_text( 'מקום לגלות איך תרבות, חומרי גלם, מולקולות טעם, טכניקות וכלי עבודה נפגשים באוכל. מתחילים במטבח, ממשיכים למרכיב, ורואים ליד כל טענה את המקור שעליו היא נשענת.', 'A place to discover how culture, ingredients, flavor molecules, techniques and tools meet in food. Start with a cuisine, continue to an ingredient, and see the source supporting each claim.' ),
+		'summary' => $c99_text( 'נכנסים לעולם של שולחנות, שווקים ומזווים מכל קצה בעולם. בוחרים מטבח, פוגשים מנה, פותחים את מדף המרכיבים, לומדים למה הטעם עובד וממשיכים לחנות, למדריך או לארוחה הבאה.', 'Step into a world of tables, markets and pantries from across the globe. Choose a cuisine, meet a dish, open the ingredient shelf, discover why the flavor works and continue to the shop, a guide or your next meal.' ),
 		'surface_class' => 'editorial_draft', 'index_policy' => 'noindex_until_longform_review', 'review_status' => 'research_draft',
-		'seo_group' => 'museum', 'page_role' => 'pillar', 'primary_intent' => $c99_text( 'לחקור את מדע הקולינריה דרך מטבחים ומוצרים', 'Explore culinary science through cuisines and products' ),
+		'seo_group' => 'museum', 'page_role' => 'pillar', 'primary_intent' => $c99_text( 'לגלות מטבחים, מנות, חומרי גלם ומדריכים קולינריים', 'Discover cuisines, dishes, ingredients and culinary guides' ),
 		'primary_keyword' => $c99_text( 'מוזיאון המדע של הקולינריה', 'Culinary Science Museum' ),
-		'secondary_keywords' => array( 'he' => array( 'אנציקלופדיה קולינרית מדעית' ), 'en' => array( 'culinary science encyclopedia' ) ), 'schema_type' => 'CollectionPage',
-		'facts' => array( $c99_fact( 'fact-museum-graph-role', 'structural', 'Complete99 מפרסם בשער הזה פרופילים קולינריים דו-לשוניים שבהם עובדות, הקשר מדעי ומקורות מוצגים יחד.', 'Complete99 publishes bilingual culinary profiles in this gateway, presenting facts, scientific context and sources together.', 'official_source', 'entity', array( 'complete99-public-site' ) ) ),
+		'secondary_keywords' => array( 'he' => array( 'מוזיאון אוכל', 'מטבחי עולם', 'מזווה קולינרי' ), 'en' => array( 'food museum', 'world cuisines', 'culinary pantry' ) ), 'schema_type' => 'CollectionPage',
+		'facts' => array( $c99_fact( 'fact-museum-graph-role', 'structural', 'כל מסלול מחבר בין מטבח, מנה, מרכיב, סיפור ומדריך כדי שאפשר יהיה להמשיך לגלות בלי לאבד את הדרך.', 'Every path connects cuisine, dish, ingredient, story and guide so visitors can keep discovering without losing their way.', 'official_source', 'entity', array( 'complete99-public-site' ) ) ),
 		'profiles' => $c99_profiles( array(
-			'scientific' => $c99_profile( 'pending_evidence', 'המרכז המדעי נבנה מעובדות ומדידות הקשורות לחומר גלם, מנה, כלי או תהליך מסוימים.', 'The science layer is built from facts and measurements tied to a specific ingredient, dish, tool or process.' ),
-			'cultural' => $c99_profile( 'pending_evidence', 'כל תרבות נשמרת כאשכול עצמאי בתוך אותו שער.', 'Each culture remains an independent cluster within the same gateway.' ),
-			'institutional' => $c99_profile( 'pending_evidence', 'לכל מוסד, מדריך ותקן יש תיאור ומקורות משלו.', 'Each institution, guide and standard has its own description and sources.' ),
-			'economic' => $c99_profile( 'pending_evidence', 'כאשר מוצר מוצע למכירה, מחיר החנות הנוכחי נשמר בנפרד מדוגמאות מחיר כלליות מן השוק.', 'When a product is offered for sale, its current store price remains separate from general market-price examples.' ),
-			'structural' => $c99_profile( 'source_backed', 'מסלולי העיון מחברים בין מטבח, חומר גלם, מחקר ומקור כדי שקל להמשיך מן השאלה אל התשובה הבאה.', 'Discovery paths connect cuisine, ingredient, research and source so readers can move naturally from one question to the next.', array( 'fact-museum-graph-role' ) ),
+			'scientific' => $c99_profile( 'pending_evidence', 'המדע מסביר בפשטות מה קורה בסיר, בבצק, בהתססה ובמפגש בין טעמים.', 'Science explains, in plain language, what happens in the pot, dough, fermentation and the meeting of flavors.' ),
+			'cultural' => $c99_profile( 'pending_evidence', 'כל מטבח פותח דלת למקומות, למשפחות, לשווקים ולמסורות שמאחוריו.', 'Every cuisine opens a door to the places, families, markets and traditions behind it.' ),
+			'institutional' => $c99_profile( 'pending_evidence', 'מסעדות, שפים, שווקים ומוסדות מופיעים כחלק מן הסיפור הקולינרי הרחב.', 'Restaurants, chefs, markets and institutions appear as part of the wider culinary story.' ),
+			'economic' => $c99_profile( 'pending_evidence', 'מה שאפשר לקנות מחובר למדף המתאים במזווה, עם מחיר החנות והמשך ברור.', 'Anything available to buy connects to the right pantry shelf, with the store price and a clear next step.' ),
+			'structural' => $c99_profile( 'source_backed', 'המסלולים מחברים בין מטבח, מנה, מרכיב, סיפור ומדריך כדי שקל להמשיך לדבר הבא שמסקרן אתכם.', 'Discovery paths connect cuisine, dish, ingredient, story and guide so the next interesting step is always close.', array( 'fact-museum-graph-role' ) ),
 		) ),
-		'categories' => array( 'culinary-museum' ), 'attributes' => array(), 'tags' => array( 'culinary-science', 'knowledge-graph', 'topic-clusters' ),
+		'categories' => array( 'culinary-museum' ), 'attributes' => array(), 'tags' => array( 'culinary-science', 'world-cuisines', 'culinary-pantry' ),
 		'revenue_models' => array( 'content_to_commerce', 'education', 'lead_generation' ),
 		'customer_segments' => array( 'culinary_consumers', 'professional_chefs', 'culinary_students', 'research_readers' ),
-		'prompt_en' => 'Premium editorial hero for a culinary science museum, a precise circular composition connecting a plated dish, raw ingredients, molecular glassware, traditional tools and a world map, sophisticated natural materials, museum lighting, no text, no logos, no futuristic holograms.',
+		'prompt_en' => 'Warm premium editorial view into an international walk-in culinary pantry, open shelves of colorful whole spices, grains, legumes, sea vegetables, oils and handmade vessels, with inviting cross-cultural dishes on a stone table in front, rich natural daylight, no text, no logos, no flags, no branded packaging.',
 	)
 );
 
@@ -2348,6 +2348,32 @@ $c99_private_cuisine_lookup = array_replace(
 	array_fill_keys( $c99_lebanese_foundations_module['private_entity_ids'], true )
 );
 
+$c99_lebanese_coast_north_module = require __DIR__ . '/culinary-science/cuisines/lebanese-regional-expansion-coast-north.php';
+foreach ( $c99_lebanese_coast_north_module['sources'] as $lebanese_coast_north_source_id => $lebanese_coast_north_source ) {
+	if ( isset( $sources[ $lebanese_coast_north_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Lebanese coast/north source ID: ' . $lebanese_coast_north_source_id );
+	}
+	$sources[ $lebanese_coast_north_source_id ] = $lebanese_coast_north_source;
+}
+$entities = array_merge( $entities, $c99_lebanese_coast_north_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_lebanese_coast_north_module['private_entity_ids'], true )
+);
+
+$c99_lebanese_bekaa_south_community_module = require __DIR__ . '/culinary-science/cuisines/lebanese-regional-expansion-bekaa-south-community.php';
+foreach ( $c99_lebanese_bekaa_south_community_module['sources'] as $lebanese_bekaa_south_community_source_id => $lebanese_bekaa_south_community_source ) {
+	if ( isset( $sources[ $lebanese_bekaa_south_community_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Lebanese Bekaa/south/community source ID: ' . $lebanese_bekaa_south_community_source_id );
+	}
+	$sources[ $lebanese_bekaa_south_community_source_id ] = $lebanese_bekaa_south_community_source;
+}
+$entities = array_merge( $entities, $c99_lebanese_bekaa_south_community_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_lebanese_bekaa_south_community_module['private_entity_ids'], true )
+);
+
 $c99_iraqi_foundations_module = require __DIR__ . '/culinary-science/cuisines/iraqi-foundations.php';
 foreach ( $c99_iraqi_foundations_module['sources'] as $iraqi_source_id => $iraqi_source ) {
 	if ( isset( $sources[ $iraqi_source_id ] ) ) {
@@ -2746,6 +2772,7 @@ $public_pilot_ids = array(
 	'museum-culinary-science',
 	'cuisine-japanese-washoku',
 	'cuisine-syrian-regional',
+	'cuisine-lebanese-regional',
 	'hub-japanese-foundations-lab',
 	'hub-japanese-equipment',
 	'hub-japanese-ingredients',
@@ -2769,9 +2796,10 @@ $public_pilot_ids = array(
 );
 $public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
 $public_semantic_allowlists = array(
-	'museum-culinary-science' => array( 'cuisine-japanese-washoku', 'cuisine-syrian-regional' ),
+	'museum-culinary-science' => array( 'cuisine-japanese-washoku', 'cuisine-syrian-regional', 'cuisine-lebanese-regional' ),
 	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-foundations-lab', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'guide-wasabi-aitc', 'equipment-wasabi-grater' ),
-	'cuisine-syrian-regional' => array( 'museum-culinary-science' ),
+	'cuisine-syrian-regional' => array( 'museum-culinary-science', 'cuisine-lebanese-regional' ),
+	'cuisine-lebanese-regional' => array( 'museum-culinary-science', 'cuisine-syrian-regional' ),
 	'hub-japanese-foundations-lab' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'guide-umami-synergy', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'preparation-ichiban-dashi', 'equipment-wasabi-grater' ),
 	'hub-japanese-equipment' => array( 'cuisine-japanese-washoku', 'equipment-wasabi-grater', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'guide-wasabi-aitc' ),
 	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
@@ -2794,9 +2822,10 @@ $public_semantic_allowlists = array(
 	'equipment-wasabi-grater' => array( 'hub-japanese-equipment', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'guide-wasabi-aitc' ),
 );
 $public_asset_receipts = array(
-	'museum-culinary-science' => 'sha256:ee2441315d9c03074bbe88bba7408e66e06323a4906d1c5310574028d970f18b',
+	'museum-culinary-science' => 'sha256:153069cca78fb3121b0d5bdc18a55234c6e49b306592e56e691865ea146d3fd3',
 	'cuisine-japanese-washoku' => 'sha256:98558d16ea7975b78ba7b925ea2a4b3a7dc0f6158a42e94855f30f73f7fa644c',
 	'cuisine-syrian-regional' => 'sha256:4abfb4b819c5b8df9e555656ee56fd0328b09870fbdb8142dadc9cc769b8e7de',
+	'cuisine-lebanese-regional' => 'sha256:0adf73a4888d068a204d38da644ba222240ccd28b7a10ef67c20fc4f6057b37e',
 	'hub-japanese-foundations-lab' => 'sha256:8dcc708e53538ed4a0044d3cd79704f1d9e02ff01142b8f5f486192e3595e180',
 	'hub-japanese-ingredients' => 'sha256:76cc7ecfebd4eac9ecb9ed6a670cee097941a99637fbc2446b00eb7692848e10',
 	'ingredient-kombu' => 'sha256:046d2ba7f392efa8076afc3acae177604e27cbe77ef3d8c626fc2974abe8ac4e',
@@ -2817,6 +2846,25 @@ $public_asset_receipts = array(
 	'guide-wasabi-aitc' => 'sha256:a74f67aaab227256031f2b0bd477bee76562b36ddf072338ccca69d1b894918c',
 	'molecule-allyl-isothiocyanate' => 'sha256:87fdf5927fd72ba282e97d72c948d87213f02fbdef2dd4a13ce607f042084ae6',
 	'equipment-wasabi-grater' => 'sha256:be0f4f831f58efc4ab6b6c74fa1979aaa4797bf9e4f1be51a19b2afe6d9a1757',
+);
+
+$museum_root_offset = $entity_offsets['museum-culinary-science'];
+$entities[ $museum_root_offset ]['seo']['title'] = $c99_text(
+	'מוזיאון המדע של הקולינריה ומזווה מטבחי העולם | Complete99',
+	'Culinary Science Museum and World Pantry | Complete99'
+);
+$entities[ $museum_root_offset ]['seo']['h1'] = $c99_text(
+	'העולם כולו נכנס למטבח',
+	'A world of flavor, one delicious doorway'
+);
+$entities[ $museum_root_offset ]['seo']['meta_description'] = $c99_text(
+	'גלו מטבחי עולם, מנות, חומרי גלם, מסורות ומדריכים קולינריים, והמשיכו מן הסיפור אל המזווה, החנות והארוחה הבאה.',
+	'Discover world cuisines, dishes, ingredients, traditions and culinary guides, then continue from the story to the pantry, shop and your next meal.'
+);
+$entities[ $museum_root_offset ]['seo']['opening'] = $entities[ $museum_root_offset ]['summary'];
+$entities[ $museum_root_offset ]['trust']['research_method'] = $c99_text(
+	'הסיפורים וההסברים נשענים על מקורות שאפשר לפתוח בסוף העמוד, בלי לעצור את מסע הגילוי.',
+	'Stories and explanations are grounded in sources available at the end of the page without interrupting discovery.'
 );
 
 $syrian_root_offset = $entity_offsets['cuisine-syrian-regional'];
@@ -2869,6 +2917,69 @@ $entities[ $syrian_root_offset ]['taxonomy']['public_category_path'] = array( 'c
 $entities[ $syrian_root_offset ]['taxonomy']['public_attribute_keys'] = array( 'pa_region', 'pa_community' );
 $entities[ $syrian_root_offset ]['taxonomy']['public_tags'] = array( 'syrian-cuisine', 'syria-national', 'syrian-multi-community' );
 
+$lebanese_root_offset = $entity_offsets['cuisine-lebanese-regional'];
+$lebanese_root_name = $c99_text(
+	'המטבח הלבנוני: מאפיות, מזווה ושולחנות אזוריים',
+	'Lebanese cuisine: bakeries, pantry and regional tables'
+);
+$lebanese_root_summary = $c99_text(
+	'מתחילים בריח של מנאקיש חמות, ממשיכים לקובה, לטאבולה, לדגי החוף ולצנצנות המונה. בדרך מגלים את ביירות, טריפולי, הרי השוף, הבקעה והדרום, וגם את המשפחות והקהילות ששמרו על מנות וסיפורים לאורך דורות.',
+	'Start with the aroma of warm manouche, then continue to kibbeh, tabbouleh, coastal fish and jars of mouneh. Along the way, discover Beirut, Tripoli, the Chouf mountains, the Bekaa and the south, together with the families and communities that carried dishes and stories across generations.'
+);
+$entities[ $lebanese_root_offset ]['name'] = $lebanese_root_name;
+$entities[ $lebanese_root_offset ]['summary'] = $lebanese_root_summary;
+$entities[ $lebanese_root_offset ]['seo']['route_mode'] = 'standalone';
+$entities[ $lebanese_root_offset ]['seo']['primary_intent'] = $c99_text(
+	'לגלות מנות, אזורים, מאפיות ומסורות מן המטבח הלבנוני',
+	'Discover dishes, regions, bakeries and traditions from Lebanese cuisine'
+);
+$entities[ $lebanese_root_offset ]['seo']['primary_keyword'] = $c99_text( 'המטבח הלבנוני', 'Lebanese cuisine' );
+$entities[ $lebanese_root_offset ]['seo']['query_variants'] = array(
+	'he' => array( 'המטבח הלבנוני', 'מנות ומסורות מן המטבח הלבנוני' ),
+	'en' => array( 'Lebanese cuisine', 'Lebanese dishes and food traditions' ),
+);
+$entities[ $lebanese_root_offset ]['seo']['term_variants'] = array(
+	'he' => array( 'המטבח הלבנוני', 'המטבח הלבנוני לפי אזורים וקהילות' ),
+	'en' => array( 'Lebanese cuisine', 'Lebanese cuisine by region and community' ),
+);
+$entities[ $lebanese_root_offset ]['seo']['title'] = $c99_text(
+	'המטבח הלבנוני: מנות, אזורים ומסורות | Complete99',
+	'Lebanese cuisine: dishes, regions and traditions | Complete99'
+);
+$entities[ $lebanese_root_offset ]['seo']['h1'] = $c99_text(
+	'המטבח הלבנוני, מהמאפייה ועד המונה',
+	'Lebanese cuisine, from the bakery to the mouneh pantry'
+);
+$entities[ $lebanese_root_offset ]['seo']['meta_description'] = $c99_text(
+	'גלו את המטבח הלבנוני דרך מנאקיש, קובה, טאבולה, דגי חוף, מונה, אזורים, שווקים ומסורות משפחתיות.',
+	'Discover Lebanese cuisine through manouche, kibbeh, tabbouleh, coastal fish, mouneh, regions, markets and family food traditions.'
+);
+$entities[ $lebanese_root_offset ]['seo']['opening'] = $lebanese_root_summary;
+$entities[ $lebanese_root_offset ]['facts'][0]['statement'] = $c99_text(
+	'מנאקיש, קובה ומונה משתנות בין ערים, כפרים, משפחות ועונות. לכן כדאי לטעום ולקרוא כל מנה בתוך המקום והמסורת שתיעדו אותה.',
+	'Manouche, kibbeh and mouneh change across cities, villages, families and seasons. Each dish is best explored within the place and tradition that documented it.'
+);
+$entities[ $lebanese_root_offset ]['facts'][0]['public_safe'] = true;
+$entities[ $lebanese_root_offset ]['profiles']['cultural']['summary'] = $c99_text(
+	'כל אזור וקהילה פותחים דלת למנות, לאירוח ולסיפורים משלהם, לצד משפחות אוכל המשותפות ללבנט.',
+	'Each region and community opens a door to its own dishes, hospitality and stories alongside food families shared across the Levant.'
+);
+$entities[ $lebanese_root_offset ]['profiles']['structural']['summary'] = $c99_text(
+	'המסלול עובר מן המטבח אל האזור, המנה, המרכיב והמזווה, ומציע בכל שלב דרך טבעית להמשיך.',
+	'The path moves from cuisine to region, dish, ingredient and pantry, with a natural next step at every point.'
+);
+$entities[ $lebanese_root_offset ]['trust']['research_method'] = $c99_text(
+	'העמוד מציג סיפורי אוכל והבדלים אזוריים בגבולות שתועדו. מקורות מלאים מחכים למי שרוצה להעמיק.',
+	'The page presents food stories and regional differences within their documented scope. Full sources are available for readers who want to go deeper.'
+);
+$entities[ $lebanese_root_offset ]['trust']['next_review_trigger'] = $c99_text(
+	'מכירים סיפור משפחתי או מקור נוסף? אפשר לשלוח אותו דרך עמוד יצירת הקשר.',
+	'Know a family story or another source? You can share it through the contact page.'
+);
+$entities[ $lebanese_root_offset ]['taxonomy']['public_category_path'] = array( 'culinary-museum', 'lebanese-culinary-science', 'cuisines' );
+$entities[ $lebanese_root_offset ]['taxonomy']['public_attribute_keys'] = array( 'pa_region', 'pa_community' );
+$entities[ $lebanese_root_offset ]['taxonomy']['public_tags'] = array( 'lebanese-cuisine', 'lebanon-regions', 'levantine-foodways' );
+
 $ingredient_hub_offset = $entity_offsets['hub-japanese-ingredients'];
 $entities[ $ingredient_hub_offset ]['facts'][0]['statement'] = $c99_text(
 	'במדור זה מוצגים חומרי גלם יפניים עם הסבר על מקור, טעם, שימוש, מדע ומחיר מקור מתועד כאשר הוא זמין.',
@@ -2918,6 +3029,9 @@ foreach ( $public_meta_descriptions as $public_meta_entity_id => $public_meta_de
 
 foreach ( $public_pilot_ids as $public_entity_id ) {
 	$entity_offset = $entity_offsets[ $public_entity_id ];
+	$public_review_date = in_array( $public_entity_id, array( 'museum-culinary-science', 'cuisine-lebanese-regional' ), true )
+		? '2026-08-07'
+		: '2026-08-06';
 	$entities[ $entity_offset ]['surface_class'] = 'public_discovery';
 	$entities[ $entity_offset ]['index_policy'] = 'noindex_until_longform_review';
 	$entities[ $entity_offset ]['publication'] = array(
@@ -2925,13 +3039,13 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 		'public_api' => true,
 		'public_page' => true,
 		'search_index' => false,
-		'approved_at' => '2026-08-06',
+		'approved_at' => $public_review_date,
 	);
 	$entities[ $entity_offset ]['review']['status'] = 'source_reviewed';
-	$entities[ $entity_offset ]['review']['reviewed_at'] = '2026-08-06';
+	$entities[ $entity_offset ]['review']['reviewed_at'] = $public_review_date;
 	$entities[ $entity_offset ]['review']['language_status'] = 'reviewed_bilingual';
 	$entities[ $entity_offset ]['trust']['attribution_state'] = 'organization_editorial_process';
-	$entities[ $entity_offset ]['trust']['substantive_updated_at'] = '2026-08-06';
+	$entities[ $entity_offset ]['trust']['substantive_updated_at'] = $public_review_date;
 	$entities[ $entity_offset ]['visual']['asset_state'] = 'approved';
 	$entities[ $entity_offset ]['visual']['rights_method'] = 'generated_for_complete99_with_human_review';
 	$entities[ $entity_offset ]['visual']['rights_state'] = 'cleared_generated';
@@ -2980,7 +3094,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'culinary-science-2026.08.07.v16',
+	'version'       => 'culinary-science-2026.08.07.v17',
 	'generated_at'  => '2026-08-07',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',

@@ -20,6 +20,7 @@ PUBLIC_IDS = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
     "cuisine-syrian-regional",
+    "cuisine-lebanese-regional",
     "hub-japanese-foundations-lab",
     "hub-japanese-equipment",
     "hub-japanese-food-science",
@@ -43,6 +44,10 @@ PUBLIC_IDS = {
 }
 PUBLIC_ASSET_STEMS = {
     "cuisine-syrian-regional": "syrian-regional-table",
+    "cuisine-lebanese-regional": "lebanese-regional-table",
+}
+PUBLIC_ASSET_FILENAMES = {
+    "museum-culinary-science": "c99-science-culinary-museum-pantry-v02.webp",
 }
 PUBLIC_OFFER_CODES = {
     "ingredient-kombu": "product-rishiri-kombu-100g",
@@ -191,6 +196,8 @@ $paths = array(
     '/en/museum/japanese-culinary-science/',
     '/museum/syrian-culinary-science/',
     '/en/museum/syrian-culinary-science/',
+    '/museum/lebanese-culinary-science/',
+    '/en/museum/lebanese-culinary-science/',
     '/museum/japanese-culinary-science/foundations/',
     '/en/museum/japanese-culinary-science/foundations/',
     '/ingredients/kombu/',
@@ -264,14 +271,14 @@ def test_exact_reviewed_public_cohort_and_noindex_boundary(pilot_payload: dict) 
 
 def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict) -> None:
     assert pilot_payload["invalid"] == []
-    assert len(pilot_payload["bundles"]) == 36
+    assert len(pilot_payload["bundles"]) == 38
     public_standalone = {
         entity["id"]
         for entity in pilot_payload["registry"]["entities"]
         if entity["publication"]["public_page"]
         and entity["seo"]["route_mode"] == "standalone"
     }
-    assert len(public_standalone) == 18
+    assert len(public_standalone) == 19
     assert len(pilot_payload["bundles"]) == 2 * len(public_standalone)
     for path, bundle in pilot_payload["bundles"].items():
         assert bundle["canonical_path"] == path
@@ -559,7 +566,9 @@ def test_every_public_projection_has_a_digest_matched_generated_asset(
     for entity_id in PUBLIC_IDS:
         entity = by_id[entity_id]
         asset_stem = PUBLIC_ASSET_STEMS.get(entity_id, entity["slug"])
-        filename = f"c99-science-{asset_stem}-v01.webp"
+        filename = PUBLIC_ASSET_FILENAMES.get(
+            entity_id, f"c99-science-{asset_stem}-v01.webp"
+        )
         asset = ASSET_DIR / filename
         assert asset.is_file(), (entity_id, asset)
         digest = hashlib.sha256(asset.read_bytes()).hexdigest()

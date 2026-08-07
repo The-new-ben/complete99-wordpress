@@ -187,7 +187,7 @@ def lebanese_entities(registry: dict) -> dict[str, dict]:
     return {
         entity["id"]: entity
         for entity in registry["entities"]
-        if entity["seo"]["cluster_id"] == "cluster-lebanese-regional-cuisine"
+        if entity["id"] in EXPECTED_IDS
     }
 
 
@@ -202,15 +202,17 @@ def _relation(entity: dict, relation_type: str, target_id: str) -> dict:
     return matches[0]
 
 
-def test_module_is_loaded_and_exactly_owns_the_private_foundation(
+def test_module_is_loaded_and_owns_one_gateway_plus_private_foundation(
     registry: dict, lebanese_entities: dict[str, dict]
 ) -> None:
     assert LEBANESE_MODULE.is_file()
     loader = SCIENCE_DATA.read_text(encoding="utf-8")
     module = LEBANESE_MODULE.read_text(encoding="utf-8")
     assert "lebanese-foundations.php" in loader
-    assert "culinary-science-2026.08.07.v16" in module
-    assert registry["version"] == "culinary-science-2026.08.07.v16"
+    assert "culinary-science-2026.08.07.v17" in module
+    assert "'public_gateway_ids' => array( 'cuisine-lebanese-regional' )" in module
+    assert "'private_entity_ids' => array_values(" in module
+    assert registry["version"] == "culinary-science-2026.08.07.v17"
     assert set(lebanese_entities) == EXPECTED_IDS
     assert len(lebanese_entities) == 82
     assert Counter(entity["type"] for entity in lebanese_entities.values()) == {
@@ -218,10 +220,28 @@ def test_module_is_loaded_and_exactly_owns_the_private_foundation(
     }
 
 
-def test_every_lebanese_entity_is_private_noindex_and_noncommercial(
+def test_only_lebanese_gateway_is_public_and_all_other_foundations_remain_private(
     lebanese_entities: dict[str, dict]
 ) -> None:
+    gateway = lebanese_entities["cuisine-lebanese-regional"]
+    assert gateway["surface_class"] == "public_discovery"
+    assert gateway["index_policy"] == "noindex_until_longform_review"
+    assert gateway["publication"] == {
+        "state": "approved_public",
+        "public_api": True,
+        "public_page": True,
+        "search_index": False,
+        "approved_at": "2026-08-07",
+    }
+    assert gateway["seo"]["route_mode"] == "standalone"
+    assert gateway["commerce"]["state"] == "reference_only"
+    assert gateway["commerce"]["public_offer_allowed"] is False
+    assert gateway["visual"]["asset_state"] == "approved"
+    assert gateway["visual"]["rights_state"] == "cleared_generated"
+
     for entity_id, entity in lebanese_entities.items():
+        if entity_id == "cuisine-lebanese-regional":
+            continue
         assert entity["surface_class"] == "editorial_draft", entity_id
         assert entity["index_policy"] == "noindex_private", entity_id
         assert entity["publication"] == {
@@ -395,14 +415,14 @@ def test_price_observations_are_dated_references_not_offers(
     assert "must not be merged" in concentrate_text
 
 
-def test_public_science_and_live_store_boundaries_do_not_change(registry: dict) -> None:
+def test_public_science_adds_only_reviewed_lebanese_gateway(registry: dict) -> None:
     public_ids = {
         entity["id"]
         for entity in registry["entities"]
         if entity["publication"]["public_api"]
     }
-    assert len(public_ids) == 23
-    assert "cuisine-lebanese-regional" not in public_ids
+    assert len(public_ids) == 24
+    assert "cuisine-lebanese-regional" in public_ids
 
     module_text = LEBANESE_MODULE.read_text(encoding="utf-8")
     assert "woo_product_code" not in module_text

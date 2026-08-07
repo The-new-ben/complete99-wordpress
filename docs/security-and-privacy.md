@@ -75,7 +75,7 @@ status remains visible to the closed operational checks.
 
 ## Commerce boundary
 
-WooCommerce 10.9.4 is the product, stock and cart engine for release 1.16.0. The
+WooCommerce 10.9.4 is the product, stock and cart engine for release 1.17.0. The
 curated 36-product store and classic cart become public when the exact catalog
 receipt passes. Payment and electronic checkout remain closed until the
 separate controlled checkout gate passes. Administrators can later exercise
@@ -100,10 +100,10 @@ every identity is publicly sellable. Public source-market projection requires
 the exact explicit value `public`; missing, malformed, unknown and `held` values
 remain private. Payment remains disabled and no role is installed or assigned.
 
-Release 1.16.0 preserves all 56 product identities, the 36 public WooCommerce
+Release 1.17.0 preserves all 56 product identities, the 36 public WooCommerce
 products and the 20 private planning prices. It creates zero new active or draft
-offers. Culinary-commerce registry version 10 is bound to culinary-science
-registry version 16. The 86 new Syrian identities contain no retail listing or
+offers. Culinary-commerce registry version 11 is bound to culinary-science
+registry version 17. The 121 new Lebanese identities contain no retail listing or
 price observation and are not product identities, offers, suppliers, stock
 records or purchase routes.
 
@@ -120,20 +120,27 @@ market observations. Its one safe consumer gateway remained
 `noindex,follow`; the other 195 Syrian entities remained private. Release
 1.16.0 adds 86 more private Syrian identities and keeps the gateway unchanged.
 
-The current science registry contains 551 entities. The 86-identity Syrian
-expansion, 82-identity Lebanese foundation and 96-identity Iraqi foundation are
-wholly private, `noindex` and reference-only. None of their facts, relations,
-taxonomy, media or canonical
-paths is eligible for a public page, public API projection, sitemap entry or
-commerce activation. The
-complete public science graph remains 23 entities resolving through 18
-canonical page owners per language.
+The current science registry contains 672 entities. The 86-identity Syrian
+expansion, all 121 new Lebanese records, the other 81 Lebanese foundation
+records and the 96-identity Iraqi foundation are private under their respective
+release boundaries, `noindex` and reference-only. One reviewed Lebanese cuisine
+root is eligible for a noindex public page and bounded public API projection.
+It carries no offer, price, stock, supplier or Product schema. The complete
+public science graph contains 24 entities resolving through 19 canonical page
+owners per language.
 
 Four new Syrian records remain held for unresolved botanical, preservation or
 exact identity questions. Family and community records are source-scoped and
 cannot be promoted into universal regional claims. Institution, archive,
 market and restaurant records do not imply partnership, endorsement, current
 operation or image rights. Anonymous access to Entity Studio remains denied.
+
+Twelve Lebanese records remain held for unresolved identity, historical
+evidence, raw handling, alcohol, distillation or food-grade material questions.
+Separate controls cover fish, raw meat, traditional dairy, cold chain,
+allergens, open fire, wild plants, ceramic food contact and calcium oxide.
+These controls do not create public instructions, products or operational
+authorization.
 
 Every Lebanese identity references a central private Israel-Lebanon trade
 control based on Israel Ministry of Economy and Industry Director-General

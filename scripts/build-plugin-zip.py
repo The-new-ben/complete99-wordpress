@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-07 22:15:00"
+RELEASE_LAST_UPDATED = "2026-08-07 23:45:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,15 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the bilingual culinary-science registry to 672 entities and Entity Studio to 728 subjects: 672 science identities plus 56 unchanged product identities.</li>"
+                "<li>Added 121 source-bound private Lebanese regional, scientific, community and institutional identities, bringing the Lebanese graph from 82 to 203 entities while keeping every new identity private, noindex and reference-only.</li>"
+                "<li>Separated Beirut, Mount Lebanon, Chouf, Aley, Tripoli, Akkar, the northern coast, Bekaa, Zahle, Baalbek, Hermel, South Lebanon and Jabal Amel evidence, while retaining Jewish, Druze, Christian, Muslim, Armenian and Palestinian records within their documented scope.</li>"
+                "<li>Added molecules, reactions, techniques, equipment, markets, institutions, restaurant benchmarks, original visual specifications and twelve fail-closed held identities for unresolved evidence or handling risk.</li>"
+                "<li>Published one reviewed noindex Lebanese cuisine gateway and redesigned the museum entrance around appetizing imagery, cuisines, dishes, pantry shelves, guides and clear consumer journeys.</li>"
+                "<li>Preserved the exact 36-product public WooCommerce store, prices, stock, cart, disabled payment state and no-role boundary. The public science graph now contains 24 entities across 19 page owners per language, while all 121 new Lebanese identities remain private, noindex and reference-only.</li>"
+                "</ul>"
+                "<h4>1.16.0</h4>"
                 "<ul>"
                 "<li>Expanded the bilingual culinary-science registry to 551 entities and Entity Studio to 607 subjects: 551 science identities plus 56 product identities.</li>"
                 "<li>Added 86 source-bound private Syrian regional, community and institutional identities, bringing the Syrian graph from 196 to 282 entities without adding a public offer or public route.</li>"
