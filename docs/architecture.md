@@ -113,11 +113,11 @@ digests and validation gates when records move into partitioned database storage
 and persistent caches. WordPress and WooCommerce remain the authority through
 that storage transition.
 
-Release 1.16.0 uses culinary-commerce registry version 10 bound to
-culinary-science registry version 16. The version change adds no product
-identity or effective channel offer. The 86-identity Syrian expansion contains
-no price or retail observation. Its entities cannot become a price, supplier,
-stock record, offer or import path by implication.
+Release 1.17.0 uses culinary-commerce registry version 11 bound to
+culinary-science registry version 17. The version change adds no product
+identity or effective channel offer. The 121-identity Lebanese expansion
+contains no price or retail observation. Its entities cannot become a price,
+supplier, stock record, offer or import path by implication.
 
 ## Private Entity Studio
 
@@ -170,6 +170,14 @@ landed-cost, margin or public route. Price-basis coverage remains 56 of 56: 36
 unchanged public WooCommerce prices and 20 private planning prices. Payment
 remains disabled and no role is installed or assigned.
 
+Release 1.17.0 extends Entity Studio to 728 subjects: 672 science identities
+plus the same 56 product identities. The 121 new Lebanese identities are
+private, `noindex` and reference-only. Twelve unresolved evidence or handling
+records remain held. None adds a product code, offer, stock, supplier,
+landed-cost, margin or public route. Price-basis coverage remains 56 of 56: 36
+unchanged public WooCommerce prices and 20 private planning prices. Payment
+remains disabled and no role is installed or assigned.
+
 Commerce status separates `registry_valid` from `commerce_ready`. A valid
 private graph keeps health checks and migrations operational. It does not claim
 active-offer readiness. In this release the registry is valid and culinary
@@ -212,6 +220,19 @@ keeps Jewish, Syrian-Armenian, Assyrian, Kurdish, Druze and family records
 within their documented scope. The Lebanese graph remains at 82 identities and
 the Iraqi graph remains at 96. The public graph remains exactly 23 science
 entities across 18 canonical page owners per language.
+
+At release 1.17.0, the cumulative registry contains 672 entities. The Lebanese
+graph grows from 82 to 203 identities through 121 new private records: 12 topic
+hubs, 31 dishes, 15 ingredients, 3 molecules, 4 reactions, 14 techniques, 6
+equipment records, 18 traditions, 4 markets, 10 culinary institutions, 3
+restaurant benchmarks and 1 guide. The expansion separates coastal, northern,
+mountain, Bekaa, southern and community evidence and keeps Jewish, Druze,
+Christian, Muslim, Armenian and Palestinian records within their documented
+scope. The Syrian graph remains at 282 identities and the Iraqi graph remains
+at 96. One reviewed Lebanese cuisine root is promoted as a noindex public
+gateway, while all 121 new records and the other 81 foundation records remain
+private. The public graph therefore contains 24 science entities across 19
+canonical page owners per language.
 
 ## Syria regional and community boundary
 

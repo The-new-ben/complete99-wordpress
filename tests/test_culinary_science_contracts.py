@@ -27,10 +27,11 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v5"
-EXPECTED_VERSION = "culinary-science-2026.08.07.v16"
+EXPECTED_VERSION = "culinary-science-2026.08.07.v17"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
+    "cuisine-lebanese-regional",
     "cuisine-syrian-regional",
     "hub-japanese-foundations-lab",
     "hub-japanese-equipment",
@@ -146,6 +147,10 @@ EXPECTED_CANONICAL_OWNERS = {
     "cuisine-syrian-regional": (
         "cuisine",
         "/museum/syrian-culinary-science/",
+    ),
+    "cuisine-lebanese-regional": (
+        "cuisine",
+        "/museum/lebanese-culinary-science/",
     ),
     "hub-japanese-foundations-lab": (
         "topic_hub",

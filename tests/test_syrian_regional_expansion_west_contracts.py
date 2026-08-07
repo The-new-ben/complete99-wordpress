@@ -251,7 +251,7 @@ def test_module_contract_uses_sources_key_and_target_version(module: dict) -> No
     }
     assert "source_records" not in module
     assert module["schema"] == "complete99-syrian-regional-expansion-west/v1"
-    assert module["version"] == "culinary-science-2026.08.07.v16"
+    assert module["version"] == "culinary-science-2026.08.07.v17"
 
 
 def test_inventory_and_type_distribution_are_exact(module: dict, entities: dict) -> None:

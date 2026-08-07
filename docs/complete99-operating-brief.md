@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-07
-Status: source release target 1.16.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 551 science identities, 607 Entity Studio subjects and 23 public science entities across 18 page owners per language
+Status: source release target 1.17.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 672 science identities, 728 Entity Studio subjects and 24 public science entities across 19 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -191,12 +191,13 @@ Release 1.12.0 creates contracts and checks, not worker assignments.
 - Its dossiers remain private and cannot become public pages or active offers
   through the Studio.
 
-Release 1.16.0 expands Entity Studio to 607 subjects: 551 science identities
+Release 1.17.0 expands Entity Studio to 728 subjects: 672 science identities
 plus the unchanged 56 product identities. Culinary science is registry version
-16 and culinary commerce is registry version 10. The 86 new Syrian identities
-do not create a product, price observation, offer, supplier, stock record or
-purchasing path. The
-public graph remains 23 science entities across 18 canonical page owners per
+17 and culinary commerce is registry version 11. The 121 new Lebanese
+identities do not create a product, price observation, offer, supplier, stock
+record or purchasing path. One reviewed Lebanese cuisine root is a public
+noindex discovery gateway; all 121 new identities remain private. The public
+graph contains 24 science entities across 19 canonical page owners per
 language.
 
 - WordPress keeps consumer publishing and commerce readiness metadata.
@@ -359,6 +360,26 @@ and Hauran. Jewish family records from Aleppo, Damascus and diaspora archives
 sit alongside Syrian-Armenian, Assyrian, Kurdish, Druze and other regional
 records. No community record replaces the wider cuisine. Four unresolved
 records remain held for botanical, preservation or exact identity review.
+
+Release 1.17.0 expands the Lebanese graph from 82 to 203 identities and the
+cumulative science registry from 551 to 672. Entity Studio resolves 728
+subjects: 672 science identities plus the unchanged 56 product identities. The
+121 new Lebanese identities are divided into 61 coastal and northern records
+and 60 Bekaa, southern and community records. All remain private, `noindex` and
+reference-only, and create no public page, price, product, supplier, stock, POS
+row or order path.
+
+The existing Lebanese cuisine root is separately reviewed and promoted as one
+public noindex discovery gateway. Its purpose is consumer navigation between
+the museum, Syria and Lebanon. It exposes no private child record, price,
+supplier, offer, stock or commerce schema.
+
+The Lebanese graph distinguishes Beirut, Mount Lebanon, Chouf, Aley, Tripoli,
+Akkar, the northern coast, Bekaa, Zahle, Baalbek, Hermel, South Lebanon and
+Jabal Amel. Jewish foodways sit alongside Druze, Christian, Muslim, Armenian
+and Palestinian records. The expansion adds explicit molecular, reaction,
+technique, equipment and safety layers. No community record replaces the wider
+cuisine. Twelve unresolved evidence or handling records remain held.
 
 ## 9. Integrations and future hardware
 

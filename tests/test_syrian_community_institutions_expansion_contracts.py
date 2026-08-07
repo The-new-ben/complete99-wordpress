@@ -180,7 +180,7 @@ def test_module_has_exact_approved_membership_and_standard_return_shape(
     assert module["schema"] == (
         "complete99-syrian-community-institutions-expansion/v1"
     )
-    assert module["version"] == "culinary-science-2026.08.07.v16"
+    assert module["version"] == "culinary-science-2026.08.07.v17"
     assert "sources" in module
     assert "source_records" not in module
     assert set(entities) == EXPECTED_IDS

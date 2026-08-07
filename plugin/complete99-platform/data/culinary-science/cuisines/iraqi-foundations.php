@@ -358,7 +358,7 @@ $c99_iraqi_counts = array_count_values( array_column( $c99_iraqi_entities, 'type
 
 return array(
 	'schema' => 'complete99-iraqi-foundations-module/v1',
-	'version' => 'culinary-science-2026.08.07.v16',
+	'version' => 'culinary-science-2026.08.07.v17',
 	'sources' => $c99_iraqi_sources,
 	'entities' => $c99_iraqi_entities,
 	'private_entity_ids' => array_column( $c99_iraqi_entities, 'id' ),

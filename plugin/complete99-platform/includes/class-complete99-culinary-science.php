@@ -1847,13 +1847,16 @@ final class Complete99_Culinary_Science {
 
 		$asset_slug = preg_replace( '/[^a-z0-9-]/', '', (string) $entity['slug'] );
 		$asset_stems = array(
+			'museum-culinary-science' => 'c99-science-culinary-museum-pantry-v02',
 			'cuisine-syrian-regional' => 'c99-science-syrian-regional-table-v01',
+			'cuisine-lebanese-regional' => 'c99-science-lebanese-regional-table-v01',
 		);
 		$asset_stem = isset( $asset_stems[ $entity['id'] ] )
 			? $asset_stems[ $entity['id'] ]
 			: 'c99-science-' . $asset_slug . '-v01';
 		$asset_base = defined( 'COMPLETE99_PLATFORM_URL' ) ? COMPLETE99_PLATFORM_URL : '';
 		$visual_alts = array(
+			'museum-culinary-science' => array( 'he' => 'מזווה קולינרי עולמי מואר עם מדפי תבלינים, דגנים, קטניות, שמנים, כלי קרמיקה ושולחן מלא במנות צבעוניות', 'en' => 'Sunlit international culinary pantry with shelves of spices, grains, legumes, oils and ceramics beside a table of colorful dishes' ),
 			'hub-japanese-foundations-lab' => array( 'he' => 'שולחן יסודות המטבח היפני עם אורז בהאנגירי, קומבו, קצואובושי, שויו, יוזו, וואסבי, קוג׳י, נורי, כלי מדידה וסכין יפנית', 'en' => 'Japanese culinary foundations table with rice in a hangiri, kombu, katsuobushi, shoyu, yuzu, wasabi, koji, nori, measurement tools and a Japanese knife' ),
 			'hub-japanese-techniques' => array( 'he' => 'האנגירי עם אורז, דאשי, קומבו, קצואובושי, קוג׳י, סכין וכלי מדידה', 'en' => 'Hangiri with rice, dashi, kombu, katsuobushi, koji, knife and measurement tools' ),
 			'hub-japanese-food-science' => array( 'he' => 'דאשי, קומבו, קצואובושי, שויו, יוזו, אורז וקוג׳י לצד כלי מדידה', 'en' => 'Dashi, kombu, katsuobushi, shoyu, yuzu, rice and koji beside measurement tools' ),
@@ -1867,6 +1870,7 @@ final class Complete99_Culinary_Science {
 			'ingredient-hon-mirin' => array( 'he' => 'הון מירין ענברי בכלי זכוכית לצד אורז דביק וקוג׳י אורז', 'en' => 'Amber hon mirin in a glass vessel beside glutinous rice and rice koji' ),
 			'guide-umami-synergy' => array( 'he' => 'דאשי, קומבו וקצואובושי לצד המחשה מולקולרית של גלוטמט ו-IMP', 'en' => 'Dashi, kombu and katsuobushi beside a molecular illustration of glutamate and IMP' ),
 			'cuisine-syrian-regional' => array( 'he' => 'שולחן מנות סוריות עם מוחמרה, עלי גפן, קובה מבושלת, תריד ודג עם אורז ובצל שחום', 'en' => 'Syrian tasting table with muhammara, grape leaves, cooked kibbeh, thareed, and fish with rice and browned onion' ),
+			'cuisine-lebanese-regional' => array( 'he' => 'שולחן לבנוני עם מנאקיש זעתר, טאבולה, קובה אפויה, דג מבושל, בורגול ועדשים, טחינה וסומאק', 'en' => 'Lebanese table with zaatar manouche, tabbouleh, baked kibbeh, cooked fish, bulgur and lentils, tahini and sumac' ),
 		);
 		$visual = array(
 			'url'      => $asset_base . 'assets/images/science/' . rawurlencode( $asset_stem . '.webp' ),
@@ -1875,6 +1879,10 @@ final class Complete99_Culinary_Science {
 			'width'    => 1536,
 			'height'   => 1024,
 		);
+		if ( isset( $asset_stems[ $entity['id'] ] ) ) {
+			$visual['small_url']      = $asset_base . 'assets/images/science/' . rawurlencode( $asset_stem . '-768.webp' );
+			$visual['small_avif_url'] = $asset_base . 'assets/images/science/' . rawurlencode( $asset_stem . '-768.avif' );
+		}
 		$market_context = array();
 		if ( class_exists( 'Complete99_Culinary_Commerce' )
 			&& method_exists( 'Complete99_Culinary_Commerce', 'public_market_context_for_science_entity' ) ) {

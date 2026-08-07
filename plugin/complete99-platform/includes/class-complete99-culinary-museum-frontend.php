@@ -256,6 +256,14 @@ final class Complete99_Culinary_Museum_Frontend {
 		if ( ! self::is_renderable_bundle( $bundle, $bundle['canonical_path'] ) ) {
 			return;
 		}
+		if ( 'museum-culinary-science' === $bundle['entity']['id'] ) {
+			self::render_museum_landing( $bundle );
+			return;
+		}
+		if ( 'cuisine-lebanese-regional' === $bundle['entity']['id'] ) {
+			self::render_lebanese_landing( $bundle );
+			return;
+		}
 		$collection = self::approved_collection_projection( $bundle );
 		if ( ! empty( $collection ) ) {
 			self::render_collection_page( $bundle, $collection );
@@ -300,6 +308,485 @@ final class Complete99_Culinary_Museum_Frontend {
 				<?php self::render_safety( $entity ); ?>
 				<?php self::render_trust( $entity, $bundle ); ?>
 			</aside>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the museum entrance as a food-first discovery experience.
+	 * Research notes remain available at the end without interrupting the visit.
+	 */
+	private static function render_museum_landing( $bundle ) {
+		$entity = $bundle['entity'];
+		$is_he  = 'he' === $bundle['language'];
+		$paths  = $is_he
+			? array(
+				'japanese'  => '/museum/japanese-culinary-science/',
+				'syrian'    => '/museum/syrian-culinary-science/',
+				'lebanese'  => '/museum/lebanese-culinary-science/',
+				'dishes'    => '/dishes/',
+				'store'     => '/store/',
+				'ingredients' => '/ingredients/',
+				'traditions' => '/traditions/',
+				'knowledge' => '/knowledge/',
+				'proposal'  => '/request-proposal/',
+			)
+			: array(
+				'japanese'  => '/en/museum/japanese-culinary-science/',
+				'syrian'    => '/en/museum/syrian-culinary-science/',
+				'lebanese'  => '/en/museum/lebanese-culinary-science/',
+				'dishes'    => '/en/dishes/',
+				'store'     => '/en/store/',
+				'ingredients' => '/en/ingredients/',
+				'traditions' => '/en/traditions/',
+				'knowledge' => '/en/knowledge/',
+				'proposal'  => '/en/request-proposal/',
+			);
+		$urls = array();
+		foreach ( $paths as $key => $path ) {
+			$urls[ $key ] = self::internal_url( $path );
+		}
+
+		$cuisines = array(
+			array(
+				'url'   => $urls['japanese'],
+				'eyebrow' => $is_he ? 'יפן' : 'Japan',
+				'title' => $is_he ? 'המטבח היפני' : 'Japanese cooking',
+				'copy'  => $is_he ? 'אורז, דאשי, סויה, וואסבי וכלי עבודה שמגלים כמה עומק יכול להסתתר בביס נקי ומדויק.' : 'Rice, dashi, shoyu, wasabi and beautiful tools reveal how much depth can live in one precise bite.',
+				'cta'   => $is_he ? 'לטייל ביפן דרך האוכל' : 'Taste your way through Japan',
+				'image' => 'assets/images/science/c99-science-japanese-washoku-v01',
+				'alt'   => $is_he ? 'שולחן יפני עם אורז, דאשי, סויה וכלי הגשה' : 'Japanese table with rice, dashi, shoyu and serving pieces',
+			),
+			array(
+				'url'   => $urls['syrian'],
+				'eyebrow' => $is_he ? 'סוריה' : 'Syria',
+				'title' => $is_he ? 'המטבח הסורי' : 'Syrian cooking',
+				'copy'  => $is_he ? 'מחלב ודמשק מגיעים פלפל, פריקה, רכז רימונים, קובה ושולחנות שמספרים סיפור בכל שכבה.' : 'Aleppo and Damascus bring pepper, freekeh, pomegranate molasses, kibbeh and tables layered with stories.',
+				'cta'   => $is_he ? 'לגלות טעמים מסוריה' : 'Discover the flavors of Syria',
+				'image' => 'assets/images/science/c99-science-syrian-regional-table-v01',
+				'alt'   => $is_he ? 'שולחן אזורי סורי עשיר במנות, דגנים ותבלינים' : 'Regional Syrian table rich with dishes, grains and spices',
+			),
+			array(
+				'url'   => $urls['lebanese'],
+				'eyebrow' => $is_he ? 'לבנון' : 'Lebanon',
+				'title' => $is_he ? 'המטבח הלבנוני' : 'Lebanese cooking',
+				'copy'  => $is_he ? 'מהחוף אל ההרים והבקעה: זעתר, סומאק, קובה, דגים, עשבי תיבול ומזווה שמתחלף עם הנוף.' : 'From the coast to the mountains and the Bekaa: zaatar, sumac, kibbeh, fish, herbs and a pantry shaped by place.',
+				'cta'   => $is_he ? 'להיכנס למזווה הלבנוני' : 'Enter the Lebanese pantry',
+				'image' => 'assets/images/science/c99-science-lebanese-regional-table-v01',
+				'alt'   => $is_he ? 'שולחן לבנוני עם מנאקיש, טאבולה, קובה, דג ותבלינים' : 'Lebanese table with manakish, tabbouleh, kibbeh, fish and spices',
+			),
+		);
+
+		$shelves = array(
+			array(
+				'url'   => $urls['dishes'],
+				'title' => $is_he ? 'מנות שמתחילות בתיאבון' : 'Dishes that begin with appetite',
+				'copy'  => $is_he ? 'סביח, שקשוקה, קובה, מרקים ועוד מנות שאפשר להכיר מקרוב.' : 'Sabich, shakshuka, kibbeh, soups and more dishes to discover up close.',
+				'cta'   => $is_he ? 'לכל המנות' : 'Explore all dishes',
+				'image' => 'assets/images/original/c99-food-house-spread-hero-2021-wp-v01',
+				'alt'   => $is_he ? 'מבחר מנות ביתיות צבעוניות על שולחן' : 'A colorful spread of homestyle dishes on a table',
+			),
+			array(
+				'url'   => $urls['ingredients'],
+				'title' => $is_he ? 'חומרי גלם שמבקשים לטעום' : 'Ingredients worth tasting',
+				'copy'  => $is_he ? 'מתבלין שלם ועד רוטב מותסס, כל מרכיב פותח דלת למנות ולשיטות שמתאימות לו.' : 'From whole spices to fermented sauces, every ingredient opens a door to the dishes and methods that suit it.',
+				'cta'   => $is_he ? 'לגלות חומרי גלם' : 'Discover ingredients',
+				'image' => 'assets/images/science/c99-science-japanese-premium-ingredients-v01',
+				'alt'   => $is_he ? 'שולחן חומרי גלם יפניים עם קומבו, אורז, יוזו, וואסבי ושויו' : 'Japanese ingredient table with kombu, rice, yuzu, wasabi and shoyu',
+			),
+			array(
+				'url'   => $urls['store'],
+				'title' => $is_he ? 'המדף שאפשר לקחת הביתה' : 'The shelf you can take home',
+				'copy'  => $is_he ? 'עברו בין מוצרי המזווה והציוד שכבר מוצגים בחנות.' : 'Browse pantry goods and equipment already shown in the store.',
+				'cta'   => $is_he ? 'לבקר בחנות' : 'Visit the store',
+				'image' => 'assets/images/science/c99-science-museum-store-pantry-v01',
+				'alt'   => $is_he ? 'מזווה חנות עשיר עם תבלינים, דגנים, שמנים, ירקות וחומרי גלם יפניים' : 'Rich store pantry with spices, grains, oils, vegetables and Japanese ingredients',
+			),
+			array(
+				'url'   => $urls['traditions'],
+				'title' => $is_he ? 'הסיפורים שעוברים סביב השולחן' : 'Stories passed around the table',
+				'copy'  => $is_he ? 'מסורות, אזורים, קהילות והרגלי אכילה שמסבירים למה למנה יש טעם של מקום.' : 'Traditions, regions, communities and eating customs explain why a dish tastes of its place.',
+				'cta'   => $is_he ? 'לגלות מסורות' : 'Explore traditions',
+				'image' => 'assets/images/science/c99-science-culinary-museum-pantry-v02',
+				'alt'   => $is_he ? 'מזווה קולינרי רחב עם כלים וחומרי גלם מתרבויות שונות' : 'A broad culinary pantry with tools and ingredients from different cultures',
+			),
+		);
+
+		$intent_paths = array(
+			array( 'url' => $urls['dishes'], 'number' => '01', 'title' => $is_he ? 'בא לי לאכול' : 'I want to eat', 'copy' => $is_he ? 'מתחילים מהמנות.' : 'Start with the dishes.' ),
+			array( 'url' => $urls['ingredients'], 'number' => '02', 'title' => $is_he ? 'בא לי לבשל' : 'I want to cook', 'copy' => $is_he ? 'בוחרים חומר גלם וממשיכים ממנו.' : 'Choose an ingredient and follow where it leads.' ),
+			array( 'url' => $urls['knowledge'], 'number' => '03', 'title' => $is_he ? 'בא לי להבין' : 'I want to learn', 'copy' => $is_he ? 'נכנסים למדריכים, למתכונים ולשיטות.' : 'Open the guides, recipes and methods.' ),
+			array( 'url' => $urls['store'], 'number' => '04', 'title' => $is_he ? 'אני מחפש מוצר' : 'I am looking for a product', 'copy' => $is_he ? 'מדלגים ישר למדפי החנות.' : 'Go straight to the store shelves.' ),
+			array( 'url' => $urls['proposal'], 'number' => '05', 'title' => $is_he ? 'אנחנו קבוצה או חברה' : 'We are a group or company', 'copy' => $is_he ? 'מספרים לנו איזו ארוחה אתם מדמיינים.' : 'Tell us about the meal you have in mind.' ),
+		);
+		?>
+		<div class="c99-museum-home" id="c99-museum-home">
+			<section class="c99-museum-home-hero" aria-labelledby="c99-museum-home-title">
+				<div class="c99-container">
+					<?php self::render_breadcrumbs( $entity, $bundle ); ?>
+					<div class="c99-museum-home-hero-grid">
+						<div class="c99-museum-home-hero-copy">
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'ברוכים הבאים למזווה של העולם' : 'Welcome to the world pantry' ); ?></p>
+							<h1 id="c99-museum-home-title"><?php echo esc_html( $entity['seo']['h1'] ); ?></h1>
+							<p class="c99-museum-home-intro"><?php echo esc_html( $is_he ? 'בואו רעבים. כאן אפשר לגלות מנה, להרים תבלין מהמדף, לטייל בין מטבחים, ללמוד איך טעם נוצר ולמצוא מה לקחת הביתה.' : 'Come hungry. Discover a dish, pick a spice from the shelf, travel through world kitchens, learn how flavor comes alive and find something to take home.' ); ?></p>
+							<div class="c99-museum-home-actions">
+								<a class="c99-button c99-museum-home-button-primary" href="<?php echo esc_url( $urls['dishes'] ); ?>"><?php echo esc_html( $is_he ? 'מה בא לי לאכול?' : 'What do I want to eat?' ); ?></a>
+								<a class="c99-button c99-museum-home-button-secondary" href="<?php echo esc_url( $urls['store'] ); ?>"><?php echo esc_html( $is_he ? 'להיכנס למזווה' : 'Enter the pantry' ); ?></a>
+							</div>
+						</div>
+						<div class="c99-museum-home-hero-media">
+							<?php self::render_visual( $entity, true ); ?>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section id="c99-museum-cuisines" class="c99-museum-home-section c99-museum-home-cuisines" aria-labelledby="c99-museum-cuisines-title">
+				<div class="c99-container">
+					<div class="c99-museum-home-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'בוחרים ארץ ומתחילים לטעום' : 'Choose a place and start tasting' ); ?></p>
+							<h2 id="c99-museum-cuisines-title"><?php echo esc_html( $is_he ? 'מטבחים שאפשר להיכנס אליהם' : 'Kitchens you can step into' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'כל דלת מובילה למנות, חומרי גלם, שיטות ומסורות. משם פשוט ממשיכים לפי מה שמסקרן או מגרה את התיאבון.' : 'Every doorway leads to dishes, ingredients, methods and traditions. Follow whatever sparks your curiosity or appetite.' ); ?></p>
+					</div>
+					<div class="c99-museum-home-cuisine-grid">
+						<?php foreach ( $cuisines as $cuisine ) : ?>
+							<a class="c99-museum-home-cuisine-card" href="<?php echo esc_url( $cuisine['url'] ); ?>">
+								<?php self::render_landing_picture( $cuisine['image'], $cuisine['alt'] ); ?>
+								<span class="c99-museum-home-card-copy">
+									<span class="c99-museum-home-eyebrow"><?php echo esc_html( $cuisine['eyebrow'] ); ?></span>
+									<strong class="c99-museum-home-card-title"><?php echo esc_html( $cuisine['title'] ); ?></strong>
+									<span class="c99-museum-home-card-description"><?php echo esc_html( $cuisine['copy'] ); ?></span>
+									<span class="c99-museum-home-card-cta"><?php echo esc_html( $cuisine['cta'] ); ?></span>
+								</span>
+							</a>
+						<?php endforeach; ?>
+					</div>
+				</div>
+			</section>
+
+			<section class="c99-museum-home-section c99-museum-home-shelves" aria-labelledby="c99-museum-shelves-title">
+				<div class="c99-container">
+					<div class="c99-museum-home-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מטיילים בין המדפים' : 'Wander the shelves' ); ?></p>
+							<h2 id="c99-museum-shelves-title"><?php echo esc_html( $is_he ? 'כל מדף פותח עולם אחר' : 'Every shelf opens another world' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'אפשר להתחיל מצלחת, ממרכיב, מסיפור או ממוצר. הכל מחובר כך שקל לעבור מדבר טעים אחד לדבר הבא.' : 'Begin with a plate, an ingredient, a story or a product. Everything connects, so the next delicious discovery is always close.' ); ?></p>
+					</div>
+					<div class="c99-museum-home-shelf-grid">
+						<?php foreach ( $shelves as $shelf ) : ?>
+							<a class="c99-museum-home-shelf-card" href="<?php echo esc_url( $shelf['url'] ); ?>">
+								<?php self::render_landing_picture( $shelf['image'], $shelf['alt'], 'shelf' ); ?>
+								<span class="c99-museum-home-card-copy">
+									<strong class="c99-museum-home-card-title"><?php echo esc_html( $shelf['title'] ); ?></strong>
+									<span class="c99-museum-home-card-description"><?php echo esc_html( $shelf['copy'] ); ?></span>
+									<span class="c99-museum-home-card-cta"><?php echo esc_html( $shelf['cta'] ); ?></span>
+								</span>
+							</a>
+						<?php endforeach; ?>
+					</div>
+				</div>
+			</section>
+
+			<section class="c99-museum-home-section c99-museum-home-intents" aria-labelledby="c99-museum-intents-title">
+				<div class="c99-container">
+					<div class="c99-museum-home-heading c99-museum-home-heading-centered">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'לא צריך לדעת מאיפה להתחיל' : 'You do not need to know where to begin' ); ?></p>
+							<h2 id="c99-museum-intents-title"><?php echo esc_html( $is_he ? 'פשוט בוחרים מה בא לכם עכשיו' : 'Just choose what you feel like doing' ); ?></h2>
+						</div>
+					</div>
+					<nav class="c99-museum-home-intent-grid" aria-label="<?php echo esc_attr( $is_he ? 'בחירה לפי מה שבא לכם' : 'Choose by what you want to do' ); ?>">
+						<?php foreach ( $intent_paths as $intent ) : ?>
+							<a href="<?php echo esc_url( $intent['url'] ); ?>">
+								<span aria-hidden="true"><?php echo esc_html( $intent['number'] ); ?></span>
+								<strong><?php echo esc_html( $intent['title'] ); ?></strong>
+								<small><?php echo esc_html( $intent['copy'] ); ?></small>
+							</a>
+						<?php endforeach; ?>
+					</nav>
+				</div>
+			</section>
+
+			<section class="c99-museum-home-section c99-museum-home-neighbors" aria-labelledby="c99-museum-neighbors-title">
+				<div class="c99-container c99-museum-home-neighbors-grid">
+					<div class="c99-museum-home-neighbors-visuals" aria-hidden="true">
+						<?php self::render_landing_picture( 'assets/images/science/c99-science-syrian-regional-table-v01', '', 'neighbor' ); ?>
+						<?php self::render_landing_picture( 'assets/images/science/c99-science-lebanese-regional-table-v01', '', 'neighbor' ); ?>
+					</div>
+					<div class="c99-museum-home-neighbors-copy">
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'סיפור טעים עובר בין שכנים' : 'A delicious story travels between neighbors' ); ?></p>
+						<h2 id="c99-museum-neighbors-title"><?php echo esc_html( $is_he ? 'מסוריה ממשיכים ללבנון' : 'From Syria, continue into Lebanon' ); ?></h2>
+						<p><?php echo esc_html( $is_he ? 'עקבו אחר אותם דגנים, עשבי תיבול, תבלינים ושיטות כשהם משנים אופי מחלב ודמשק ועד ביירות, ההרים והבקעה.' : 'Follow familiar grains, herbs, spices and methods as they change character from Aleppo and Damascus to Beirut, the mountains and the Bekaa.' ); ?></p>
+						<div class="c99-museum-home-actions">
+							<a class="c99-button c99-museum-home-button-primary" href="<?php echo esc_url( $urls['syrian'] ); ?>"><?php echo esc_html( $is_he ? 'להתחיל בסוריה' : 'Begin in Syria' ); ?></a>
+							<a class="c99-button c99-museum-home-button-light" href="<?php echo esc_url( $urls['lebanese'] ); ?>"><?php echo esc_html( $is_he ? 'להמשיך ללבנון' : 'Continue to Lebanon' ); ?></a>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="c99-museum-home-section c99-museum-home-groups" aria-labelledby="c99-museum-groups-title">
+				<div class="c99-container c99-museum-home-groups-inner">
+					<div>
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מהמדף אל השולחן הגדול' : 'From the shelf to a bigger table' ); ?></p>
+						<h2 id="c99-museum-groups-title"><?php echo esc_html( $is_he ? 'מתכננים ארוחה לקבוצה או לחברה?' : 'Planning a meal for a group or company?' ); ?></h2>
+						<p><?php echo esc_html( $is_he ? 'בחרו טעמים ומנות שאהבתם וספרו לנו על המקום, מספר האנשים והאווירה שאתם רוצים ליצור.' : 'Choose the flavors and dishes you love, then tell us about the place, the number of guests and the atmosphere you want to create.' ); ?></p>
+					</div>
+					<a class="c99-button c99-museum-home-button-primary" href="<?php echo esc_url( $urls['proposal'] ); ?>"><?php echo esc_html( $is_he ? 'לבקש הצעה לארוחה' : 'Request a meal proposal' ); ?></a>
+				</div>
+			</section>
+
+			<?php self::render_museum_landing_sources( $entity, $is_he ); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Keep supporting reading available without making it the museum entrance.
+	 */
+	private static function render_museum_landing_sources( $entity, $is_he ) {
+		$sources = isset( $entity['sources'] ) && is_array( $entity['sources'] ) ? $entity['sources'] : array();
+		if ( empty( $sources ) ) {
+			return;
+		}
+		?>
+		<section class="c99-museum-home-reading">
+			<div class="c99-container">
+				<details>
+					<summary>
+						<strong><?php echo esc_html( $is_he ? 'לקריאה נוספת' : 'For curious readers' ); ?></strong>
+						<span><?php echo esc_html( $is_he ? 'ספרים, מוסדות ומאמרים שמאפשרים להעמיק עוד' : 'Books, institutions and articles for going deeper' ); ?></span>
+					</summary>
+					<div class="c99-museum-home-reading-content">
+						<h2><?php echo esc_html( $is_he ? 'עוד מקומות טובים להעמיק בהם' : 'More good places to keep exploring' ); ?></h2>
+						<ol>
+							<?php foreach ( $sources as $source ) : ?>
+								<?php $url = self::external_url( isset( $source['url'] ) ? $source['url'] : '' ); ?>
+								<li>
+									<p><strong><?php echo esc_html( $source['publisher'] ); ?></strong> <?php echo esc_html( $source['title'] ); ?></p>
+									<?php if ( '' !== $url ) : ?><a class="c99-museum-source-link" href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'לפתוח ולקרוא' : 'Open and read' ); ?></a><?php endif; ?>
+								</li>
+							<?php endforeach; ?>
+						</ol>
+					</div>
+				</details>
+			</div>
+		</section>
+		<?php
+	}
+
+	/**
+	 * Render one local, responsive landing image from a rights-governed asset.
+	 */
+	private static function render_landing_picture( $asset_stem, $alt, $layout = 'cuisine' ) {
+		$asset_stem  = ltrim( (string) $asset_stem, '/' );
+		$avif        = COMPLETE99_PLATFORM_URL . $asset_stem . '.avif';
+		$avif_small  = COMPLETE99_PLATFORM_URL . $asset_stem . '-768.avif';
+		$webp        = COMPLETE99_PLATFORM_URL . $asset_stem . '.webp';
+		$webp_small  = COMPLETE99_PLATFORM_URL . $asset_stem . '-768.webp';
+		$source_width = 1536;
+		$width        = 1536;
+		$height       = 1024;
+		$sizes_by_layout = array(
+			'cuisine'  => '(max-width: 680px) calc(100vw - 28px), (max-width: 920px) 50vw, (max-width: 1320px) 33vw, 420px',
+			'shelf'    => '(max-width: 680px) calc(100vw - 28px), (max-width: 1120px) 50vw, (max-width: 1320px) 25vw, 310px',
+			'neighbor' => '(max-width: 920px) 50vw, (max-width: 1320px) 27vw, 340px',
+		);
+		$sizes = isset( $sizes_by_layout[ $layout ] ) ? $sizes_by_layout[ $layout ] : $sizes_by_layout['cuisine'];
+
+		if ( 'assets/images/original/c99-food-house-spread-hero-2021-wp-v01' === $asset_stem ) {
+			$source_width = 1400;
+			$width        = 1400;
+			$height       = 788;
+		}
+		?>
+		<picture class="c99-museum-home-picture">
+			<source srcset="<?php echo esc_url( $avif_small ); ?> 768w, <?php echo esc_url( $avif ); ?> <?php echo esc_attr( $source_width ); ?>w" sizes="<?php echo esc_attr( $sizes ); ?>" type="image/avif" />
+			<img src="<?php echo esc_url( $webp ); ?>" srcset="<?php echo esc_url( $webp_small ); ?> 768w, <?php echo esc_url( $webp ); ?> <?php echo esc_attr( $source_width ); ?>w" sizes="<?php echo esc_attr( $sizes ); ?>" alt="<?php echo esc_attr( $alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" loading="lazy" decoding="async" />
+		</picture>
+		<?php
+	}
+
+	/**
+	 * Render Lebanon as a public culinary journey, not an editorial dashboard.
+	 */
+	private static function render_lebanese_landing( $bundle ) {
+		$entity = $bundle['entity'];
+		$is_he  = 'he' === $bundle['language'];
+		$paths  = $is_he
+			? array(
+				'dishes'     => '/dishes/',
+				'ingredients' => '/ingredients/',
+				'store'      => '/store/',
+				'traditions' => '/traditions/',
+				'knowledge'  => '/knowledge/',
+				'proposal'   => '/request-proposal/',
+				'museum'     => '/museum/',
+				'syrian'     => '/museum/syrian-culinary-science/',
+			)
+			: array(
+				'dishes'     => '/en/dishes/',
+				'ingredients' => '/en/ingredients/',
+				'store'      => '/en/store/',
+				'traditions' => '/en/traditions/',
+				'knowledge'  => '/en/knowledge/',
+				'proposal'   => '/en/request-proposal/',
+				'museum'     => '/en/museum/',
+				'syrian'     => '/en/museum/syrian-culinary-science/',
+			);
+		$urls = array();
+		foreach ( $paths as $key => $path ) {
+			$urls[ $key ] = self::internal_url( $path );
+		}
+
+		$places = array(
+			array(
+				'number' => '01',
+				'title'  => $is_he ? 'החוף' : 'The coast',
+				'copy'   => $is_he ? 'דג, לימון, טחינה ועשבי תיבול נפגשים ליד הים בצלחות בהירות ורעננות.' : 'Fish, lemon, tahini and herbs meet by the sea in bright, fresh plates.',
+			),
+			array(
+				'number' => '02',
+				'title'  => $is_he ? 'ההרים' : 'The mountains',
+				'copy'   => $is_he ? 'זעתר, שמן זית, גבינות, לחם חם ומזווה עונתי מספרים סיפור של גובה ואדמה.' : 'Zaatar, olive oil, cheeses, warm bread and a seasonal pantry tell a story of altitude and earth.',
+			),
+			array(
+				'number' => '03',
+				'title'  => $is_he ? 'הבקעה' : 'The Bekaa',
+				'copy'   => $is_he ? 'דגנים, עדשים, עשבי בר ושימורי בית הופכים את העונות למדף שאפשר לפתוח כל השנה.' : 'Grains, lentils, wild greens and home preserves turn the seasons into a shelf that lasts all year.',
+			),
+		);
+
+		$doors = array(
+			array(
+				'url'   => $urls['dishes'],
+				'label' => $is_he ? 'רעבים' : 'Hungry',
+				'title' => $is_he ? 'מתחילים מהצלחת' : 'Begin with the plate',
+				'copy'  => $is_he ? 'מגלים מנות, טעמים ורעיונות לארוחה הבאה.' : 'Discover dishes, flavors and ideas for the next meal.',
+			),
+			array(
+				'url'   => $urls['ingredients'],
+				'label' => $is_he ? 'סקרנים' : 'Curious',
+				'title' => $is_he ? 'פותחים את המזווה' : 'Open the pantry',
+				'copy'  => $is_he ? 'מכירים זעתר, סומאק, דגנים, שמנים וכל מה שנותן למנה את האופי שלה.' : 'Meet zaatar, sumac, grains, oils and everything that gives a dish its character.',
+			),
+			array(
+				'url'   => $urls['store'],
+				'label' => $is_he ? 'בוחרים' : 'Choose',
+				'title' => $is_he ? 'לוקחים משהו הביתה' : 'Take something home',
+				'copy'  => $is_he ? 'עוברים בין מוצרי המזווה והכלים שנמצאים בחנות.' : 'Browse pantry goods and tools available in the store.',
+			),
+			array(
+				'url'   => $urls['traditions'],
+				'label' => $is_he ? 'מתארחים' : 'Gather',
+				'title' => $is_he ? 'יושבים סביב השולחן' : 'Gather around the table',
+				'copy'  => $is_he ? 'מגלים את האזור, הקהילה וההרגלים שנותנים לאוכל משמעות.' : 'Discover the places, communities and customs that give food its meaning.',
+			),
+			array(
+				'url'   => $urls['knowledge'],
+				'label' => $is_he ? 'לומדים' : 'Learn',
+				'title' => $is_he ? 'נכנסים למדריכים' : 'Open the guides',
+				'copy'  => $is_he ? 'קוראים על שיטות, מתכונים והקשרים שעוזרים לבשל ולהבין.' : 'Read about methods, recipes and connections that help you cook and understand.',
+			),
+			array(
+				'url'   => $urls['proposal'],
+				'label' => $is_he ? 'ביחד' : 'Together',
+				'title' => $is_he ? 'מתכננים שולחן גדול' : 'Plan a bigger table',
+				'copy'  => $is_he ? 'בוחרים כיוון לארוחה לקבוצה או לחברה ומספרים לנו מה אתם מדמיינים.' : 'Choose a direction for a group or company meal and tell us what you have in mind.',
+			),
+			array(
+				'url'   => $urls['syrian'],
+				'label' => $is_he ? 'ממשיכים לשכן' : 'Visit a neighbor',
+				'title' => $is_he ? 'חוצים אל המטבח הסורי' : 'Cross into Syrian cooking',
+				'copy'  => $is_he ? 'עוקבים אחרי דגנים, תבלינים ושיטות כשהם מקבלים אופי אחר מעבר לגבול.' : 'Follow grains, spices and methods as they take on a different character across the border.',
+			),
+			array(
+				'url'   => $urls['museum'],
+				'label' => $is_he ? 'מפת העולם' : 'World map',
+				'title' => $is_he ? 'חוזרים למוזיאון' : 'Return to the museum',
+				'copy'  => $is_he ? 'בוחרים מטבח נוסף וממשיכים את המסע הקולינרי.' : 'Choose another kitchen and continue the culinary journey.',
+			),
+		);
+		?>
+		<div class="c99-lebanon-home" id="c99-lebanon-home">
+			<section class="c99-lebanon-hero" aria-labelledby="c99-lebanon-title">
+				<div class="c99-container">
+					<?php self::render_breadcrumbs( $entity, $bundle ); ?>
+					<div class="c99-lebanon-hero-grid">
+						<div class="c99-lebanon-hero-copy">
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'לבנון, מהים אל ההר' : 'Lebanon, from sea to mountain' ); ?></p>
+							<h1 id="c99-lebanon-title"><?php echo esc_html( $entity['seo']['h1'] ); ?></h1>
+							<p class="c99-lebanon-intro"><?php echo esc_html( $is_he ? 'לחם זעתר חם, טאבולה ירוקה, קובה מתובלת, דג מהחוף וצנצנות ששומרות את העונה. זה מטבח שמזמין לטעום את הדרך מהים, דרך ההרים ועד הבקעה.' : 'Warm zaatar bread, bright tabbouleh, spiced kibbeh, fish from the coast and jars that preserve the season. This is a kitchen that invites you to taste the road from the sea through the mountains to the Bekaa.' ); ?></p>
+							<div class="c99-museum-home-actions">
+								<a class="c99-button c99-museum-home-button-primary" href="<?php echo esc_url( $urls['dishes'] ); ?>"><?php echo esc_html( $is_he ? 'מה אוכלים בלבנון?' : 'What do people eat in Lebanon?' ); ?></a>
+								<a class="c99-button c99-lebanon-button-secondary" href="<?php echo esc_url( $urls['ingredients'] ); ?>"><?php echo esc_html( $is_he ? 'לפתוח את המזווה' : 'Open the pantry' ); ?></a>
+							</div>
+						</div>
+						<div class="c99-lebanon-hero-media">
+							<?php self::render_visual( $entity, true ); ?>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="c99-lebanon-section c99-lebanon-places" aria-labelledby="c99-lebanon-places-title">
+				<div class="c99-container">
+					<div class="c99-lebanon-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'טועמים את הנוף' : 'Taste the landscape' ); ?></p>
+							<h2 id="c99-lebanon-places-title"><?php echo esc_html( $is_he ? 'הצלחת משתנה עם הדרך' : 'The plate changes with the road' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'מרחק קצר יכול לשנות את חומרי הגלם, את הריח ואת מה שמניחים במרכז השולחן.' : 'A short journey can change the ingredients, aromas and what takes the center of the table.' ); ?></p>
+					</div>
+					<div class="c99-lebanon-place-grid">
+						<?php foreach ( $places as $place ) : ?>
+							<article>
+								<span aria-hidden="true"><?php echo esc_html( $place['number'] ); ?></span>
+								<h3><?php echo esc_html( $place['title'] ); ?></h3>
+								<p><?php echo esc_html( $place['copy'] ); ?></p>
+							</article>
+						<?php endforeach; ?>
+					</div>
+				</div>
+			</section>
+
+			<section class="c99-lebanon-section c99-lebanon-doors" aria-labelledby="c99-lebanon-doors-title">
+				<div class="c99-container">
+					<div class="c99-lebanon-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'בוחרים איך להמשיך' : 'Choose your next step' ); ?></p>
+							<h2 id="c99-lebanon-doors-title"><?php echo esc_html( $is_he ? 'שמונה דלתות מהשולחן' : 'Eight doors from the table' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'אפשר לעבור מהמנה למרכיב, מהמסורת לחנות, או להמשיך ישר אל שולחן אחר.' : 'Move from a dish to an ingredient, from a tradition to the store, or continue straight to another table.' ); ?></p>
+					</div>
+					<nav class="c99-lebanon-door-grid" aria-label="<?php echo esc_attr( $is_he ? 'דרכים להמשיך מהמטבח הלבנוני' : 'Ways to continue from Lebanese cooking' ); ?>">
+						<?php foreach ( $doors as $door ) : ?>
+							<a href="<?php echo esc_url( $door['url'] ); ?>">
+								<span><?php echo esc_html( $door['label'] ); ?></span>
+								<strong><?php echo esc_html( $door['title'] ); ?></strong>
+								<small><?php echo esc_html( $door['copy'] ); ?></small>
+								<b aria-hidden="true"><?php echo esc_html( $is_he ? '←' : '→' ); ?></b>
+							</a>
+						<?php endforeach; ?>
+					</nav>
+				</div>
+			</section>
+
+			<section class="c99-lebanon-invitation" aria-labelledby="c99-lebanon-invitation-title">
+				<div class="c99-container c99-lebanon-invitation-inner">
+					<div>
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'השולחן יכול לגדול' : 'The table can grow' ); ?></p>
+						<h2 id="c99-lebanon-invitation-title"><?php echo esc_html( $is_he ? 'רוצים ארוחה לקבוצה או לחברה?' : 'Want a meal for a group or company?' ); ?></h2>
+						<p><?php echo esc_html( $is_he ? 'ספרו לנו אילו טעמים משכו אתכם, למי הארוחה מיועדת ואיזה שולחן אתם רוצים ליצור.' : 'Tell us which flavors drew you in, who the meal is for and what kind of table you want to create.' ); ?></p>
+					</div>
+					<a class="c99-button c99-museum-home-button-primary" href="<?php echo esc_url( $urls['proposal'] ); ?>"><?php echo esc_html( $is_he ? 'לבקש הצעה לארוחה' : 'Request a meal proposal' ); ?></a>
+				</div>
+			</section>
+
+			<?php self::render_museum_landing_sources( $entity, $is_he ); ?>
 		</div>
 		<?php
 	}
@@ -494,14 +981,16 @@ final class Complete99_Culinary_Museum_Frontend {
 		$height  = isset( $visual['height'] ) ? max( 1, absint( $visual['height'] ) ) : 1024;
 		$loading = $priority ? 'eager' : 'lazy';
 		$avif    = ! empty( $visual['avif_url'] ) ? self::safe_visual_url( $visual['avif_url'] ) : '';
+		$small_url  = ! empty( $visual['small_url'] ) ? self::safe_visual_url( $visual['small_url'] ) : '';
+		$small_avif = ! empty( $visual['small_avif_url'] ) ? self::safe_visual_url( $visual['small_avif_url'] ) : '';
 		$sizes   = $priority
 			? '(max-width: 680px) calc(100vw - 40px), (max-width: 920px) calc(100vw - 56px), 52vw'
 			: '(max-width: 680px) calc(100vw - 40px), (max-width: 920px) calc(100vw - 56px), 760px';
 		?>
 		<figure class="c99-museum-visual">
 			<picture>
-				<?php if ( '' !== $avif ) : ?><source srcset="<?php echo esc_url( $avif ); ?>" sizes="<?php echo esc_attr( $sizes ); ?>" type="image/avif" /><?php endif; ?>
-				<img src="<?php echo esc_url( $url ); ?>" alt="<?php echo esc_attr( $alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" sizes="<?php echo esc_attr( $sizes ); ?>" loading="<?php echo esc_attr( $loading ); ?>" decoding="async"<?php echo $priority ? ' fetchpriority="high"' : ''; ?> />
+				<?php if ( '' !== $avif ) : ?><source srcset="<?php if ( '' !== $small_avif ) : ?><?php echo esc_url( $small_avif ); ?> 768w, <?php endif; ?><?php echo esc_url( $avif ); ?> <?php echo esc_attr( $width ); ?>w" sizes="<?php echo esc_attr( $sizes ); ?>" type="image/avif" /><?php endif; ?>
+				<img src="<?php echo esc_url( $url ); ?>"<?php if ( '' !== $small_url ) : ?> srcset="<?php echo esc_url( $small_url ); ?> 768w, <?php echo esc_url( $url ); ?> <?php echo esc_attr( $width ); ?>w"<?php endif; ?> alt="<?php echo esc_attr( $alt ); ?>" width="<?php echo esc_attr( $width ); ?>" height="<?php echo esc_attr( $height ); ?>" sizes="<?php echo esc_attr( $sizes ); ?>" loading="<?php echo esc_attr( $loading ); ?>" decoding="async"<?php echo $priority ? ' fetchpriority="high"' : ''; ?> />
 			</picture>
 			<?php if ( ! empty( $visual['caption'] ) ) : ?><figcaption><?php echo esc_html( $visual['caption'] ); ?></figcaption><?php endif; ?>
 		</figure>

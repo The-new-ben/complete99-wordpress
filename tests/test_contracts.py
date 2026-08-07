@@ -97,16 +97,21 @@ class Complete99ContractTests(unittest.TestCase):
         )
         self.assertTrue(manifest["sections"]["changelog"])
 
-    def test_release_1_16_0_manifest_describes_syria_and_preserves_iraqi_history(self) -> None:
+    def test_release_1_17_0_manifest_describes_lebanon_and_preserves_history(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
-        self.assertIn("<h4>1.16.0</h4>", changelog)
-        self.assertIn("culinary-science registry to 551 entities", changelog)
-        self.assertIn("Entity Studio to 607 subjects", changelog)
+        self.assertIn("<h4>1.17.0</h4>", changelog)
+        self.assertIn("culinary-science registry to 672 entities", changelog)
+        self.assertIn("Entity Studio to 728 subjects", changelog)
+        self.assertIn("121 source-bound private Lebanese", changelog)
+        self.assertIn("Lebanese graph from 82 to 203 entities", changelog)
+        self.assertIn("one reviewed noindex Lebanese cuisine gateway", changelog)
+        self.assertIn("24 entities across 19 page owners per language", changelog)
+        self.assertIn("all 121 new Lebanese identities remain private", changelog)
         self.assertIn("86 source-bound private Syrian regional, community and institutional identities", changelog)
         self.assertIn("Syrian graph from 196 to 282 entities", changelog)
         self.assertIn("four fail-closed held identities", changelog)
