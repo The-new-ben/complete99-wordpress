@@ -113,6 +113,12 @@ digests and validation gates when records move into partitioned database storage
 and persistent caches. WordPress and WooCommerce remain the authority through
 that storage transition.
 
+Release 1.14.0 uses culinary-commerce registry version 8 bound to
+culinary-science registry version 14. The version change adds no product
+identity or effective channel offer. Six Lebanese retail listings remain dated,
+private science observations and cannot become an Israeli price, supplier,
+stock record, offer or import path.
+
 ## Private Entity Studio
 
 Release 1.10.0 adds Entity Studio inside WordPress as a copy-on-write commercial
@@ -148,19 +154,55 @@ the active POS projection. Only the exact explicit value `public` is eligible
 for public source-market projection. Missing, malformed and unknown values
 remain private. Payment remains disabled and no role is installed or assigned.
 
+Release 1.14.0 extends Entity Studio to 425 subjects: 369 science identities
+plus the same 56 product identities. Price-basis coverage remains 56 of 56: 36
+unchanged public WooCommerce prices and 20 private planning prices. The 82 new
+Lebanese science identities are private, `noindex`, reference-only subjects and
+do not add a product code, channel offer, stock, supplier, landed-cost or margin
+record. There are zero new active or draft offers. Payment remains disabled and
+no role is installed or assigned.
+
 Commerce status separates `registry_valid` from `commerce_ready`. A valid
 private graph keeps health checks and migrations operational. It does not claim
 active-offer readiness. In this release the registry is valid and culinary
 commerce readiness is false because there are zero effective channel offers.
 
-The cumulative culinary-science registry contains 287 entities. The Syrian
-module contributes 196 identities, including 56 dishes, 55 ingredients, 21
+At release 1.13.0, the cumulative culinary-science registry contained 287
+entities. The Syrian module contributed 196 identities, including 56 dishes, 55 ingredients, 21
 regional or topic hubs, 17 techniques, 17 traditions, 15 preparations, markets,
 restaurants and hospitality institutions, plus three private held market
 observations. One safe consumer gateway is
 projected as `noindex,follow`; the
-other 195 Syrian entities remain private. Across all cuisines, 23 public science
-entities resolve through 18 canonical page owners per language.
+other 195 Syrian entities remain private. Those Syria statements remain the
+preserved 1.13.0 baseline.
+
+At release 1.14.0, the cumulative registry contains 369 entities. The Syrian
+module remains at 196 identities with its one `noindex,follow` gateway and 195
+private identities unchanged. The Lebanese module contributes 82 identities:
+one cuisine, 13 topic hubs, 27 dishes, two preparations, eight ingredients,
+five techniques, nine traditions, five culinary institutions, two markets,
+three restaurants, one compliance rule and six retail listings. Every Lebanese
+identity has `editorial_draft`, `noindex_private`, `private_preview` and
+`reference_only` boundaries. Across all cuisines, the public graph remains 23
+science entities resolving through 18 canonical page owners per language.
+
+## Lebanon research and trade boundary
+
+The Lebanese foundation is an editorial research graph, not a commerce or
+procurement source. None of its 82 identities can enter the public API, create a
+public page, appear in a sitemap, resolve to a WooCommerce product, or create a
+cross-sell, up-sell, supplier, order or stock path. Its six retail listings are
+dated market observations only and do not establish availability in Israel.
+
+Every Lebanese identity references the central private
+`compliance-lebanon-trade-israel-2026` rule. That rule records Israel Ministry
+of Economy and Industry Director-General Instruction 2.4 dated 8 March 2026,
+which lists Lebanon within the broad prohibition on direct or indirect trade
+with enemy states. The system therefore blocks supplier contact, samples,
+payments, third-party purchase routing and representations of delivery from
+Lebanon unless written legal and official authorization is obtained first. The
+record is a fail-closed operating control, not legal advice or evidence that an
+exception has been approved.
 
 ## Identity and language
 

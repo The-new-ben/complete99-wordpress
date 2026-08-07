@@ -2281,7 +2281,7 @@ foreach ( $c99_syrian_foundations_module['sources'] as $syrian_source_id => $syr
 	$sources[ $syrian_source_id ] = $syrian_source;
 }
 $entities = array_merge( $entities, $c99_syrian_foundations_module['entities'] );
-$c99_syrian_private_lookup = array_fill_keys( $c99_syrian_foundations_module['private_entity_ids'], true );
+$c99_private_cuisine_lookup = array_fill_keys( $c99_syrian_foundations_module['private_entity_ids'], true );
 
 $c99_syrian_regional_depth_module = require __DIR__ . '/culinary-science/cuisines/syrian-regional-depth.php';
 foreach ( $c99_syrian_regional_depth_module['sources'] as $syrian_depth_source_id => $syrian_depth_source ) {
@@ -2291,9 +2291,22 @@ foreach ( $c99_syrian_regional_depth_module['sources'] as $syrian_depth_source_i
 	$sources[ $syrian_depth_source_id ] = $syrian_depth_source;
 }
 $entities = array_merge( $entities, $c99_syrian_regional_depth_module['entities'] );
-$c99_syrian_private_lookup = array_replace(
-	$c99_syrian_private_lookup,
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
 	array_fill_keys( $c99_syrian_regional_depth_module['private_entity_ids'], true )
+);
+
+$c99_lebanese_foundations_module = require __DIR__ . '/culinary-science/cuisines/lebanese-foundations.php';
+foreach ( $c99_lebanese_foundations_module['sources'] as $lebanese_source_id => $lebanese_source ) {
+	if ( isset( $sources[ $lebanese_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Lebanese foundations source ID: ' . $lebanese_source_id );
+	}
+	$sources[ $lebanese_source_id ] = $lebanese_source;
+}
+$entities = array_merge( $entities, $c99_lebanese_foundations_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_lebanese_foundations_module['private_entity_ids'], true )
 );
 
 /*
@@ -2386,6 +2399,7 @@ $clusters_by_root = array(
 	'museum-culinary-science' => 'cluster-culinary-science-museum',
 	'cuisine-japanese-washoku' => 'cluster-japanese-washoku',
 	'cuisine-syrian-regional' => 'cluster-syrian-regional-cuisine',
+	'cuisine-lebanese-regional' => 'cluster-lebanese-regional-cuisine',
 	'hub-global-culinary-institutions' => 'cluster-global-culinary-institutions',
 );
 $profile_types = array( 'culinary_institution', 'restaurant', 'market', 'equipment_shop', 'producer', 'supplier' );
@@ -2515,7 +2529,7 @@ foreach ( $entities as &$entity ) {
 	if ( isset( $canonical_overrides[ $entity['id'] ] ) ) {
 		$entity['seo']['canonical_path'] = $canonical_overrides[ $entity['id'] ];
 	}
-	$entity['seo']['route_mode'] = in_array( $entity['type'], $private_route_types, true ) || isset( $c99_syrian_private_lookup[ $entity['id'] ] ) ? 'private' : 'standalone';
+	$entity['seo']['route_mode'] = in_array( $entity['type'], $private_route_types, true ) || isset( $c99_private_cuisine_lookup[ $entity['id'] ] ) ? 'private' : 'standalone';
 	$entity['seo']['owner_entity_id'] = $entity['id'];
 	$entity['seo']['section_id'] = '';
 	if ( isset( $section_owner_map[ $entity['id'] ] ) ) {
@@ -2887,7 +2901,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'culinary-science-2026.08.07.v13',
+	'version'       => 'culinary-science-2026.08.07.v14',
 	'generated_at'  => '2026-08-07',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',

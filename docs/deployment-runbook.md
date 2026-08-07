@@ -93,16 +93,20 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.13.0, require the Entity Studio contracts to prove private
+3. For release 1.14.0, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
    bounded API pagination, orphan-dossier audit access and fail-closed
-   observation identity collisions. Require the cumulative 287-entity
-   culinary-science registry v13, culinary-commerce registry v7 and the exact
-   343-subject Entity Studio index: 287 science identities plus 56 product
-   identities. Require exact evidence chronology and evidence-class alignment
-   with each source type.
+   observation identity collisions. Require the cumulative 369-entity
+   `culinary-science-2026.08.07.v14` registry, the
+   `culinary-commerce-2026.08.07.v8` registry and the exact 425-subject Entity
+   Studio index: 369 science identities plus 56 product identities. Require
+   exact evidence chronology and evidence-class alignment with each source
+   type. Require the Lebanese tranche to contain exactly 82 identities: 1
+   cuisine, 13 topic hubs, 27 dishes, 2 preparations, 8 ingredients, 5
+   techniques, 9 traditions, 5 culinary institutions, 2 markets, 3
+   restaurants, 1 compliance rule and 6 retail listings.
 4. Require the public read-model integrity tests to prove
    recursive canonical hashing, exclusion of the top-level `digest` field,
    `hash_equals` verification and fail-closed handling of missing, malformed,
@@ -123,13 +127,23 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    identities are private held market observations only, with no WooCommerce
    code, channel offer, stock, supplier, landed-cost or margin claim. Require
    zero new active or draft offers and exact 56 of 56 price-basis coverage: 36
-   live prices plus 20 private planning prices. Confirm the Syrian module has 109
-   entities, comprising 106 culinary entities, including 46 ingredient entities,
-   plus three private observations, with one safe noindex consumer gateway and
-   108 private entities. Confirm only
+   live prices plus 20 private planning prices. Preserve the release 1.13.0
+   Syrian graph at exactly 196 identities, including 56 dishes, 55 ingredients,
+   21 regional or topic hubs, 17 techniques, 17 traditions and 15
+   preparations, plus markets, restaurants, hospitality institutions and three
+   private observations. One safe Syrian consumer gateway remains
+   `noindex,follow`; the other 195 Syrian entities remain private. Confirm all
+   82 Lebanese identities remain private, noindex and reference-only. Confirm
+   the six dated Lebanese retail observations create no product identity,
+   WooCommerce price, offer, stock, supplier, import route, landed-cost or POS
+   row. Confirm only
    the exact explicit `public_market_projection=public` value can enter the
    public projection, and require 23 public science entities across 18
    canonical page owners per language.
+   Require the Lebanon contracts to prove the March 2026 direct and indirect
+   trade boundary, separate shared Levantine identities, no raw-meat recipe or
+   consumption guidance, validated-process gates for fermentation and
+   preservation, and the no-foraging-instruction boundary.
 8. Build twice and require identical bytes:
 
    `python scripts/build-plugin-zip.py --verify-reproducible`
@@ -236,6 +250,55 @@ chooses only between finishing an already committed cleanup and rolling back an
 uncommitted mutation. It then proves its row absent and its route 404. The production
 workflow runs this command automatically after a failed deployment step.
 
+## Release 1.14.0 live verification
+
+Before installation:
+
+1. Confirm the reviewed artifact and manifest both report `1.14.0`, the
+   deployment ID is `c99-wp-1.14.0`, and the package integrity metadata matches
+   the deterministic ZIP.
+2. Confirm contract readback reports 369 science identities, 56 product
+   identities, 425 Entity Studio subjects, 36 public WooCommerce products, 23
+   public science entities and 18 public page owners per language.
+3. Confirm the Lebanese cluster reports exactly 82 identities and the exact
+   type distribution documented above. Confirm the Syrian cluster remains 196
+   identities.
+4. Confirm every Lebanese entity has `editorial_draft`, `noindex_private`,
+   `private_preview`, private route and `reference_only` state, with no public
+   API, public page, WooCommerce code, offer, stock, supplier or public
+   taxonomy projection.
+5. Confirm all six retail listings share the observation time
+   `2026-08-07T12:00:00+03:00`, have non-comparable external price evidence and
+   create no active or draft offer.
+
+After installation and cache purge:
+
+1. Verify anonymous health returns version `1.14.0`, deployment ID
+   `c99-wp-1.14.0` and the expected database version.
+2. Verify anonymous public science output still contains exactly 23 entities
+   and the public ownership registry still contains 18 page owners per
+   language. `cuisine-lebanese-regional` and every other Lebanese identity must
+   be absent.
+3. Verify `robots.txt`, WordPress search, the managed sitemap, museum sitemap
+   provider, public catalog, POS projection and page source contain no
+   Lebanese private identity, benchmark price, visual prompt, supplier claim,
+   Product schema or Offer schema.
+4. Request the Hebrew and English Lebanon canonical candidates with cache
+   busting. They must not render a public Lebanese foundation page while route
+   mode remains private. No redirect may expose a private child entity.
+5. Verify the six observed prices are visible only through an authenticated
+   private review path and are labeled as dated external observations rather
+   than Complete99 prices, products or offers.
+6. Verify the 36-product public store, cart, stock authority, filters and POS
+   projection are unchanged. Payment remains in its pre-existing held state.
+7. Run real Chrome acceptance on the existing Hebrew and English home,
+   culinary museum and pantry at desktop and 390 CSS pixels. Check direction,
+   canonical and hreflang, keyboard navigation, focus, overflow, images and
+   first-party console errors.
+8. Confirm the deployment bridge row is absent, its route returns 404, final
+   cache-busting requests show the 1.14.0 release marker and rollback evidence
+   remains recoverable.
+
 ## Completion evidence
 
 A production release is complete only when the non-secret audit JSON shows:
@@ -253,9 +316,19 @@ A production release is complete only when the non-secret audit JSON shows:
   version 1.9.0 additions;
 - a private Entity Studio registration and invariant check with no public route,
   no new role and no WooCommerce write;
-- five private draft planning offers, zero active new offers and 41 of 41
-  product identities with either a current live price or a private planning
-  price;
+- exact registry receipts for culinary science v14 and culinary commerce v8,
+  with 369 science identities, 56 product identities and 425 Entity Studio
+  subjects;
+- exact 56 of 56 product price-basis coverage, comprising 36 live prices and 20
+  private planning prices, with zero active or draft offer added by 1.14.0;
+- exact 82-identity Lebanese type counts and proof that all 82 remain private,
+  noindex and reference-only;
+- six dated Lebanese retail observations with no product identity, offer,
+  stock, supplier, import route, landed cost or public price projection;
+- an unchanged 196-identity Syrian graph, 23 public science entities and 18
+  public canonical page owners per language;
+- negative public evidence for the Lebanon cluster across API, search, sitemap,
+  rendered routes, public catalog, POS and structured data;
 - `sync_configured: true` after an exact secret checkpoint, without exposing the
   value;
 - anonymous `robots.txt` content and SHA-256 matching the managed policy;
