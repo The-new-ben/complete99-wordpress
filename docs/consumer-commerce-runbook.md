@@ -1,9 +1,42 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-07
-Release target: Complete99 Platform 1.14.0
+Release target: Complete99 Platform 1.15.0
 
-## Current 1.14.0 Lebanese cuisine foundation boundary
+## Current 1.15.0 Iraqi cuisine foundation boundary
+
+Release 1.15.0 expands the culinary-science registry from 369 to 465 entities
+and Entity Studio from 425 to 521 subjects: 465 science identities plus the
+same 56 product identities. The registry contracts are
+`culinary-science-2026.08.07.v15` and
+`culinary-commerce-2026.08.07.v9`. The public boundary remains exactly 23
+science entities across 18 canonical page owners per language, and the public
+WooCommerce catalog remains exactly 36 owner-authorized products.
+
+The Iraqi foundation contains exactly 96 private identities: 1 cuisine, 16
+regional or topic hubs, 32 dishes, 4 preparations, 12 ingredients, 8
+techniques, 10 traditions, 5 culinary institutions, 3 markets, 2 restaurants,
+1 trade-compliance rule and 2 guides. None has a public page, API row,
+WooCommerce product code, price observation, offer, stock, supplier, cross-sell,
+up-sell or POS row.
+
+Regional ownership stays explicit across Baghdad, Mosul and Ninewa, Basra and
+the Shatt al-Arab, the Middle Euphrates, the southern marshes, Iraqi Kurdistan,
+Kirkuk and Diyala. Jewish, Kurdish, Marsh Arab and family records remain scoped
+to their sources and do not replace the wider Iraqi account. Shared kubba,
+dolma, biryani, qeema, tannour, turshi, basturma, kebab, kofta and sayadiyah
+families are linked for comparison without merging identities or declaring
+exclusive origin. Sabich and amba link to their existing owners instead of
+creating competing public pages.
+
+Every Iraqi record references the central Israel-Iraq trade-compliance rule.
+No supplier contact, sample, order, payment, third-country workaround,
+availability claim or delivery path is created without current written official
+authorization. Safety gates cover freshwater and dried fish, cooked rice,
+offal, overnight cooking and hot holding, fermented vegetables, cultured dairy,
+date syrup concentration, open fire and wild plants.
+
+## Historical 1.14.0 Lebanese cuisine foundation boundary
 
 Release 1.14.0 expands the culinary-science registry from 287 to 369 entities
 and Entity Studio from 343 to 425 subjects: 369 science identities plus the

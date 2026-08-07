@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-07
-Status: source release target 1.14.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 369 science identities, 425 Entity Studio subjects and 23 public science entities across 18 page owners per language
+Status: source release target 1.15.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 465 science identities, 521 Entity Studio subjects and 23 public science entities across 18 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -74,6 +74,9 @@ copy.
 - All 82 Lebanese research identities, including their sources, institutional
   and market benchmarks, retail observations and trade-compliance record. They
   remain private, `noindex` and reference-only.
+- All 96 Iraqi research identities, including regional, community, scientific,
+  institutional, safety and trade-compliance records. They remain private,
+  `noindex` and reference-only.
 
 No Complete99 worker role is installed or assigned by release 1.6.0. Role
 definitions remain dormant infrastructure. The commerce outbox has no worker
@@ -188,10 +191,10 @@ Release 1.12.0 creates contracts and checks, not worker assignments.
 - Its dossiers remain private and cannot become public pages or active offers
   through the Studio.
 
-Release 1.14.0 expands Entity Studio to 425 subjects: 369 science identities
+Release 1.15.0 expands Entity Studio to 521 subjects: 465 science identities
 plus the unchanged 56 product identities. Culinary science is registry version
-14 and culinary commerce is registry version 8. The 82 Lebanese identities do
-not create a product, offer, supplier, stock record or purchasing path. The
+15 and culinary commerce is registry version 9. The 96 Iraqi identities do not
+create a product, price observation, offer, supplier, stock record or purchasing path. The
 public graph remains 23 science entities across 18 canonical page owners per
 language.
 
@@ -326,6 +329,20 @@ official authorization. The six retail observations are research benchmarks,
 not lawful supply routes, offers, landed-cost inputs or availability in Israel.
 This is a fail-closed operating rule, not legal advice or an approved
 exception.
+
+Release 1.15.0 preserves the Syrian and Lebanese facts and expands the
+cumulative science registry to 465 entities by adding a 96-identity Iraqi
+regional and community foundation. Entity Studio resolves 521 subjects: 465
+science identities plus the unchanged 56 product identities. All Iraqi
+identities remain private, `noindex` and reference-only, and create no price
+observation, product, offer, supplier, stock record, POS row or public route.
+
+The Iraqi graph distinguishes Baghdad, Mosul and Ninewa, Basra and the Shatt
+al-Arab, the Middle Euphrates, the southern marshes, Iraqi Kurdistan, Kirkuk and
+Diyala. Jewish, Kurdish, Marsh Arab and family records remain within their
+documented scope. Shared regional dishes are connected for comparison without
+exclusive-origin claims. A central private trade rule and separate food-safety
+gates fail closed before any future commercial or operational use.
 
 ## 9. Integrations and future hardware
 

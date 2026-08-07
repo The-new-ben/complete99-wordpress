@@ -97,13 +97,22 @@ class Complete99ContractTests(unittest.TestCase):
         )
         self.assertTrue(manifest["sections"]["changelog"])
 
-    def test_release_1_14_0_manifest_describes_lebanon_and_preserves_syrian_history(self) -> None:
+    def test_release_1_15_0_manifest_describes_iraq_and_preserves_lebanese_history(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
+        self.assertIn("<h4>1.15.0</h4>", changelog)
+        self.assertIn("culinary-science registry to 465 entities", changelog)
+        self.assertIn("Entity Studio to 521 subjects", changelog)
+        self.assertIn("96-identity private Iraqi regional and community foundation", changelog)
+        self.assertIn("32 dishes, 16 regional or topic hubs", changelog)
+        self.assertIn("central trade-compliance rule", changelog)
+        self.assertIn("All 96 Iraqi identities remain private", changelog)
+        self.assertIn("exact 36-product public WooCommerce store", changelog)
+        self.assertIn("23 public science entities", changelog)
         self.assertIn("<h4>1.14.0</h4>", changelog)
         self.assertIn("culinary-science registry to 369 entities", changelog)
         self.assertIn("Entity Studio to 425 subjects", changelog)

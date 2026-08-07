@@ -11,25 +11,30 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.14.0`. Production truth comes
+The source tree targets Complete99 Platform `1.15.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.14.0 expands the bilingual culinary-science registry to 369 entities
-and Entity Studio to 425 subjects: 369 science identities plus the unchanged
-56 product identities. It adds an 82-entity Lebanese regional foundation with
-one cuisine, 13 topic hubs, 27 dishes, two preparations, eight ingredients,
-five techniques, nine traditions, five culinary institutions, two markets,
-three restaurants, one compliance rule and six retail listings. Every Lebanese
+Release 1.15.0 expands the bilingual culinary-science registry to 465 entities
+and Entity Studio to 521 subjects: 465 science identities plus the unchanged
+56 product identities. It adds a 96-identity Iraqi regional and community
+foundation with one cuisine, 16 topic hubs, 32 dishes, four preparations, 12
+ingredients, eight techniques, ten traditions, five culinary institutions,
+three markets, two restaurants, one compliance rule and two guides. Every Iraqi
 identity is private, `noindex` and reference-only. None is a public page,
 supplier, product, offer, order, stock record or import route. The central
-Israel-Lebanon trade rule applies to all 82 identities and keeps direct or
-indirect trade activity blocked unless the required written legal and official
-authorization exists. Culinary science is version 14 and culinary commerce is
-version 8. The release creates zero new offers and preserves the 36-product
+Israel-Iraq trade rule applies to all 96 identities and keeps direct or
+indirect trade activity blocked unless current written official authorization
+exists. Culinary science is version 15 and culinary commerce is version 9. The
+release creates zero new offers and preserves the 36-product
 public WooCommerce catalog, all 56 product identities, 20 private planning
 prices, 23 public science identities and 18 canonical public page owners per
 language.
+
+Release 1.14.0 added the 82-identity private Lebanese regional foundation and
+expanded the registry to 369 science identities and Entity Studio to 425
+subjects. Its trade, identity, safety and non-commerce boundaries remain in
+force unchanged.
 
 Release 1.13.0 expands the bilingual culinary-science registry to 287 entities
 and Entity Studio to 343 subjects: 287 science identities plus all 56 known
@@ -42,11 +47,11 @@ identities remain private, `noindex` and reference-only. The exact 36-product
 public store, 23 public science identities, prices, stock, cart, public routes,
 payment-disabled state and no-role boundary remain unchanged.
 
-The commerce registry is version 8 and binds culinary-science registry version
-14. It preserves the 56 existing product identities, 36 public WooCommerce
-products and 20 private planning prices. The six Lebanese retail listings are
-private science observations only and do not create a product identity, offer,
-supplier, stock record or purchasing route. The earlier pomegranate-concentrate
+The commerce registry is version 9 and binds culinary-science registry version
+15. It preserves the 56 existing product identities, 36 public WooCommerce
+products and 20 private planning prices. The Iraqi tranche adds no retail
+listing, price observation, product identity, offer, supplier, stock record or
+purchasing route. The earlier Lebanese retail observations, pomegranate-concentrate
 identity boundary, comparison-only treatment of pomegranate molasses, exclusion
 of techniques from product cross-sells and separation of registry validity from
 active-offer readiness remain in force.
@@ -93,9 +98,9 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The current 1.14.0 culinary-science registry contains 369 bounded entities. The
-196-identity Syrian module and its release 1.13.0 boundaries remain unchanged.
-All 82 Lebanese identities are private, `noindex` and reference-only.
+The current 1.15.0 culinary-science registry contains 465 bounded entities. The
+196-identity Syrian and 82-identity Lebanese modules remain unchanged. All 96
+Iraqi identities are private, `noindex` and reference-only.
 Twenty-three public entities continue to project through 18 canonical page
 owners per language, for 36 distinct Hebrew and English routes. Shared page
 ownership prevents closely related entities from competing for the same search
