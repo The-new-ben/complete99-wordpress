@@ -11,12 +11,28 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.12.1`. Production truth comes
+The source tree targets Complete99 Platform `1.13.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.12.1 replaces the final construction-style phrase in the English
-pantry with direct cooking language and otherwise preserves the 1.12.0 public
+Release 1.13.0 expands the bilingual culinary-science registry to 287 entities
+and Entity Studio to 343 subjects: 287 science identities plus all 56 known
+product identities. The Syrian graph now contains 196 entities. Its 86 new
+regional-depth identities cover Aleppo, Damascus, Homs, Hama, the coast,
+Jazira, the Euphrates, Palmyra, Idlib, Afrin, Suwayda and Hauran, alongside
+source-scoped Jewish, Assyrian, Kurdish, Druze and family foodways. One separate
+pomegranate-concentrate identity preserves the product boundary. All 87 new
+identities remain private, `noindex` and reference-only. The exact 36-product
+public store, 23 public science identities, prices, stock, cart, public routes,
+payment-disabled state and no-role boundary remain unchanged.
+
+The commerce registry is version 7. It binds the observed pomegranate
+concentrate to its exact retail-listing identity, treats pomegranate molasses as
+comparison only, excludes techniques from product cross-sells and reports
+registry validity separately from active-offer readiness.
+
+Release 1.12.1 replaced the final construction-style phrase in the English
+pantry with direct cooking language and otherwise preserved the 1.12.0 public
 catalog, Syrian foundation and operational boundaries unchanged.
 
 Release 1.12.0 expands the bilingual culinary-science registry to 200 entities
@@ -57,7 +73,7 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The current 1.12.1 culinary-science registry contains 200 bounded entities.
+The current 1.13.0 culinary-science registry contains 287 bounded entities.
 Twenty-three public entities are projected through 18 canonical page owners per
 language, for 36 distinct Hebrew and English routes. Shared page
 ownership prevents closely related entities from competing for the same search

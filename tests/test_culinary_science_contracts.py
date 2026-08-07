@@ -27,7 +27,7 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v5"
-EXPECTED_VERSION = "culinary-science-2026.08.06.v12"
+EXPECTED_VERSION = "culinary-science-2026.08.07.v13"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",

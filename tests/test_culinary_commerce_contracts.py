@@ -27,7 +27,7 @@ SYRIAN_COMMERCE_DATA = (
 )
 
 EXPECTED_SCHEMA = "complete99-culinary-commerce-registry/v2"
-EXPECTED_VERSION = "culinary-commerce-2026.08.06.v6"
+EXPECTED_VERSION = "culinary-commerce-2026.08.07.v7"
 EXPECTED_COUNTS = {
     "countries": 5,
     "currencies": 5,
@@ -246,8 +246,7 @@ foreach ($subject_mismatch['market_observations'] as $offset => $observation) {{
     $product = $products_by_id[$variant['product_id']];
     foreach ($science['entities'] as $candidate_source) {{
         if (!in_array($candidate_source['type'], array('retail_listing', 'market_observation'), true)) {{ continue; }}
-        $targets = array($candidate_source['parent_id']);
-        foreach ($candidate_source['relations'] as $relation) {{ $targets[] = $relation['target_id']; }}
+        $targets = array($candidate_source['id'], $candidate_source['parent_id']);
         if (!in_array($product['knowledge_entity_id'], $targets, true)) {{
             $subject_mismatch['market_observations'][$offset]['source_entity_id'] = $candidate_source['id'];
             $subject_mutation_prepared = true;
@@ -258,6 +257,15 @@ foreach ($subject_mismatch['market_observations'] as $offset => $observation) {{
 $mutations['observation_subject_mismatch'] = $subject_mutation_prepared
     ? c99_validation_result($subject_mismatch)
     : array('valid' => true, 'code' => 'mutation_not_prepared', 'data' => array());
+
+$relation_target_identity = $registry;
+foreach ($relation_target_identity['products'] as $offset => $product) {{
+    if ($product['id'] === 'product-keter-harimon-pomegranate-concentrate-250ml') {{
+        $relation_target_identity['products'][$offset]['knowledge_entity_id'] = 'ingredient-syrian-pomegranate-molasses';
+        break;
+    }}
+}}
+$mutations['relation_target_as_product_identity'] = c99_validation_result($relation_target_identity);
 
 Complete99_Culinary_Commerce::register_routes();
 $baseline = c99_validation_result($registry);
@@ -807,6 +815,8 @@ def test_registry_validates_against_the_real_science_registry(
     assert registry["version"] == EXPECTED_VERSION
     assert registry["knowledge_registry_version"] == science["version"]
     assert commerce_payload["status"]["ready"] is True
+    assert commerce_payload["status"]["registry_valid"] is True
+    assert commerce_payload["status"]["commerce_ready"] is False
 
 
 def test_v2_controlled_vocabularies_and_integration_consumers_are_explicit(
@@ -955,7 +965,7 @@ def test_syrian_retail_tranche_is_private_research_without_commercial_wiring(
             "source_url": "https://www.bigdabach.co.il/?catalogProduct=6279611",
         },
         "keter-harimon-pomegranate-concentrate-250ml": {
-            "knowledge_entity_id": "ingredient-syrian-pomegranate-molasses",
+            "knowledge_entity_id": "ingredient-pomegranate-concentrate",
             "amount_minor": 2990,
             "normalized_amount_minor": 11960,
             "normalized_unit_code": "l",
@@ -1508,9 +1518,7 @@ def test_observations_match_their_scientific_listing_subjects(
         product = products[variant["product_id"]]
         source = science_entities[observation["source_entity_id"]]
         assert source["type"] in {"retail_listing", "market_observation"}
-        targets = {source["parent_id"]} | {
-            relation["target_id"] for relation in source["relations"]
-        }
+        targets = {source["id"], source["parent_id"]}
         assert product["knowledge_entity_id"] in targets, observation["id"]
 
 
@@ -1636,6 +1644,7 @@ def test_plugin_require_boot_migration_and_review_lab_wiring() -> None:
     assert science_invariant < commerce_invariant < version_write < commit
 
     assert "Complete99_Culinary_Commerce::status()" in health
+    assert "'culinary_commerce_registry_valid' =>" in health
     assert "'culinary_commerce_ready' =>" in health
     assert "Complete99_Culinary_Commerce::editorial_snapshot()" in review
     assert "'culinary_commerce_graph' => array(" in review
@@ -1651,6 +1660,52 @@ def test_plugin_require_boot_migration_and_review_lab_wiring() -> None:
         assert f"'{collection}'" in review
 
 
+def test_fresh_commerce_registry_refreshes_its_science_dependency() -> None:
+    plugin_path = _php_path(PLUGIN) + "/"
+    science_class = _php_path(SCIENCE_CLASS)
+    commerce_class = _php_path(COMMERCE_CLASS)
+    payload = _run_php(
+        f"""
+        define('ABSPATH', __DIR__);
+        define('COMPLETE99_PLATFORM_DIR', '{plugin_path}');
+        class WP_Error {{
+            private $code;
+            private $message;
+            private $data;
+            public function __construct($code, $message, $data = array()) {{
+                $this->code = $code;
+                $this->message = $message;
+                $this->data = $data;
+            }}
+            public function get_error_code() {{ return $this->code; }}
+            public function get_error_message() {{ return $this->message; }}
+            public function get_error_data() {{ return $this->data; }}
+        }}
+        function is_wp_error($value) {{ return $value instanceof WP_Error; }}
+        function wp_json_encode($value, $flags = 0) {{ return json_encode($value, $flags); }}
+        require '{science_class}';
+        require '{commerce_class}';
+        $stale = Complete99_Culinary_Science::registry(true);
+        $stale['version'] = 'culinary-science-stale-test';
+        $property = new ReflectionProperty('Complete99_Culinary_Science', 'registry_cache');
+        $property->setAccessible(true);
+        $property->setValue(null, $stale);
+        $commerce = Complete99_Culinary_Commerce::registry(true);
+        echo json_encode(array(
+            'is_error' => is_wp_error($commerce),
+            'knowledge_version' => is_wp_error($commerce) ? '' : $commerce['knowledge_registry_version'],
+            'science_version' => Complete99_Culinary_Science::registry()['version'],
+        ));
+        """
+    )
+    result = json.loads(payload)
+    assert result == {
+        "is_error": False,
+        "knowledge_version": "culinary-science-2026.08.07.v13",
+        "science_version": "culinary-science-2026.08.07.v13",
+    }
+
+
 def test_active_offer_without_all_commercial_gates_is_rejected(
     commerce_payload: dict[str, Any],
 ) -> None:
@@ -1664,6 +1719,15 @@ def test_observation_subject_mismatch_is_rejected(
     commerce_payload: dict[str, Any],
 ) -> None:
     result = commerce_payload["mutations"]["observation_subject_mismatch"]
+    assert result["valid"] is False
+    assert _error_code(result) == "complete99_commerce_registry_invalid"
+    assert _error_path(result).endswith(".subject_mismatch")
+
+
+def test_relation_target_cannot_substitute_for_exact_product_identity(
+    commerce_payload: dict[str, Any],
+) -> None:
+    result = commerce_payload["mutations"]["relation_target_as_product_identity"]
     assert result["valid"] is False
     assert _error_code(result) == "complete99_commerce_registry_invalid"
     assert _error_path(result).endswith(".subject_mismatch")

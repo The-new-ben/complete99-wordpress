@@ -1,23 +1,25 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-07
-Release target: Complete99 Platform 1.12.0
+Release target: Complete99 Platform 1.13.0
 
-## Current 1.12.0 Syrian foundation boundary
+## Current 1.13.0 Syrian regional-depth boundary
 
-Release 1.12.0 expands the science registry to 200 entities and Entity Studio
-to 256 subjects: 200 science identities plus 56 product identities. The Syrian
-module contains 109 entities: 106 culinary entities, including 46 ingredient
-entities, plus three private held market observations. One safe Syrian consumer
+Release 1.13.0 expands the science registry to 287 entities and Entity Studio
+to 343 subjects: 287 science identities plus 56 product identities. The Syrian
+module contains 196 identities, including 56 dishes, 55 ingredients, 21
+regional or topic hubs, 17 techniques, 17 traditions, 15 preparations, markets,
+restaurants and hospitality institutions, plus three private held market
+observations. One safe Syrian consumer
 gateway is projected as
-`noindex,follow`; the other 108 Syrian entities remain private. The cumulative
+`noindex,follow`; the other 195 Syrian entities remain private. The cumulative
 public science projection contains 23 entities across 18 canonical page owners
 per language.
 
 Price-basis coverage is 56 of 56: 36 unchanged live WooCommerce prices and 20
 private planning prices. The three Syrian product identities add private market
 observations only. They have no WooCommerce product code, channel offer, stock,
-supplier, landed-cost or margin claim. Release 1.12.0 creates no new public or
+supplier, landed-cost or margin claim. Release 1.13.0 creates no new public or
 private WooCommerce offer, activates no payment gateway, installs no role and
 assigns no worker. The 36-product public catalog, live stock and active POS
 projection remain unchanged. Public Japanese science wording now answers what a

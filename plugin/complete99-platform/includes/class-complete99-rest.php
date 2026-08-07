@@ -57,6 +57,7 @@ final class Complete99_REST {
 		$science        = $science_loaded ? Complete99_Culinary_Science::status() : array();
 		$commerce_graph_loaded = class_exists( 'Complete99_Culinary_Commerce', false );
 		$commerce_graph = $commerce_graph_loaded ? Complete99_Culinary_Commerce::status() : array();
+		$commerce_registry_valid = $commerce_graph_loaded && ! empty( $commerce_graph['registry_valid'] );
 		$database_version = (string) get_option( 'complete99_platform_version', '' );
 		if ( Complete99_Platform::migration_failed()
 			|| COMPLETE99_PLATFORM_VERSION !== $database_version ) {
@@ -67,7 +68,7 @@ final class Complete99_REST {
 			);
 		}
 		if ( ( $science_loaded && empty( $science['ready'] ) )
-			|| ( $commerce_graph_loaded && empty( $commerce_graph['ready'] ) ) ) {
+			|| ( $commerce_graph_loaded && ! $commerce_registry_valid ) ) {
 			return new WP_Error(
 				'complete99_culinary_graph_unavailable',
 				'Complete99 culinary data is temporarily unavailable.',
@@ -92,7 +93,8 @@ final class Complete99_REST {
 					'ttl_seconds' => self::PUBLIC_MODEL_TTL,
 				),
 				'culinary_science_ready' => $science_loaded && ! empty( $science['ready'] ),
-				'culinary_commerce_ready' => $commerce_graph_loaded && ! empty( $commerce_graph['ready'] ),
+				'culinary_commerce_registry_valid' => $commerce_registry_valid,
+				'culinary_commerce_ready' => $commerce_graph_loaded && ! empty( $commerce_graph['commerce_ready'] ),
 			)
 		);
 	}

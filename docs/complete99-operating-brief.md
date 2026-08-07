@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-07
-Status: source release target 1.12.0, with 12 dishes, 36 unchanged public products, 20 private planning prices and 23 public science entities across 18 page owners per language
+Status: source release target 1.13.0, with 12 public dishes, 36 unchanged public products, 20 private planning prices, 287 science identities and 23 public science entities across 18 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -281,16 +281,17 @@ Israel conversions and ILS planning prices are documented in
 private, held, at planning stock zero and outside WooCommerce until exact
 supplier, landed-cost, compliance, media and acceptance gates pass.
 
-Release 1.12.0 extends coverage to all 56 product identities. Three Syrian
+Release 1.13.0 preserves coverage across all 56 product identities. Three Syrian
 ingredient observations provide private planning prices only. They remain held,
 have no WooCommerce product code, channel offer, stock, supplier, landed-cost or
 margin claim, and cannot enter the public store or active POS projection. The
-cumulative science registry contains 200 entities and Entity Studio resolves
-256 subjects: 200 science identities plus 56 product identities. The Syrian
-module contains 109 entities: 106 culinary entities, including 46 ingredient
-entities, plus the three private held market observations. One safe Syrian
+cumulative science registry contains 287 entities and Entity Studio resolves
+343 subjects: 287 science identities plus 56 product identities. The Syrian
+module contains 196 identities, including 56 dishes, 55 ingredients, 21
+regional or topic hubs, 17 techniques, 17 traditions and 15 preparations, plus
+the three private held market observations. One safe Syrian
 consumer gateway is `noindex,follow`, the
-other 108 Syrian entities remain private, and the public science graph contains
+other 195 Syrian entities remain private, and the public science graph contains
 23 entities across 18 canonical page owners per language.
 
 ## 9. Integrations and future hardware
