@@ -11,9 +11,24 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.17.0`. Production truth comes
+The source tree targets Complete99 Platform `1.18.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.18.0 deepens the existing bilingual classical-dashi journey without
+creating a competing page or an unverified offer. Dashi extraction now appears
+inside the ichiban-dashi guide, while L-glutamate and inosine monophosphate
+appear inside the umami guide. The three reviewed sections have original
+responsive visuals, bilingual alternative text, source-bound claims and
+natural discovery paths from Japanese ingredients, food science and cooking
+techniques. All remain `noindex,follow` until the separate recipe-testing and
+long-form search gate passes. The public science graph grows from 24 to 27
+entities while preserving 19 canonical page owners per language, 38 bilingual
+routes, 36 WooCommerce products and disabled payment gateways. The registry
+remains at 672 entities and now records 370 sources; the 84-identity Japanese
+cluster is split into 24 public and 60 private records. The release
+also adds a site-wide favicon declaration and marks add-to-cart links
+`nofollow` so crawlers do not trigger cart mutations.
 
 Release 1.17.0 expands the bilingual culinary-science registry to 672 entities
 and Entity Studio to 728 subjects: 672 science identities plus the unchanged
@@ -70,8 +85,8 @@ identities remain private, `noindex` and reference-only. The exact 36-product
 public store, 23 public science identities, prices, stock, cart, public routes,
 payment-disabled state and no-role boundary remain unchanged.
 
-The commerce registry is version 11 and binds culinary-science registry version
-17. It preserves the 56 existing product identities, 36 public WooCommerce
+The commerce registry is version 12 and binds culinary-science registry version
+18. It preserves the 56 existing product identities, 36 public WooCommerce
 products and 20 private planning prices. The Lebanese expansion adds no retail
 listing, price observation, product identity, offer, supplier, stock record or
 purchasing route. The earlier Syrian and Iraqi trade boundaries, Lebanese retail
@@ -122,13 +137,13 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The current 1.17.0 culinary-science registry contains 672 bounded entities. The
+The current 1.18.0 culinary-science registry contains 672 bounded entities. The
 Syrian graph contains 282 identities, the Lebanese graph contains 203 and the
 Iraqi graph contains 96. All 121 new Lebanese identities, the other 81
 Lebanese foundation identities, and all 96 Iraqi identities are
 private, `noindex` and reference-only. The 86 Syrian identities added in
 1.16.0 remain private under their existing release boundary.
-Twenty-four public entities project through 19 canonical page owners per
+Twenty-seven public entities project through 19 canonical page owners per
 language, for 38 distinct Hebrew and English routes. Shared page
 ownership prevents closely related entities from competing for the same search
 intent. The current pages remain `noindex,follow` and outside the sitemap until

@@ -163,9 +163,9 @@ def _new_entities(payload: dict) -> dict[str, dict]:
 def test_release_registry_module_and_source_counts_are_exact(payload: dict) -> None:
     registry = payload["registry"]
     modules = payload["modules"]
-    assert registry["version"] == "culinary-science-2026.08.07.v17"
+    assert registry["version"] == "culinary-science-2026.08.07.v18"
     assert len(registry["entities"]) == 672
-    assert len(registry["sources"]) == 369
+    assert len(registry["sources"]) == 370
     assert tuple(len(module["entities"]) for module in modules) == (
         EXPECTED_MODULE_COUNTS
     )
@@ -173,7 +173,7 @@ def test_release_registry_module_and_source_counts_are_exact(payload: dict) -> N
         EXPECTED_MODULE_SOURCE_COUNTS
     )
     assert all(
-        module["version"] == "culinary-science-2026.08.07.v17"
+        module["version"] == "culinary-science-2026.08.07.v18"
         for module in modules
     )
 
@@ -309,7 +309,7 @@ def test_only_reviewed_lebanese_gateway_is_added_to_public_boundary(payload: dic
     public_entities = [
         entity for entity in registry["entities"] if entity["publication"]["public_page"]
     ]
-    assert len(public_entities) == 24
+    assert len(public_entities) == 27
     assert len({entity["seo"]["owner_entity_id"] for entity in public_entities}) == 19
     public_ids = {entity["id"] for entity in public_entities}
     assert "cuisine-lebanese-regional" in public_ids

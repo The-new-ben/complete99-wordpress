@@ -119,6 +119,12 @@ identity or effective channel offer. The 121-identity Lebanese expansion
 contains no price or retail observation. Its entities cannot become a price,
 supplier, stock record, offer or import path by implication.
 
+Release 1.18.0 uses culinary-commerce registry version 12 bound to
+culinary-science registry version 18. The dependency update is versioned even
+though it adds no product identity or effective channel offer. Three reviewed
+Japanese records become public sections inside the existing dashi and umami
+owners.
+
 ## Private Entity Studio
 
 Release 1.10.0 adds Entity Studio inside WordPress as a copy-on-write commercial
@@ -233,6 +239,15 @@ at 96. One reviewed Lebanese cuisine root is promoted as a noindex public
 gateway, while all 121 new records and the other 81 foundation records remain
 private. The public graph therefore contains 24 science entities across 19
 canonical page owners per language.
+
+At release 1.18.0, the cumulative registry remains at 672 entities and Entity
+Studio remains at 728 subjects. Controlled dashi extraction, L-glutamate and
+inosine monophosphate become reviewed noindex public sections inside the
+existing ichiban-dashi and umami page owners. The public graph therefore grows
+to 27 science entities while remaining at 19 canonical page owners per language
+and 38 bilingual routes. The 84-identity Japanese cluster contains 24 public and
+60 private records. The WooCommerce catalog remains exactly 36 products,
+and no product, price, stock, supplier, bundle or payment state is added.
 
 ## Syria regional and community boundary
 

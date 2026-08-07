@@ -729,12 +729,12 @@ $c99_iraqi_depth_comparable_counts = $c99_iraqi_depth_counts;
 ksort( $c99_iraqi_depth_expected_counts );
 ksort( $c99_iraqi_depth_comparable_counts );
 if ( $c99_iraqi_depth_expected_counts !== $c99_iraqi_depth_comparable_counts || 56 !== count( $c99_iraqi_depth_entities ) ) {
-	throw new RuntimeException( 'Complete99 Iraqi regional depth entity counts do not match the v17 contract.' );
+	throw new RuntimeException( 'Complete99 Iraqi regional depth entity counts do not match the v18 contract.' );
 }
 
 return array(
 	'schema' => 'complete99-iraqi-regional-depth-module/v1',
-	'version' => 'culinary-science-2026.08.07.v17',
+	'version' => 'culinary-science-2026.08.07.v18',
 	'sources' => $c99_iraqi_depth_sources,
 	'entities' => $c99_iraqi_depth_entities,
 	'private_entity_ids' => array_column( $c99_iraqi_depth_entities, 'id' ),

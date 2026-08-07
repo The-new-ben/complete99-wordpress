@@ -133,6 +133,76 @@ These assets must not be used with fabricated badges, medical claims,
 certifications, supplier branding, current availability statements, or a
 public add-to-cart control before the corresponding acceptance gates pass.
 
+### Release 1.18.0 controlled dashi and molecule-context additions
+
+OpenAI's built-in image generation created three source PNG files for
+Complete99 on 2026-08-07 in generation session/thread
+`019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b`. The project PNGs are byte-identical to
+the named generated sources. ImageMagick produced the matched WebP and AVIF
+delivery derivatives without resizing or cropping; all nine artifacts are 1536
+by 1024 pixels.
+
+Retained generated source paths:
+
+- `C:\Users\pro\.codex\generated_images\019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b\exec-4d642096-a934-4efd-961e-4e4353b53afc.png`
+- `C:\Users\pro\.codex\generated_images\019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b\exec-f3c7ebd7-39dc-4f31-a30e-f0d468101cea.png`
+- `C:\Users\pro\.codex\generated_images\019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b\exec-424a8a6d-8b3e-4f62-9252-27ac19a7c5b3.png`
+
+| Asset | Generated source | Knowledge binding | Public-use boundary |
+|---|---|---|---|
+| Controlled dashi extraction | `exec-4d642096-a934-4efd-961e-4e4353b53afc.png` | `technique-dashi-extraction` | Public teaching illustration for the matching knowledge page; not an exact recipe, universal protocol or readable measurement record |
+| L-glutamate context | `exec-f3c7ebd7-39dc-4f31-a30e-f0d468101cea.png` | `molecule-l-glutamate` | Public editorial context for the matching knowledge page; the glass sculpture is not an exact molecular structure, chemical diagram or concentration result |
+| Inosine monophosphate context | `exec-424a8a6d-8b3e-4f62-9252-27ac19a7c5b3.png` | `molecule-inosine-monophosphate` | Public editorial context for the matching knowledge page; the glass sculpture is not an exact molecular structure, chemical diagram or concentration result |
+
+#### Bilingual alt text
+
+| Project basename | Hebrew alt | English alt |
+|---|---|---|
+| `c99-science-dashi-extraction-v01` | כלי זכוכית עם דאשי זהוב, קומבו, מדחום ומסננת בתהליך מיצוי מבוקר | Glass vessel with golden dashi, kombu, thermometer and strainer in a controlled extraction setup |
+| `c99-science-l-glutamate-v01` | קומבו ודאשי צלול לצד פסל זכוכית מופשט הממחיש הקשר מדעי לגלוטמט | Kombu and clear dashi beside an abstract glass sculpture suggesting glutamate science |
+| `c99-science-inosine-monophosphate-v01` | שבבי קצואובושי ודאשי צלול לצד פסל זכוכית מופשט הממחיש הקשר מדעי ל-IMP | Katsuobushi shavings and clear dashi beside an abstract glass sculpture suggesting IMP science |
+
+#### Prompt records
+
+Controlled dashi extraction prompt:
+
+```text
+Photorealistic culinary studio photograph of controlled kombu dashi extraction in a clear heat-safe vessel, pale golden stock, one natural kombu sheet, unbranded probe thermometer, timer, fine strainer and second vessel arranged in a restrained Japanese teaching kitchen, no readable measurements, labels, logos or packaging.
+```
+
+L-glutamate prompt:
+
+```text
+Photorealistic culinary-science still life of kombu and clear dashi beside an explicitly abstract translucent glass sculpture suggesting molecular context without depicting an exact chemical structure, dark museum background, no text, health symbolism, labels, logos or packaging.
+```
+
+Inosine monophosphate prompt:
+
+```text
+Photorealistic culinary-science still life of paper-thin katsuobushi shavings and clear dashi beside an explicitly abstract translucent glass sculpture suggesting nucleotide context without depicting an exact chemical structure, dark museum background, no text, health symbolism, labels, logos or packaging.
+```
+
+The glass sculptures in the L-glutamate and IMP images are conceptual editorial
+abstractions, not exact molecular structures, chemical diagrams, laboratory
+evidence, concentration measurements or health claims.
+
+פסלי הזכוכית בתמונות L-גלוטמט ו-IMP הם המחשות עריכתיות מופשטות, ולא מבנים
+מולקולריים מדויקים, תרשימים כימיים, ראיות מעבדה, מדידות ריכוז או טענות בריאות.
+
+#### Artifact integrity
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-science-dashi-extraction-v01.png` | PNG | 1536x1024 | 2,361,146 | `5af148692be1cc71d29e25ba6ea50fab462826ee6f547a1fb424721f4ed848c8` |
+| `c99-science-dashi-extraction-v01.webp` | WebP | 1536x1024 | 159,764 | `ab53bb0156eda6207b1b0c8eeff0b398597fd91ed01b5d38575a03f7d6cb7a33` |
+| `c99-science-dashi-extraction-v01.avif` | AVIF | 1536x1024 | 72,235 | `8786a8fd2ce8bdfb7e1e46dac2680c58542470734d8159da2345c7658103dffe` |
+| `c99-science-l-glutamate-v01.png` | PNG | 1536x1024 | 2,308,694 | `ea142185250ba8e9577a69bf262f7144557c596b821041b20fd26aa610ee11cb` |
+| `c99-science-l-glutamate-v01.webp` | WebP | 1536x1024 | 146,008 | `a996989c196ec9a50beb17e16aa62dd24fc8b72f8751bdad858ed5a6160b2c65` |
+| `c99-science-l-glutamate-v01.avif` | AVIF | 1536x1024 | 67,625 | `637737de92bf70c85e2aef044c7e98e68778774da1cac8eb5e58d77c4e7d509b` |
+| `c99-science-inosine-monophosphate-v01.png` | PNG | 1536x1024 | 2,232,547 | `b07afd38a040db3398d014831c590ed45a51a2769e229834a50fa053f12ace82` |
+| `c99-science-inosine-monophosphate-v01.webp` | WebP | 1536x1024 | 118,950 | `49e3f76d6dc7180297c134b34dad0d9c1c99cb57bebfc2e1166cb90a6b5f12c7` |
+| `c99-science-inosine-monophosphate-v01.avif` | AVIF | 1536x1024 | 57,892 | `08e30f3e6427051cee9242be8095f963d8b71e60592241de29955bb12a52c9ea` |
+
 ### Release 1.9.0 product and science additions
 
 OpenAI image generation created four unbranded public product illustrations and

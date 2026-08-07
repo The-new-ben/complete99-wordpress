@@ -1153,7 +1153,7 @@ $c99_syrian_depth_counts = array_count_values( array_column( $c99_syrian_depth_e
 
 return array(
 	'schema' => 'complete99-syrian-regional-depth-module/v1',
-	'version' => 'culinary-science-2026.08.07.v17',
+	'version' => 'culinary-science-2026.08.07.v18',
 	'sources' => $c99_syrian_depth_sources,
 	'entities' => $c99_syrian_depth_entities,
 	'private_entity_ids' => array_column( $c99_syrian_depth_entities, 'id' ),

@@ -118,6 +118,29 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("All 86 new Syrian identities remain private and noindex", changelog)
         self.assertIn("exact 36-product public WooCommerce store", changelog)
         self.assertIn("23 public science entities", changelog)
+
+    def test_release_1_18_0_manifest_describes_dashi_depth_and_preserves_1_17(self) -> None:
+        manifest = json.loads(
+            (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        changelog = manifest["sections"]["changelog"]
+        self.assertTrue(changelog.startswith("<h4>1.18.0</h4>"))
+        self.assertIn("from 24 to 27 entities", changelog)
+        self.assertIn("19 canonical page owners", changelog)
+        self.assertIn("38 bilingual routes", changelog)
+        self.assertIn("672 entities with 370 sources", changelog)
+        self.assertIn("Entity Studio at 728 subjects", changelog)
+        self.assertIn("84-identity Japanese cluster", changelog)
+        self.assertIn("24 public and 60 private records", changelog)
+        self.assertIn("dashi extraction", changelog)
+        self.assertIn("L-glutamate", changelog)
+        self.assertIn("inosine monophosphate", changelog)
+        self.assertIn("commerce registry as v12", changelog)
+        self.assertIn("no new product, supplier, price, stock, bundle or checkout activation", changelog)
+        self.assertIn("disabled payment state", changelog)
+        self.assertIn("<h4>1.17.0</h4>", changelog)
         self.assertIn("<h4>1.15.0</h4>", changelog)
         self.assertIn("culinary-science registry to 465 entities", changelog)
         self.assertIn("Entity Studio to 521 subjects", changelog)

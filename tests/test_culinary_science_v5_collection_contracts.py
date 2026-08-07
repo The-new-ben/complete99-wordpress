@@ -145,7 +145,7 @@ echo json_encode(array(
 def test_v5_registry_has_one_exact_modular_collection(v5_payload: dict) -> None:
     registry = v5_payload["registry"]
     assert registry["schema"] == "complete99-culinary-science-registry/v5"
-    assert registry["version"] == "culinary-science-2026.08.07.v17"
+    assert registry["version"] == "culinary-science-2026.08.07.v18"
     assert len(registry["collections"]) == 1
     collection = registry["collections"][0]
     assert set(collection) == {
@@ -235,7 +235,7 @@ def test_collection_projection_is_locale_paired_and_private_wrapper_free(
     assert he["parity_member_ids"] == en["parity_member_ids"]
     assert not (private_wrapper_fields & set(he))
     assert not (private_wrapper_fields & set(en))
-    assert len(he["members"]) == len(en["members"]) == 15
+    assert len(he["members"]) == len(en["members"]) == 18
 
 
 def test_foundations_lab_hero_alt_is_localized_in_the_public_projection(

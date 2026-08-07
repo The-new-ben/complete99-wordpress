@@ -609,7 +609,7 @@ foreach ( $c99_syrian_west_entities as $entity ) {
 
 return array(
 	'schema' => 'complete99-syrian-regional-expansion-west/v1',
-	'version' => 'culinary-science-2026.08.07.v17',
+	'version' => 'culinary-science-2026.08.07.v18',
 	'sources' => $c99_syrian_west_sources,
 	'entities' => $c99_syrian_west_entities,
 	'private_entity_ids' => $c99_syrian_west_ids,

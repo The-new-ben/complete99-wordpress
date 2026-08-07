@@ -147,7 +147,7 @@ def test_exact_module_membership_count_order_and_types(
     assert module["schema"] == (
         "complete99-syrian-regional-expansion-east-south-module/v1"
     )
-    assert module["version"] == "culinary-science-2026.08.07.v17"
+    assert module["version"] == "culinary-science-2026.08.07.v18"
     assert module["private_entity_ids"] == EXPECTED_IDS
     assert [entity["id"] for entity in module["entities"]] == EXPECTED_IDS
     assert len(entities) == 31

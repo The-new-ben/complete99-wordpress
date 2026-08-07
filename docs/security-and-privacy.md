@@ -107,6 +107,13 @@ registry version 17. The 121 new Lebanese identities contain no retail listing o
 price observation and are not product identities, offers, suppliers, stock
 records or purchase routes.
 
+Release 1.18.0 continues to use WooCommerce 10.9.4 as the product, stock and cart
+engine and preserves the same 56 product identities, 36 public WooCommerce
+products and 20 private planning prices. Culinary-commerce registry version 12
+is bound to culinary-science registry version 18. The three new reviewed public
+sections do not add an offer, product code, supplier claim, price, stock record,
+checkout path or POS row.
+
 The health response reports culinary-commerce registry validity separately
 from active-offer readiness. Registry validation may be true while readiness is
 false. This prevents a well-formed research graph from being mistaken for a
@@ -126,8 +133,9 @@ records and the 96-identity Iraqi foundation are private under their respective
 release boundaries, `noindex` and reference-only. One reviewed Lebanese cuisine
 root is eligible for a noindex public page and bounded public API projection.
 It carries no offer, price, stock, supplier or Product schema. The complete
-public science graph contains 24 entities resolving through 19 canonical page
-owners per language.
+public science graph contains 27 entities resolving through 19 canonical page
+owners per language and 38 bilingual routes. The 84-identity Japanese cluster
+contains 24 public and 60 private records.
 
 Four new Syrian records remain held for unresolved botanical, preservation or
 exact identity questions. Family and community records are source-scoped and

@@ -800,7 +800,7 @@ $c99_lebanese_counts = array_count_values( array_column( $c99_lebanese_entities,
 
 return array(
 	'schema' => 'complete99-lebanese-foundations-module/v1',
-	'version' => 'culinary-science-2026.08.07.v17',
+	'version' => 'culinary-science-2026.08.07.v18',
 	'sources' => $c99_lebanese_sources,
 	'entities' => $c99_lebanese_entities,
 	'public_gateway_ids' => array( 'cuisine-lebanese-regional' ),

@@ -2,9 +2,9 @@
 
 ## Scope and provenance
 
-This register covers twenty-three full-size visual assets for the culinary
+This register covers twenty-six full-size visual assets for the culinary
 science program plus responsive museum delivery variants. OpenAI's built-in
-image generation tool created nineteen retained source PNG files for Complete99
+image generation tool created twenty-two retained source PNG files for Complete99
 between 2026-08-06 and 2026-08-07. Four additional Syrian ingredient studies
 are documented editorial crops derived from the generated Syrian pantry
 composition.
@@ -21,9 +21,13 @@ Lebanese table, world pantry and store-pantry editorial are approved for their
 named public museum surfaces. Other Syrian assets remain held for private
 editorial review until their matching entities pass the public projection
 gate. The ichiban dashi source is reused from the earlier pilot without
-regeneration and was made public in release 1.5.0. None of these images is
-documentary evidence of a supplier, package, SKU, stock level, certification,
-laboratory measurement, or health outcome.
+regeneration and was made public in release 1.5.0. The controlled dashi
+extraction and two conceptual molecule-context sources are approved for their
+matching public pages in release 1.18.0. The glass sculptures in the L-glutamate
+and IMP images are conceptual editorial abstractions, not exact molecular
+structures or chemical diagrams. None of these images is documentary evidence
+of a supplier, package, SKU, stock level, certification, laboratory measurement,
+concentration, or health outcome.
 
 For public science pages, `rights_receipt_digest` binds the exact delivered
 WebP file. The retained PNG hash proves source integrity, while the AVIF hash
@@ -55,7 +59,10 @@ All project artifacts are under:
 | Hon mirin | `exec-ea527d0c-0190-459e-af8e-29ef6d01ec7b.png` | `c99-science-hon-mirin-v01` | Editorial ingredient study of amber hon mirin, glutinous rice and rice koji | Project-generated, approved for matching editorial page |
 | Katsuobushi | `exec-562a63db-fdd5-4757-be3b-6020bd2e9d41.png` | `c99-science-katsuobushi-v01` | Culinary studio study of a whole smoked bonito block, shaved curls, and the shaving tool | Project-generated, approved for matching editorial page |
 | Ichiban dashi | `exec-d25a8ee3-da63-470e-9a25-c3c8c26f1fbd.png` | `c99-science-ichiban-dashi-v01` | Culinary studio study of clear first-extraction dashi with kombu and katsuobushi context | Existing project-generated source, approved for matching editorial page in 1.5.0 |
+| Controlled dashi extraction | `exec-4d642096-a934-4efd-961e-4e4353b53afc.png` | `c99-science-dashi-extraction-v01` | Controlled kombu extraction with a thermometer, timer, strainer and second vessel | Project-generated, approved for matching editorial page in 1.18.0 |
 | Glutamate and IMP umami synergy | `exec-7bf4b49a-e6bb-49d7-a714-79eee12e5c4e.png` | `c99-science-umami-synergy-glutamate-imp-v01` | Editorial visualization linking representative molecular models with kombu, katsuobushi and dashi | Project-generated, approved for matching editorial page |
+| L-glutamate context | `exec-f3c7ebd7-39dc-4f31-a30e-f0d468101cea.png` | `c99-science-l-glutamate-v01` | Kombu and clear dashi beside a conceptual abstract glass sculpture | Project-generated, approved for matching editorial page in 1.18.0; sculpture is not an exact molecular structure |
+| Inosine monophosphate context | `exec-424a8a6d-8b3e-4f62-9252-27ac19a7c5b3.png` | `c99-science-inosine-monophosphate-v01` | Katsuobushi and clear dashi beside a conceptual abstract glass sculpture | Project-generated, approved for matching editorial page in 1.18.0; sculpture is not an exact molecular structure |
 | Syrian pantry foundations | `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-syrian-pantry-foundations-v01` | Syrian pantry study with grains, souring agents, pepper, dairy, nuts, pulses and olive oil | Project-generated, held for private editorial review |
 | Syrian regional tasting table | `exec-fd973e1d-087b-453b-9666-6905552e163e.png` | `c99-science-syrian-regional-table-v01` | Regional table showing distinct cooked-food groupings without presenting one dish as all Syrian cuisine | Project-generated, approved for the noindex Syrian cuisine gateway |
 | Syrian cooking methods | `exec-25e74796-e0d9-464d-b807-4078d27c3411.png` | `c99-science-syrian-cooking-methods-v01` | Editorial kitchen study of stuffing, bulgur forming, yogurt-sauce control, charring and onion browning | Project-generated, held for private editorial review |
@@ -64,6 +71,51 @@ All project artifacts are under:
 | Pomegranate molasses | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-pomegranate-molasses-v01` | Focused editorial crop of the dark pomegranate-molasses component | Project-generated derivative, held for private editorial review |
 | Freekeh | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-freekeh-v01` | Focused editorial crop of roasted green wheat | Project-generated derivative, held for private editorial review |
 | Sumac | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-sumac-v01` | Focused editorial crop of ground sumac | Project-generated derivative, held for private editorial review |
+
+## Release 1.18.0 dashi alt and prompt register
+
+OpenAI's built-in image generation created these three source PNG files for
+Complete99 on 2026-08-07 in generation session/thread
+`019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b`. The retained sources are:
+
+- `C:\Users\pro\.codex\generated_images\019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b\exec-4d642096-a934-4efd-961e-4e4353b53afc.png`
+- `C:\Users\pro\.codex\generated_images\019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b\exec-f3c7ebd7-39dc-4f31-a30e-f0d468101cea.png`
+- `C:\Users\pro\.codex\generated_images\019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b\exec-424a8a6d-8b3e-4f62-9252-27ac19a7c5b3.png`
+
+Each project PNG is byte-identical to its named generated source. The bilingual
+alt text describes visible content and does not turn a teaching illustration
+into a measurement or exact chemical representation.
+
+| Entity | Project basename | Hebrew alt | English alt |
+|---|---|---|---|
+| `technique-dashi-extraction` | `c99-science-dashi-extraction-v01` | כלי זכוכית עם דאשי זהוב, קומבו, מדחום ומסננת בתהליך מיצוי מבוקר | Glass vessel with golden dashi, kombu, thermometer and strainer in a controlled extraction setup |
+| `molecule-l-glutamate` | `c99-science-l-glutamate-v01` | קומבו ודאשי צלול לצד פסל זכוכית מופשט הממחיש הקשר מדעי לגלוטמט | Kombu and clear dashi beside an abstract glass sculpture suggesting glutamate science |
+| `molecule-inosine-monophosphate` | `c99-science-inosine-monophosphate-v01` | שבבי קצואובושי ודאשי צלול לצד פסל זכוכית מופשט הממחיש הקשר מדעי ל-IMP | Katsuobushi shavings and clear dashi beside an abstract glass sculpture suggesting IMP science |
+
+Controlled dashi extraction prompt:
+
+```text
+Photorealistic culinary studio photograph of controlled kombu dashi extraction in a clear heat-safe vessel, pale golden stock, one natural kombu sheet, unbranded probe thermometer, timer, fine strainer and second vessel arranged in a restrained Japanese teaching kitchen, no readable measurements, labels, logos or packaging.
+```
+
+L-glutamate prompt:
+
+```text
+Photorealistic culinary-science still life of kombu and clear dashi beside an explicitly abstract translucent glass sculpture suggesting molecular context without depicting an exact chemical structure, dark museum background, no text, health symbolism, labels, logos or packaging.
+```
+
+Inosine monophosphate prompt:
+
+```text
+Photorealistic culinary-science still life of paper-thin katsuobushi shavings and clear dashi beside an explicitly abstract translucent glass sculpture suggesting nucleotide context without depicting an exact chemical structure, dark museum background, no text, health symbolism, labels, logos or packaging.
+```
+
+The glass sculptures in the L-glutamate and IMP images are conceptual editorial
+abstractions, not exact molecular structures, chemical diagrams, laboratory
+evidence, concentration measurements or health claims.
+
+פסלי הזכוכית בתמונות L-גלוטמט ו-IMP הם המחשות עריכתיות מופשטות, ולא מבנים
+מולקולריים מדויקים, תרשימים כימיים, ראיות מעבדה, מדידות ריכוז או טענות בריאות.
 
 ## Release 1.5.0 alt and prompt register
 
@@ -240,6 +292,9 @@ No words, letters, labels, logos, price tags, watermarks, badges, flags, religio
 | `c99-science-ichiban-dashi-v01.png` | PNG | 1536x1024 | 2,400,377 | `5d5c24588e071243b3a44ad4bb56617d5b266bb88d8eaa0611455159167a47cd` |
 | `c99-science-ichiban-dashi-v01.webp` | WebP | 1536x1024 | 148,964 | `28eb6c05cec30ba9f4fb986c12afc31b8dd9c3cf2c90a3ec2a25400482a847e2` |
 | `c99-science-ichiban-dashi-v01.avif` | AVIF | 1536x1024 | 78,823 | `f21766a4ce0aa0f5e8f81c54e7a98ff0fb8f841d09d4329bc440302b896cb604` |
+| `c99-science-dashi-extraction-v01.png` | PNG | 1536x1024 | 2,361,146 | `5af148692be1cc71d29e25ba6ea50fab462826ee6f547a1fb424721f4ed848c8` |
+| `c99-science-dashi-extraction-v01.webp` | WebP | 1536x1024 | 159,764 | `ab53bb0156eda6207b1b0c8eeff0b398597fd91ed01b5d38575a03f7d6cb7a33` |
+| `c99-science-dashi-extraction-v01.avif` | AVIF | 1536x1024 | 72,235 | `8786a8fd2ce8bdfb7e1e46dac2680c58542470734d8159da2345c7658103dffe` |
 | `c99-science-japanese-culinary-techniques-v01.png` | PNG | 1536x1024 | 2,768,564 | `79bafc95b1366747c35427cba8be7d1273200199df8c602d67ca8bf9a813300c` |
 | `c99-science-japanese-culinary-techniques-v01.webp` | WebP | 1536x1024 | 280,378 | `2eda7710abfa5ce35e1634fecdf69a57efdf3875638889c217bba804d44027b4` |
 | `c99-science-japanese-culinary-techniques-v01.avif` | AVIF | 1536x1024 | 201,844 | `9707538d51c7088f32a1ef824e8c46d36a86da0e2be2d26bfbff9efb43c84894` |
@@ -252,6 +307,12 @@ No words, letters, labels, logos, price tags, watermarks, badges, flags, religio
 | `c99-science-umami-synergy-glutamate-imp-v01.png` | PNG | 1536x1024 | 2,419,166 | `37f0feebd4be1e67e549f04b8de62d6f62a0f8bbd337d22f295b606dbd4aed40` |
 | `c99-science-umami-synergy-glutamate-imp-v01.webp` | WebP | 1536x1024 | 175,826 | `cff653805e2e90b3ee4d565cdfdd21c8ac4e13782441860bd81a98516d1c7cd5` |
 | `c99-science-umami-synergy-glutamate-imp-v01.avif` | AVIF | 1536x1024 | 143,835 | `2823d4f7ad334c0be2dd8494e4544115d6d13ab91d560514ed17f78d977e0d14` |
+| `c99-science-l-glutamate-v01.png` | PNG | 1536x1024 | 2,308,694 | `ea142185250ba8e9577a69bf262f7144557c596b821041b20fd26aa610ee11cb` |
+| `c99-science-l-glutamate-v01.webp` | WebP | 1536x1024 | 146,008 | `a996989c196ec9a50beb17e16aa62dd24fc8b72f8751bdad858ed5a6160b2c65` |
+| `c99-science-l-glutamate-v01.avif` | AVIF | 1536x1024 | 67,625 | `637737de92bf70c85e2aef044c7e98e68778774da1cac8eb5e58d77c4e7d509b` |
+| `c99-science-inosine-monophosphate-v01.png` | PNG | 1536x1024 | 2,232,547 | `b07afd38a040db3398d014831c590ed45a51a2769e229834a50fa053f12ace82` |
+| `c99-science-inosine-monophosphate-v01.webp` | WebP | 1536x1024 | 118,950 | `49e3f76d6dc7180297c134b34dad0d9c1c99cb57bebfc2e1166cb90a6b5f12c7` |
+| `c99-science-inosine-monophosphate-v01.avif` | AVIF | 1536x1024 | 57,892 | `08e30f3e6427051cee9242be8095f963d8b71e60592241de29955bb12a52c9ea` |
 | `c99-science-syrian-pantry-foundations-v01.png` | PNG | 1536x1024 | 2,705,641 | `4f5dd0fb44cbf87a1ad0e7fa21bdb0c9034fb75cc825ecff5a9b9d6f666a8c20` |
 | `c99-science-syrian-pantry-foundations-v01.webp` | WebP | 1536x1024 | 302,712 | `5ace3d023ee89903ab6145e4bebcbeacf4a2e8b0c1e166d6e33e520cf7beab98` |
 | `c99-science-syrian-pantry-foundations-v01.avif` | AVIF | 1536x1024 | 140,591 | `d5de1971678bf5a261b6d843e6c786166886eff5a7bff5f54683291e789e7d11` |
@@ -311,7 +372,7 @@ mobile without changing the asset's editorial binding or rights state.
 - Every museum derivative reports the documented dimensions and preserves the
   source aspect ratio. The food-house photograph correctly retains its 1400 by
   788 source ratio in the 768 by 432 variant.
-- Each of the nineteen retained source-composition PNGs is byte-identical to its
+- Each of the twenty-two retained source-composition PNGs is byte-identical to its
   generated source according to SHA256. The four ingredient PNGs are documented
   crops whose own hashes appear in this register.
 - No existing file was overwritten during import or conversion.

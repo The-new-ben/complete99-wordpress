@@ -27,7 +27,7 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v5"
-EXPECTED_VERSION = "culinary-science-2026.08.07.v17"
+EXPECTED_VERSION = "culinary-science-2026.08.07.v18"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
@@ -50,8 +50,11 @@ EXPECTED_PUBLIC_PILOT = {
     "ingredient-fresh-dutch-wasabi",
     "ingredient-kito-yuzu",
     "ingredient-hon-mirin",
+    "molecule-inosine-monophosphate",
+    "molecule-l-glutamate",
     "molecule-allyl-isothiocyanate",
     "preparation-ichiban-dashi",
+    "technique-dashi-extraction",
     "equipment-wasabi-grater",
 }
 EXPECTED_PUBLIC_OFFER_CODES = {

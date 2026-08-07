@@ -285,7 +285,10 @@ EXPECTED_PUBLIC_JAPANESE = {
     "ingredient-kito-yuzu",
     "ingredient-hon-mirin",
     "preparation-ichiban-dashi",
+    "technique-dashi-extraction",
     "guide-umami-synergy",
+    "molecule-l-glutamate",
+    "molecule-inosine-monophosphate",
     "guide-wasabi-aitc",
     "molecule-allyl-isothiocyanate",
     "equipment-wasabi-grater",
@@ -377,7 +380,7 @@ def _one_relation(entity: dict, relation_type: str, target_id: str) -> dict:
 def test_full_syrian_foundation_inventory_is_exact(
     registry: dict, syrian_entities: dict[str, dict]
 ) -> None:
-    assert registry["version"] == "culinary-science-2026.08.07.v17"
+    assert registry["version"] == "culinary-science-2026.08.07.v18"
     assert len(syrian_entities) == 196
     by_type: dict[str, set[str]] = {}
     for entity in syrian_entities.values():
@@ -1274,7 +1277,7 @@ def test_exact_source_ledger_urls_are_retained(registry: dict) -> None:
         assert registry["sources"][source_id]["url"] == url
 
 
-def test_syrian_and_lebanese_gates_are_public_and_japanese_set_is_unchanged(
+def test_syrian_and_lebanese_gates_and_exact_japanese_public_boundary(
     registry: dict,
 ) -> None:
     public_ids = {
@@ -1288,6 +1291,19 @@ def test_syrian_and_lebanese_gates_are_public_and_japanese_set_is_unchanged(
         public_ids
         - {"cuisine-syrian-regional", "cuisine-lebanese-regional"}
         == EXPECTED_PUBLIC_JAPANESE
+    )
+    japanese_entities = [
+        entity
+        for entity in registry["entities"]
+        if entity["seo"]["cluster_id"] == "cluster-japanese-washoku"
+    ]
+    assert (
+        sum(entity["publication"]["public_page"] for entity in japanese_entities)
+        == 24
+    )
+    assert (
+        sum(not entity["publication"]["public_page"] for entity in japanese_entities)
+        == 60
     )
     assert len(registry["collections"]) == 1
     assert registry["collections"][0]["key"] == "japanese-foundations-lab"
