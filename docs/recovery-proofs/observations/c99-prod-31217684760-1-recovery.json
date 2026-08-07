@@ -1,0 +1,52 @@
+{
+  "bootstrap_cleanup": {
+    "exact_name": "c99-deploy-bootstrap",
+    "known_id": 5,
+    "known_id_matched": false,
+    "removed_ids": [],
+    "row_absence_verified": true
+  },
+  "bridge_site_identity": {
+    "home_host": "complete99.co.il",
+    "rest_host": "complete99.co.il",
+    "siteurl_host": "complete99.co.il"
+  },
+  "cleanup": {
+    "removed_ids": [
+      180
+    ],
+    "route_404": true,
+    "row_absence_verified": true,
+    "snippet_active": false,
+    "snippet_deleted": true
+  },
+  "deployment_id": "c99-prod-31217684760-1",
+  "discovery": null,
+  "error": "HTTPDeployError",
+  "finished_at": "2026-08-07T21:14:45Z",
+  "identity": {
+    "id": 1,
+    "roles": [
+      "administrator"
+    ],
+    "site_identity": {
+      "home": "https://complete99.co.il",
+      "url": "https://complete99.co.il"
+    }
+  },
+  "initial_status": {
+    "database_fingerprint": "4976f887006e5432140fcfa9a0fb6c1dcfadc1ec8f94f7a7f181d316e33e04ff",
+    "database_manifest_sha256": "3dd22e12eb14581b6820f27265f88623c12ecf4595c12c45d42a02f494674374",
+    "database_storage": [],
+    "lock_owned": true,
+    "phase": "installing",
+    "process_lock_available": true,
+    "projected_database_fingerprint": "",
+    "projected_deployment_id": "",
+    "recovery_ready": true,
+    "state_exists": true
+  },
+  "local_test": false,
+  "result": "failed",
+  "started_at": "2026-08-07T21:06:37Z"
+}

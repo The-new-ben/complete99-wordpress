@@ -89,6 +89,23 @@ def validate_archive_safety(archive: zipfile.ZipFile) -> None:
             )
 
 
+def installed_digest(archive: zipfile.ZipFile) -> str:
+    """Hash archive files exactly as the bridge hashes the installed directory."""
+    entries: list[bytes] = []
+    for info in archive.infolist():
+        if info.is_dir():
+            continue
+        relative = (
+            PurePosixPath(info.filename)
+            .relative_to(SLUG)
+            .as_posix()
+            .encode("utf-8")
+        )
+        file_digest = hashlib.sha256(archive.read(info)).hexdigest().encode("ascii")
+        entries.append(relative + b"\0" + file_digest)
+    return hashlib.sha256(b"\n".join(sorted(entries))).hexdigest()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dist", type=Path, default=ROOT / "plugin-dist")
@@ -109,6 +126,9 @@ def main() -> int:
         artifact.name,
     ], "Artifact checksum sidecar differs from the verified package"
     assert re.fullmatch(r"[a-f0-9]{64}", metadata["source_sha256"]), "Source digest is invalid"
+    assert re.fullmatch(
+        r"[a-f0-9]{64}", metadata["installed_sha256"]
+    ), "Installed digest is invalid"
     required_update_fields = {
         "name",
         "slug",
@@ -157,6 +177,9 @@ def main() -> int:
             source_digest.update(len(contents).to_bytes(8, "big"))
             source_digest.update(contents)
         assert source_digest.hexdigest() == metadata["source_sha256"], "Source digest differs from ZIP"
+        assert installed_digest(archive) == metadata["installed_sha256"], (
+            "Installed digest differs from ZIP"
+        )
 
         main_name = f"{SLUG}/{SLUG}.php"
         assert main_name in names, "Main plugin file missing"

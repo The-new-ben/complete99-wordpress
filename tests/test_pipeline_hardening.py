@@ -9,8 +9,9 @@ import tempfile
 import threading
 import types
 import unittest
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from unittest import mock
 
 
@@ -357,8 +358,32 @@ class PipelineHardeningTests(unittest.TestCase):
     def test_package_upload_ceiling_accepts_current_release_and_stays_bounded(
         self,
     ) -> None:
-        metadata, _, raw = DEPLOY.load_artifact((ROOT / "plugin-dist").resolve())
+        metadata, artifact, raw = DEPLOY.load_artifact(
+            (ROOT / "plugin-dist").resolve()
+        )
         self.assertEqual("1.18.0", metadata["version"])
+        self.assertRegex(metadata["installed_sha256"], r"^[a-f0-9]{64}$")
+
+        entries: list[bytes] = []
+        with zipfile.ZipFile(artifact) as archive:
+            for info in archive.infolist():
+                if info.is_dir():
+                    continue
+                relative = (
+                    PurePosixPath(info.filename)
+                    .relative_to(DEPLOY.SLUG)
+                    .as_posix()
+                    .encode("utf-8")
+                )
+                file_digest = (
+                    hashlib.sha256(archive.read(info)).hexdigest().encode("ascii")
+                )
+                entries.append(relative + b"\0" + file_digest)
+        expected_installed = hashlib.sha256(
+            b"\n".join(sorted(entries))
+        ).hexdigest()
+        self.assertEqual(expected_installed, metadata["installed_sha256"])
+        self.assertEqual(expected_installed, DEPLOY.installed_digest(raw))
 
         ceiling = DEPLOY.package_upload_ceiling(len(raw))
         self.assertEqual(
@@ -385,6 +410,99 @@ class PipelineHardeningTests(unittest.TestCase):
             DEPLOY.package_upload_ceiling(
                 DEPLOY.MAX_PACKAGE_UPLOAD_BYTES + 1
             )
+
+    def test_bridge_binds_reviewed_interrupted_forward_identities_once(self) -> None:
+        values = {
+            "expected_artifact_sha256": "1" * 64,
+            "expected_plugin_sha256": "2" * 64,
+            "expected_version": "1.18.0",
+            "interrupted_forward_proof_sha256": "3" * 64,
+            "reviewed_database_fingerprint": "4" * 64,
+            "reviewed_database_manifest_sha256": "5" * 64,
+            "prior_database_fingerprint": "6" * 64,
+            "prior_plugin_sha256": "7" * 64,
+            "prior_deployment_id": "c99-prod-prior-release",
+            "prior_version": "1.17.0",
+            "prior_robots_sha256": "8" * 64,
+        }
+        bridge = DEPLOY.render_bridge(
+            "safe-temporary-token",
+            "c99-prod-interrupted-forward",
+            2 * 1024 * 1024,
+            False,
+            **values,
+        )
+        self.assertNotRegex(bridge, r"__C99_[A-Z0-9_]+__")
+        for value in values.values():
+            self.assertEqual(1, bridge.count(value))
+
+        for field, invalid in (
+            ("expected_plugin_sha256", "g" * 64),
+            ("expected_version", "1.18"),
+            ("prior_deployment_id", "unsafe-prior"),
+        ):
+            with self.subTest(field=field):
+                candidate = dict(values)
+                candidate[field] = invalid
+                with self.assertRaises(DEPLOY.DeployError):
+                    DEPLOY.render_bridge(
+                        "safe-temporary-token",
+                        "c99-prod-interrupted-forward",
+                        2 * 1024 * 1024,
+                        False,
+                        **candidate,
+                    )
+
+    def test_artifact_loader_rejects_missing_or_mismatched_installed_digest(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory(prefix="complete99-installed-digest-") as temp:
+            dist = Path(temp)
+            artifact = dist / "test-package.zip"
+            files = {
+                "nested/alpha.txt": b"alpha\n",
+                "zulu.txt": b"zulu\n",
+            }
+            with zipfile.ZipFile(artifact, "w") as archive:
+                for relative, contents in reversed(files.items()):
+                    archive.writestr(f"{DEPLOY.SLUG}/{relative}", contents)
+
+            raw = artifact.read_bytes()
+            records = [
+                relative.encode("utf-8")
+                + b"\0"
+                + hashlib.sha256(contents).hexdigest().encode("ascii")
+                for relative, contents in files.items()
+            ]
+            expected_installed = hashlib.sha256(
+                b"\n".join(sorted(records))
+            ).hexdigest()
+            metadata = {
+                "artifact": artifact.name,
+                "installed_sha256": expected_installed,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size": len(raw),
+                "slug": DEPLOY.SLUG,
+                "type": "plugin",
+            }
+            integrity = dist / f"{DEPLOY.SLUG}-integrity.json"
+            integrity.write_text(json.dumps(metadata), encoding="utf-8")
+            loaded, _, _ = DEPLOY.load_artifact(dist)
+            self.assertEqual(expected_installed, loaded["installed_sha256"])
+
+            for invalid in (None, "g" * 64, "0" * 64):
+                with self.subTest(invalid=invalid):
+                    candidate = dict(metadata)
+                    if invalid is None:
+                        candidate.pop("installed_sha256")
+                    else:
+                        candidate["installed_sha256"] = invalid
+                    integrity.write_text(json.dumps(candidate), encoding="utf-8")
+                    with self.assertRaisesRegex(
+                        DEPLOY.DeployError,
+                        "Local installed plugin integrity check failed",
+                    ):
+                        DEPLOY.load_artifact(dist)
 
     def test_http_errors_keep_only_safe_lock_discovery_metadata(self) -> None:
         class ConflictHandler(BaseHTTPRequestHandler):
@@ -1265,7 +1383,7 @@ class PipelineHardeningTests(unittest.TestCase):
         ):
             with self.subTest(phase=phase):
                 bridge_responses = [
-                    DEPLOY.DeployError("injected lost rollback response"),
+                    DEPLOY.NetworkDeployError("injected lost rollback response"),
                     {
                         "rolled_back": True,
                         "database_restore": {"restored": True},
@@ -1290,6 +1408,73 @@ class PipelineHardeningTests(unittest.TestCase):
                 self.assertTrue(result["database_restore"]["restored"])
                 self.assertEqual(2, bridge_call.call_count)
                 poll_status.assert_called_once()
+
+    def test_authoritative_rollback_conflict_is_never_retried(self) -> None:
+        conflict = DEPLOY.HTTPDeployError(
+            "reviewed database fingerprint conflict",
+            status=409,
+            code="c99_rollback_database_conflict",
+            data={"phase": "installing"},
+        )
+        with mock.patch.object(
+            DEPLOY,
+            "bridge_call",
+            side_effect=conflict,
+        ) as bridge_call, mock.patch.object(
+            DEPLOY,
+            "poll_deployment_status",
+        ) as poll_status:
+            with self.assertRaises(DEPLOY.HTTPDeployError) as raised:
+                DEPLOY.rollback_with_recovery(
+                    object(),
+                    "temporary-token",
+                    "c99-prod-reviewed-conflict",
+                )
+
+        self.assertIs(raised.exception, conflict)
+        self.assertEqual(1, bridge_call.call_count)
+        poll_status.assert_not_called()
+
+    def test_http_500_after_rollback_mutation_recovers_from_durable_status(self) -> None:
+        ambiguous = DEPLOY.HTTPDeployError(
+            "response lost after rollback mutation",
+            status=500,
+            code="internal_server_error",
+            data={},
+        )
+        durable = {
+            "baseline_database_fingerprint": "a" * 64,
+            "database_restored": True,
+            "had_plugin": True,
+            "phase": "rolled_back",
+            "prior_active": True,
+            "prior_deployment": "c99-prod-prior-1",
+            "prior_plugin_sha256": "b" * 64,
+            "prior_version": "1.17.0",
+            "robots_applied": True,
+            "robots_prior_exists": True,
+            "robots_prior_sha256": "c" * 64,
+            "robots_restored": True,
+        }
+        with mock.patch.object(
+            DEPLOY,
+            "bridge_call",
+            side_effect=ambiguous,
+        ) as bridge_call, mock.patch.object(
+            DEPLOY,
+            "poll_deployment_status",
+            return_value=durable,
+        ) as poll_status:
+            result = DEPLOY.rollback_with_recovery(
+                object(),
+                "temporary-token",
+                "c99-prod-ambiguous-rollback",
+            )
+
+        self.assertTrue(result["rolled_back"])
+        self.assertTrue(result["write_response_recovered"])
+        self.assertEqual(1, bridge_call.call_count)
+        poll_status.assert_called_once()
 
     def test_failed_pending_stabilization_rolls_back_and_verifies_prior_state(
         self,

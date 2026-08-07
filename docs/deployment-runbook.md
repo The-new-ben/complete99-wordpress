@@ -263,6 +263,18 @@ chooses only between finishing an already committed cleanup and rolling back an
 uncommitted mutation. It then proves its row absent and its route 404. The production
 workflow runs this command automatically after a failed deployment step.
 
+For the reviewed interrupted-forward v2 proof, `--recovery-only` is also safe to
+rerun after platform finalization. When no failed-run lock remains, recovery keeps
+a fresh read-only probe reservation, proves the failed state, rollback artifacts,
+plugin/runtime identity, full database fingerprint and manifest, transactional
+storage, deployment marker, sync state and managed robots identity exactly, then
+finalizes only that probe. The audit result is `already-recovered`; the workflow
+continues through dry-run and commerce materialization. Any intervening database
+change, including commerce data, rejects this pre-commerce attestation. If an
+earlier probe-finalize response was lost, the next run waits for that unstarted
+probe lease, releases only its exact state-free reservation, and repeats the full
+attestation under a new probe.
+
 ## Release 1.18.0 live verification
 
 Before installation:
@@ -413,6 +425,11 @@ After installation and cache purge:
    remains recoverable.
 
 ## Completion evidence
+
+The single interrupted 1.18.0 production run is governed by
+`docs/interrupted-forward-recovery-1.18.0.md`. Its two-step observation and
+proof-gated forward-adoption process must be used instead of a normal deploy
+or rollback while `c99-prod-31217684760-1` owns the stale production lock.
 
 A production release is complete only when the non-secret audit JSON shows:
 

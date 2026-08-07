@@ -22,6 +22,23 @@ add_action(
 			'target_host'   => '__C99_TARGET_HOST__',
 			'allowed_hosts' => __C99_ALLOWED_HOSTS__,
 			'recovery_lease_seconds'=> 240,
+			'interrupted_forward' => array(
+				'finalized_attestation_enabled'     => __C99_INTERRUPTED_FORWARD_FINALIZED_ATTESTATION__,
+				'target_deployment_id'              => '__C99_INTERRUPTED_FORWARD_TARGET_DEPLOYMENT_ID__',
+				'expected_artifact_sha256'          => '__C99_EXPECTED_ARTIFACT_SHA256__',
+				'expected_plugin_sha256'            => '__C99_EXPECTED_PLUGIN_SHA256__',
+				'expected_version'                  => '__C99_EXPECTED_VERSION__',
+				'proof_sha256'                      => '__C99_INTERRUPTED_FORWARD_PROOF_SHA256__',
+				'reviewed_database_fingerprint'     => '__C99_REVIEWED_DATABASE_FINGERPRINT__',
+				'reviewed_database_manifest'        => json_decode( base64_decode( '__C99_REVIEWED_DATABASE_MANIFEST_BASE64__' ), true ),
+				'reviewed_database_manifest_sha256' => '__C99_REVIEWED_DATABASE_MANIFEST_SHA256__',
+				'reviewed_database_storage'         => json_decode( base64_decode( '__C99_REVIEWED_DATABASE_STORAGE_BASE64__' ), true ),
+				'prior_database_fingerprint'        => '__C99_PRIOR_DATABASE_FINGERPRINT__',
+				'prior_plugin_sha256'                => '__C99_PRIOR_PLUGIN_SHA256__',
+				'prior_deployment'                   => '__C99_PRIOR_DEPLOYMENT_ID__',
+				'prior_version'                      => '__C99_PRIOR_VERSION__',
+				'prior_robots_sha256'                => '__C99_PRIOR_ROBOTS_SHA256__',
+			),
 		);
 		$route_prefix = '/' . $config['deployment_id'];
 
@@ -1434,7 +1451,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $managed_robots_path ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $decrypt_database_state, $managed_robots_path ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -1468,11 +1485,19 @@ add_action(
 					}
 					require_once ABSPATH . 'wp-admin/includes/plugin.php';
 					$current = file_exists( $plugin_path ) ? get_plugin_data( $plugin_path, false, false ) : array();
+					$phase = (string) ( $state['phase'] ?? ( $lock_owned ? ( $lock['phase'] ?? 'locked' ) : 'finalized' ) );
+					$interrupted_installing_status = $lock_owned && 'installing' === $phase;
+					$interrupted_adopted_status = $lock_owned
+						&& in_array( $phase, array( 'installed', 'committing', 'commit_failed', 'committed', 'cleanup_failed' ), true )
+						&& ! empty( $state['adopted_forward_no_rollback'] ?? $lock['adopted_forward_no_rollback'] ?? false );
 					$projected_deployment_id = sanitize_text_field( (string) $request->get_param( 'projected_deployment_id' ) );
 					$orphaned_consistent_status = $lock_owned
 						&& 'complete99-orphaned-rollback-receipt/v2' === (string) ( $lock['orphaned_recovery_receipt_schema'] ?? '' )
 						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $lock['orphaned_recovery_proof_sha256'] ?? '' ) );
-					$consistent_database_status = '' !== $projected_deployment_id || $orphaned_consistent_status;
+					$consistent_database_status = '' !== $projected_deployment_id
+						|| $orphaned_consistent_status
+						|| $interrupted_installing_status
+						|| $interrupted_adopted_status;
 					$database_storage = array();
 					if ( $consistent_database_status ) {
 						$database_storage = $verify_transactional_storage();
@@ -1525,7 +1550,6 @@ add_action(
 					$current_robots_sha256 = file_exists( $robots_path ) && ! is_link( $robots_path ) && ! is_dir( $robots_path )
 						? (string) @hash_file( 'sha256', $robots_path )
 						: '';
-					$phase = (string) ( $state['phase'] ?? ( $lock_owned ? ( $lock['phase'] ?? 'locked' ) : 'finalized' ) );
 					$lock_updated_at = (int) ( $lock['updated_at'] ?? $lock['started_at'] ?? 0 );
 					$lock_age = $lock_owned && 0 < $lock_updated_at ? max( 0, time() - $lock_updated_at ) : 0;
 					$process_available = $process_lock_available();
@@ -1536,10 +1560,58 @@ add_action(
 						&& $lock_age >= (int) $config['recovery_lease_seconds']
 						&& $process_available
 						&& in_array( $phase, array( 'reserved', 'locked', 'prepared', 'installing', 'rolling_back', 'committing' ), true );
+					$status_expected_version = (string) ( $state['expected_version'] ?? $state['installed_version'] ?? $lock['expected_version'] ?? '' );
+					$runtime_version = defined( 'COMPLETE99_PLATFORM_VERSION' ) ? (string) COMPLETE99_PLATFORM_VERSION : '';
+					$runtime_loaded = '' !== $status_expected_version
+						&& $status_expected_version === $runtime_version
+						&& class_exists( 'Complete99_Platform', false )
+						&& method_exists( 'Complete99_Platform', 'migration_failed' )
+						&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' );
+					$migration_failed = $runtime_loaded ? (bool) Complete99_Platform::migration_failed() : true;
+					$migration_invariants_valid = false;
+					if ( $runtime_loaded && ! $migration_failed ) {
+						try {
+							Complete99_Content::assert_migration_invariants();
+							Complete99_Settings::assert_defaults();
+							Complete99_Platform::assert_evaluation_catalog_invariants();
+							$migration_invariants_valid = true;
+						} catch ( \Throwable $error ) {
+							$migration_invariants_valid = false;
+						}
+					}
+					$baseline_database_snapshot = $interrupted_installing_status
+						? $decrypt_database_state( $state['database_journal'] ?? array() )
+						: array();
+					$baseline_database_json = $interrupted_installing_status && ! is_wp_error( $baseline_database_snapshot )
+						? wp_json_encode( $baseline_database_snapshot )
+						: false;
+					$baseline_database_journal_valid = $interrupted_installing_status
+						&& is_array( $baseline_database_snapshot )
+						&& false !== $baseline_database_json
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $state['database_fingerprint'] ?? '' ) )
+						&& hash_equals( (string) $state['database_fingerprint'], hash( 'sha256', $baseline_database_json ) )
+						&& true === ( $baseline_database_snapshot['sync_secret_existed'] ?? null )
+						&& true === ( $baseline_database_snapshot['sync_secret_configured'] ?? null );
+					$swap_suffix = substr( hash( 'sha256', $deployment_id ), 0, 20 );
+					$rollback_filesystem_artifacts = array(
+						trailingslashit( WP_PLUGIN_DIR ) . '.complete99-restore-' . $swap_suffix,
+						trailingslashit( WP_PLUGIN_DIR ) . '.complete99-displaced-' . $swap_suffix,
+						trailingslashit( $state_dir ) . 'robots.forward',
+						trailingslashit( $state_dir ) . 'robots.rollback-prior',
+					);
+					$rollback_filesystem_artifacts_exist = false;
+					foreach ( $rollback_filesystem_artifacts as $rollback_artifact ) {
+						if ( file_exists( $rollback_artifact ) || is_link( $rollback_artifact ) ) {
+							$rollback_filesystem_artifacts_exist = true;
+							break;
+						}
+					}
 					$no_rollback_artifacts = empty( $state['rollback_applied'] )
 						&& empty( $state['database_restored'] )
 						&& empty( $state['rollback_compensated'] )
-						&& empty( $state['rollback_compensation_error'] );
+						&& empty( $state['rollback_compensation_error'] )
+						&& empty( $state['robots_restored'] )
+						&& ! $rollback_filesystem_artifacts_exist;
 					$robots_forward_ready = ! empty( $state['robots_applied'] )
 						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $state['robots_managed_sha256'] ?? '' ) )
 						&& hash_equals( (string) $state['robots_managed_sha256'], $current_robots_sha256 );
@@ -1565,6 +1637,54 @@ add_action(
 					$forward_stabilization_candidate = $legacy_clean_installed
 						|| $clean_pending_stabilization
 						|| $clean_pending_cleanup;
+					$status_interrupted_config = is_array( $config['interrupted_forward'] ?? null )
+						? $config['interrupted_forward']
+						: array();
+					$interrupted_forward_candidate = $interrupted_installing_status
+						&& $recovery_ready
+						&& $runtime_loaded
+						&& ! $migration_failed
+						&& $migration_invariants_valid
+						&& $baseline_database_journal_valid
+						&& $no_rollback_artifacts
+						&& $current_dir_exists
+						&& $current_main_exists
+						&& $current_active
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $status_interrupted_config['proof_sha256'] ?? '' ) )
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $status_interrupted_config['expected_artifact_sha256'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['expected_artifact_sha256'], (string) ( $state['expected_sha256'] ?? '' ) )
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $status_interrupted_config['expected_plugin_sha256'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['expected_plugin_sha256'], $current_plugin_sha256 )
+						&& (string) ( $status_interrupted_config['expected_version'] ?? '' ) === (string) ( $state['expected_version'] ?? '' )
+						&& (string) ( $status_interrupted_config['expected_version'] ?? '' ) === (string) ( $current['Version'] ?? '' )
+						&& (string) ( $status_interrupted_config['expected_version'] ?? '' ) === $current_database_version
+						&& $deployment_id === $current_deployment
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $status_interrupted_config['reviewed_database_fingerprint'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['reviewed_database_fingerprint'], $database_fingerprint )
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $status_interrupted_config['reviewed_database_manifest_sha256'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['reviewed_database_manifest_sha256'], is_array( $database_manifest_record ) ? (string) ( $database_manifest_record['manifest_sha256'] ?? '' ) : '' )
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $status_interrupted_config['prior_database_fingerprint'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['prior_database_fingerprint'], (string) ( $state['database_fingerprint'] ?? '' ) )
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $status_interrupted_config['prior_plugin_sha256'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['prior_plugin_sha256'], (string) ( $state['prior_plugin_sha256'] ?? '' ) )
+						&& (string) ( $status_interrupted_config['prior_deployment'] ?? '' ) === (string) ( $state['prior_deployment'] ?? '' )
+						&& (string) ( $status_interrupted_config['prior_version'] ?? '' ) === (string) ( $state['prior_version'] ?? '' )
+						&& true === ( $state['had_plugin'] ?? null )
+						&& true === ( $state['prior_target_dir_exists'] ?? null )
+						&& true === ( $state['prior_plugin_main_exists'] ?? null )
+						&& true === ( $state['was_active'] ?? null )
+						&& true === ( $state['robots_prior_exists'] ?? null )
+						&& true === ( $state['robots_applied'] ?? null )
+						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $status_interrupted_config['prior_robots_sha256'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['prior_robots_sha256'], (string) ( $state['robots_prior_sha256'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['prior_robots_sha256'], (string) ( $state['robots_managed_sha256'] ?? '' ) )
+						&& hash_equals( (string) $status_interrupted_config['prior_robots_sha256'], $current_robots_sha256 )
+						&& is_array( $database_storage )
+						&& 3 === (int) ( $database_storage['tables'] ?? 0 )
+						&& '' !== (string) ( $database_storage['engine'] ?? '' )
+						&& is_array( $database_snapshot )
+						&& true === ( $database_snapshot['sync_secret_existed'] ?? null )
+						&& true === ( $database_snapshot['sync_secret_configured'] ?? null );
 					$status = array(
 						'deployment_id'    => $deployment_id,
 						'phase'            => $phase,
@@ -1573,9 +1693,21 @@ add_action(
 						'lock_age_seconds' => $lock_age,
 						'recovery_lease_seconds'=> (int) $config['recovery_lease_seconds'],
 						'recovery_ready'   => $recovery_ready,
+						'runtime_loaded'   => $runtime_loaded,
+						'runtime_version'  => $runtime_version,
+						'migration_failed' => $migration_failed,
+						'migration_invariants_valid'=> $migration_invariants_valid,
+						'no_rollback_artifacts'=> $no_rollback_artifacts,
+						'baseline_database_journal_valid'=> $baseline_database_journal_valid,
+						'baseline_sync_secret_existed'=> $interrupted_installing_status && true === ( $baseline_database_snapshot['sync_secret_existed'] ?? null ),
+						'baseline_sync_configured'=> $interrupted_installing_status && true === ( $baseline_database_snapshot['sync_secret_configured'] ?? null ),
+						'interrupted_forward_candidate'=> $interrupted_forward_candidate,
 						'forward_stabilization_candidate'=> $forward_stabilization_candidate,
-						'stabilized'      => ! empty( $state['stabilized'] ),
-						'forward_ready'   => ! empty( $state['forward_ready'] ),
+						'stabilized'      => ! empty( $state['stabilized'] ?? $lock['stabilized'] ?? false ),
+						'forward_ready'   => ! empty( $state['forward_ready'] ?? $lock['forward_ready'] ?? false ),
+						'adopted_forward_no_rollback'=> ! empty( $state['adopted_forward_no_rollback'] ?? $lock['adopted_forward_no_rollback'] ?? false ),
+						'interrupted_forward_proof_sha256'=> (string) ( $state['interrupted_forward_proof_sha256'] ?? $lock['interrupted_forward_proof_sha256'] ?? '' ),
+						'interrupted_forward_database_manifest_sha256'=> (string) ( $state['interrupted_forward_database_manifest_sha256'] ?? $lock['interrupted_forward_database_manifest_sha256'] ?? '' ),
 						'process_lock_available'=> $process_available,
 						'expected_sha256'  => (string) ( $state['expected_sha256'] ?? $lock['expected_sha256'] ?? '' ),
 						'expected_version' => (string) ( $state['expected_version'] ?? $state['installed_version'] ?? $lock['expected_version'] ?? '' ),
@@ -1597,13 +1729,13 @@ add_action(
 						'orphaned_reconciled_from'=> (string) ( $lock['orphaned_reconciled_from'] ?? '' ),
 						'orphaned_observed_deployment'=> (string) ( $lock['orphaned_observed_deployment'] ?? '' ),
 						'temp_removed'     => ! empty( $state['temp_removed'] ),
-						'had_plugin'       => ! empty( $state['had_plugin'] ),
-						'prior_target_dir_exists' => ! empty( $state['prior_target_dir_exists'] ),
-						'prior_plugin_main_exists'=> ! empty( $state['prior_plugin_main_exists'] ),
-						'prior_plugin_sha256'=> (string) ( $state['prior_plugin_sha256'] ?? '' ),
-						'prior_version'    => (string) ( $state['prior_version'] ?? '' ),
-						'prior_active'     => ! empty( $state['was_active'] ),
-						'prior_deployment' => (string) ( $state['prior_deployment'] ?? '' ),
+						'had_plugin'       => ! empty( $state['had_plugin'] ?? $lock['had_plugin'] ?? false ),
+						'prior_target_dir_exists' => ! empty( $state['prior_target_dir_exists'] ?? $lock['prior_target_dir_exists'] ?? false ),
+						'prior_plugin_main_exists'=> ! empty( $state['prior_plugin_main_exists'] ?? $lock['prior_plugin_main_exists'] ?? false ),
+						'prior_plugin_sha256'=> (string) ( $state['prior_plugin_sha256'] ?? $lock['prior_plugin_sha256'] ?? '' ),
+						'prior_version'    => (string) ( $state['prior_version'] ?? $lock['prior_version'] ?? '' ),
+						'prior_active'     => ! empty( $state['was_active'] ?? $lock['was_active'] ?? false ),
+						'prior_deployment' => (string) ( $state['prior_deployment'] ?? $lock['prior_deployment'] ?? '' ),
 						'current_version'  => isset( $current['Version'] ) ? (string) $current['Version'] : '',
 						'current_target_dir_exists' => $current_dir_exists,
 						'current_plugin_main_exists'=> $current_main_exists,
@@ -1624,11 +1756,11 @@ add_action(
 						'current_sync_configured'=> is_array( $database_snapshot ) && ! empty( $database_snapshot['sync_secret_configured'] ),
 						'sync_configuration_pending'=> ! empty( $state['sync_configuration_pending'] ),
 						'sync_configuration_checkpointed'=> ! empty( $state['sync_configuration_checkpointed'] ),
-						'robots_applied'    => ! empty( $state['robots_applied'] ),
-						'robots_restored'   => ! empty( $state['robots_restored'] ),
-						'robots_prior_exists'=> ! empty( $state['robots_prior_exists'] ),
-						'robots_prior_sha256'=> (string) ( $state['robots_prior_sha256'] ?? '' ),
-						'robots_managed_sha256'=> (string) ( $state['robots_managed_sha256'] ?? '' ),
+						'robots_applied'    => ! empty( $state['robots_applied'] ?? $lock['robots_applied'] ?? false ),
+						'robots_restored'   => ! empty( $state['robots_restored'] ?? $lock['robots_restored'] ?? false ),
+						'robots_prior_exists'=> ! empty( $state['robots_prior_exists'] ?? $lock['robots_prior_exists'] ?? false ),
+						'robots_prior_sha256'=> (string) ( $state['robots_prior_sha256'] ?? $lock['robots_prior_sha256'] ?? '' ),
+						'robots_managed_sha256'=> (string) ( $state['robots_managed_sha256'] ?? $lock['robots_managed_sha256'] ?? '' ),
 						'current_robots_sha256'=> $current_robots_sha256,
 						'site_identity'      => $site_identity,
 					);
@@ -1658,11 +1790,263 @@ add_action(
 
 		register_rest_route(
 			'complete99-deploy/v1',
+			$route_prefix . '/attest-interrupted-finalized',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $permission,
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $acquire_process_lock, $release_process_lock, $directory_sha256, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $managed_robots_path, $managed_robots_contents, $canonicalize_json_value ) {
+					global $wp_filesystem;
+					$filesystem = $bootstrap_filesystem();
+					if ( is_wp_error( $filesystem ) ) {
+						return $filesystem;
+					}
+					$site_identity = $verify_site_identity();
+					if ( is_wp_error( $site_identity ) ) {
+						return $site_identity;
+					}
+					$json_params = $request->get_json_params();
+					$request_keys = is_array( $json_params ) ? array_keys( $json_params ) : array();
+					sort( $request_keys, SORT_STRING );
+					if ( array( 'deployment_id', 'interrupted_forward_proof_sha256', 'token' ) !== $request_keys ) {
+						return new WP_Error( 'c99_interrupted_finalized_request', 'Finalized attestation accepts only its exact proof request.', array( 'status' => 400 ) );
+					}
+					$probe_id = sanitize_text_field( (string) $request->get_param( 'deployment_id' ) );
+					$request_proof_sha256 = strtolower( sanitize_text_field( (string) $request->get_param( 'interrupted_forward_proof_sha256' ) ) );
+					$interrupted = is_array( $config['interrupted_forward'] ?? null ) ? $config['interrupted_forward'] : array();
+					$target_deployment_id = (string) ( $interrupted['target_deployment_id'] ?? '' );
+					$expected_version = (string) ( $interrupted['expected_version'] ?? '' );
+					$expected_plugin_sha256 = (string) ( $interrupted['expected_plugin_sha256'] ?? '' );
+					$expected_database_fingerprint = (string) ( $interrupted['reviewed_database_fingerprint'] ?? '' );
+					$expected_manifest = $interrupted['reviewed_database_manifest'] ?? null;
+					$expected_manifest_sha256 = (string) ( $interrupted['reviewed_database_manifest_sha256'] ?? '' );
+					$expected_storage = $interrupted['reviewed_database_storage'] ?? null;
+					$expected_robots_sha256 = (string) ( $interrupted['prior_robots_sha256'] ?? '' );
+					$storage_keys = is_array( $expected_storage ) ? array_keys( $expected_storage ) : array();
+					sort( $storage_keys, SORT_STRING );
+					$digest_keys = array(
+						'expected_artifact_sha256',
+						'expected_plugin_sha256',
+						'proof_sha256',
+						'reviewed_database_fingerprint',
+						'reviewed_database_manifest_sha256',
+						'prior_database_fingerprint',
+						'prior_plugin_sha256',
+						'prior_robots_sha256',
+					);
+					$config_valid = true;
+					foreach ( $digest_keys as $digest_key ) {
+						$config_valid = $config_valid && preg_match( '/^[a-f0-9]{64}$/', (string) ( $interrupted[ $digest_key ] ?? '' ) );
+					}
+					$config_valid = $config_valid
+						&& true === ( $interrupted['finalized_attestation_enabled'] ?? null )
+						&& $config['deployment_id'] === $probe_id
+						&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $probe_id )
+						&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $target_deployment_id )
+						&& str_starts_with( $target_deployment_id, 'c99-' )
+						&& $target_deployment_id !== $probe_id
+						&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', $expected_version )
+						&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $interrupted['prior_version'] ?? '' ) )
+						&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', (string) ( $interrupted['prior_deployment'] ?? '' ) )
+						&& is_array( $expected_manifest )
+						&& ! empty( $expected_manifest )
+						&& $database_snapshot_manifest_valid( $expected_manifest, $expected_manifest_sha256 )
+						&& array( 'engine', 'tables' ) === $storage_keys
+						&& in_array( (string) ( $expected_storage['engine'] ?? '' ), array( 'INNODB', 'XTRADB', 'INNODB,XTRADB' ), true )
+						&& 3 === ( $expected_storage['tables'] ?? null );
+					if ( ! $config_valid ) {
+						return new WP_Error( 'c99_interrupted_finalized_disabled', 'Finalized attestation requires the exact embedded reviewed v2 identities.', array( 'status' => 403 ) );
+					}
+					if (
+						! preg_match( '/^[a-f0-9]{64}$/', $request_proof_sha256 )
+						|| ! hash_equals( (string) $interrupted['proof_sha256'], $request_proof_sha256 )
+					) {
+						return new WP_Error( 'c99_interrupted_finalized_proof', 'Finalized attestation proof does not match this single-use bridge.', array( 'status' => 403 ) );
+					}
+
+					$process_lock = $acquire_process_lock();
+					if ( is_wp_error( $process_lock ) ) {
+						return $process_lock;
+					}
+					try {
+						$probe_lock = $read_lock( true );
+						$probe_updated_at = (int) ( $probe_lock['updated_at'] ?? $probe_lock['started_at'] ?? 0 );
+						$probe_lock_valid = is_array( $probe_lock )
+							&& $probe_id === (string) ( $probe_lock['deployment_id'] ?? '' )
+							&& 'reserved' === (string) ( $probe_lock['phase'] ?? '' )
+							&& '' !== (string) ( $probe_lock['owner_id'] ?? '' )
+							&& 0 < (int) ( $probe_lock['fence'] ?? 0 )
+							&& 0 < $probe_updated_at
+							&& max( 0, time() - $probe_updated_at ) < (int) $config['recovery_lease_seconds'];
+						if ( ! $probe_lock_valid ) {
+							return new WP_Error( 'c99_interrupted_finalized_probe_lock', 'Finalized attestation requires the exact fresh reserved probe lock.', array( 'status' => 409 ) );
+						}
+
+						$target_state_dir = $state_directory( $target_deployment_id );
+						$target_state_file = trailingslashit( $target_state_dir ) . 'state.json';
+						$swap_suffix = substr( hash( 'sha256', $target_deployment_id ), 0, 20 );
+						$target_artifacts = array(
+							trailingslashit( WP_PLUGIN_DIR ) . '.complete99-restore-' . $swap_suffix,
+							trailingslashit( WP_PLUGIN_DIR ) . '.complete99-displaced-' . $swap_suffix,
+							trailingslashit( $target_state_dir ) . 'robots.forward',
+							trailingslashit( $target_state_dir ) . 'robots.rollback-prior',
+							trailingslashit( $target_state_dir ) . 'robots.prior-live',
+						);
+						$target_state_absent = ! file_exists( $target_state_dir ) && ! is_link( $target_state_dir ) && ! is_dir( $target_state_dir )
+							&& ! file_exists( $target_state_file ) && ! is_link( $target_state_file ) && ! is_dir( $target_state_file );
+						$target_artifacts_absent = true;
+						foreach ( $target_artifacts as $target_artifact ) {
+							if ( file_exists( $target_artifact ) || is_link( $target_artifact ) || is_dir( $target_artifact ) ) {
+								$target_artifacts_absent = false;
+								break;
+							}
+						}
+						if ( ! $target_state_absent || ! $target_artifacts_absent || $target_deployment_id === (string) ( $probe_lock['deployment_id'] ?? '' ) ) {
+							return new WP_Error( 'c99_interrupted_finalized_target_residue', 'Finalized attestation refused target state, lock, or rollback residue.', array( 'status' => 409 ) );
+						}
+
+						require_once ABSPATH . 'wp-admin/includes/plugin.php';
+						$target_dir = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
+						$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . $config['plugin_file'];
+						$current_plugin_sha256 = ! is_link( $target_dir ) && $wp_filesystem->is_dir( $target_dir )
+							? $directory_sha256( $target_dir )
+							: new WP_Error( 'c99_interrupted_finalized_plugin_path' );
+						clearstatcache( true, $plugin_path );
+						$current_plugin = ! is_link( $plugin_path ) && ! is_dir( $plugin_path ) && $wp_filesystem->exists( $plugin_path )
+							? get_plugin_data( $plugin_path, false, false )
+							: array();
+						$runtime_loaded = defined( 'COMPLETE99_PLATFORM_VERSION' )
+							&& $expected_version === (string) COMPLETE99_PLATFORM_VERSION
+							&& class_exists( 'Complete99_Platform', false )
+							&& method_exists( 'Complete99_Platform', 'migration_failed' )
+							&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' );
+						$migration_failed = ! $runtime_loaded || (bool) Complete99_Platform::migration_failed();
+						$migration_invariants_valid = false;
+						if ( $runtime_loaded && ! $migration_failed ) {
+							try {
+								Complete99_Content::assert_migration_invariants();
+								Complete99_Settings::assert_defaults();
+								Complete99_Platform::assert_evaluation_catalog_invariants();
+								$migration_invariants_valid = true;
+							} catch ( \Throwable $error ) {
+								$migration_invariants_valid = false;
+							}
+						}
+						if (
+							is_wp_error( $current_plugin_sha256 )
+							|| ! hash_equals( $expected_plugin_sha256, (string) $current_plugin_sha256 )
+							|| $expected_version !== (string) ( $current_plugin['Version'] ?? '' )
+							|| ! is_plugin_active( $config['plugin_file'] )
+							|| ! $runtime_loaded
+							|| $migration_failed
+							|| ! $migration_invariants_valid
+						) {
+							return new WP_Error( 'c99_interrupted_finalized_plugin', 'Finalized attestation could not prove the exact active plugin and runtime.', array( 'status' => 409 ) );
+						}
+
+						$current_storage = $verify_transactional_storage();
+						$current_snapshot = $capture_database_state_consistent();
+						$current_database_json = is_wp_error( $current_snapshot ) ? false : wp_json_encode( $current_snapshot );
+						$current_database_fingerprint = false === $current_database_json ? '' : hash( 'sha256', $current_database_json );
+						$current_manifest_record = is_wp_error( $current_snapshot ) ? $current_snapshot : $database_snapshot_manifest( $current_snapshot );
+						$current_manifest = is_array( $current_manifest_record ) ? ( $current_manifest_record['manifest'] ?? null ) : null;
+						$current_manifest_sha256 = is_array( $current_manifest_record ) ? (string) ( $current_manifest_record['manifest_sha256'] ?? '' ) : '';
+						$active_plugins_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['active_plugins'] ?? null ) : null;
+						$active_plugins = is_array( $active_plugins_row ) ? maybe_unserialize( (string) ( $active_plugins_row['option_value'] ?? '' ) ) : null;
+						$marker_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['complete99_last_deployment_id'] ?? null ) : null;
+						$version_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['complete99_platform_version'] ?? null ) : null;
+						$database_valid = ! is_wp_error( $current_storage )
+							&& is_array( $current_storage )
+							&& (string) ( $current_storage['engine'] ?? '' ) === (string) $expected_storage['engine']
+							&& ( $current_storage['tables'] ?? null ) === $expected_storage['tables']
+							&& ! is_wp_error( $current_snapshot )
+							&& false !== $current_database_json
+							&& hash_equals( $expected_database_fingerprint, $current_database_fingerprint )
+							&& is_array( $current_manifest_record )
+							&& $database_snapshot_manifest_valid( $current_manifest, $current_manifest_sha256 )
+							&& hash_equals( $expected_manifest_sha256, $current_manifest_sha256 )
+							&& $canonicalize_json_value( $expected_manifest ) === $canonicalize_json_value( $current_manifest )
+							&& true === ( $current_snapshot['sync_secret_existed'] ?? null )
+							&& true === ( $current_snapshot['sync_secret_configured'] ?? null )
+							&& is_array( $active_plugins )
+							&& in_array( $config['plugin_file'], $active_plugins, true )
+							&& is_array( $marker_row )
+							&& $target_deployment_id === (string) ( $marker_row['option_value'] ?? '' )
+							&& is_array( $version_row )
+							&& $expected_version === (string) ( $version_row['option_value'] ?? '' );
+						if ( ! $database_valid ) {
+							return new WP_Error( 'c99_interrupted_finalized_database', 'Finalized attestation could not prove the exact pre-commerce database.', array( 'status' => 409 ) );
+						}
+
+						$robots_path = $managed_robots_path();
+						$current_robots_sha256 = ! is_wp_error( $robots_path ) && ! is_link( $robots_path ) && ! is_dir( $robots_path ) && file_exists( $robots_path )
+							? (string) @hash_file( 'sha256', $robots_path )
+							: '';
+						$managed_robots_sha256 = hash( 'sha256', $managed_robots_contents() );
+						if (
+							! hash_equals( $expected_robots_sha256, $managed_robots_sha256 )
+							|| ! hash_equals( $expected_robots_sha256, $current_robots_sha256 )
+						) {
+							return new WP_Error( 'c99_interrupted_finalized_robots', 'Finalized attestation could not prove the exact managed robots file.', array( 'status' => 409 ) );
+						}
+
+						$post_plugin_sha256 = $directory_sha256( $target_dir );
+						clearstatcache( true, $plugin_path );
+						$post_plugin = ! is_link( $plugin_path ) && ! is_dir( $plugin_path ) && $wp_filesystem->exists( $plugin_path )
+							? get_plugin_data( $plugin_path, false, false )
+							: array();
+						clearstatcache( true, $robots_path );
+						$post_robots_sha256 = ! is_wp_error( $robots_path ) && ! is_link( $robots_path ) && ! is_dir( $robots_path ) && file_exists( $robots_path )
+							? (string) @hash_file( 'sha256', $robots_path )
+							: '';
+						$post_probe_lock = $read_lock( true );
+						if (
+							$post_probe_lock !== $probe_lock
+							|| is_wp_error( $post_plugin_sha256 )
+							|| ! hash_equals( $expected_plugin_sha256, (string) $post_plugin_sha256 )
+							|| $expected_version !== (string) ( $post_plugin['Version'] ?? '' )
+							|| ! is_plugin_active( $config['plugin_file'] )
+							|| ! hash_equals( $expected_robots_sha256, $post_robots_sha256 )
+						) {
+							return new WP_Error( 'c99_interrupted_finalized_race', 'Finalized attestation identity changed during observation.', array( 'status' => 409 ) );
+						}
+						return array(
+							'schema'                    => 'complete99-interrupted-forward-finalized-attestation/v1',
+							'already_finalized'         => true,
+							'proof_sha256'              => $request_proof_sha256,
+							'probe_deployment_id'       => $probe_id,
+							'finalized_deployment_id'   => $target_deployment_id,
+							'version'                   => $expected_version,
+							'plugin_sha256'             => (string) $post_plugin_sha256,
+							'database_fingerprint'      => $current_database_fingerprint,
+							'database_manifest'         => $current_manifest,
+							'database_manifest_sha256'  => $current_manifest_sha256,
+							'database_storage'          => $current_storage,
+							'current_deployment'        => (string) ( $marker_row['option_value'] ?? '' ),
+							'current_database_version'  => (string) ( $version_row['option_value'] ?? '' ),
+							'active'                    => true,
+							'runtime_loaded'            => true,
+							'migration_failed'          => false,
+							'migration_invariants_valid'=> true,
+							'sync_configured'           => true,
+							'robots_sha256'             => $post_robots_sha256,
+							'target_state_absent'       => true,
+							'target_artifacts_absent'   => true,
+							'probe_lock_phase'          => 'reserved',
+						);
+					} finally {
+						$release_process_lock( $process_lock );
+					}
+				},
+			)
+		);
+
+		register_rest_route(
+			'complete99-deploy/v1',
 			$route_prefix . '/stabilize',
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state, $managed_robots_path ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $decrypt_database_state, $managed_robots_path, $managed_robots_contents ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -1699,6 +2083,171 @@ add_action(
 						&& empty( $state['database_restored'] )
 						&& empty( $state['rollback_compensated'] )
 						&& empty( $state['rollback_compensation_error'] );
+					$interrupted_forward_proof_sha256 = (string) $request->get_param( 'interrupted_forward_proof_sha256' );
+					$interrupted_forward = 'installing' === $phase;
+					$interrupted_forward_adopted = 'installed' === $phase && ! empty( $state['adopted_forward_no_rollback'] );
+					$interrupted_config  = is_array( $config['interrupted_forward'] ?? null )
+						? $config['interrupted_forward']
+						: array();
+					$interrupted_temp_path = '';
+					$interrupted_baseline_snapshot = array();
+					if ( '' !== $interrupted_forward_proof_sha256 && ! $interrupted_forward && ! $interrupted_forward_adopted ) {
+						return new WP_Error(
+							'c99_stabilize_interrupted_phase',
+							'Interrupted-forward proof is accepted only for a stale installing phase.',
+							array( 'status' => 409, 'phase' => $phase )
+						);
+					}
+					if ( $interrupted_forward_adopted && '' !== $interrupted_forward_proof_sha256 ) {
+						$configured_proof = (string) ( $interrupted_config['proof_sha256'] ?? '' );
+						$state_proof = (string) ( $state['interrupted_forward_proof_sha256'] ?? '' );
+						if (
+							! preg_match( '/^[a-f0-9]{64}$/', $configured_proof )
+							|| ! preg_match( '/^[a-f0-9]{64}$/', $interrupted_forward_proof_sha256 )
+							|| ! hash_equals( $configured_proof, $interrupted_forward_proof_sha256 )
+							|| ! hash_equals( $configured_proof, $state_proof )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_proof', 'Interrupted-forward proof does not match the durable adoption checkpoint.', array( 'status' => 409 ) );
+						}
+					}
+					if ( $interrupted_forward ) {
+						$interrupted_sha_keys = array(
+							'expected_artifact_sha256',
+							'expected_plugin_sha256',
+							'proof_sha256',
+							'reviewed_database_fingerprint',
+							'reviewed_database_manifest_sha256',
+							'prior_database_fingerprint',
+							'prior_plugin_sha256',
+							'prior_robots_sha256',
+						);
+						$interrupted_config_valid = true;
+						foreach ( $interrupted_sha_keys as $sha_key ) {
+							if ( ! is_string( $interrupted_config[ $sha_key ] ?? null ) || ! preg_match( '/^[a-f0-9]{64}$/', $interrupted_config[ $sha_key ] ) ) {
+								$interrupted_config_valid = false;
+								break;
+							}
+						}
+						$interrupted_config_valid = $interrupted_config_valid
+							&& is_string( $interrupted_config['expected_version'] ?? null )
+							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+$/', $interrupted_config['expected_version'] )
+							&& is_string( $interrupted_config['prior_version'] ?? null )
+							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+$/', $interrupted_config['prior_version'] )
+							&& is_string( $interrupted_config['prior_deployment'] ?? null )
+							&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $interrupted_config['prior_deployment'] )
+							&& str_starts_with( $interrupted_config['prior_deployment'], 'c99-' )
+							&& is_array( $interrupted_config['reviewed_database_storage'] ?? null )
+							&& array( 'engine', 'tables' ) === array_keys( $interrupted_config['reviewed_database_storage'] )
+							&& in_array( (string) ( $interrupted_config['reviewed_database_storage']['engine'] ?? '' ), array( 'INNODB', 'XTRADB', 'INNODB,XTRADB' ), true )
+							&& 3 === ( $interrupted_config['reviewed_database_storage']['tables'] ?? null )
+							&& $deployment_id !== $interrupted_config['prior_deployment'];
+						if ( ! $interrupted_config_valid ) {
+							return new WP_Error( 'c99_stabilize_interrupted_config', 'Interrupted-forward identities are not fully configured.', array( 'status' => 500 ) );
+						}
+						if (
+							! preg_match( '/^[a-f0-9]{64}$/', $interrupted_forward_proof_sha256 )
+							|| ! hash_equals( $interrupted_config['proof_sha256'], $interrupted_forward_proof_sha256 )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_proof', 'Interrupted-forward proof does not match this single-use recovery bridge.', array( 'status' => 409 ) );
+						}
+						$lock_updated_at = (int) ( $lock['updated_at'] ?? $lock['started_at'] ?? 0 );
+						$lock_age = 0 < $lock_updated_at ? max( 0, time() - $lock_updated_at ) : 0;
+						if (
+							'installing' !== (string) ( $lock['phase'] ?? '' )
+							|| 0 >= $lock_updated_at
+							|| $lock_age < (int) $config['recovery_lease_seconds']
+							|| '' === (string) ( $state['owner_id'] ?? '' )
+							|| (string) ( $state['owner_id'] ?? '' ) !== (string) ( $lock['owner_id'] ?? '' )
+							|| 0 >= (int) ( $state['fence'] ?? 0 )
+							|| (int) ( $state['fence'] ?? 0 ) !== (int) ( $lock['fence'] ?? 0 )
+						) {
+							return new WP_Error(
+								'c99_stabilize_interrupted_lease',
+								'Interrupted-forward adoption requires the exact stale recovery-ready lease.',
+								array(
+									'status'                 => 409,
+									'phase'                  => $phase,
+									'lock_age_seconds'       => $lock_age,
+									'recovery_lease_seconds' => (int) $config['recovery_lease_seconds'],
+								)
+							);
+						}
+						if (
+							! $no_rollback_artifacts
+							|| ! empty( $state['robots_restored'] )
+							|| ! empty( $state['adopted_forward_no_rollback'] )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_rollback_artifacts', 'Interrupted-forward adoption refused rollback or prior-adoption state.', array( 'status' => 409 ) );
+						}
+						$state_identity_valid = $deployment_id === (string) ( $state['deployment_id'] ?? '' )
+							&& hash_equals( $interrupted_config['expected_artifact_sha256'], (string) ( $state['expected_sha256'] ?? '' ) )
+							&& $interrupted_config['expected_version'] === (string) ( $state['expected_version'] ?? '' )
+							&& hash_equals( $interrupted_config['prior_database_fingerprint'], (string) ( $state['database_fingerprint'] ?? '' ) )
+							&& hash_equals( $interrupted_config['prior_plugin_sha256'], (string) ( $state['prior_plugin_sha256'] ?? '' ) )
+							&& $interrupted_config['prior_deployment'] === (string) ( $state['prior_deployment'] ?? '' )
+							&& $interrupted_config['prior_version'] === (string) ( $state['prior_version'] ?? '' )
+							&& true === ( $state['had_plugin'] ?? null )
+							&& true === ( $state['prior_target_dir_exists'] ?? null )
+							&& true === ( $state['prior_plugin_main_exists'] ?? null )
+							&& true === ( $state['was_active'] ?? null )
+							&& true === ( $state['robots_prior_exists'] ?? null )
+							&& hash_equals( $interrupted_config['prior_robots_sha256'], (string) ( $state['robots_prior_sha256'] ?? '' ) )
+							&& empty( $state['temp_removed'] );
+						if ( ! $state_identity_valid ) {
+							return new WP_Error( 'c99_stabilize_interrupted_state_identity', 'Interrupted-forward state does not match the reviewed release and baseline identities.', array( 'status' => 409 ) );
+						}
+						$prior_robots_bytes = base64_decode( (string) ( $state['robots_prior_base64'] ?? '' ), true );
+						if (
+							false === $prior_robots_bytes
+							|| strlen( $prior_robots_bytes ) > 65536
+							|| ! hash_equals( $interrupted_config['prior_robots_sha256'], hash( 'sha256', $prior_robots_bytes ) )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_robots_journal', 'Interrupted-forward robots baseline failed integrity validation.', array( 'status' => 409 ) );
+						}
+						$interrupted_baseline_snapshot = $decrypt_database_state( $state['database_journal'] ?? array() );
+						$interrupted_baseline_json = is_wp_error( $interrupted_baseline_snapshot )
+							? false
+							: wp_json_encode( $interrupted_baseline_snapshot );
+						if (
+							is_wp_error( $interrupted_baseline_snapshot )
+							|| false === $interrupted_baseline_json
+							|| ! hash_equals( $interrupted_config['prior_database_fingerprint'], hash( 'sha256', $interrupted_baseline_json ) )
+							|| true !== ( $interrupted_baseline_snapshot['sync_secret_existed'] ?? null )
+							|| true !== ( $interrupted_baseline_snapshot['sync_secret_configured'] ?? null )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_database_journal', 'Interrupted-forward database baseline or configured sync journal failed exact validation.', array( 'status' => 409 ) );
+						}
+						$interrupted_temp_path = (string) ( $state['temp_path'] ?? '' );
+						$temp_root = rtrim( strtolower( wp_normalize_path( get_temp_dir() ) ), '/' );
+						$normalized_temp = strtolower( wp_normalize_path( $interrupted_temp_path ) );
+						if (
+							'' === $interrupted_temp_path
+							|| '' === $temp_root
+							|| dirname( $normalized_temp ) !== $temp_root
+							|| ! str_ends_with( $normalized_temp, '.zip' )
+							|| str_contains( $normalized_temp, '/../' )
+							|| is_link( $interrupted_temp_path )
+							|| is_dir( $interrupted_temp_path )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_temp_path', 'Interrupted-forward package cleanup path is unsafe.', array( 'status' => 409 ) );
+						}
+						foreach ( array( 'robots.forward', 'robots.rollback-prior' ) as $rollback_artifact ) {
+							if ( file_exists( trailingslashit( $state_dir ) . $rollback_artifact ) || is_link( trailingslashit( $state_dir ) . $rollback_artifact ) ) {
+								return new WP_Error( 'c99_stabilize_interrupted_rollback_file', 'Interrupted-forward adoption refused a rollback filesystem artifact.', array( 'status' => 409 ) );
+							}
+						}
+						$prior_live_robots = trailingslashit( $state_dir ) . 'robots.prior-live';
+						if (
+							( file_exists( $prior_live_robots ) || is_link( $prior_live_robots ) || is_dir( $prior_live_robots ) )
+							&& (
+								is_link( $prior_live_robots )
+								|| is_dir( $prior_live_robots )
+								|| ! hash_equals( $interrupted_config['prior_robots_sha256'], (string) @hash_file( 'sha256', $prior_live_robots ) )
+							)
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_prior_robots', 'Interrupted-forward adoption requires the exact preserved prior robots file.', array( 'status' => 409 ) );
+						}
+					}
 					$robots_path = $managed_robots_path();
 					if ( is_wp_error( $robots_path ) ) {
 						return $robots_path;
@@ -1734,7 +2283,7 @@ add_action(
 						&& ! empty( $state['installed_active'] )
 						&& $robots_forward_ready
 						&& $no_rollback_artifacts;
-					if ( ! $legacy_clean_installed && ! $clean_pending_stabilization && ! $clean_pending_cleanup && ! $already_stabilized ) {
+					if ( ! $interrupted_forward && ! $legacy_clean_installed && ! $clean_pending_stabilization && ! $clean_pending_cleanup && ! $already_stabilized ) {
 						return new WP_Error(
 							'c99_stabilize_not_ready',
 							'Deployment stabilization requires a clean forward-pending release.',
@@ -1742,8 +2291,12 @@ add_action(
 						);
 					}
 
-					$expected_version = (string) ( $state['expected_version'] ?? $state['installed_version'] ?? '' );
-					$installed_plugin_sha256 = (string) ( $state['installed_plugin_sha256'] ?? '' );
+					$expected_version = $interrupted_forward
+						? (string) $interrupted_config['expected_version']
+						: (string) ( $state['expected_version'] ?? $state['installed_version'] ?? '' );
+					$installed_plugin_sha256 = $interrupted_forward
+						? (string) $interrupted_config['expected_plugin_sha256']
+						: (string) ( $state['installed_plugin_sha256'] ?? '' );
 					if (
 						! preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+$/', $expected_version )
 						|| ! preg_match( '/^[a-f0-9]{64}$/', $installed_plugin_sha256 )
@@ -1753,6 +2306,21 @@ add_action(
 					$target_dir  = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
 					$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . $config['plugin_file'];
 					require_once ABSPATH . 'wp-admin/includes/plugin.php';
+					if ( $interrupted_forward ) {
+						$backup_dir  = trailingslashit( $state_dir ) . 'plugin';
+						$backup_main = trailingslashit( $backup_dir ) . basename( $config['plugin_file'] );
+						$backup_digest = $directory_sha256( $backup_dir );
+						$backup_data = ! is_link( $backup_main ) && $wp_filesystem->exists( $backup_main )
+							? get_plugin_data( $backup_main, false, false )
+							: array();
+						if (
+							is_wp_error( $backup_digest )
+							|| ! hash_equals( $interrupted_config['prior_plugin_sha256'], (string) $backup_digest )
+							|| $interrupted_config['prior_version'] !== (string) ( $backup_data['Version'] ?? '' )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_plugin_baseline', 'Interrupted-forward plugin baseline failed exact integrity validation.', array( 'status' => 409 ) );
+						}
+					}
 					$current_data = $wp_filesystem->exists( $plugin_path )
 						? get_plugin_data( $plugin_path, false, false )
 						: array();
@@ -1767,6 +2335,18 @@ add_action(
 						)
 					);
 					$database_version_error = (string) $wpdb->last_error;
+					$current_deployment_id = '';
+					$deployment_marker_error = '';
+					if ( $interrupted_forward ) {
+						$wpdb->last_error = '';
+						$current_deployment_id = (string) $wpdb->get_var(
+							$wpdb->prepare(
+								"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+								'complete99_last_deployment_id'
+							)
+						);
+						$deployment_marker_error = (string) $wpdb->last_error;
+					}
 					$runtime_loaded = defined( 'COMPLETE99_PLATFORM_VERSION' )
 						&& $expected_version === (string) COMPLETE99_PLATFORM_VERSION
 						&& class_exists( 'Complete99_Platform', false )
@@ -1794,6 +2374,7 @@ add_action(
 						|| ! $plugin_header_match
 						|| ! $database_version_match
 						|| ! $plugin_active
+						|| ( $interrupted_forward && ( '' !== $deployment_marker_error || $deployment_id !== $current_deployment_id ) )
 					) {
 						if ( $retryable_forward_mismatch ) {
 							wp_opcache_invalidate_directory( $target_dir );
@@ -1839,8 +2420,243 @@ add_action(
 							array( 'status' => 409 )
 						);
 					}
+					if ( $interrupted_forward ) {
+						$database_storage = $verify_transactional_storage();
+						if (
+							is_wp_error( $database_storage )
+							|| 3 !== (int) ( $database_storage['tables'] ?? 0 )
+							|| '' === (string) ( $database_storage['engine'] ?? '' )
+							|| (string) ( $database_storage['engine'] ?? '' ) !== (string) $interrupted_config['reviewed_database_storage']['engine']
+							|| ( $database_storage['tables'] ?? null ) !== $interrupted_config['reviewed_database_storage']['tables']
+						) {
+							return is_wp_error( $database_storage )
+								? $database_storage
+								: new WP_Error( 'c99_stabilize_interrupted_storage', 'Interrupted-forward transactional storage proof is incomplete.', array( 'status' => 409 ) );
+						}
+						$current_database_snapshot = $capture_database_state_consistent();
+						$current_database_json = is_wp_error( $current_database_snapshot )
+							? false
+							: wp_json_encode( $current_database_snapshot );
+						$current_database_fingerprint = false === $current_database_json
+							? ''
+							: hash( 'sha256', $current_database_json );
+						$current_manifest_record = is_wp_error( $current_database_snapshot )
+							? $current_database_snapshot
+							: $database_snapshot_manifest( $current_database_snapshot );
+						$current_manifest = is_array( $current_manifest_record )
+							? ( $current_manifest_record['manifest'] ?? null )
+							: null;
+						$current_manifest_sha256 = is_array( $current_manifest_record )
+							? (string) ( $current_manifest_record['manifest_sha256'] ?? '' )
+							: '';
+						$current_marker_row = is_array( $current_database_snapshot )
+							? ( $current_database_snapshot['options']['complete99_last_deployment_id'] ?? null )
+							: null;
+						$current_version_row = is_array( $current_database_snapshot )
+							? ( $current_database_snapshot['options']['complete99_platform_version'] ?? null )
+							: null;
+						if (
+							is_wp_error( $current_database_snapshot )
+							|| false === $current_database_json
+							|| ! hash_equals( $interrupted_config['reviewed_database_fingerprint'], $current_database_fingerprint )
+							|| ! is_array( $current_manifest_record )
+							|| ! $database_snapshot_manifest_valid( $current_manifest, $current_manifest_sha256 )
+							|| ! hash_equals( $interrupted_config['reviewed_database_manifest_sha256'], $current_manifest_sha256 )
+							|| true !== ( $current_database_snapshot['sync_secret_existed'] ?? null )
+							|| true !== ( $current_database_snapshot['sync_secret_configured'] ?? null )
+							|| ! is_array( $current_marker_row )
+							|| $deployment_id !== (string) ( $current_marker_row['option_value'] ?? '' )
+							|| ! is_array( $current_version_row )
+							|| $expected_version !== (string) ( $current_version_row['option_value'] ?? '' )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_database_proof', 'Interrupted-forward database fingerprint, manifest, marker, version or configured sync proof changed.', array( 'status' => 409 ) );
+						}
+						$managed_robots_sha256 = hash( 'sha256', $managed_robots_contents() );
+						$current_robots_sha256 = file_exists( $robots_path ) && ! is_link( $robots_path ) && ! is_dir( $robots_path )
+							? (string) @hash_file( 'sha256', $robots_path )
+							: '';
+						if (
+							! hash_equals( $interrupted_config['prior_robots_sha256'], $managed_robots_sha256 )
+							|| ! hash_equals( $interrupted_config['prior_robots_sha256'], $current_robots_sha256 )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_robots', 'Interrupted-forward robots.txt is not the exact reviewed managed file.', array( 'status' => 409 ) );
+						}
+						if ( file_exists( $interrupted_temp_path ) ) {
+							$temp_artifact_sha256 = @hash_file( 'sha256', $interrupted_temp_path );
+							if ( false === $temp_artifact_sha256 || ! hash_equals( $interrupted_config['expected_artifact_sha256'], $temp_artifact_sha256 ) ) {
+								return new WP_Error( 'c99_stabilize_interrupted_artifact', 'Interrupted-forward temporary package does not match the reviewed artifact.', array( 'status' => 409 ) );
+							}
+						}
 
-					$current_database_snapshot = $capture_database_state();
+						$lease = $claim_lock(
+							$deployment_id,
+							array( 'installing' ),
+							'installing',
+							false,
+							true
+						);
+						if ( is_wp_error( $lease ) ) {
+							return $lease;
+						}
+						$adopted = $adopt_state_lease( $state_dir, $deployment_id, $lease );
+						if ( is_wp_error( $adopted ) ) {
+							return $adopted;
+						}
+						$state = $adopted;
+						if (
+							'installing' !== (string) ( $state['phase'] ?? '' )
+							|| ! empty( $state['rollback_applied'] )
+							|| ! empty( $state['database_restored'] )
+							|| ! empty( $state['rollback_compensated'] )
+							|| ! empty( $state['rollback_compensation_error'] )
+							|| ! empty( $state['robots_restored'] )
+							|| ! hash_equals( $interrupted_config['expected_artifact_sha256'], (string) ( $state['expected_sha256'] ?? '' ) )
+							|| $interrupted_config['expected_version'] !== (string) ( $state['expected_version'] ?? '' )
+							|| ! hash_equals( $interrupted_config['prior_database_fingerprint'], (string) ( $state['database_fingerprint'] ?? '' ) )
+							|| ! hash_equals( $interrupted_config['prior_plugin_sha256'], (string) ( $state['prior_plugin_sha256'] ?? '' ) )
+							|| $interrupted_config['prior_deployment'] !== (string) ( $state['prior_deployment'] ?? '' )
+							|| $interrupted_config['prior_version'] !== (string) ( $state['prior_version'] ?? '' )
+							|| $interrupted_temp_path !== (string) ( $state['temp_path'] ?? '' )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_adoption_state', 'Interrupted-forward state changed while the stale lease was adopted.', array( 'status' => 409 ) );
+						}
+						$post_claim_plugin_sha256 = $directory_sha256( $target_dir );
+						clearstatcache( true, $plugin_path );
+						$post_claim_data = $wp_filesystem->exists( $plugin_path )
+							? get_plugin_data( $plugin_path, false, false )
+							: array();
+						$post_claim_runtime_valid = defined( 'COMPLETE99_PLATFORM_VERSION' )
+							&& $expected_version === (string) COMPLETE99_PLATFORM_VERSION
+							&& class_exists( 'Complete99_Platform', false )
+							&& method_exists( 'Complete99_Platform', 'migration_failed' )
+							&& false === (bool) Complete99_Platform::migration_failed();
+						if (
+							is_wp_error( $post_claim_plugin_sha256 )
+							|| ! hash_equals( $installed_plugin_sha256, (string) $post_claim_plugin_sha256 )
+							|| $expected_version !== (string) ( $post_claim_data['Version'] ?? '' )
+							|| ! is_plugin_active( $config['plugin_file'] )
+							|| ! $post_claim_runtime_valid
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_post_claim_plugin', 'Interrupted-forward plugin identity changed after lease adoption.', array( 'status' => 409 ) );
+						}
+						try {
+							Complete99_Content::assert_migration_invariants();
+							Complete99_Settings::assert_defaults();
+							Complete99_Platform::assert_evaluation_catalog_invariants();
+						} catch ( \Throwable $error ) {
+							return new WP_Error( 'c99_stabilize_interrupted_post_claim_invariants', 'Interrupted-forward migration invariants changed after lease adoption.', array( 'status' => 409 ) );
+						}
+						$post_claim_storage = $verify_transactional_storage();
+						$post_claim_snapshot = $capture_database_state_consistent();
+						$post_claim_json = is_wp_error( $post_claim_snapshot ) ? false : wp_json_encode( $post_claim_snapshot );
+						$post_claim_fingerprint = false === $post_claim_json ? '' : hash( 'sha256', $post_claim_json );
+						$post_claim_manifest_record = is_wp_error( $post_claim_snapshot )
+							? $post_claim_snapshot
+							: $database_snapshot_manifest( $post_claim_snapshot );
+						$post_claim_manifest = is_array( $post_claim_manifest_record )
+							? ( $post_claim_manifest_record['manifest'] ?? null )
+							: null;
+						$post_claim_manifest_sha256 = is_array( $post_claim_manifest_record )
+							? (string) ( $post_claim_manifest_record['manifest_sha256'] ?? '' )
+							: '';
+						$post_claim_marker_row = is_array( $post_claim_snapshot )
+							? ( $post_claim_snapshot['options']['complete99_last_deployment_id'] ?? null )
+							: null;
+						$post_claim_version_row = is_array( $post_claim_snapshot )
+							? ( $post_claim_snapshot['options']['complete99_platform_version'] ?? null )
+							: null;
+						if (
+							is_wp_error( $post_claim_storage )
+							|| 3 !== (int) ( $post_claim_storage['tables'] ?? 0 )
+							|| '' === (string) ( $post_claim_storage['engine'] ?? '' )
+							|| (string) ( $post_claim_storage['engine'] ?? '' ) !== (string) $interrupted_config['reviewed_database_storage']['engine']
+							|| ( $post_claim_storage['tables'] ?? null ) !== $interrupted_config['reviewed_database_storage']['tables']
+							|| is_wp_error( $post_claim_snapshot )
+							|| false === $post_claim_json
+							|| ! hash_equals( $interrupted_config['reviewed_database_fingerprint'], $post_claim_fingerprint )
+							|| ! is_array( $post_claim_manifest_record )
+							|| ! $database_snapshot_manifest_valid( $post_claim_manifest, $post_claim_manifest_sha256 )
+							|| ! hash_equals( $interrupted_config['reviewed_database_manifest_sha256'], $post_claim_manifest_sha256 )
+							|| true !== ( $post_claim_snapshot['sync_secret_existed'] ?? null )
+							|| true !== ( $post_claim_snapshot['sync_secret_configured'] ?? null )
+							|| ! is_array( $post_claim_marker_row )
+							|| $deployment_id !== (string) ( $post_claim_marker_row['option_value'] ?? '' )
+							|| ! is_array( $post_claim_version_row )
+							|| $expected_version !== (string) ( $post_claim_version_row['option_value'] ?? '' )
+						) {
+							return new WP_Error( 'c99_stabilize_interrupted_post_claim_database', 'Interrupted-forward database proof changed after lease adoption.', array( 'status' => 409 ) );
+						}
+						$post_claim_robots_sha256 = file_exists( $robots_path ) && ! is_link( $robots_path ) && ! is_dir( $robots_path )
+							? (string) @hash_file( 'sha256', $robots_path )
+							: '';
+						if ( ! hash_equals( $interrupted_config['prior_robots_sha256'], $post_claim_robots_sha256 ) ) {
+							return new WP_Error( 'c99_stabilize_interrupted_post_claim_robots', 'Interrupted-forward robots.txt changed after lease adoption.', array( 'status' => 409 ) );
+						}
+						if ( file_exists( $interrupted_temp_path ) ) {
+							$post_claim_artifact_sha256 = @hash_file( 'sha256', $interrupted_temp_path );
+							if (
+								false === $post_claim_artifact_sha256
+								|| ! hash_equals( $interrupted_config['expected_artifact_sha256'], $post_claim_artifact_sha256 )
+								|| ! $wp_filesystem->delete( $interrupted_temp_path )
+							) {
+								return new WP_Error( 'c99_stabilize_interrupted_temp_cleanup', 'Interrupted-forward reviewed package could not be removed safely.', array( 'status' => 500 ) );
+							}
+						}
+						clearstatcache( true, $interrupted_temp_path );
+						if ( file_exists( $interrupted_temp_path ) || is_link( $interrupted_temp_path ) || is_dir( $interrupted_temp_path ) ) {
+							return new WP_Error( 'c99_stabilize_interrupted_temp_readback', 'Interrupted-forward package cleanup failed readback.', array( 'status' => 500 ) );
+						}
+						$stabilized = $set_state_phase(
+							$state_dir,
+							$deployment_id,
+							'installed',
+							array(
+								'installed_plugin_sha256'                  => $installed_plugin_sha256,
+								'installed_version'                        => $expected_version,
+								'installed_active'                         => true,
+								'temp_removed'                             => true,
+								'temp_path'                                => '',
+								'forward_ready'                            => true,
+								'sync_configuration_pending'               => false,
+								'robots_applied'                           => true,
+								'robots_restored'                          => false,
+								'robots_managed_sha256'                    => $interrupted_config['prior_robots_sha256'],
+								'post_install_database_fingerprint'        => $post_claim_fingerprint,
+								'interrupted_forward_current_database_fingerprint'=> $post_claim_fingerprint,
+								'interrupted_forward_database_manifest'       => $post_claim_manifest,
+								'interrupted_forward_database_manifest_sha256'=> $post_claim_manifest_sha256,
+								'interrupted_forward_database_storage'       => $post_claim_storage,
+								'interrupted_forward_proof_sha256'         => $interrupted_config['proof_sha256'],
+								'adopted_forward_no_rollback'              => true,
+								'adopted_forward_at'                       => time(),
+								'stabilized'                               => true,
+								'stabilized_from_phase'                    => 'installing',
+							)
+						);
+						if ( is_wp_error( $stabilized ) ) {
+							return $stabilized;
+						}
+						return array(
+							'stabilized'                       => true,
+							'idempotent'                       => false,
+							'adopted_forward_no_rollback'      => true,
+							'stabilized_from_phase'            => 'installing',
+							'version'                          => $expected_version,
+							'database_version'                 => $expected_version,
+							'deployment_id'                    => $deployment_id,
+							'installed_plugin_sha256'          => $installed_plugin_sha256,
+							'post_install_database_fingerprint'=> $post_claim_fingerprint,
+							'interrupted_forward_proof_sha256' => $interrupted_config['proof_sha256'],
+							'database_manifest_sha256'         => $post_claim_manifest_sha256,
+							'database_manifest'                => $post_claim_manifest,
+							'database_storage'                 => $post_claim_storage,
+							'cache_purge'                      => array( 'deferred_to_finalize' => true ),
+						);
+					}
+
+					$current_database_snapshot = $interrupted_forward_adopted
+						? $capture_database_state_consistent()
+						: $capture_database_state();
 					$current_database_json = is_wp_error( $current_database_snapshot )
 						? false
 						: wp_json_encode( $current_database_snapshot );
@@ -1869,16 +2685,70 @@ add_action(
 								array( 'status' => 409 )
 							);
 						}
+						$idempotent_manifest = array();
+						$idempotent_manifest_sha256 = '';
+						$idempotent_storage = array();
+						if ( $interrupted_forward_adopted ) {
+							$idempotent_manifest_record = $database_snapshot_manifest( $current_database_snapshot );
+							$idempotent_manifest = is_array( $idempotent_manifest_record )
+								? ( $idempotent_manifest_record['manifest'] ?? null )
+								: null;
+							$idempotent_manifest_sha256 = is_array( $idempotent_manifest_record )
+								? (string) ( $idempotent_manifest_record['manifest_sha256'] ?? '' )
+								: '';
+							$idempotent_storage = $verify_transactional_storage();
+							$configured_proof = (string) ( $interrupted_config['proof_sha256'] ?? '' );
+							$configured_manifest_sha256 = (string) ( $interrupted_config['reviewed_database_manifest_sha256'] ?? '' );
+							$configured_database_fingerprint = (string) ( $interrupted_config['reviewed_database_fingerprint'] ?? '' );
+							$configured_plugin_sha256 = (string) ( $interrupted_config['expected_plugin_sha256'] ?? '' );
+							$configured_robots_sha256 = (string) ( $interrupted_config['prior_robots_sha256'] ?? '' );
+							if (
+								! preg_match( '/^[a-f0-9]{64}$/', $configured_proof )
+								|| ! preg_match( '/^[a-f0-9]{64}$/', $configured_manifest_sha256 )
+								|| ! preg_match( '/^[a-f0-9]{64}$/', $configured_database_fingerprint )
+								|| ! preg_match( '/^[a-f0-9]{64}$/', $configured_plugin_sha256 )
+								|| ! preg_match( '/^[a-f0-9]{64}$/', $configured_robots_sha256 )
+								|| ! hash_equals( $configured_proof, (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ) )
+								|| ! hash_equals( $configured_manifest_sha256, (string) ( $state['interrupted_forward_database_manifest_sha256'] ?? '' ) )
+								|| ! hash_equals( $configured_manifest_sha256, $idempotent_manifest_sha256 )
+								|| ! hash_equals( $configured_database_fingerprint, $current_database_fingerprint )
+								|| ! hash_equals( $configured_plugin_sha256, $installed_plugin_sha256 )
+								|| ! hash_equals( $configured_robots_sha256, $current_robots_sha256 )
+								|| ! hash_equals( $configured_robots_sha256, hash( 'sha256', $managed_robots_contents() ) )
+								|| (string) ( $interrupted_config['expected_version'] ?? '' ) !== $expected_version
+								|| true !== ( $current_database_snapshot['sync_secret_existed'] ?? null )
+								|| true !== ( $current_database_snapshot['sync_secret_configured'] ?? null )
+								|| ! is_array( $idempotent_manifest_record )
+								|| ! $database_snapshot_manifest_valid( $idempotent_manifest, $idempotent_manifest_sha256 )
+								|| is_wp_error( $idempotent_storage )
+								|| 3 !== (int) ( $idempotent_storage['tables'] ?? 0 )
+								|| '' === (string) ( $idempotent_storage['engine'] ?? '' )
+								|| ! is_array( $interrupted_config['reviewed_database_storage'] ?? null )
+								|| (string) ( $idempotent_storage['engine'] ?? '' ) !== (string) ( $interrupted_config['reviewed_database_storage']['engine'] ?? '' )
+								|| ( $idempotent_storage['tables'] ?? null ) !== ( $interrupted_config['reviewed_database_storage']['tables'] ?? null )
+								|| $idempotent_manifest !== ( $state['interrupted_forward_database_manifest'] ?? null )
+								|| $idempotent_storage !== ( $state['interrupted_forward_database_storage'] ?? null )
+							) {
+								return new WP_Error( 'c99_stabilize_interrupted_idempotency_proof', 'The durable interrupted-forward adoption no longer matches its reviewed proof.', array( 'status' => 409 ) );
+							}
+						}
 						return array(
 							'stabilized'                       => true,
 							'idempotent'                       => true,
+							'adopted_forward_no_rollback'      => ! empty( $state['adopted_forward_no_rollback'] ),
 							'stabilized_from_phase'            => (string) ( $state['stabilized_from_phase'] ?? 'installed' ),
 							'version'                          => $expected_version,
 							'database_version'                 => $current_database_version,
 							'deployment_id'                    => $deployment_id,
 							'installed_plugin_sha256'          => $installed_plugin_sha256,
 							'post_install_database_fingerprint'=> $recorded_fingerprint,
-							'cache_purge'                       => array( 'not_required' => true ),
+							'interrupted_forward_proof_sha256' => (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ),
+							'database_manifest_sha256'         => $interrupted_forward_adopted ? $idempotent_manifest_sha256 : '',
+							'database_manifest'                => $interrupted_forward_adopted ? $idempotent_manifest : array(),
+							'database_storage'                 => $interrupted_forward_adopted ? $idempotent_storage : array(),
+							'cache_purge'                       => $interrupted_forward_adopted
+								? array( 'deferred_to_finalize' => true )
+								: array( 'not_required' => true ),
 						);
 					}
 
@@ -2855,6 +3725,17 @@ add_action(
 					$state = json_decode( $wp_filesystem->get_contents( $state_file ), true );
 					if ( ! is_array( $state ) ) {
 						return new WP_Error( 'c99_rollback_state_invalid', 'Rollback state is invalid.', array( 'status' => 500 ) );
+					}
+					if ( ! empty( $state['adopted_forward_no_rollback'] ) ) {
+						return new WP_Error(
+							'c99_rollback_adopted_forward',
+							'Rollback is categorically refused after proof-gated interrupted-forward adoption.',
+							array(
+								'status'      => 409,
+								'phase'       => (string) ( $state['phase'] ?? '' ),
+								'deployment_id'=> $deployment_id,
+							)
+						);
 					}
 					$lock = $read_lock( true );
 					if ( $deployment_id !== (string) ( $lock['deployment_id'] ?? '' ) ) {
@@ -4302,6 +5183,29 @@ add_action(
 						return new WP_Error( 'c99_finalize_state_invalid', 'Deployment state is invalid.', array( 'status' => 500 ) );
 					}
 					$phase = $state_exists ? (string) ( $state['phase'] ?? '' ) : (string) ( $lock['phase'] ?? '' );
+					$state_backup_intact = false;
+					if ( $state_exists ) {
+						$state_backup_dir = trailingslashit( $state_dir ) . 'plugin';
+						$state_backup_main = trailingslashit( $state_backup_dir ) . basename( $config['plugin_file'] );
+						$state_backup_sha256 = ! is_link( $state_backup_dir ) && $wp_filesystem->is_dir( $state_backup_dir )
+							? $directory_sha256( $state_backup_dir )
+							: new WP_Error( 'c99_finalize_partial_backup' );
+						$state_backup_intact = ! is_link( $state_backup_main )
+							&& ! is_dir( $state_backup_main )
+							&& $wp_filesystem->exists( $state_backup_main )
+							&& ! is_wp_error( $state_backup_sha256 )
+							&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $lock['prior_plugin_sha256'] ?? '' ) )
+							&& hash_equals( (string) $lock['prior_plugin_sha256'], (string) $state_backup_sha256 );
+					}
+					$adopted_forward_cleanup_residue = $lock_owned
+						&& in_array( (string) ( $lock['phase'] ?? '' ), array( 'committed', 'cleanup_failed' ), true )
+						&& ! empty( $lock['adopted_forward_no_rollback'] )
+						&& ! is_link( $state_dir )
+						&& $wp_filesystem->is_dir( $state_dir )
+						&& ( ! $state_exists || ! $state_backup_intact );
+					if ( $adopted_forward_cleanup_residue ) {
+						$phase = (string) $lock['phase'];
+					}
 					$owner_changed = $lock_owner !== (string) ( $lock['owner_id'] ?? '' );
 					$orphaned_marker_present = false;
 					foreach (
@@ -4349,7 +5253,7 @@ add_action(
 					if ( is_wp_error( $lease ) ) {
 						return $lease;
 					}
-					if ( $state_exists ) {
+					if ( $state_exists && ! $adopted_forward_cleanup_residue ) {
 						$adopted = $adopt_state_lease( $state_dir, $deployment_id, $lease );
 						if ( is_wp_error( $adopted ) ) {
 							return $adopted;
@@ -4358,6 +5262,383 @@ add_action(
 					}
 					$lock = $lease;
 					$lock_owned = true;
+					if ( $adopted_forward_cleanup_residue ) {
+						$state_exists = false;
+						$state = array();
+					}
+					$adopted_forward_finalize = $state_exists && ! empty( $state['adopted_forward_no_rollback'] );
+					$adopted_forward_lock_finalize = ! $state_exists
+						&& ! $adopted_forward_cleanup_residue
+						&& in_array( (string) ( $lock['phase'] ?? '' ), array( 'committed', 'cleanup_failed' ), true )
+						&& ! empty( $lock['adopted_forward_no_rollback'] );
+					$validate_adopted_forward_finalize = static function ( $stage, $lock_only = false, $require_lock_identity = false, $cleanup_residue = false ) use ( $config, $deployment_id, $state_dir, $state_file, $read_lock, $directory_sha256, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $managed_robots_path ) {
+						global $wp_filesystem;
+						$attestation_error = static function () use ( $stage ) {
+							return new WP_Error(
+								'c99_finalize_interrupted_forward_attestation',
+								'Interrupted-forward finalization could not re-attest the exact adopted release.',
+								array( 'status' => 409, 'stage' => sanitize_key( (string) $stage ) )
+							);
+						};
+						$current_lock = $read_lock( true );
+						if ( $lock_only ) {
+							if ( $cleanup_residue ) {
+								if ( is_link( $state_dir ) || ! $wp_filesystem->is_dir( $state_dir ) ) {
+									return $attestation_error();
+								}
+								$residue_root = realpath( $state_dir );
+								$residue_safe = is_string( $residue_root ) && '' !== $residue_root;
+								if ( $residue_safe ) {
+									try {
+										$residue_iterator = new RecursiveIteratorIterator(
+											new RecursiveDirectoryIterator( $residue_root, FilesystemIterator::SKIP_DOTS ),
+											RecursiveIteratorIterator::SELF_FIRST
+										);
+										foreach ( $residue_iterator as $residue_entry ) {
+											$residue_path = $residue_entry->getPathname();
+											$residue_relative = str_replace( '\\', '/', substr( $residue_path, strlen( $residue_root ) + 1 ) );
+											$residue_parts = explode( '/', $residue_relative );
+											$residue_top = (string) ( $residue_parts[0] ?? '' );
+											$residue_safe = $residue_safe
+												&& ! $residue_entry->isLink()
+												&& in_array( $residue_top, array( 'state.json', 'plugin', 'robots.prior-live' ), true )
+												&& ( $residue_entry->isDir() || $residue_entry->isFile() )
+												&& ( 'plugin' === $residue_top || ( $residue_relative === $residue_top && $residue_entry->isFile() ) );
+											if ( ! $residue_safe ) {
+												break;
+											}
+										}
+									} catch ( \Throwable $error ) {
+										$residue_safe = false;
+									}
+								}
+								if ( ! $residue_safe ) {
+									return $attestation_error();
+								}
+							} elseif ( $wp_filesystem->exists( $state_file ) || $wp_filesystem->exists( $state_dir ) || is_link( $state_dir ) ) {
+								return $attestation_error();
+							}
+							$current_state = $current_lock;
+						} else {
+							if ( ! $wp_filesystem->exists( $state_file ) || is_link( $state_file ) || is_dir( $state_file ) ) {
+								return $attestation_error();
+							}
+							$state_contents = $wp_filesystem->get_contents( $state_file );
+							$current_state = is_string( $state_contents ) ? json_decode( $state_contents, true ) : null;
+						}
+						$phase = is_array( $current_state ) ? (string) ( $current_state['phase'] ?? '' ) : '';
+						$interrupted_config = is_array( $config['interrupted_forward'] ?? null )
+							? $config['interrupted_forward']
+							: array();
+						$expected_storage = $interrupted_config['reviewed_database_storage'] ?? null;
+						$storage_valid = static function ( $storage ) {
+							$keys = is_array( $storage ) ? array_keys( $storage ) : array();
+							sort( $keys, SORT_STRING );
+							return array( 'engine', 'tables' ) === $keys
+								&& in_array( (string) ( $storage['engine'] ?? '' ), array( 'INNODB', 'XTRADB', 'INNODB,XTRADB' ), true )
+								&& 3 === ( $storage['tables'] ?? null );
+						};
+						$digest_keys = array(
+							'expected_artifact_sha256',
+							'expected_plugin_sha256',
+							'proof_sha256',
+							'reviewed_database_fingerprint',
+							'reviewed_database_manifest_sha256',
+							'prior_database_fingerprint',
+							'prior_plugin_sha256',
+							'prior_robots_sha256',
+						);
+						$config_valid = true;
+						foreach ( $digest_keys as $digest_key ) {
+							$config_valid = $config_valid
+								&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $interrupted_config[ $digest_key ] ?? '' ) );
+						}
+						$config_valid = $config_valid
+							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $interrupted_config['expected_version'] ?? '' ) )
+							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $interrupted_config['prior_version'] ?? '' ) )
+							&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', (string) ( $interrupted_config['prior_deployment'] ?? '' ) )
+							&& $storage_valid( $expected_storage );
+						$cleanup_prior_live = trailingslashit( $state_dir ) . 'robots.prior-live';
+						if (
+							$cleanup_residue
+							&& ( file_exists( $cleanup_prior_live ) || is_link( $cleanup_prior_live ) || is_dir( $cleanup_prior_live ) )
+							&& (
+								is_link( $cleanup_prior_live )
+								|| is_dir( $cleanup_prior_live )
+								|| ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $interrupted_config['prior_robots_sha256'] ?? '' ) )
+								|| ! hash_equals( (string) $interrupted_config['prior_robots_sha256'], (string) @hash_file( 'sha256', $cleanup_prior_live ) )
+							)
+						) {
+							return $attestation_error();
+						}
+						if (
+							! $config_valid
+							|| ! is_array( $current_state )
+							|| ! is_array( $current_lock )
+							|| ! in_array( $phase, $lock_only ? array( 'committed', 'cleanup_failed' ) : array( 'installed', 'committing', 'commit_failed', 'committed', 'cleanup_failed' ), true )
+							|| $deployment_id !== (string) ( $current_state['deployment_id'] ?? '' )
+							|| $deployment_id !== (string) ( $current_lock['deployment_id'] ?? '' )
+							|| (string) ( $current_state['owner_id'] ?? '' ) !== (string) ( $current_lock['owner_id'] ?? '' )
+							|| 0 >= (int) ( $current_state['fence'] ?? 0 )
+							|| (int) ( $current_state['fence'] ?? 0 ) !== (int) ( $current_lock['fence'] ?? 0 )
+							|| true !== ( $current_state['adopted_forward_no_rollback'] ?? null )
+							|| true !== ( $current_state['stabilized'] ?? null )
+							|| true !== ( $current_state['forward_ready'] ?? null )
+							|| true !== ( $current_state['temp_removed'] ?? null )
+							|| '' !== (string) ( $current_state['temp_path'] ?? '' )
+							|| ! hash_equals( (string) $interrupted_config['expected_artifact_sha256'], (string) ( $current_state['expected_sha256'] ?? '' ) )
+							|| (string) $interrupted_config['expected_version'] !== (string) ( $current_state['expected_version'] ?? '' )
+							|| (string) $interrupted_config['expected_version'] !== (string) ( $current_state['installed_version'] ?? '' )
+							|| ! hash_equals( (string) $interrupted_config['expected_plugin_sha256'], (string) ( $current_state['installed_plugin_sha256'] ?? '' ) )
+							|| true !== ( $current_state['installed_active'] ?? null )
+							|| ! empty( $current_state['sync_configuration_pending'] )
+							|| ! hash_equals( (string) $interrupted_config['proof_sha256'], (string) ( $current_state['interrupted_forward_proof_sha256'] ?? '' ) )
+							|| ! hash_equals( (string) $interrupted_config['reviewed_database_fingerprint'], (string) ( $current_state['post_install_database_fingerprint'] ?? '' ) )
+							|| ! hash_equals( (string) $interrupted_config['reviewed_database_manifest_sha256'], (string) ( $current_state['interrupted_forward_database_manifest_sha256'] ?? '' ) )
+							|| ! is_array( $current_state['interrupted_forward_database_manifest'] ?? null )
+							|| ! $storage_valid( $current_state['interrupted_forward_database_storage'] ?? null )
+							|| (string) ( $current_state['interrupted_forward_database_storage']['engine'] ?? '' ) !== (string) $expected_storage['engine']
+							|| ( $current_state['interrupted_forward_database_storage']['tables'] ?? null ) !== $expected_storage['tables']
+							|| ! hash_equals( (string) $interrupted_config['prior_database_fingerprint'], (string) ( $current_state['database_fingerprint'] ?? '' ) )
+							|| ! hash_equals( (string) $interrupted_config['prior_plugin_sha256'], (string) ( $current_state['prior_plugin_sha256'] ?? '' ) )
+							|| (string) $interrupted_config['prior_deployment'] !== (string) ( $current_state['prior_deployment'] ?? '' )
+							|| (string) $interrupted_config['prior_version'] !== (string) ( $current_state['prior_version'] ?? '' )
+							|| true !== ( $current_state['had_plugin'] ?? null )
+							|| true !== ( $current_state['prior_target_dir_exists'] ?? null )
+							|| true !== ( $current_state['prior_plugin_main_exists'] ?? null )
+							|| true !== ( $current_state['was_active'] ?? null )
+							|| true !== ( $current_state['robots_prior_exists'] ?? null )
+							|| true !== ( $current_state['robots_applied'] ?? null )
+							|| false !== ( $current_state['robots_restored'] ?? null )
+							|| ! hash_equals( (string) $interrupted_config['prior_robots_sha256'], (string) ( $current_state['robots_prior_sha256'] ?? '' ) )
+							|| ! hash_equals( (string) $interrupted_config['prior_robots_sha256'], (string) ( $current_state['robots_managed_sha256'] ?? '' ) )
+							|| ! empty( $current_state['rollback_applied'] )
+							|| ! empty( $current_state['database_restored'] )
+							|| ! empty( $current_state['rollback_compensated'] )
+							|| ! empty( $current_state['rollback_compensation_error'] )
+						) {
+							return $attestation_error();
+						}
+						if ( $require_lock_identity ) {
+							$lock_identity_keys = array(
+								'expected_sha256',
+								'expected_version',
+								'installed_plugin_sha256',
+								'installed_version',
+								'installed_active',
+								'temp_removed',
+								'temp_path',
+								'sync_configuration_pending',
+								'adopted_forward_no_rollback',
+								'stabilized',
+								'forward_ready',
+								'interrupted_forward_proof_sha256',
+								'interrupted_forward_database_manifest',
+								'interrupted_forward_database_manifest_sha256',
+								'interrupted_forward_database_storage',
+								'post_install_database_fingerprint',
+								'database_fingerprint',
+								'had_plugin',
+								'prior_target_dir_exists',
+								'prior_plugin_main_exists',
+								'prior_plugin_sha256',
+								'prior_version',
+								'was_active',
+								'prior_deployment',
+								'robots_applied',
+								'robots_restored',
+								'robots_prior_exists',
+								'robots_prior_sha256',
+								'robots_managed_sha256',
+								'committed_outcome',
+								'committed_expected_active',
+								'committed_expected_absent',
+								'committed_expected_version',
+								'committed_expected_deployment',
+								'committed_expected_plugin_sha256',
+								'committed_expected_robots_exists',
+								'committed_expected_robots_sha256',
+							);
+							foreach ( $lock_identity_keys as $lock_identity_key ) {
+								if (
+									! array_key_exists( $lock_identity_key, $current_lock )
+									|| ( $current_state[ $lock_identity_key ] ?? null ) !== $current_lock[ $lock_identity_key ]
+								) {
+									return $attestation_error();
+								}
+							}
+						}
+
+						$target_dir = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
+						$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . $config['plugin_file'];
+						$backup_dir = trailingslashit( $state_dir ) . 'plugin';
+						$backup_main = trailingslashit( $backup_dir ) . basename( $config['plugin_file'] );
+						$swap_suffix = substr( hash( 'sha256', $deployment_id ), 0, 20 );
+						$unsafe_paths = array(
+							trailingslashit( WP_PLUGIN_DIR ) . '.complete99-restore-' . $swap_suffix,
+							trailingslashit( WP_PLUGIN_DIR ) . '.complete99-displaced-' . $swap_suffix,
+							trailingslashit( $state_dir ) . 'robots.forward',
+							trailingslashit( $state_dir ) . 'robots.rollback-prior',
+						);
+						$unsafe_artifact = false;
+						foreach ( $unsafe_paths as $unsafe_path ) {
+							$unsafe_artifact = $unsafe_artifact
+								|| file_exists( $unsafe_path )
+								|| is_link( $unsafe_path )
+								|| is_dir( $unsafe_path );
+						}
+						require_once ABSPATH . 'wp-admin/includes/plugin.php';
+						$current_plugin_sha256 = ! is_link( $target_dir ) && $wp_filesystem->is_dir( $target_dir )
+							? $directory_sha256( $target_dir )
+							: new WP_Error( 'c99_finalize_interrupted_forward_plugin_path' );
+						$backup_plugin_sha256 = $lock_only
+							? (string) $interrupted_config['prior_plugin_sha256']
+							: ( ! is_link( $backup_dir ) && $wp_filesystem->is_dir( $backup_dir )
+								? $directory_sha256( $backup_dir )
+								: new WP_Error( 'c99_finalize_interrupted_forward_backup_path' ) );
+						clearstatcache( true, $plugin_path );
+						$current_plugin = ! is_link( $plugin_path ) && ! is_dir( $plugin_path ) && $wp_filesystem->exists( $plugin_path )
+							? get_plugin_data( $plugin_path, false, false )
+							: array();
+						$runtime_valid = defined( 'COMPLETE99_PLATFORM_VERSION' )
+							&& (string) $interrupted_config['expected_version'] === (string) COMPLETE99_PLATFORM_VERSION
+							&& class_exists( 'Complete99_Platform', false )
+							&& method_exists( 'Complete99_Platform', 'migration_failed' )
+							&& false === (bool) Complete99_Platform::migration_failed()
+							&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' );
+						$invariants_valid = false;
+						if ( $runtime_valid ) {
+							try {
+								Complete99_Content::assert_migration_invariants();
+								Complete99_Settings::assert_defaults();
+								Complete99_Platform::assert_evaluation_catalog_invariants();
+								$invariants_valid = true;
+							} catch ( \Throwable $error ) {
+								$invariants_valid = false;
+							}
+						}
+						if (
+							$unsafe_artifact
+							|| is_link( $plugin_path )
+							|| ( ! $lock_only && ( is_link( $backup_main ) || ! $wp_filesystem->exists( $backup_main ) ) )
+							|| is_wp_error( $current_plugin_sha256 )
+							|| is_wp_error( $backup_plugin_sha256 )
+							|| ! hash_equals( (string) $interrupted_config['expected_plugin_sha256'], (string) $current_plugin_sha256 )
+							|| ! hash_equals( (string) $interrupted_config['prior_plugin_sha256'], (string) $backup_plugin_sha256 )
+							|| (string) $interrupted_config['expected_version'] !== (string) ( $current_plugin['Version'] ?? '' )
+							|| ! is_plugin_active( $config['plugin_file'] )
+							|| ! $runtime_valid
+							|| ! $invariants_valid
+						) {
+							return $attestation_error();
+						}
+
+						$current_storage = $verify_transactional_storage();
+						$current_snapshot = $capture_database_state_consistent();
+						$current_database_json = is_wp_error( $current_snapshot ) ? false : wp_json_encode( $current_snapshot );
+						$current_database_fingerprint = false === $current_database_json ? '' : hash( 'sha256', $current_database_json );
+						$current_manifest_record = is_wp_error( $current_snapshot )
+							? $current_snapshot
+							: $database_snapshot_manifest( $current_snapshot );
+						$current_manifest = is_array( $current_manifest_record )
+							? ( $current_manifest_record['manifest'] ?? null )
+							: null;
+						$current_manifest_sha256 = is_array( $current_manifest_record )
+							? (string) ( $current_manifest_record['manifest_sha256'] ?? '' )
+							: '';
+						$active_plugins_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['active_plugins'] ?? null ) : null;
+						$active_plugins = is_array( $active_plugins_row )
+							? maybe_unserialize( (string) ( $active_plugins_row['option_value'] ?? '' ) )
+							: null;
+						$marker_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['complete99_last_deployment_id'] ?? null ) : null;
+						$version_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['complete99_platform_version'] ?? null ) : null;
+						if (
+							is_wp_error( $current_storage )
+							|| ! $storage_valid( $current_storage )
+							|| (string) ( $current_storage['engine'] ?? '' ) !== (string) $expected_storage['engine']
+							|| ( $current_storage['tables'] ?? null ) !== $expected_storage['tables']
+							|| is_wp_error( $current_snapshot )
+							|| false === $current_database_json
+							|| ! hash_equals( (string) $interrupted_config['reviewed_database_fingerprint'], $current_database_fingerprint )
+							|| ! is_array( $current_manifest_record )
+							|| ! $database_snapshot_manifest_valid( $current_manifest, $current_manifest_sha256 )
+							|| ! hash_equals( (string) $interrupted_config['reviewed_database_manifest_sha256'], $current_manifest_sha256 )
+							|| $current_manifest !== $current_state['interrupted_forward_database_manifest']
+							|| true !== ( $current_snapshot['sync_secret_existed'] ?? null )
+							|| true !== ( $current_snapshot['sync_secret_configured'] ?? null )
+							|| ! is_array( $active_plugins )
+							|| ! in_array( $config['plugin_file'], $active_plugins, true )
+							|| ! is_array( $marker_row )
+							|| $deployment_id !== (string) ( $marker_row['option_value'] ?? '' )
+							|| ! is_array( $version_row )
+							|| (string) $interrupted_config['expected_version'] !== (string) ( $version_row['option_value'] ?? '' )
+						) {
+							return $attestation_error();
+						}
+
+						$robots_path = $managed_robots_path();
+						$prior_live_robots = trailingslashit( $state_dir ) . 'robots.prior-live';
+						$current_robots_sha256 = ! is_wp_error( $robots_path ) && ! is_link( $robots_path ) && ! is_dir( $robots_path ) && file_exists( $robots_path )
+							? (string) @hash_file( 'sha256', $robots_path )
+							: '';
+						$prior_robots_bytes = $lock_only ? null : base64_decode( (string) ( $current_state['robots_prior_base64'] ?? '' ), true );
+						if (
+							( ! $lock_only && false === $prior_robots_bytes )
+							|| ( ! $lock_only && (
+								( file_exists( $prior_live_robots ) || is_link( $prior_live_robots ) || is_dir( $prior_live_robots ) )
+								&& (
+									is_link( $prior_live_robots )
+									|| is_dir( $prior_live_robots )
+									|| ! hash_equals( (string) $interrupted_config['prior_robots_sha256'], (string) @hash_file( 'sha256', $prior_live_robots ) )
+								)
+							) )
+							|| ( ! $lock_only && ! hash_equals( (string) $interrupted_config['prior_robots_sha256'], hash( 'sha256', $prior_robots_bytes ) ) )
+							|| ! hash_equals( (string) $interrupted_config['prior_robots_sha256'], $current_robots_sha256 )
+						) {
+							return $attestation_error();
+						}
+
+						if ( 'installed' !== $phase ) {
+							$commit_identity_valid = 'installed' === (string) ( $current_state['committed_outcome'] ?? '' )
+								&& true === ( $current_state['committed_expected_active'] ?? null )
+								&& false === ( $current_state['committed_expected_absent'] ?? null )
+								&& (string) $interrupted_config['expected_version'] === (string) ( $current_state['committed_expected_version'] ?? '' )
+								&& $deployment_id === (string) ( $current_state['committed_expected_deployment'] ?? '' )
+								&& hash_equals( (string) $interrupted_config['expected_plugin_sha256'], (string) ( $current_state['committed_expected_plugin_sha256'] ?? '' ) )
+								&& true === ( $current_state['committed_expected_robots_exists'] ?? null )
+								&& hash_equals( (string) $interrupted_config['prior_robots_sha256'], (string) ( $current_state['committed_expected_robots_sha256'] ?? '' ) );
+							if ( ! $commit_identity_valid ) {
+								return $attestation_error();
+							}
+						}
+						return $current_state;
+					};
+					if ( $adopted_forward_finalize ) {
+						$attested_state = $validate_adopted_forward_finalize( 'post_lease_adoption' );
+						if ( is_wp_error( $attested_state ) ) {
+							return $attested_state;
+						}
+						$state = $attested_state;
+						$phase = (string) $state['phase'];
+					}
+					if ( $adopted_forward_lock_finalize ) {
+						$attested_lock = $validate_adopted_forward_finalize( 'post_lock_lease_adoption', true );
+						if ( is_wp_error( $attested_lock ) ) {
+							return $attested_lock;
+						}
+						$lock = $attested_lock;
+						$lease = $attested_lock;
+						$phase = (string) $lock['phase'];
+					}
+					if ( $adopted_forward_cleanup_residue ) {
+						$attested_residue = $validate_adopted_forward_finalize( 'post_cleanup_residue_lease_adoption', true, false, true );
+						if ( is_wp_error( $attested_residue ) ) {
+							return $attested_residue;
+						}
+						$lock = $attested_residue;
+						$lease = $attested_residue;
+						$phase = (string) $lock['phase'];
+					}
 					$preserve_orphaned_evidence = false;
 					$cache_purge = array( 'already_purged' => false );
 					if ( $state_exists ) {
@@ -4772,12 +6053,42 @@ add_action(
 							'expected_sha256'                   => (string) ( $state['expected_sha256'] ?? '' ),
 							'expected_version'                  => (string) ( $state['expected_version'] ?? '' ),
 							'installed_plugin_sha256'           => (string) ( $state['installed_plugin_sha256'] ?? '' ),
+							'installed_version'                 => (string) ( $state['installed_version'] ?? '' ),
+							'installed_active'                  => ! empty( $state['installed_active'] ),
+							'temp_removed'                      => ! empty( $state['temp_removed'] ),
+							'temp_path'                         => (string) ( $state['temp_path'] ?? '' ),
+							'sync_configuration_pending'        => ! empty( $state['sync_configuration_pending'] ),
+							'adopted_forward_no_rollback'       => ! empty( $state['adopted_forward_no_rollback'] ),
+							'stabilized'                        => ! empty( $state['stabilized'] ),
+							'forward_ready'                     => ! empty( $state['forward_ready'] ),
+							'interrupted_forward_proof_sha256'  => (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ),
+							'interrupted_forward_database_manifest'=> $state['interrupted_forward_database_manifest'] ?? array(),
+							'interrupted_forward_database_manifest_sha256'=> (string) ( $state['interrupted_forward_database_manifest_sha256'] ?? '' ),
+							'interrupted_forward_database_storage'=> $state['interrupted_forward_database_storage'] ?? array(),
+							'post_install_database_fingerprint'=> (string) ( $state['post_install_database_fingerprint'] ?? '' ),
+							'database_fingerprint'              => (string) ( $state['database_fingerprint'] ?? '' ),
+							'had_plugin'                        => ! empty( $state['had_plugin'] ),
+							'prior_target_dir_exists'           => ! empty( $state['prior_target_dir_exists'] ),
+							'prior_plugin_main_exists'          => ! empty( $state['prior_plugin_main_exists'] ),
+							'prior_plugin_sha256'               => (string) ( $state['prior_plugin_sha256'] ?? '' ),
+							'prior_version'                     => (string) ( $state['prior_version'] ?? '' ),
+							'was_active'                        => ! empty( $state['was_active'] ),
+							'prior_deployment'                  => (string) ( $state['prior_deployment'] ?? '' ),
+							'robots_applied'                    => ! empty( $state['robots_applied'] ),
+							'robots_restored'                   => ! empty( $state['robots_restored'] ),
+							'robots_prior_exists'               => ! empty( $state['robots_prior_exists'] ),
+							'robots_prior_sha256'               => (string) ( $state['robots_prior_sha256'] ?? '' ),
+							'robots_managed_sha256'             => (string) ( $state['robots_managed_sha256'] ?? '' ),
 							'committed_outcome'                 => (string) ( $state['committed_outcome'] ?? '' ),
 							'committed_expected_active'         => ! empty( $state['committed_expected_active'] ),
 							'committed_expected_absent'         => ! empty( $state['committed_expected_absent'] ),
 							'committed_expected_version'        => (string) ( $state['committed_expected_version'] ?? '' ),
 							'committed_expected_deployment'     => (string) ( $state['committed_expected_deployment'] ?? '' ),
 							'committed_expected_plugin_sha256'  => (string) ( $state['committed_expected_plugin_sha256'] ?? '' ),
+							'committed_expected_database_fingerprint'=> (string) ( $state['post_install_database_fingerprint'] ?? '' ),
+							'committed_expected_robots_exists'  => ! empty( $state['committed_expected_robots_exists'] ),
+							'committed_expected_robots_sha256'  => (string) ( $state['committed_expected_robots_sha256'] ?? '' ),
+							'committed_expected_sync_configured'=> true,
 						);
 						$owned = $heartbeat_lock(
 							$deployment_id,
@@ -4791,11 +6102,44 @@ add_action(
 						}
 						$lease = $owned;
 					}
+					if ( $adopted_forward_finalize ) {
+						$attested_state = $validate_adopted_forward_finalize( 'pre_cleanup', false, true );
+						if ( is_wp_error( $attested_state ) ) {
+							return $attested_state;
+						}
+						$state = $attested_state;
+						$phase = (string) $state['phase'];
+					}
+					if ( $adopted_forward_lock_finalize ) {
+						$attested_lock = $validate_adopted_forward_finalize( 'pre_lock_release', true );
+						if ( is_wp_error( $attested_lock ) ) {
+							return $attested_lock;
+						}
+						$lock = $attested_lock;
+						$lease = $attested_lock;
+						$phase = (string) $lock['phase'];
+					}
+					if ( $adopted_forward_cleanup_residue ) {
+						$attested_residue = $validate_adopted_forward_finalize( 'pre_cleanup_residue_removal', true, false, true );
+						if ( is_wp_error( $attested_residue ) ) {
+							return $attested_residue;
+						}
+						$lock = $attested_residue;
+						$lease = $attested_residue;
+						$phase = (string) $lock['phase'];
+					}
 					$removed = $preserve_orphaned_evidence
 						? ! $wp_filesystem->exists( $state_file )
 						: ( ! $wp_filesystem->exists( $state_dir ) || $wp_filesystem->delete( $state_dir, true ) );
 					if ( ! $removed ) {
-						if ( $wp_filesystem->exists( $state_file ) ) {
+						if ( $adopted_forward_cleanup_residue ) {
+							$heartbeat_lock(
+								$deployment_id,
+								(string) ( $lease['owner_id'] ?? '' ),
+								(int) ( $lease['fence'] ?? 0 ),
+								'cleanup_failed'
+							);
+						} elseif ( $wp_filesystem->exists( $state_file ) ) {
 							$set_state_phase( $state_dir, $deployment_id, 'cleanup_failed' );
 						}
 						return new WP_Error( 'c99_finalize_cleanup', 'Could not remove the isolated deployment backup.', array( 'status' => 500 ) );

@@ -7,6 +7,7 @@ import argparse
 import base64
 import hashlib
 import http.client
+import io
 import json
 import os
 import re
@@ -17,8 +18,9 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import zipfile
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -840,6 +842,37 @@ class Client:
         return status, parsed
 
 
+def installed_digest(raw: bytes) -> str:
+    """Hash ZIP files exactly as the bridge hashes the installed directory."""
+    entries: list[bytes] = []
+    seen: set[str] = set()
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+            for info in archive.infolist():
+                if info.is_dir():
+                    continue
+                path = PurePosixPath(info.filename)
+                if (
+                    len(path.parts) < 2
+                    or path.parts[0] != SLUG
+                    or ".." in path.parts
+                ):
+                    raise DeployError("Package installed digest path is invalid")
+                relative = path.relative_to(SLUG).as_posix()
+                if relative in seen:
+                    raise DeployError("Package installed digest path is duplicated")
+                seen.add(relative)
+                file_digest = (
+                    hashlib.sha256(archive.read(info)).hexdigest().encode("ascii")
+                )
+                entries.append(relative.encode("utf-8") + b"\0" + file_digest)
+    except (KeyError, OSError, RuntimeError, zipfile.BadZipFile) as error:
+        raise DeployError("Package installed digest could not be computed") from error
+    if not entries:
+        raise DeployError("Package installed digest requires at least one file")
+    return hashlib.sha256(b"\n".join(sorted(entries))).hexdigest()
+
+
 def load_artifact(dist: Path) -> tuple[dict[str, Any], Path, bytes]:
     metadata = json.loads((dist / f"{SLUG}-integrity.json").read_text(encoding="utf-8"))
     if metadata.get("slug") != SLUG or metadata.get("type") != "plugin":
@@ -849,6 +882,13 @@ def load_artifact(dist: Path) -> tuple[dict[str, Any], Path, bytes]:
     digest = hashlib.sha256(raw).hexdigest()
     if digest != metadata.get("sha256") or len(raw) != metadata.get("size"):
         raise DeployError("Local artifact integrity check failed")
+    expected_installed = metadata.get("installed_sha256")
+    if (
+        not isinstance(expected_installed, str)
+        or re.fullmatch(r"[a-f0-9]{64}", expected_installed) is None
+        or installed_digest(raw) != expected_installed
+    ):
+        raise DeployError("Local installed plugin integrity check failed")
     return metadata, artifact, raw
 
 
@@ -942,6 +982,22 @@ def render_bridge(
     test_fault: str = "",
     target_host: str = "",
     allowed_hosts: set[str] | None = None,
+    *,
+    expected_artifact_sha256: str = "",
+    expected_plugin_sha256: str = "",
+    expected_version: str = "",
+    interrupted_forward_proof_sha256: str = "",
+    interrupted_forward_finalized_attestation: bool = False,
+    interrupted_forward_target_deployment_id: str = "",
+    reviewed_database_fingerprint: str = "",
+    reviewed_database_manifest: dict[str, Any] | None = None,
+    reviewed_database_manifest_sha256: str = "",
+    reviewed_database_storage: dict[str, Any] | None = None,
+    prior_database_fingerprint: str = "",
+    prior_plugin_sha256: str = "",
+    prior_deployment_id: str = "",
+    prior_version: str = "",
+    prior_robots_sha256: str = "",
 ) -> str:
     if not re.fullmatch(r"[A-Za-z0-9._-]{8,96}", deployment_id):
         raise DeployError("Deployment ID must contain 8-96 safe characters")
@@ -966,6 +1022,77 @@ def render_bridge(
     )
     if target_host not in exact_hosts or not exact_hosts <= approved_hosts:
         raise DeployError("Temporary bridge target host is not exactly allowlisted")
+    digest_identities = {
+        "expected artifact": expected_artifact_sha256,
+        "expected plugin": expected_plugin_sha256,
+        "interrupted-forward proof": interrupted_forward_proof_sha256,
+        "reviewed database": reviewed_database_fingerprint,
+        "reviewed database manifest": reviewed_database_manifest_sha256,
+        "prior database": prior_database_fingerprint,
+        "prior plugin": prior_plugin_sha256,
+        "prior robots": prior_robots_sha256,
+    }
+    for label, value in digest_identities.items():
+        if value and re.fullmatch(r"[a-f0-9]{64}", value) is None:
+            raise DeployError(f"Temporary bridge {label} identity is invalid")
+    for label, value in (
+        ("expected version", expected_version),
+        ("prior version", prior_version),
+    ):
+        if value and re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", value) is None:
+            raise DeployError(f"Temporary bridge {label} identity is invalid")
+    reviewed_storage = reviewed_database_storage or {}
+    if reviewed_storage and (
+        set(reviewed_storage) != {"engine", "tables"}
+        or reviewed_storage.get("engine")
+        not in {"INNODB", "XTRADB", "INNODB,XTRADB"}
+        or type(reviewed_storage.get("tables")) is not int
+        or reviewed_storage.get("tables") != 3
+    ):
+        raise DeployError("Temporary bridge reviewed database storage is invalid")
+    reviewed_manifest = reviewed_database_manifest or {}
+    if reviewed_manifest and not isinstance(reviewed_manifest, dict):
+        raise DeployError("Temporary bridge reviewed database manifest is invalid")
+    reviewed_manifest_json = json.dumps(
+        reviewed_manifest,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    if reviewed_manifest and (
+        not reviewed_database_manifest_sha256
+        or not secrets.compare_digest(
+            hashlib.sha256(reviewed_manifest_json.encode("utf-8")).hexdigest(),
+            reviewed_database_manifest_sha256,
+        )
+    ):
+        raise DeployError("Temporary bridge reviewed database manifest is invalid")
+    if type(interrupted_forward_finalized_attestation) is not bool:
+        raise DeployError("Temporary bridge finalized attestation mode is invalid")
+    if interrupted_forward_finalized_attestation and (
+        not interrupted_forward_target_deployment_id
+        or re.fullmatch(
+            r"[A-Za-z0-9._-]{8,96}",
+            interrupted_forward_target_deployment_id,
+        )
+        is None
+        or not interrupted_forward_target_deployment_id.startswith("c99-")
+        or interrupted_forward_target_deployment_id == deployment_id
+        or not reviewed_manifest
+        or not reviewed_storage
+        or any(not value for value in digest_identities.values())
+        or not expected_version
+        or not prior_version
+        or not prior_deployment_id
+    ):
+        raise DeployError(
+            "Temporary bridge finalized attestation identities are incomplete"
+        )
+    if prior_deployment_id and (
+        re.fullmatch(r"[A-Za-z0-9._-]{8,96}", prior_deployment_id) is None
+        or not prior_deployment_id.startswith("c99-")
+    ):
+        raise DeployError("Temporary bridge prior deployment identity is invalid")
     code = BRIDGE_TEMPLATE.read_text(encoding="utf-8")
     if code.startswith("<?php"):
         code = code.split("\n", 1)[1]
@@ -982,6 +1109,38 @@ def render_bridge(
             ensure_ascii=True,
             separators=(",", ":"),
         ),
+        "__C99_EXPECTED_ARTIFACT_SHA256__": expected_artifact_sha256,
+        "__C99_EXPECTED_PLUGIN_SHA256__": expected_plugin_sha256,
+        "__C99_EXPECTED_VERSION__": expected_version,
+        "__C99_INTERRUPTED_FORWARD_PROOF_SHA256__": (
+            interrupted_forward_proof_sha256
+        ),
+        "__C99_INTERRUPTED_FORWARD_FINALIZED_ATTESTATION__": (
+            "true" if interrupted_forward_finalized_attestation else "false"
+        ),
+        "__C99_INTERRUPTED_FORWARD_TARGET_DEPLOYMENT_ID__": (
+            interrupted_forward_target_deployment_id
+        ),
+        "__C99_REVIEWED_DATABASE_FINGERPRINT__": reviewed_database_fingerprint,
+        "__C99_REVIEWED_DATABASE_MANIFEST_BASE64__": base64.b64encode(
+            reviewed_manifest_json.encode("utf-8")
+        ).decode("ascii"),
+        "__C99_REVIEWED_DATABASE_MANIFEST_SHA256__": (
+            reviewed_database_manifest_sha256
+        ),
+        "__C99_REVIEWED_DATABASE_STORAGE_BASE64__": base64.b64encode(
+            json.dumps(
+                reviewed_storage,
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("ascii")
+        ).decode("ascii"),
+        "__C99_PRIOR_DATABASE_FINGERPRINT__": prior_database_fingerprint,
+        "__C99_PRIOR_PLUGIN_SHA256__": prior_plugin_sha256,
+        "__C99_PRIOR_DEPLOYMENT_ID__": prior_deployment_id,
+        "__C99_PRIOR_VERSION__": prior_version,
+        "__C99_PRIOR_ROBOTS_SHA256__": prior_robots_sha256,
     }
     for marker, value in replacements.items():
         if code.count(marker) != 1:
@@ -1680,6 +1839,13 @@ def rollback_with_recovery(
     try:
         return bridge_call(client, "rollback", token, deployment_id)
     except DeployError as original_error:
+        retryable_ambiguity = isinstance(original_error, NetworkDeployError) or (
+            isinstance(original_error, HTTPDeployError)
+            and type(original_error.status) is int
+            and 500 <= original_error.status <= 599
+        )
+        if not retryable_ambiguity:
+            raise
         status = poll_deployment_status(client, token, deployment_id)
         if status.get("phase") in {
             "installed",
