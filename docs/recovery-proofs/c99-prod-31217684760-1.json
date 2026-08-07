@@ -1,0 +1,34 @@
+{
+  "schema": "complete99-interrupted-forward-proof/v1",
+  "proof": {
+    "failed_run": {
+      "artifact_sha256": "6471075a4391c34a573e6c04ccac3b707c005119bd4c618c669a7eb9888d31b0",
+      "baseline_database_fingerprint": "a20aaab75137c773bf9176fa88826553c6c67ca490a597e5704ac1541425f9a6",
+      "commit": "cd87bc3fc266e8262f23443ca9c9f4c438c5c47e",
+      "deploy_audit_path": "docs/recovery-proofs/observations/c99-prod-31217684760-1-deploy.json",
+      "deploy_audit_sha256": "ff458e4eb420ff3d2fd3665f0a1773e6b379917a1bedaf0702703a4689402de1",
+      "deployment_id": "c99-prod-31217684760-1",
+      "installed_plugin_sha256": "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
+      "recovery_audit_path": "docs/recovery-proofs/observations/c99-prod-31217684760-1-recovery.json",
+      "recovery_audit_sha256": "db8ab9664dfcbf350e8930c480f692a98ad4f6d7cd2e96e52dc0abd06d9c9239",
+      "run_id": 31217684760,
+      "source_sha256": "3bcc9c6834a0079d74f6d9e7d7b044af4db68937618611dc8480df8765ab7b0b",
+      "version": "1.18.0"
+    },
+    "prior_run": {
+      "active": true,
+      "commit": "28a3a3357cefa341c4d94401b5c09782aed23f2d",
+      "database_fingerprint": "a20aaab75137c773bf9176fa88826553c6c67ca490a597e5704ac1541425f9a6",
+      "database_version": "1.17.0",
+      "deploy_audit_path": "docs/recovery-proofs/observations/c99-prod-31195579412-1-deploy.json",
+      "deploy_audit_sha256": "fd8d4bc38cd13c1cd2b0c82c103f2338c8e27cf3290f50164cb928f0f648594c",
+      "deployment_id": "c99-prod-31195579412-1",
+      "plugin_sha256": "0838d8a1ce28cb0d5dbda2c42771d6a496bdff4b802e4935ff4421519ae4ed40",
+      "robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "run_id": 31195579412,
+      "sync_configured": true,
+      "version": "1.17.0"
+    }
+  },
+  "proof_sha256": "c86ebc2ce56ce6d66c9046fa3b7285754c3c38c68bb05b8f1a91748cc038e311"
+}

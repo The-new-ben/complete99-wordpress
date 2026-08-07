@@ -120,6 +120,205 @@ def database_manifest() -> tuple[dict[str, Any], str]:
     return manifest, hashlib.sha256(canonical).hexdigest()
 
 
+def interrupted_forward_loaded(*, version: int = 1) -> dict[str, Any]:
+    manifest, manifest_sha256 = database_manifest()
+    failed = {
+        "artifact_sha256": "1" * 64,
+        "baseline_database_fingerprint": "2" * 64,
+        "commit": "3" * 40,
+        "deploy_audit_path": "docs/recovery-proofs/observations/c99-failed-deploy.json",
+        "deploy_audit_sha256": "4" * 64,
+        "deployment_id": "c99-prod-2000-1",
+        "installed_plugin_sha256": "5" * 64,
+        "recovery_audit_path": "docs/recovery-proofs/observations/c99-failed-recovery.json",
+        "recovery_audit_sha256": "6" * 64,
+        "run_id": 2000,
+        "source_sha256": "7" * 64,
+        "version": "1.18.0",
+    }
+    prior = {
+        "active": True,
+        "commit": "8" * 40,
+        "database_fingerprint": "2" * 64,
+        "database_version": "1.17.0",
+        "deploy_audit_path": "docs/recovery-proofs/observations/c99-prior-deploy.json",
+        "deploy_audit_sha256": "9" * 64,
+        "deployment_id": "c99-prod-1900-1",
+        "plugin_sha256": "a" * 64,
+        "robots_sha256": "b" * 64,
+        "run_id": 1900,
+        "sync_configured": True,
+        "version": "1.17.0",
+    }
+    proof: dict[str, Any] = {"failed_run": failed, "prior_run": prior}
+    base_sha256 = RECOVER.canonical_proof_sha256(proof)
+    if version == 2:
+        proof["forward_adoption"] = {
+            "observation_audit_path": "docs/recovery-proofs/observations/c99-observation.json",
+            "observation_audit_sha256": "c" * 64,
+            "observation_commit": "d" * 40,
+            "observation_proof_sha256": base_sha256,
+            "observation_run_id": 2100,
+            "observed_database_fingerprint": "e" * 64,
+            "observed_database_manifest": manifest,
+            "observed_database_manifest_sha256": manifest_sha256,
+            "observed_database_storage": {"engine": "INNODB", "tables": 3},
+            "observed_deployment_id": failed["deployment_id"],
+            "observed_plugin_sha256": failed["installed_plugin_sha256"],
+            "observed_robots_sha256": prior["robots_sha256"],
+            "observed_version": failed["version"],
+            "schema": "complete99-interrupted-forward-adoption/v1",
+            "target_artifact_sha256": failed["artifact_sha256"],
+            "target_installed_plugin_sha256": failed[
+                "installed_plugin_sha256"
+            ],
+        }
+    return {
+        "base_proof_sha256": base_sha256,
+        "path": (
+            "docs/recovery-proofs/c99-prod-2000-1-v2.json"
+            if version == 2
+            else "docs/recovery-proofs/c99-prod-2000-1.json"
+        ),
+        "proof": proof,
+        "proof_sha256": RECOVER.canonical_proof_sha256(proof),
+        "recovery_identity": {
+            "database_fingerprint": (
+                "e" * 64 if version == 2 else "e" * 64
+            ),
+            "database_manifest_sha256": manifest_sha256,
+        },
+        "schema": f"complete99-interrupted-forward-proof/v{version}",
+    }
+
+
+def interrupted_forward_status(
+    loaded: dict[str, Any],
+    *,
+    adopted: bool = False,
+    phase: str | None = None,
+    state_exists: bool = True,
+) -> dict[str, Any]:
+    proof = loaded["proof"]
+    failed = proof["failed_run"]
+    prior = proof["prior_run"]
+    adoption = proof.get("forward_adoption")
+    manifest, manifest_sha256 = database_manifest()
+    database_fingerprint = "e" * 64
+    if isinstance(adoption, dict):
+        manifest = adoption["observed_database_manifest"]
+        manifest_sha256 = adoption["observed_database_manifest_sha256"]
+        database_fingerprint = adoption["observed_database_fingerprint"]
+    status_phase = phase or ("installed" if adopted else "installing")
+    terminal = status_phase in {
+        "committing",
+        "commit_failed",
+        "committed",
+        "cleanup_failed",
+    }
+    return {
+        "adopted_forward_no_rollback": adopted,
+        "baseline_database_fingerprint": failed[
+            "baseline_database_fingerprint"
+        ],
+        "baseline_database_journal_valid": True,
+        "baseline_sync_configured": True,
+        "baseline_sync_secret_existed": True,
+        "current_active": True,
+        "current_database_version": failed["version"],
+        "current_deployment": failed["deployment_id"],
+        "current_plugin_main_exists": True,
+        "current_plugin_sha256": failed["installed_plugin_sha256"],
+        "current_robots_sha256": prior["robots_sha256"],
+        "current_sync_configured": True,
+        "current_target_dir_exists": True,
+        "current_version": failed["version"],
+        "database_fingerprint": database_fingerprint,
+        "database_manifest": manifest,
+        "database_manifest_sha256": manifest_sha256,
+        "database_storage": {"engine": "INNODB", "tables": 3},
+        "deployment_id": failed["deployment_id"],
+        "expected_sha256": failed["artifact_sha256"],
+        "expected_version": failed["version"],
+        "installed_plugin_sha256": (
+            failed["installed_plugin_sha256"] if adopted else ""
+        ),
+        "interrupted_forward_candidate": not adopted,
+        "interrupted_forward_database_manifest_sha256": (
+            manifest_sha256 if adopted else ""
+        ),
+        "interrupted_forward_proof_sha256": (
+            loaded["proof_sha256"] if adopted else ""
+        ),
+        "lock_owned": True,
+        "migration_failed": False,
+        "migration_invariants_valid": True,
+        "no_rollback_artifacts": True,
+        "phase": status_phase,
+        "post_install_database_fingerprint": (
+            database_fingerprint if adopted else ""
+        ),
+        "process_lock_available": True,
+        "recovery_ready": (not adopted) or status_phase == "committing",
+        "robots_applied": True,
+        "robots_managed_sha256": prior["robots_sha256"],
+        "runtime_loaded": True,
+        "runtime_version": failed["version"],
+        "stabilized": adopted,
+        "state_exists": state_exists,
+        "committed_outcome": "installed" if terminal else "",
+        "committed_expected_active": terminal,
+        "committed_expected_absent": False,
+        "committed_expected_version": failed["version"] if terminal else "",
+        "committed_expected_deployment": (
+            failed["deployment_id"] if terminal else ""
+        ),
+        "committed_expected_plugin_sha256": (
+            failed["installed_plugin_sha256"] if terminal else ""
+        ),
+        "committed_expected_robots_exists": terminal,
+        "committed_expected_robots_sha256": (
+            prior["robots_sha256"] if terminal else ""
+        ),
+    }
+
+
+def interrupted_finalized_attestation(
+    loaded: dict[str, Any],
+    probe_id: str,
+) -> dict[str, Any]:
+    proof = loaded["proof"]
+    failed = proof["failed_run"]
+    prior = proof["prior_run"]
+    adoption = proof["forward_adoption"]
+    return {
+        "active": True,
+        "already_finalized": True,
+        "current_database_version": failed["version"],
+        "current_deployment": failed["deployment_id"],
+        "database_fingerprint": adoption["observed_database_fingerprint"],
+        "database_manifest": adoption["observed_database_manifest"],
+        "database_manifest_sha256": adoption[
+            "observed_database_manifest_sha256"
+        ],
+        "database_storage": adoption["observed_database_storage"],
+        "finalized_deployment_id": failed["deployment_id"],
+        "migration_failed": False,
+        "migration_invariants_valid": True,
+        "plugin_sha256": failed["installed_plugin_sha256"],
+        "probe_deployment_id": probe_id,
+        "probe_lock_phase": "reserved",
+        "proof_sha256": loaded["proof_sha256"],
+        "robots_sha256": prior["robots_sha256"],
+        "runtime_loaded": True,
+        "schema": "complete99-interrupted-forward-finalized-attestation/v1",
+        "sync_configured": True,
+        "target_artifacts_absent": True,
+        "target_state_absent": True,
+        "version": failed["version"],
+    }
+
+
 class _Response:
     def __init__(self, url: str, body: bytes = b"{}", status: int = 200) -> None:
         self.url = url
@@ -1836,6 +2035,842 @@ class RecoveryProofTests(unittest.TestCase):
         rollback.assert_not_called()
         reconcile.assert_not_called()
         finalize.assert_not_called()
+
+
+class InterruptedForwardRecoveryTests(unittest.TestCase):
+    def test_real_v1_proof_and_exact_dist_are_bound(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31217684760-1.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        self.assertEqual(
+            "complete99-interrupted-forward-proof/v1",
+            loaded["schema"],
+        )
+        self.assertEqual(
+            "c86ebc2ce56ce6d66c9046fa3b7285754c3c38c68bb05b8f1a91748cc038e311",
+            loaded["proof_sha256"],
+        )
+        package = RECOVER.validate_interrupted_forward_dist(
+            DEPLOY,
+            ROOT / "plugin-dist",
+            loaded,
+        )
+        self.assertEqual("1.18.0", package["version"])
+        self.assertEqual(
+            "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
+            package["installed_sha256"],
+        )
+
+    def test_v1_proof_rejects_duplicate_keys_and_path_indirection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_root = root / "docs" / "recovery-proofs"
+            proof_root.mkdir(parents=True)
+            duplicate = proof_root / "duplicate.json"
+            duplicate.write_text(
+                '{"schema":"complete99-interrupted-forward-proof/v1",'
+                '"schema":"complete99-interrupted-forward-proof/v1",'
+                '"proof":{},"proof_sha256":"' + "0" * 64 + '"}',
+                encoding="utf-8",
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "could not be read",
+            ):
+                RECOVER.load_interrupted_forward_proof(DEPLOY, str(duplicate))
+
+            outside = root / "outside.json"
+            outside.write_text("{}", encoding="utf-8")
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "direct reviewed JSON",
+            ):
+                RECOVER.load_interrupted_forward_proof(DEPLOY, str(outside))
+
+    def test_interrupted_status_requires_every_forward_safety_signal(self) -> None:
+        loaded = interrupted_forward_loaded(version=1)
+        status = interrupted_forward_status(loaded)
+        observed = RECOVER.validate_interrupted_forward_status(
+            DEPLOY,
+            status,
+            loaded,
+        )
+        self.assertTrue(observed["interrupted_forward_candidate"])
+        self.assertEqual(
+            loaded["proof"]["failed_run"]["installed_plugin_sha256"],
+            observed["current_plugin_sha256"],
+        )
+
+        mutations = {
+            "wrong tree": ("current_plugin_sha256", "f" * 64),
+            "wrong runtime": ("runtime_version", "1.17.0"),
+            "failed invariants": ("migration_invariants_valid", False),
+            "rollback artifact": ("no_rollback_artifacts", False),
+            "wrong marker": ("current_deployment", "c99-prod-other-2000-1"),
+            "wrong database": ("database_fingerprint", "f" * 64),
+            "wrong robots": ("current_robots_sha256", "f" * 64),
+            "not candidate": ("interrupted_forward_candidate", False),
+        }
+        for label, (field, value) in mutations.items():
+            with self.subTest(label=label):
+                malformed = copy.deepcopy(status)
+                malformed[field] = value
+                with self.assertRaisesRegex(
+                    DEPLOY.DeployError,
+                    "exact reviewed live state",
+                ):
+                    RECOVER.validate_interrupted_forward_status(
+                        DEPLOY,
+                        malformed,
+                        loaded,
+                    )
+
+    def test_bridge_markers_bind_v2_proof_and_reviewed_database(self) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        fields = RECOVER.interrupted_forward_bridge_fields(loaded)
+        failed = loaded["proof"]["failed_run"]
+        adoption = loaded["proof"]["forward_adoption"]
+        self.assertEqual(failed["artifact_sha256"], fields["expected_artifact_sha256"])
+        self.assertEqual(
+            failed["installed_plugin_sha256"],
+            fields["expected_plugin_sha256"],
+        )
+        self.assertEqual(
+            loaded["proof_sha256"],
+            fields["interrupted_forward_proof_sha256"],
+        )
+        self.assertEqual(
+            loaded["proof"]["forward_adoption"]["observed_database_storage"],
+            fields["reviewed_database_storage"],
+        )
+        self.assertEqual(
+            adoption["observed_database_fingerprint"],
+            fields["reviewed_database_fingerprint"],
+        )
+        attestation_fields = RECOVER.interrupted_forward_bridge_fields(
+            loaded,
+            enable_finalized_attestation=True,
+        )
+        self.assertTrue(
+            attestation_fields["interrupted_forward_finalized_attestation"]
+        )
+        self.assertEqual(
+            failed["deployment_id"],
+            attestation_fields[
+                "interrupted_forward_target_deployment_id"
+            ],
+        )
+        self.assertEqual(
+            adoption["observed_database_manifest"],
+            attestation_fields["reviewed_database_manifest"],
+        )
+
+    def test_finalized_attestation_client_rejects_any_schema_or_identity_drift(
+        self,
+    ) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        probe_id = "c99-recovery-probe-2200-1"
+        exact = interrupted_finalized_attestation(loaded, probe_id)
+        self.assertEqual(
+            exact,
+            RECOVER.validate_interrupted_forward_finalized_attestation(
+                DEPLOY,
+                exact,
+                probe_id,
+                loaded,
+            ),
+        )
+        for key in exact:
+            with self.subTest(missing=key):
+                changed = copy.deepcopy(exact)
+                del changed[key]
+                with self.assertRaises(DEPLOY.DeployError):
+                    RECOVER.validate_interrupted_forward_finalized_attestation(
+                        DEPLOY,
+                        changed,
+                        probe_id,
+                        loaded,
+                    )
+        extra = copy.deepcopy(exact)
+        extra["unexpected"] = True
+        with self.assertRaisesRegex(DEPLOY.DeployError, "schema"):
+            RECOVER.validate_interrupted_forward_finalized_attestation(
+                DEPLOY,
+                extra,
+                probe_id,
+                loaded,
+            )
+        for field, replacement in (
+            ("proof_sha256", "0" * 64),
+            ("database_fingerprint", "0" * 64),
+            ("plugin_sha256", "0" * 64),
+            ("robots_sha256", "0" * 64),
+            ("target_state_absent", False),
+            ("runtime_loaded", False),
+        ):
+            with self.subTest(field=field):
+                changed = copy.deepcopy(exact)
+                changed[field] = replacement
+                with self.assertRaises(DEPLOY.DeployError):
+                    RECOVER.validate_interrupted_forward_finalized_attestation(
+                        DEPLOY,
+                        changed,
+                        probe_id,
+                        loaded,
+                    )
+
+    def test_fresh_finalized_attestation_releases_probe_on_read_failure(
+        self,
+    ) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        probe_id = "c99-recovery-probe-2201-1"
+        invalid = interrupted_finalized_attestation(loaded, probe_id)
+        invalid["database_fingerprint"] = "0" * 64
+        order: list[str] = []
+        fake = types.SimpleNamespace(
+            DeployError=DEPLOY.DeployError,
+            HTTPDeployError=DEPLOY.HTTPDeployError,
+            bridge_call=mock.Mock(return_value=invalid),
+            create_snippet=mock.Mock(return_value=41),
+            delete_snippet_and_prove_404=mock.Mock(
+                side_effect=lambda *_args: order.append("cleanup") or {}
+            ),
+            finalize_deployment=mock.Mock(
+                side_effect=lambda *_args: order.append("finalize")
+                or {"finalized": True}
+            ),
+            preflight_with_recovery=mock.Mock(
+                return_value={"lock_reserved": True}
+            ),
+            re=re,
+            remove_bootstrap_snippet=mock.Mock(return_value={}),
+            render_bridge=mock.Mock(return_value="bridge"),
+            verify_bridge_site_identity=mock.Mock(return_value={}),
+        )
+        with self.assertRaisesRegex(DEPLOY.DeployError, "exact reviewed release"):
+            RECOVER.discover_interrupted_forward_owner_or_finalized(
+                fake,
+                object(),
+                probe_id,
+                True,
+                "localhost",
+                {"localhost"},
+                loaded,
+            )
+        self.assertEqual(["finalize", "cleanup"], order)
+        fake.finalize_deployment.assert_called_once()
+
+    def test_stale_probe_release_is_reserved_state_free_and_waits_for_lease(
+        self,
+    ) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        probe_id = "c99-recovery-probe-2202-1"
+
+        def status(*, ready: bool) -> dict[str, Any]:
+            return {
+                "adopted_forward_no_rollback": False,
+                "deployment_id": probe_id,
+                "interrupted_forward_candidate": False,
+                "lock_owned": True,
+                "no_rollback_artifacts": True,
+                "phase": "reserved",
+                "process_lock_available": True,
+                "recovery_ready": ready,
+                "state_exists": False,
+            }
+
+        fake = types.SimpleNamespace(
+            DeployError=DEPLOY.DeployError,
+            bridge_call=mock.Mock(return_value=status(ready=False)),
+            create_snippet=mock.Mock(return_value=42),
+            delete_snippet_and_prove_404=mock.Mock(return_value={}),
+            finalize_deployment=mock.Mock(return_value={"finalized": True}),
+            poll_deployment_status=mock.Mock(return_value=status(ready=True)),
+            remove_bootstrap_snippet=mock.Mock(return_value={}),
+            render_bridge=mock.Mock(return_value="bridge"),
+            re=re,
+            verify_bridge_site_identity=mock.Mock(return_value={}),
+        )
+        evidence = RECOVER.release_stale_interrupted_forward_probe(
+            fake,
+            object(),
+            probe_id,
+            True,
+            "localhost",
+            {"localhost"},
+            loaded,
+        )
+        self.assertTrue(evidence["reservation_status"]["recovery_ready"])
+        self.assertEqual(loaded["proof_sha256"], evidence["interrupted_forward_proof_sha256"])
+        fake.poll_deployment_status.assert_called_once()
+        fake.finalize_deployment.assert_called_once()
+        rendered_fields = fake.render_bridge.call_args.kwargs
+        self.assertFalse(
+            rendered_fields.get(
+                "interrupted_forward_finalized_attestation",
+                False,
+            )
+        )
+
+        for label, field, replacement in (
+            ("non-reserved", "phase", "installed"),
+            ("state exists", "state_exists", True),
+            ("rollback artifact", "no_rollback_artifacts", False),
+        ):
+            with self.subTest(label=label):
+                invalid_status = status(ready=True)
+                invalid_status[field] = replacement
+                invalid_fake = copy.copy(fake)
+                invalid_fake.bridge_call = mock.Mock(return_value=invalid_status)
+                invalid_fake.finalize_deployment = mock.Mock()
+                with self.assertRaisesRegex(DEPLOY.DeployError, "read-only reservation"):
+                    RECOVER.release_stale_interrupted_forward_probe(
+                        invalid_fake,
+                        object(),
+                        probe_id,
+                        True,
+                        "localhost",
+                        {"localhost"},
+                        loaded,
+                    )
+                invalid_fake.finalize_deployment.assert_not_called()
+        with self.assertRaisesRegex(DEPLOY.DeployError, "exact probe owner"):
+            RECOVER.release_stale_interrupted_forward_probe(
+                fake,
+                object(),
+                "c99-prod-not-a-probe-1",
+                True,
+                "localhost",
+                {"localhost"},
+                loaded,
+            )
+
+    def test_main_emits_already_recovered_for_exact_no_owner_attestation(
+        self,
+    ) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        failed = loaded["proof"]["failed_run"]
+        prior = loaded["proof"]["prior_run"]
+        probe_id = "c99-recovery-probe-2203-1"
+        args = types.SimpleNamespace(
+            allowed_deploy_hosts="",
+            audit_dir=Path("unused-interrupted-audit"),
+            base_url="http://127.0.0.1",
+            bootstrap_code_snippets=False,
+            deployment_id="",
+            discover=True,
+            dist=Path("plugin-dist"),
+            interrupted_forward_observe_only=False,
+            interrupted_forward_proof="proof.json",
+            local_test=True,
+            observe_orphaned_rollback=False,
+            orphaned_rollback_proof="",
+            probe_id=probe_id,
+            recovery_only=True,
+            user="local-admin",
+        )
+        write_audit = mock.Mock(
+            return_value=Path("unused-interrupted-audit.json")
+        )
+        fake = types.SimpleNamespace(
+            ALLOWED_PRODUCTION_HOSTS=set(),
+            Client=mock.Mock(return_value=object()),
+            DeployError=DEPLOY.DeployError,
+            authenticate=mock.Mock(return_value={"id": 1}),
+            ensure_code_snippets=mock.Mock(),
+            parse_allowed_deploy_hosts=mock.Mock(return_value=set()),
+            re=re,
+            validate_target_url=mock.Mock(
+                return_value=urllib.parse.urlsplit("http://127.0.0.1")
+            ),
+            write_audit=write_audit,
+        )
+        finalize = {
+            "cache_purge": {"not_required": True},
+            "finalized": True,
+            "lock_released": True,
+            "response_recovered": False,
+            "state_removed": True,
+        }
+        finalized = {
+            "bootstrap_cleanup": {},
+            "bridge_site_identity": {},
+            "cleanup": {},
+            "health": {"deployment_id": failed["deployment_id"]},
+            "interrupted_forward_finalized_attestation": (
+                interrupted_finalized_attestation(loaded, probe_id)
+            ),
+            "probe_finalize": finalize,
+            "rendered_home": {"deployment_id": failed["deployment_id"]},
+            "robots": {"sha256": prior["robots_sha256"]},
+        }
+        discovery = {
+            "probe_id": probe_id,
+            "probe_lock_retained_for_attestation": True,
+            "result": "no-owner",
+        }
+        with mock.patch.object(
+            RECOVER.argparse.ArgumentParser,
+            "parse_args",
+            return_value=args,
+        ), mock.patch.object(
+            RECOVER,
+            "load_deployer",
+            return_value=fake,
+        ), mock.patch.object(
+            RECOVER,
+            "load_orphaned_rollback_proof",
+            return_value=None,
+        ), mock.patch.object(
+            RECOVER,
+            "load_interrupted_forward_proof",
+            return_value=loaded,
+        ), mock.patch.object(
+            RECOVER,
+            "validate_interrupted_forward_dist",
+            return_value={},
+        ), mock.patch.object(
+            RECOVER,
+            "discover_interrupted_forward_owner_or_finalized",
+            return_value=("", discovery, finalized),
+        ), mock.patch.dict(
+            RECOVER.os.environ,
+            {"WP_APP_PASSWORD": "local-test-only"},
+        ):
+            self.assertEqual(0, RECOVER.main())
+        audit = write_audit.call_args.args[1]
+        self.assertEqual("already-recovered", audit["result"])
+        self.assertEqual(
+            "attest_interrupted_forward_finalized",
+            audit["decision"],
+        )
+        self.assertEqual(probe_id, audit["deployment_id"])
+
+    def test_adoption_accepts_only_exact_initial_or_idempotent_receipt(self) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        failed = loaded["proof"]["failed_run"]
+        adoption = loaded["proof"]["forward_adoption"]
+        for idempotent in (False, True):
+            with self.subTest(idempotent=idempotent):
+                response = {
+                    "adopted_forward_no_rollback": True,
+                    "cache_purge": {"deferred_to_finalize": True},
+                    "database_manifest": adoption[
+                        "observed_database_manifest"
+                    ],
+                    "database_manifest_sha256": adoption[
+                        "observed_database_manifest_sha256"
+                    ],
+                    "database_storage": adoption["observed_database_storage"],
+                    "database_version": failed["version"],
+                    "deployment_id": failed["deployment_id"],
+                    "idempotent": idempotent,
+                    "installed_plugin_sha256": failed[
+                        "installed_plugin_sha256"
+                    ],
+                    "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+                    "post_install_database_fingerprint": adoption[
+                        "observed_database_fingerprint"
+                    ],
+                    "stabilized": True,
+                    "stabilized_from_phase": "installing",
+                    "version": failed["version"],
+                }
+                status = interrupted_forward_status(loaded, adopted=True)
+                bridge_call = mock.Mock(side_effect=[response, status])
+                fake_deployer = types.SimpleNamespace(
+                    DeployError=DEPLOY.DeployError,
+                    bridge_call=bridge_call,
+                    re=re,
+                )
+                result = RECOVER.adopt_interrupted_forward(
+                    fake_deployer,
+                    object(),
+                    "token",
+                    failed["deployment_id"],
+                    loaded,
+                )
+                self.assertEqual(idempotent, result["receipt"]["idempotent"])
+                self.assertTrue(result["status"]["adopted_forward_no_rollback"])
+                self.assertEqual(
+                    ["stabilize", "status"],
+                    [call.args[1] for call in bridge_call.call_args_list],
+                )
+                self.assertEqual(
+                    loaded["proof_sha256"],
+                    bridge_call.call_args_list[0].kwargs[
+                        "interrupted_forward_proof_sha256"
+                    ],
+                )
+
+    def test_finalize_resume_accepts_only_exact_adopted_terminal_identity(self) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        for phase in ("committing", "commit_failed", "committed", "cleanup_failed"):
+            with self.subTest(phase=phase):
+                status = interrupted_forward_status(
+                    loaded,
+                    adopted=True,
+                    phase=phase,
+                )
+                receipt = RECOVER.validate_interrupted_forward_finalize_status(
+                    DEPLOY,
+                    status,
+                    loaded,
+                )
+                self.assertEqual(phase, receipt["phase"])
+                self.assertEqual(
+                    "complete99-interrupted-forward-finalize-resume/v1",
+                    receipt["schema"],
+                )
+                for field, replacement in (
+                    ("interrupted_forward_proof_sha256", "0" * 64),
+                    ("committed_expected_deployment", "c99-prod-other-1"),
+                    ("current_plugin_sha256", "0" * 64),
+                    ("database_manifest_sha256", "0" * 64),
+                    ("current_robots_sha256", "0" * 64),
+                ):
+                    changed = copy.deepcopy(status)
+                    changed[field] = replacement
+                    with self.assertRaisesRegex(
+                        DEPLOY.DeployError,
+                        "exact adopted release|database manifest",
+                    ):
+                        RECOVER.validate_interrupted_forward_finalize_status(
+                            DEPLOY,
+                            changed,
+                            loaded,
+                        )
+
+        for phase in ("committed", "cleanup_failed"):
+            with self.subTest(lock_only_phase=phase):
+                status = interrupted_forward_status(
+                    loaded,
+                    adopted=True,
+                    phase=phase,
+                    state_exists=False,
+                )
+                receipt = RECOVER.validate_interrupted_forward_finalize_status(
+                    DEPLOY,
+                    status,
+                    loaded,
+                )
+                self.assertFalse(receipt["state_exists"])
+
+        invalid_lock_only = interrupted_forward_status(
+            loaded,
+            adopted=True,
+            phase="commit_failed",
+            state_exists=False,
+        )
+        with self.assertRaisesRegex(
+            DEPLOY.DeployError,
+            "exact adopted release",
+        ):
+            RECOVER.validate_interrupted_forward_finalize_status(
+                DEPLOY,
+                invalid_lock_only,
+                loaded,
+            )
+
+    def _run_interrupted_main(
+        self,
+        *,
+        loaded: dict[str, Any],
+        status: dict[str, Any],
+        observe_only: bool,
+        stale_probe_recovery: dict[str, Any] | None = None,
+    ) -> tuple[Any, mock.Mock, mock.Mock, mock.Mock]:
+        failed = loaded["proof"]["failed_run"]
+        args = types.SimpleNamespace(
+            allowed_deploy_hosts="",
+            audit_dir=Path("unused-interrupted-audit"),
+            base_url="http://127.0.0.1",
+            bootstrap_code_snippets=False,
+            deployment_id="",
+            discover=True,
+            dist=Path("plugin-dist"),
+            interrupted_forward_observe_only=observe_only,
+            interrupted_forward_proof="proof.json",
+            local_test=True,
+            observe_orphaned_rollback=False,
+            orphaned_rollback_proof="",
+            probe_id="c99-recovery-probe-2100-1",
+            recovery_only=not observe_only,
+            user="local-admin",
+        )
+        bridge_call = mock.Mock(return_value=status)
+        finalize = mock.Mock(return_value={"finalized": True})
+        write_audit = mock.Mock(return_value=Path("unused-interrupted-audit.json"))
+        fake_deployer = types.SimpleNamespace(
+            ALLOWED_PRODUCTION_HOSTS=set(),
+            Client=mock.Mock(return_value=object()),
+            DeployError=DEPLOY.DeployError,
+            authenticate=mock.Mock(return_value={"id": 1}),
+            bridge_call=bridge_call,
+            create_snippet=mock.Mock(return_value=5),
+            delete_snippet_and_prove_404=mock.Mock(
+                return_value={
+                    "removed_ids": [6],
+                    "route_404": True,
+                    "row_absence_verified": True,
+                    "snippet_active": False,
+                    "snippet_deleted": True,
+                }
+            ),
+            ensure_code_snippets=mock.Mock(),
+            finalize_deployment=finalize,
+            parse_allowed_deploy_hosts=mock.Mock(return_value=set()),
+            poll_deployment_status=mock.Mock(return_value=status),
+            re=re,
+            remove_bootstrap_snippet=mock.Mock(return_value={}),
+            render_bridge=mock.Mock(return_value="bridge"),
+            validate_target_url=mock.Mock(
+                return_value=urllib.parse.urlsplit("http://127.0.0.1")
+            ),
+            verify_bridge_site_identity=mock.Mock(return_value={}),
+            verify_health=mock.Mock(
+                return_value={
+                    "component": "complete99-platform",
+                    "database_version": failed["version"],
+                    "deployment_id": failed["deployment_id"],
+                    "status": "ok",
+                    "sync_configured": True,
+                    "version": failed["version"],
+                }
+            ),
+            verify_managed_robots=mock.Mock(
+                return_value={
+                    "sha256": loaded["proof"]["prior_run"]["robots_sha256"],
+                    "status": 200,
+                }
+            ),
+            verify_rendered_home=mock.Mock(
+                return_value={
+                    "body_sha256": "f" * 64,
+                    "deployment_id": failed["deployment_id"],
+                    "exact_path": "/",
+                    "version": failed["version"],
+                }
+            ),
+            write_audit=write_audit,
+        )
+        adopt = mock.Mock(
+            return_value={
+                "receipt": {"idempotent": status.get("phase") == "installed"},
+                "status": {"adopted_forward_no_rollback": True},
+            }
+        )
+        rollback = mock.Mock()
+        owner_discovery = {
+            "bootstrap_cleanup": {
+                "exact_name": "c99-deploy-bootstrap",
+                "known_id": 5,
+                "known_id_matched": False,
+                "removed_ids": [],
+                "row_absence_verified": True,
+            },
+            "cleanup": {
+                "removed_ids": [4],
+                "route_404": True,
+                "row_absence_verified": True,
+                "snippet_active": False,
+                "snippet_deleted": True,
+            },
+            "owner_deployment_id": failed["deployment_id"],
+            "owner_phase": status["phase"],
+            "probe_id": "c99-recovery-probe-2100-1",
+            "result": "owner-discovered",
+        }
+        interrupted_discovery_result: Any = (
+            failed["deployment_id"],
+            owner_discovery,
+            None,
+        )
+        if stale_probe_recovery is not None:
+            interrupted_discovery_result = [
+                (
+                    "c99-recovery-probe-2099-1",
+                    {
+                        "owner_deployment_id": "c99-recovery-probe-2099-1",
+                        "owner_phase": "reserved",
+                        "probe_id": "c99-recovery-probe-2100-1",
+                        "result": "owner-discovered",
+                    },
+                    None,
+                ),
+                (failed["deployment_id"], owner_discovery, None),
+            ]
+        with mock.patch.object(
+            RECOVER.argparse.ArgumentParser,
+            "parse_args",
+            return_value=args,
+        ), mock.patch.object(
+            RECOVER,
+            "load_deployer",
+            return_value=fake_deployer,
+        ), mock.patch.object(
+            RECOVER,
+            "load_orphaned_rollback_proof",
+            return_value=None,
+        ), mock.patch.object(
+            RECOVER,
+            "load_interrupted_forward_proof",
+            return_value=loaded,
+        ), mock.patch.object(
+            RECOVER,
+            "validate_interrupted_forward_dist",
+            return_value={},
+        ), mock.patch.object(
+            RECOVER,
+            "discover_lock_owner",
+            return_value=(
+                failed["deployment_id"],
+                {
+                    "bootstrap_cleanup": {
+                        "exact_name": "c99-deploy-bootstrap",
+                        "known_id": 5,
+                        "known_id_matched": False,
+                        "removed_ids": [],
+                        "row_absence_verified": True,
+                    },
+                    "cleanup": {
+                        "removed_ids": [4],
+                        "route_404": True,
+                        "row_absence_verified": True,
+                        "snippet_active": False,
+                        "snippet_deleted": True,
+                    },
+                    "owner_deployment_id": failed["deployment_id"],
+                    "owner_phase": status["phase"],
+                    "probe_id": "c99-recovery-probe-2100-1",
+                    "result": "owner-discovered",
+                },
+            ),
+        ), mock.patch.object(
+            RECOVER,
+            "discover_interrupted_forward_owner_or_finalized",
+            **(
+                {"side_effect": interrupted_discovery_result}
+                if isinstance(interrupted_discovery_result, list)
+                else {"return_value": interrupted_discovery_result}
+            ),
+        ), mock.patch.object(
+            RECOVER,
+            "release_stale_interrupted_forward_probe",
+            return_value=stale_probe_recovery,
+        ), mock.patch.object(
+            RECOVER,
+            "adopt_interrupted_forward",
+            adopt,
+        ), mock.patch.object(
+            RECOVER,
+            "rollback_and_verify",
+            rollback,
+        ), mock.patch.dict(
+            RECOVER.os.environ,
+            {
+                "GITHUB_SHA": "d" * 40,
+                "WP_APP_PASSWORD": "local-test-only",
+            },
+        ):
+            result = RECOVER.main()
+        self.assertEqual(0, result)
+        return fake_deployer, adopt, rollback, write_audit
+
+    def test_stale_probe_evidence_survives_normal_target_resume(self) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        stale_evidence = {"reservation_status": {"phase": "reserved"}}
+        _, _, _, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=interrupted_forward_status(loaded, adopted=True),
+            observe_only=False,
+            stale_probe_recovery=stale_evidence,
+        )
+        audit = write_audit.call_args.args[1]
+        self.assertEqual(stale_evidence, audit["stale_probe_recovery"])
+
+    def test_observation_path_never_stabilizes_rolls_back_or_finalizes(self) -> None:
+        loaded = interrupted_forward_loaded(version=1)
+        fake, adopt, rollback, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=interrupted_forward_status(loaded),
+            observe_only=True,
+        )
+        adopt.assert_not_called()
+        rollback.assert_not_called()
+        fake.finalize_deployment.assert_not_called()
+        self.assertEqual(
+            ["status"],
+            [call.args[1] for call in fake.bridge_call.call_args_list],
+        )
+        audit = write_audit.call_args.args[1]
+        self.assertEqual("interrupted_forward_observed", audit["result"])
+        self.assertEqual("observe_interrupted_forward", audit["decision"])
+
+    def test_recovery_resumes_durable_adoption_through_idempotent_receipt(self) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        fake, adopt, rollback, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=interrupted_forward_status(loaded, adopted=True),
+            observe_only=False,
+        )
+        adopt.assert_called_once()
+        rollback.assert_not_called()
+        fake.finalize_deployment.assert_called_once()
+        audit = write_audit.call_args.args[1]
+        self.assertEqual("recovered", audit["result"])
+        self.assertEqual("adopt_interrupted_forward", audit["decision"])
+        self.assertTrue(audit["adopted_forward_no_rollback"])
+        self.assertTrue(
+            audit["interrupted_forward_adoption"]["receipt"]["idempotent"]
+        )
+        self.assertNotIn("pre_adoption_observation", audit)
+
+    def test_recovery_resumes_each_stateful_adopted_finalize_phase(self) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        for phase in ("committing", "commit_failed", "committed", "cleanup_failed"):
+            with self.subTest(phase=phase):
+                fake, adopt, rollback, write_audit = self._run_interrupted_main(
+                    loaded=loaded,
+                    status=interrupted_forward_status(
+                        loaded,
+                        adopted=True,
+                        phase=phase,
+                    ),
+                    observe_only=False,
+                )
+                adopt.assert_not_called()
+                rollback.assert_not_called()
+                fake.finalize_deployment.assert_called_once()
+                audit = write_audit.call_args.args[1]
+                self.assertEqual(
+                    phase,
+                    audit["interrupted_forward_finalize_resume"]["phase"],
+                )
+                self.assertNotIn("interrupted_forward_adoption", audit)
+
+        for phase in ("committed", "cleanup_failed"):
+            with self.subTest(lock_only_phase=phase):
+                fake, adopt, rollback, write_audit = self._run_interrupted_main(
+                    loaded=loaded,
+                    status=interrupted_forward_status(
+                        loaded,
+                        adopted=True,
+                        phase=phase,
+                        state_exists=False,
+                    ),
+                    observe_only=False,
+                )
+                adopt.assert_not_called()
+                rollback.assert_not_called()
+                fake.finalize_deployment.assert_called_once()
+                audit = write_audit.call_args.args[1]
+                self.assertFalse(
+                    audit["interrupted_forward_finalize_resume"]["state_exists"]
+                )
 
 
 if __name__ == "__main__":

@@ -574,6 +574,229 @@ def write_audit(audit_root: Path, audit: dict[str, object]) -> Path:
     return path.resolve()
 
 
+def interrupted_identities() -> tuple[
+    dict[str, object],
+    dict[str, object],
+    dict[str, object],
+    dict[str, str],
+]:
+    manifest, manifest_sha256 = database_manifest()
+    failed = {
+        "artifact_sha256": "1" * 64,
+        "baseline_database_fingerprint": "2" * 64,
+        "commit": "3" * 40,
+        "deployment_id": "c99-prod-40000000002-1",
+        "installed_plugin_sha256": "4" * 64,
+        "run_id": 40000000002,
+        "source_sha256": "5" * 64,
+        "version": "1.18.0",
+    }
+    prior = {
+        "active": True,
+        "commit": "6" * 40,
+        "database_fingerprint": "2" * 64,
+        "database_version": "1.17.0",
+        "deployment_id": "c99-prod-40000000001-1",
+        "plugin_sha256": "7" * 64,
+        "robots_sha256": "8" * 64,
+        "run_id": 40000000001,
+        "sync_configured": True,
+        "version": "1.17.0",
+    }
+    database = {
+        "manifest": manifest,
+        "manifest_sha256": manifest_sha256,
+        "storage": {"engine": "INNODB", "tables": 3},
+    }
+    recovery_identity = {
+        "database_fingerprint": "9" * 64,
+        "database_manifest_sha256": manifest_sha256,
+    }
+    return failed, prior, database, recovery_identity
+
+
+def interrupted_discovery(
+    failed_id: str,
+    probe_id: str,
+    owner_phase: str = "installing",
+) -> dict[str, object]:
+    return {
+        "bootstrap_cleanup": bootstrap_cleanup_record(),
+        "cleanup": {**cleanup_record(), "removed_ids": [31]},
+        "owner_deployment_id": failed_id,
+        "owner_phase": owner_phase,
+        "probe_id": probe_id,
+        "result": "owner-discovered",
+    }
+
+
+def interrupted_common(deployment_id: str) -> dict[str, object]:
+    return {
+        "bootstrap_cleanup": bootstrap_cleanup_record(),
+        "bridge_site_identity": {
+            "home_host": "complete99.co.il",
+            "rest_host": "complete99.co.il",
+            "siteurl_host": "complete99.co.il",
+        },
+        "cleanup": {**cleanup_record(), "removed_ids": [32]},
+        "deployment_id": deployment_id,
+        "finished_at": "2026-08-08T00:00:01Z",
+        "identity": {
+            "id": 1,
+            "roles": ["administrator"],
+            "site_identity": {
+                "home": "https://complete99.co.il",
+                "url": "https://complete99.co.il",
+            },
+        },
+        "local_test": False,
+        "started_at": "2026-08-08T00:00:00Z",
+    }
+
+
+def interrupted_health_home_robots(
+    failed: dict[str, object],
+    prior: dict[str, object],
+    prefix: str = "",
+) -> dict[str, object]:
+    return {
+        f"{prefix}health": {
+            "component": "complete99-platform",
+            "database_version": failed["version"],
+            "deployment_id": failed["deployment_id"],
+            "status": "ok",
+            "sync_configured": True,
+            "version": failed["version"],
+        },
+        f"{prefix}rendered_home": {
+            "body_sha256": "a" * 64,
+            "deployment_id": failed["deployment_id"],
+            "exact_path": "/",
+            "version": failed["version"],
+        },
+        f"{prefix}robots": {"sha256": prior["robots_sha256"], "status": 200},
+    }
+
+
+def interrupted_observation_audit() -> tuple[
+    dict[str, object], dict[str, object], dict[str, object], dict[str, str]
+]:
+    failed, prior, database, recovery_identity = interrupted_identities()
+    proof_path = f"docs/recovery-proofs/{failed['deployment_id']}.json"
+    probe_id = "c99-recovery-probe-40000000003-1"
+    observation = VALIDATOR.expected_interrupted_observation(
+        failed,
+        prior,
+        recovery_identity["database_fingerprint"],
+        database["manifest"],
+        database["manifest_sha256"],
+        database["storage"],
+        failed["installed_plugin_sha256"],
+    )
+    audit = {
+        **interrupted_common(str(failed["deployment_id"])),
+        **interrupted_health_home_robots(failed, prior),
+        "commit": "b" * 40,
+        "decision": "observe_interrupted_forward",
+        "discovery": interrupted_discovery(str(failed["deployment_id"]), probe_id),
+        "interrupted_forward_observation": observation,
+        "interrupted_forward_proof": {
+            "path": proof_path,
+            "proof_sha256": "c" * 64,
+            "schema": "complete99-interrupted-forward-proof/v1",
+        },
+        "result": "interrupted_forward_observed",
+    }
+    context = {
+        "probe_id": probe_id,
+        "proof_path": proof_path,
+        "proof_sha256": "c" * 64,
+    }
+    return audit, failed, prior, {**recovery_identity, **context}
+
+
+def interrupted_already_finalized_audit(
+    *,
+    include_stale_probe: bool = False,
+) -> tuple[dict[str, object], dict[str, object], str]:
+    failed, prior, database, recovery_identity = interrupted_identities()
+    probe_id = "c99-recovery-probe-40000000004-1"
+    proof_sha256 = "d" * 64
+    adoption = {
+        "observed_database_fingerprint": recovery_identity[
+            "database_fingerprint"
+        ],
+        "observed_database_manifest": database["manifest"],
+        "observed_database_manifest_sha256": database["manifest_sha256"],
+        "observed_database_storage": database["storage"],
+    }
+    loaded = {
+        "path": f"docs/recovery-proofs/{failed['deployment_id']}-v2.json",
+        "proof": {
+            "failed_run": failed,
+            "forward_adoption": adoption,
+            "prior_run": prior,
+        },
+        "proof_sha256": proof_sha256,
+        "schema": "complete99-interrupted-forward-proof/v2",
+    }
+    probe_finalize = {
+        "cache_purge": {"not_required": True},
+        "finalized": True,
+        "lock_released": True,
+        "response_recovered": False,
+        "state_removed": True,
+    }
+    audit = {
+        **interrupted_common(probe_id),
+        **interrupted_health_home_robots(failed, prior),
+        "decision": "attest_interrupted_forward_finalized",
+        "discovery": {
+            "probe_id": probe_id,
+            "probe_lock_retained_for_attestation": True,
+            "result": "no-owner",
+        },
+        "interrupted_forward_finalized_attestation": (
+            VALIDATOR.expected_interrupted_finalized_attestation(
+                loaded,
+                probe_id,
+            )
+        ),
+        "interrupted_forward_proof": {
+            "path": loaded["path"],
+            "proof_sha256": proof_sha256,
+            "schema": "complete99-interrupted-forward-proof/v2",
+        },
+        "probe_finalize": probe_finalize,
+        "result": "already-recovered",
+    }
+    if include_stale_probe:
+        stale_id = "c99-recovery-probe-40000000003-1"
+        audit["stale_probe_recovery"] = {
+            "bootstrap_cleanup": bootstrap_cleanup_record(),
+            "bridge_site_identity": {
+                "home_host": "complete99.co.il",
+                "rest_host": "complete99.co.il",
+                "siteurl_host": "complete99.co.il",
+            },
+            "cleanup": {**cleanup_record(), "removed_ids": [30]},
+            "interrupted_forward_proof_sha256": proof_sha256,
+            "probe_finalize": copy.deepcopy(probe_finalize),
+            "reservation_status": {
+                "adopted_forward_no_rollback": False,
+                "deployment_id": stale_id,
+                "interrupted_forward_candidate": False,
+                "lock_owned": True,
+                "no_rollback_artifacts": True,
+                "phase": "reserved",
+                "process_lock_available": True,
+                "recovery_ready": True,
+                "state_exists": False,
+            },
+        }
+    return audit, loaded, probe_id
+
+
 class RecoveryAuditValidatorTests(unittest.TestCase):
     def validate(
         self,
@@ -600,6 +823,376 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             repository_root=repository_root,
             expect_observation=expect_observation,
         )
+
+    def test_repository_interrupted_forward_v1_proof_and_dist_are_exact(self) -> None:
+        proof = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31217684760-1.json",
+            ROOT,
+        )
+        package = VALIDATOR.validate_interrupted_forward_dist(
+            ROOT / "plugin-dist",
+            proof,
+        )
+        self.assertEqual("complete99-interrupted-forward-proof/v1", proof["schema"])
+        self.assertEqual("1.18.0", package["version"])
+        self.assertEqual(
+            proof["proof"]["failed_run"]["installed_plugin_sha256"],
+            package["installed_sha256"],
+        )
+
+    def test_interrupted_observation_binds_commit_path_digest_and_probe(self) -> None:
+        audit, failed, prior, context = interrupted_observation_audit()
+
+        def validate(value: dict[str, object]) -> None:
+            VALIDATOR.validate_interrupted_observation_audit(
+                value,
+                failed,
+                prior,
+                {
+                    "database_fingerprint": context["database_fingerprint"],
+                    "database_manifest_sha256": context[
+                        "database_manifest_sha256"
+                    ],
+                },
+                context["proof_path"],
+                context["proof_sha256"],
+                context["probe_id"],
+                expected_commit="b" * 40,
+            )
+
+        validate(audit)
+        for label, mutate, message in (
+            (
+                "commit",
+                lambda value: value.__setitem__("commit", "d" * 40),
+                "commit",
+            ),
+            (
+                "proof path",
+                lambda value: value["interrupted_forward_proof"].__setitem__(
+                    "path", "docs/recovery-proofs/other.json"
+                ),
+                "path or digest",
+            ),
+            (
+                "proof digest",
+                lambda value: value["interrupted_forward_proof"].__setitem__(
+                    "proof_sha256", "e" * 64
+                ),
+                "path or digest",
+            ),
+            (
+                "probe",
+                lambda value: value["discovery"].__setitem__(
+                    "probe_id", "c99-recovery-probe-40000000004-1"
+                ),
+                "discovery identity",
+            ),
+        ):
+            with self.subTest(label=label):
+                changed = copy.deepcopy(audit)
+                mutate(changed)
+                with self.assertRaisesRegex(VALIDATOR.AuditValidationError, message):
+                    validate(changed)
+
+    def test_interrupted_recovery_binds_adoption_finalize_and_cleanup(self) -> None:
+        failed, prior, database, recovery_identity = interrupted_identities()
+        adoption = {
+            "observed_database_fingerprint": recovery_identity[
+                "database_fingerprint"
+            ],
+            "observed_database_manifest": database["manifest"],
+            "observed_database_manifest_sha256": database["manifest_sha256"],
+            "observed_database_storage": database["storage"],
+        }
+        proof_sha256 = "d" * 64
+        loaded = {
+            "path": f"docs/recovery-proofs/{failed['deployment_id']}-v2.json",
+            "proof": {
+                "failed_run": failed,
+                "forward_adoption": adoption,
+                "prior_run": prior,
+            },
+            "proof_sha256": proof_sha256,
+        }
+        pre_adoption = VALIDATOR.expected_interrupted_observation(
+            failed,
+            prior,
+            recovery_identity["database_fingerprint"],
+            database["manifest"],
+            database["manifest_sha256"],
+            database["storage"],
+            failed["installed_plugin_sha256"],
+        )
+        receipt = {
+            "adopted_forward_no_rollback": True,
+            "cache_purge": {"deferred_to_finalize": True},
+            "database_manifest": database["manifest"],
+            "database_manifest_sha256": database["manifest_sha256"],
+            "database_storage": database["storage"],
+            "database_version": failed["version"],
+            "deployment_id": failed["deployment_id"],
+            "idempotent": False,
+            "installed_plugin_sha256": failed["installed_plugin_sha256"],
+            "interrupted_forward_proof_sha256": proof_sha256,
+            "post_install_database_fingerprint": recovery_identity[
+                "database_fingerprint"
+            ],
+            "stabilized": True,
+            "stabilized_from_phase": "installing",
+            "version": failed["version"],
+        }
+        status = {
+            "adopted_forward_no_rollback": True,
+            "database_fingerprint": recovery_identity["database_fingerprint"],
+            "database_manifest_sha256": database["manifest_sha256"],
+            "deployment_id": failed["deployment_id"],
+            "installed_plugin_sha256": failed["installed_plugin_sha256"],
+            "interrupted_forward_proof_sha256": proof_sha256,
+            "phase": "installed",
+            "state_exists": True,
+            "version": failed["version"],
+        }
+        probe_id = "c99-recovery-probe-40000000004-1"
+        audit = {
+            **interrupted_common(str(failed["deployment_id"])),
+            **interrupted_health_home_robots(failed, prior),
+            **interrupted_health_home_robots(failed, prior, "pre_adoption_"),
+            "adopted_forward_no_rollback": True,
+            "decision": "adopt_interrupted_forward",
+            "discovery": interrupted_discovery(str(failed["deployment_id"]), probe_id),
+            "finalize": finalize_record(),
+            "interrupted_forward_adoption": {"receipt": receipt, "status": status},
+            "interrupted_forward_proof": {
+                "path": loaded["path"],
+                "proof_sha256": proof_sha256,
+                "schema": "complete99-interrupted-forward-proof/v2",
+            },
+            "pre_adoption_observation": pre_adoption,
+            "result": "recovered",
+        }
+        VALIDATOR.validate_interrupted_forward_recovery_audit(
+            audit,
+            loaded,
+            probe_id,
+        )
+        resumed = copy.deepcopy(audit)
+        for key in (
+            "pre_adoption_health",
+            "pre_adoption_observation",
+            "pre_adoption_rendered_home",
+            "pre_adoption_robots",
+        ):
+            del resumed[key]
+        resumed["interrupted_forward_adoption"]["receipt"]["idempotent"] = True
+        resumed["discovery"]["owner_phase"] = "installed"
+        VALIDATOR.validate_interrupted_forward_recovery_audit(
+            resumed,
+            loaded,
+            probe_id,
+        )
+        for phase in ("committing", "commit_failed", "committed", "cleanup_failed"):
+            with self.subTest(finalize_resume_phase=phase):
+                terminal = copy.deepcopy(resumed)
+                del terminal["interrupted_forward_adoption"]
+                terminal["discovery"]["owner_phase"] = phase
+                terminal["interrupted_forward_finalize_resume"] = {
+                    "adopted_forward_no_rollback": True,
+                    "committed_expected_active": True,
+                    "committed_expected_absent": False,
+                    "committed_expected_deployment": failed["deployment_id"],
+                    "committed_expected_plugin_sha256": failed[
+                        "installed_plugin_sha256"
+                    ],
+                    "committed_expected_robots_exists": True,
+                    "committed_expected_robots_sha256": prior["robots_sha256"],
+                    "committed_expected_version": failed["version"],
+                    "committed_outcome": "installed",
+                    "database_fingerprint": recovery_identity[
+                        "database_fingerprint"
+                    ],
+                    "database_manifest_sha256": database["manifest_sha256"],
+                    "deployment_id": failed["deployment_id"],
+                    "installed_plugin_sha256": failed[
+                        "installed_plugin_sha256"
+                    ],
+                    "interrupted_forward_proof_sha256": proof_sha256,
+                    "phase": phase,
+                    "schema": "complete99-interrupted-forward-finalize-resume/v1",
+                    "state_exists": True,
+                    "version": failed["version"],
+                }
+                VALIDATOR.validate_interrupted_forward_recovery_audit(
+                    terminal,
+                    loaded,
+                    probe_id,
+                )
+                if phase in {"committed", "cleanup_failed"}:
+                    lock_only = copy.deepcopy(terminal)
+                    lock_only["interrupted_forward_finalize_resume"][
+                        "state_exists"
+                    ] = False
+                    VALIDATOR.validate_interrupted_forward_recovery_audit(
+                        lock_only,
+                        loaded,
+                        probe_id,
+                    )
+                else:
+                    missing_state = copy.deepcopy(terminal)
+                    missing_state["interrupted_forward_finalize_resume"][
+                        "state_exists"
+                    ] = False
+                    with self.assertRaisesRegex(
+                        VALIDATOR.AuditValidationError,
+                        "finalize-resume receipt",
+                    ):
+                        VALIDATOR.validate_interrupted_forward_recovery_audit(
+                            missing_state,
+                            loaded,
+                            probe_id,
+                        )
+                terminal["discovery"]["owner_phase"] = "installed"
+                with self.assertRaisesRegex(
+                    VALIDATOR.AuditValidationError,
+                    "discovery identity",
+                ):
+                    VALIDATOR.validate_interrupted_forward_recovery_audit(
+                        terminal,
+                        loaded,
+                        probe_id,
+                    )
+        for mismatched in (copy.deepcopy(audit), copy.deepcopy(resumed)):
+            mismatched["interrupted_forward_adoption"]["receipt"]["idempotent"] = (
+                not mismatched["interrupted_forward_adoption"]["receipt"][
+                    "idempotent"
+                ]
+            )
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "idempotency",
+            ):
+                VALIDATOR.validate_interrupted_forward_recovery_audit(
+                    mismatched,
+                    loaded,
+                    probe_id,
+                )
+        for label, mutate, message in (
+            (
+                "adoption status",
+                lambda value: value["interrupted_forward_adoption"]["status"].__setitem__(
+                    "interrupted_forward_proof_sha256", "e" * 64
+                ),
+                "adoption status",
+            ),
+            (
+                "finalize",
+                lambda value: value["finalize"].__setitem__("state_removed", False),
+                "finalize",
+            ),
+            (
+                "cleanup",
+                lambda value: value["cleanup"].__setitem__("route_404", False),
+                "cleanup",
+            ),
+        ):
+            with self.subTest(label=label):
+                changed = copy.deepcopy(audit)
+                mutate(changed)
+                with self.assertRaisesRegex(VALIDATOR.AuditValidationError, message):
+                    VALIDATOR.validate_interrupted_forward_recovery_audit(
+                        changed,
+                        loaded,
+                        probe_id,
+                    )
+
+    def test_interrupted_already_finalized_audit_is_exact_and_dispatchable(
+        self,
+    ) -> None:
+        audit, loaded, probe_id = interrupted_already_finalized_audit(
+            include_stale_probe=True
+        )
+        VALIDATOR.validate_interrupted_forward_already_finalized_audit(
+            audit,
+            loaded,
+            probe_id,
+        )
+        for label, mutate, message in (
+            (
+                "extra audit field",
+                lambda value: value.__setitem__("unexpected", True),
+                "terminal path",
+            ),
+            (
+                "attestation field",
+                lambda value: value[
+                    "interrupted_forward_finalized_attestation"
+                ].__setitem__("proof_sha256", "0" * 64),
+                "attestation receipt",
+            ),
+            (
+                "probe finalize",
+                lambda value: value["probe_finalize"].__setitem__(
+                    "state_removed", False
+                ),
+                "probe finalization",
+            ),
+            (
+                "stale state",
+                lambda value: value["stale_probe_recovery"][
+                    "reservation_status"
+                ].__setitem__("state_exists", True),
+                "stale probe reservation",
+            ),
+            (
+                "stale proof",
+                lambda value: value["stale_probe_recovery"].__setitem__(
+                    "interrupted_forward_proof_sha256", "0" * 64
+                ),
+                "proof digest",
+            ),
+        ):
+            with self.subTest(label=label):
+                changed = copy.deepcopy(audit)
+                mutate(changed)
+                with self.assertRaisesRegex(
+                    VALIDATOR.AuditValidationError,
+                    message,
+                ):
+                    VALIDATOR.validate_interrupted_forward_already_finalized_audit(
+                        changed,
+                        loaded,
+                        probe_id,
+                    )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            audit_root = Path(temporary)
+            audit_path = write_audit(audit_root, audit)
+            summary = json.dumps(
+                {
+                    "audit": str(audit_path),
+                    "deployment_id": probe_id,
+                    "result": "already-recovered",
+                }
+            )
+            with mock.patch.object(
+                VALIDATOR,
+                "load_interrupted_forward_proof",
+                return_value=loaded,
+            ), mock.patch.object(
+                VALIDATOR,
+                "validate_interrupted_forward_dist",
+            ):
+                result = VALIDATOR.validate_recovery_audit(
+                    summary,
+                    "",
+                    audit_root,
+                    probe_id,
+                    interrupted_forward_proof_path="proof.json",
+                    expect_interrupted_forward=True,
+                    dist=Path("plugin-dist"),
+                )
+        self.assertEqual("already-recovered", result["result"])
+        self.assertTrue(result["proof_consumed"])
 
     def test_exact_orphaned_recovery_proof_and_audit_pass(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -1740,6 +2333,78 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                 "crossed the platform mutation path",
             ):
                 VALIDATOR.validate_stage_outcomes(**marker)
+
+    def test_recovery_only_stage_matrix_runs_dry_run_and_commerce_without_redeploy(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            deploy_audits = root / "deploy-audit"
+            recovery_audits = root / "recovery-audit"
+            commerce_audits = root / "commerce-audit"
+            dry_id = "c99-dry-40000000001-1"
+            production_id = "c99-prod-40000000001-1"
+            commerce_id = "c99-commerce-40000000001-1"
+            write_audit(
+                deploy_audits,
+                {
+                    "deployment_id": dry_id,
+                    "result": "dry-run-passed",
+                    "cleanup": cleanup_record(),
+                },
+            )
+            write_audit(
+                commerce_audits,
+                {
+                    "deployment_id": commerce_id,
+                    "result": "verified",
+                    "cleanup": cleanup_record(),
+                },
+            )
+            arguments = {
+                "recovery_only": True,
+                "platform_recovered": True,
+                "preflight_outcome": "success",
+                "production_outcome": "skipped",
+                "mutation_outcome": "skipped",
+                "mutation_started": "",
+                "recovery_outcome": "skipped",
+                "commerce_outcome": "success",
+                "commerce_recovery_outcome": "skipped",
+                "dry_run_id": dry_id,
+                "production_id": production_id,
+                "commerce_id": commerce_id,
+                "deploy_audit_root": deploy_audits,
+                "recovery_audit_root": recovery_audits,
+                "commerce_audit_root": commerce_audits,
+            }
+
+            result = VALIDATOR.validate_stage_outcomes(**arguments)
+            self.assertTrue(result["recovery_only"])
+            self.assertTrue(result["platform_recovered"])
+            self.assertEqual("success", result["commerce_outcome"])
+
+            for field, value, message in (
+                ("platform_recovered", False, "did not prove"),
+                ("production_outcome", "success", "crossed the new platform"),
+                ("mutation_started", "false", "crossed the new platform"),
+            ):
+                with self.subTest(field=field):
+                    invalid = dict(arguments)
+                    invalid[field] = value
+                    with self.assertRaisesRegex(
+                        VALIDATOR.AuditValidationError,
+                        message,
+                    ):
+                        VALIDATOR.validate_stage_outcomes(**invalid)
+
+            conflicting = dict(arguments)
+            conflicting["observation_only"] = True
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "modes conflict",
+            ):
+                VALIDATOR.validate_stage_outcomes(**conflicting)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ import json
 import re
 import tempfile
 import zipfile
-from pathlib import Path, PurePath
+from pathlib import Path, PurePath, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = "complete99-platform"
@@ -167,6 +167,26 @@ def source_digest() -> str:
     return digest.hexdigest()
 
 
+def installed_digest(artifact: Path) -> str:
+    """Hash the ZIP's installed tree exactly as the temporary bridge does."""
+    entries: list[bytes] = []
+    with zipfile.ZipFile(artifact) as archive:
+        for info in archive.infolist():
+            if info.is_dir():
+                continue
+            relative = (
+                PurePosixPath(info.filename)
+                .relative_to(SLUG)
+                .as_posix()
+                .encode("utf-8")
+            )
+            file_digest = (
+                hashlib.sha256(archive.read(info)).hexdigest().encode("ascii")
+            )
+            entries.append(relative + b"\0" + file_digest)
+    return hashlib.sha256(b"\n".join(sorted(entries))).hexdigest()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dist", type=Path, default=DEFAULT_DIST)
@@ -194,6 +214,7 @@ def main() -> int:
     integrity = {
         "artifact": artifact.name,
         "deployment_id": deployment_id,
+        "installed_sha256": installed_digest(artifact),
         "sha256": digest,
         "size": len(raw),
         "slug": SLUG,
