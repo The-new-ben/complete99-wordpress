@@ -97,13 +97,15 @@ class Complete99ContractTests(unittest.TestCase):
         )
         self.assertTrue(manifest["sections"]["changelog"])
 
-    def test_release_1_12_manifest_describes_cumulative_boundary(self) -> None:
+    def test_release_1_12_1_manifest_describes_consumer_copy_hotfix_and_cumulative_boundary(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
+        self.assertIn("<h4>1.12.1</h4>", changelog)
+        self.assertIn("direct consumer cooking language for kome koji", changelog)
         self.assertIn("<h4>1.12.0</h4>", changelog)
         self.assertIn("culinary-science registry to 200 entities", changelog)
         self.assertIn("Entity Studio to 256 subjects", changelog)

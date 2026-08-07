@@ -197,8 +197,8 @@ return array(
 			'Check the maker pack for its allergen and cross-contact declaration before use.',
 			'יש לשמור בקירור ולפעול לפי תאריך השימוש והוראות היצרן שעל האריזה.',
 			'Keep refrigerated and follow the use-by date and maker instructions on the pack.',
-			'קומה קוג׳י מיובש למטבח התססות מדויק. מתאים לפרויקטים קולינריים כגון שיו קוג׳י, אמאזקה ומיסו כאשר עובדים לפי מתכון בטוח והוראות היצרן.',
-			'Dried kome koji for precise fermentation cooking. Suited to culinary projects such as shio koji, amazake and miso when used with a safe recipe and the maker directions.'
+			'קומה קוג׳י מיובש לבישול התססות מדויק. מתאים להכנת שיו קוג׳י, אמאזקה ומיסו לפי מתכון בטוח והוראות היצרן.',
+			'Dried kome koji for precise fermentation cooking. Suited to making shio koji, amazake and miso when used with a safe recipe and the maker directions.'
 		),
 		'product-hishiroku-chouhaku-kin-20g' => $c99_live_product(
 			'0.020',

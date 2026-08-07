@@ -11,9 +11,13 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.12.0`. Production truth comes
+The source tree targets Complete99 Platform `1.12.1`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.12.1 replaces the final construction-style phrase in the English
+pantry with direct cooking language and otherwise preserves the 1.12.0 public
+catalog, Syrian foundation and operational boundaries unchanged.
 
 Release 1.12.0 expands the bilingual culinary-science registry to 200 entities
 and Entity Studio to 256 subjects: 200 science identities plus all 56 known
@@ -53,7 +57,7 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The current 1.12.0 culinary-science registry contains 200 bounded entities.
+The current 1.12.1 culinary-science registry contains 200 bounded entities.
 Twenty-three public entities are projected through 18 canonical page owners per
 language, for 36 distinct Hebrew and English routes. Shared page
 ownership prevents closely related entities from competing for the same search

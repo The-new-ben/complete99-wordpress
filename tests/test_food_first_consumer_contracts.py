@@ -24,6 +24,7 @@ LAUNCH = PLUGIN / "data" / "launch-content.php"
 PUBLIC_JS = PLUGIN / "assets" / "js" / "public.js"
 PUBLIC_SHELL = PLUGIN / "templates" / "public-shell.php"
 COMMERCE_SHELL = PLUGIN / "templates" / "commerce-shell.php"
+LIVE_CATALOG_PRODUCTS = PLUGIN / "data" / "live-catalog-products.php"
 
 
 def _read(path: Path) -> str:
@@ -404,6 +405,12 @@ echo json_encode(
     )
     for pattern in forbidden_patterns:
         assert not re.search(pattern, public_copy, re.IGNORECASE), pattern
+
+
+def test_live_catalog_copy_uses_consumer_language() -> None:
+    public_catalog_copy = _read(LIVE_CATALOG_PRODUCTS).casefold()
+    for pattern in (r"\bproject(?:s)?\b", r"פרוי?יקט(?:ים)?"):
+        assert not re.search(pattern, public_catalog_copy, re.IGNORECASE), pattern
 
 
 def test_dish_components_and_generic_pages_use_consumer_intent_actions() -> None:
