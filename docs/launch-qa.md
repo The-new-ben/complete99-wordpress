@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.17.0
+Release target: Complete99 Platform 1.18.0
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.17.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.17.0 and its versioned package URL.
+- The public update manifest matches version 1.18.0 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -43,13 +43,17 @@ Release target: Complete99 Platform 1.17.0
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
-- The thirty-eight bilingual culinary-science routes resolve from 24 public
+- The thirty-eight bilingual culinary-science routes resolve from 27 public
   entities through 19 canonical page owners per language,
   emit canonical and hreflang metadata, remain `noindex,follow`, and are absent
   from the museum sitemap provider until their separate index gate is approved.
 - The cumulative registries identify themselves exactly as
-  `culinary-science-2026.08.07.v17` and
-  `culinary-commerce-2026.08.07.v11`.
+  `culinary-science-2026.08.07.v18` and
+  `culinary-commerce-2026.08.07.v12`.
+- The science registry contains exactly 672 entities and 370 sources. The
+  Japanese cluster contains exactly 84 entities split into 24 public and 60
+  private records, while the public totals remain 19 canonical owners per
+  language and 38 bilingual routes.
 - Public museum responses cannot expose visual prompts, supplier terms, landed
   cost, margins, connector state, approval identities or private workflow data.
 - Entity Studio remains private, requires `manage_options`, creates no role,
@@ -184,6 +188,9 @@ Release target: Complete99 Platform 1.17.0
 - Release 1.17.0 preserves all 36 public products unchanged and adds no public,
   private or POS offer, stock, supplier claim, payment activation or role
   assignment.
+- Release 1.18.0 preserves the same 36 public products and adds no public,
+  private or POS offer, stock, supplier claim, payment activation or role
+  assignment.
 - The 12 new Japanese premium-market candidates remain private
   `research_candidate` records with planning stock zero, blank WooCommerce
   product codes, held projection and one held draft offer each.
@@ -296,9 +303,10 @@ Verify:
 - Cache-busting requests render the new consumer body and release marker.
 - `robots.txt`, sitemap and public catalog return their managed state.
 - Public search does not expose products or private content types.
-- Anonymous public science readback contains exactly 24 entities across 19
+- Anonymous public science readback contains exactly 27 entities across 19
   canonical page owners per language. Only the reviewed Lebanese cuisine root
-  appears from the Lebanon graph. No observed price, visual prompt, Product
+  appears from the Lebanon graph. The three new Japanese records appear only as
+  reviewed sections inside their existing dashi and umami owners. No observed price, visual prompt, Product
   schema or Offer schema appears in public API, search, sitemap, page source,
   catalog or POS output.
 - Cache-busting requests to the Hebrew and English Lebanon canonical paths

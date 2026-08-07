@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-07 23:45:00"
+RELEASE_LAST_UPDATED = "2026-08-07 23:35:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,17 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the reviewed bilingual public science graph from 24 to 27 entities while preserving 19 canonical page owners per language and 38 bilingual routes.</li>"
+                "<li>Kept the registry at 672 entities with 370 sources and Entity Studio at 728 subjects; the 84-identity Japanese cluster now contains 24 public and 60 private records.</li>"
+                "<li>Added dashi extraction to the ichiban-dashi guide and L-glutamate plus inosine monophosphate to the umami guide, with source-bound consumer copy and natural links across Japanese ingredients, food science and techniques.</li>"
+                "<li>Added three original responsive culinary-science visual sets with bilingual alternative text, human approval receipts and a clear boundary that the molecule sculptures are conceptual rather than exact structural diagrams.</li>"
+                "<li>Kept every culinary-science page noindex until its separate long-form and kitchen-test gates pass, and added no new product, supplier, price, stock, bundle or checkout activation.</li>"
+                "<li>Added a site-wide favicon declaration and marked public add-to-cart links nofollow so search crawlers do not trigger cart mutations.</li>"
+                "<li>Versioned the unchanged commerce registry as v12 so its dependency on culinary-science v18 remains immutable and auditable.</li>"
+                "<li>Preserved the exact 36-product WooCommerce store, prices, stock, editable cart, disabled payment state and private operating boundary.</li>"
+                "</ul>"
+                "<h4>1.17.0</h4>"
                 "<ul>"
                 "<li>Expanded the bilingual culinary-science registry to 672 entities and Entity Studio to 728 subjects: 672 science identities plus 56 unchanged product identities.</li>"
                 "<li>Added 121 source-bound private Lebanese regional, scientific, community and institutional identities, bringing the Lebanese graph from 82 to 203 entities while keeping every new identity private, noindex and reference-only.</li>"

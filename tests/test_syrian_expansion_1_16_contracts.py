@@ -131,7 +131,7 @@ echo json_encode(array(
 def test_release_registry_and_module_membership_are_exact(payload: dict) -> None:
     registry = payload["registry"]
     modules = payload["modules"]
-    assert registry["version"] == "culinary-science-2026.08.07.v17"
+    assert registry["version"] == "culinary-science-2026.08.07.v18"
     assert len(registry["entities"]) == 672
     assert tuple(len(module["entities"]) for module in modules) == (
         EXPECTED_MODULE_COUNTS
@@ -238,7 +238,7 @@ def test_release_preserves_public_science_and_visual_prompt_boundaries(
     public_owners = {
         entity["seo"]["owner_entity_id"] for entity in public_entities
     }
-    assert len(public_entities) == 24
+    assert len(public_entities) == 27
     assert len(public_owners) == 19
 
     modules = payload["modules"]

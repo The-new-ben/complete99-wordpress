@@ -483,7 +483,15 @@ echo json_encode(array(
             html = result[f"{language}_html"]
             self.assertEqual("japanese-foundations-lab", projection["key"])
             self.assertTrue(projection["approved_public"])
-            self.assertEqual(15, len(projection["members"]))
+            self.assertEqual(18, len(projection["members"]))
+            self.assertTrue(
+                {
+                    "molecule-l-glutamate",
+                    "molecule-inosine-monophosphate",
+                    "technique-dashi-extraction",
+                }
+                <= {member["id"] for member in projection["members"]}
+            )
             self.assertEqual(
                 ["ingredients", "food_science", "techniques", "equipment"],
                 [group["id"] for group in projection["groups"]],
@@ -492,7 +500,7 @@ echo json_encode(array(
                 projection["parity_member_ids"]["he"],
                 projection["parity_member_ids"]["en"],
             )
-            self.assertEqual(15, html.count("data-c99-foundations-member"))
+            self.assertEqual(18, html.count("data-c99-foundations-member"))
             self.assertEqual(4, html.count("data-c99-foundations-filter-button="))
             self.assertIn("c99-science-japanese-foundations-lab-v01.webp", html)
             public_json = json.dumps(bundle, ensure_ascii=False).lower()
@@ -563,7 +571,7 @@ echo json_encode(array(
         )
         graph = result["en_schema"]["@graph"]
         item_list = next(node for node in graph if node.get("@type") == "ItemList")
-        self.assertEqual(15, item_list["numberOfItems"])
+        self.assertEqual(18, item_list["numberOfItems"])
         self.assertTrue(
             all(
                 entry["item"]["url"].startswith("https://complete99.example/en/")

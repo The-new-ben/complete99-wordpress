@@ -192,7 +192,7 @@ def test_exact_version_membership_types_sources_and_holds(
     assert module["schema"] == (
         "complete99-lebanese-regional-expansion-bekaa-south-community/v1"
     )
-    assert module["version"] == "culinary-science-2026.08.07.v17"
+    assert module["version"] == "culinary-science-2026.08.07.v18"
     assert len(module["sources"]) == 46
     assert set(entities) == EXPECTED_IDS
     assert set(module["private_entity_ids"]) == EXPECTED_IDS

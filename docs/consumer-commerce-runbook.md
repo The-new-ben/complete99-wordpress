@@ -1,9 +1,23 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-07
-Release target: Complete99 Platform 1.17.0
+Release target: Complete99 Platform 1.18.0
 
-## Current 1.17.0 Lebanese regional and community expansion boundary
+## Current 1.18.0 dashi depth and commerce boundary
+
+Release 1.18.0 keeps the culinary-science registry at 672 entities and Entity
+Studio at 728 subjects: 672 science identities plus the unchanged 56 product
+identities. The registry pair is `culinary-science-2026.08.07.v18` and
+`culinary-commerce-2026.08.07.v12`. The public boundary contains 27 science
+identities across 19 canonical page owners per language. Controlled dashi
+content resolves through 38 bilingual routes, and the 84-identity Japanese
+cluster contains 24 public and 60 private records. Controlled dashi extraction
+is a section of the existing ichiban-dashi owner, and L-glutamate
+plus inosine monophosphate are sections of the existing umami owner. All public
+science pages remain `noindex,follow`. The 36-product WooCommerce catalog,
+prices, stock, cart and disabled payment state remain unchanged.
+
+## Preserved 1.17.0 Lebanese regional and community expansion boundary
 
 Release 1.17.0 expands the culinary-science registry from 551 to 672 entities
 and Entity Studio from 607 to 728 subjects: 672 science identities plus the

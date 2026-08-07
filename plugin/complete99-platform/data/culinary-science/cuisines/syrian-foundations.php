@@ -1678,7 +1678,7 @@ $c99_syrian_private_entity_ids = array_column( $c99_syrian_entities, 'id' );
 
 return array(
 	'schema' => 'complete99-syrian-foundations-module/v1',
-	'version' => 'culinary-science-2026.08.07.v17',
+	'version' => 'culinary-science-2026.08.07.v18',
 	'sources' => $c99_syrian_sources,
 	'entities' => $c99_syrian_entities,
 	'private_entity_ids' => $c99_syrian_private_entity_ids,

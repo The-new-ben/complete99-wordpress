@@ -897,7 +897,7 @@ final class Complete99_Consumer {
 				<div class="c99-store-product-purchase">
 					<strong><?php echo wp_kses_post( $product->get_price_html() ); ?></strong>
 					<?php if ( $can_purchase ) : ?>
-						<a class="c99-button c99-button-primary" href="<?php echo esc_url( $action_url ); ?>"><?php echo esc_html( $is_he ? 'הוספה לסל' : 'Add to cart' ); ?></a>
+						<a class="c99-button c99-button-primary" href="<?php echo esc_url( $action_url ); ?>" rel="nofollow"><?php echo esc_html( $is_he ? 'הוספה לסל' : 'Add to cart' ); ?></a>
 					<?php else : ?>
 						<span class="c99-button c99-button-secondary" aria-disabled="true"><?php echo esc_html( $product->is_in_stock() ? ( $is_he ? 'לא זמין לרכישה' : 'Unavailable for purchase' ) : ( $is_he ? 'אזל זמנית' : 'Temporarily out of stock' ) ); ?></span>
 					<?php endif; ?>

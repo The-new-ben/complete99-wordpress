@@ -38,8 +38,11 @@ PUBLIC_IDS = {
     "ingredient-fresh-dutch-wasabi",
     "ingredient-kito-yuzu",
     "ingredient-hon-mirin",
+    "molecule-inosine-monophosphate",
+    "molecule-l-glutamate",
     "molecule-allyl-isothiocyanate",
     "preparation-ichiban-dashi",
+    "technique-dashi-extraction",
     "equipment-wasabi-grater",
 }
 PUBLIC_ASSET_STEMS = {
@@ -131,10 +134,15 @@ LAB_GROUP_MEMBERS = {
     ],
     "food_science": [
         "guide-umami-synergy",
+        "molecule-l-glutamate",
+        "molecule-inosine-monophosphate",
         "guide-wasabi-aitc",
         "molecule-allyl-isothiocyanate",
     ],
-    "techniques": ["preparation-ichiban-dashi"],
+    "techniques": [
+        "preparation-ichiban-dashi",
+        "technique-dashi-extraction",
+    ],
     "equipment": ["equipment-wasabi-grater"],
 }
 LAB_COLLECTION_KEYS = {

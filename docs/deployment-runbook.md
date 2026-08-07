@@ -93,14 +93,14 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.17.0, require the Entity Studio contracts to prove private
+3. For release 1.18.0, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
    bounded API pagination, orphan-dossier audit access and fail-closed
    observation identity collisions. Require the cumulative 672-entity
-   `culinary-science-2026.08.07.v17` registry, the
-   `culinary-commerce-2026.08.07.v11` registry and the exact 728-subject Entity
+   `culinary-science-2026.08.07.v18` registry, the
+   `culinary-commerce-2026.08.07.v12` registry and the exact 728-subject Entity
    Studio index: 672 science identities plus 56 product identities. Require
    exact evidence chronology and evidence-class alignment with each source
    type. Require the Lebanese expansion to contain exactly 121 identities in
@@ -147,7 +147,7 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    WooCommerce price, offer, stock, supplier, import route, landed-cost or POS
    row. Confirm only
    the exact explicit `public_market_projection=public` value can enter the
-   public projection, and require 24 public science entities across 19
+   public projection, and require 27 public science entities across 19
    canonical page owners per language.
    Require the Lebanon contracts to prove the March 2026 direct and indirect
    trade boundary, separate shared Levantine identities, no raw-meat recipe or
@@ -262,6 +262,40 @@ the deployment ID, so it never needs the discarded route token. It independently
 chooses only between finishing an already committed cleanup and rolling back an
 uncommitted mutation. It then proves its row absent and its route 404. The production
 workflow runs this command automatically after a failed deployment step.
+
+## Release 1.18.0 live verification
+
+Before installation:
+
+1. Confirm the artifact, manifest and deployment marker all report `1.18.0`.
+2. Confirm contract readback reports 672 science identities, 370 sources, 56
+   product identities, 728 Entity Studio subjects, 36 public WooCommerce
+   products, 27 public science identities and 19 public page owners per language.
+3. Confirm the Japanese cluster contains 84 identities split into 24 public and
+   60 private records, and that the foundations collection contains 18 members.
+4. Confirm controlled dashi extraction is owned by the existing ichiban-dashi
+   page and L-glutamate plus inosine monophosphate are owned by the existing
+   umami page, with no new canonical route or public offer.
+5. Confirm all 27 public science records remain noindex and outside the sitemap.
+
+After installation and cache purge:
+
+1. Verify anonymous health returns version `1.18.0`, deployment ID
+   `c99-wp-1.18.0` and the expected database version.
+2. Verify public science contains exactly 27 records, 19 page owners per
+   language and 38 bilingual routes. Verify the three new section images,
+   bilingual alternative text, source citations and natural internal links.
+3. Request the Hebrew and English ichiban-dashi, umami, kombu, katsuobushi and
+   Japanese foundations pages with cache busting. Confirm the new sections are
+   visible and no editorial, prompt, supplier, price-planning or workflow data
+   appears.
+4. Verify the exact 36-product store, cart, stock authority, nofollow
+   add-to-cart links and disabled payment state are unchanged.
+5. Run real Chrome acceptance at desktop and 390 CSS pixels, including
+   direction, canonical, hreflang, overflow, keyboard focus, visual loading and
+   first-party console errors.
+6. Confirm deployment cleanup returns route 404, leaves no bridge row or active
+   snippet, and preserves rollback evidence.
 
 ## Release 1.17.0 live verification
 
@@ -395,11 +429,11 @@ A production release is complete only when the non-secret audit JSON shows:
   version 1.9.0 additions;
 - a private Entity Studio registration and invariant check with no public route,
   no new role and no WooCommerce write;
-- exact registry receipts for culinary science v17 and culinary commerce v11,
+- exact registry receipts for culinary science v18 and culinary commerce v12,
   with 672 science identities, 56 product identities and 728 Entity Studio
   subjects;
 - exact 56 of 56 product price-basis coverage, comprising 36 live prices and 20
-  private planning prices, with zero active or draft offer added by 1.17.0;
+  private planning prices, with zero active or draft offer added by 1.18.0;
 - exact 282-identity Syrian type counts, including the 86 new private identities
   and four exact held records, with no price, product, offer, supplier, stock or
   public projection;
@@ -412,8 +446,9 @@ A production release is complete only when the non-secret audit JSON shows:
   private, noindex and reference-only;
 - six dated Lebanese retail observations with no product identity, offer,
   stock, supplier, import route, landed cost or public price projection;
-- 24 public science entities and 19
-  public canonical page owners per language;
+- 27 public science entities, 19 public canonical page owners per language and
+  38 bilingual routes, with the 84-identity Japanese cluster split into 24
+  public and 60 private records;
 - negative public evidence for every Syrian expansion record and every Lebanon
   child across API, search, sitemap, rendered routes, public catalog, POS and
   structured data, with positive evidence only for the reviewed Lebanon root;

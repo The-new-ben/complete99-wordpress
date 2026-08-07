@@ -432,11 +432,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_17_0(self) -> None:
+    def test_release_version_is_exact_1_18_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.17\.0$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.17.0' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.17.0' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.18\.0$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.18.0' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.18.0' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -1472,9 +1472,22 @@ echo wp_json_encode(array(
         unavailable = purchase.split("<?php else : ?>", 1)[1].split("<?php endif; ?>", 1)[0]
         self.assertIn("$action_url", available)
         self.assertIn("Add to cart", available)
+        self.assertIn('rel="nofollow"', available)
         self.assertNotIn("$action_url", unavailable)
         self.assertNotIn("Add to cart", unavailable)
         self.assertIn('aria-disabled="true"', unavailable)
+
+    def test_brand_icon_is_emitted_before_every_head_metadata_branch(self) -> None:
+        head_metadata = self.frontend.split("public static function head_metadata", 1)[1].split(
+            "private static function is_live_dish_request", 1
+        )[0]
+        icon = "assets/images/complete99-mark.svg"
+        self.assertEqual(1, head_metadata.count(icon))
+        self.assertLess(head_metadata.index(icon), head_metadata.index("is_consumer_transaction_request"))
+        live_dish_metadata = self.frontend.split("private static function live_dish_head_metadata", 1)[
+            1
+        ].split("private static function food_business_schema", 1)[0]
+        self.assertNotIn(icon, live_dish_metadata)
 
     def test_public_health_exposes_no_private_catalog_or_evaluation_details(self) -> None:
         health = self.rest.split("public static function health", 1)[1].split(

@@ -845,7 +845,7 @@ if ( $c99_lebanese_coast_held_ids !== $c99_lebanese_coast_actual_held_ids ) {
 
 return array(
 	'schema' => 'complete99-lebanese-regional-expansion-coast-north/v1',
-	'version' => 'culinary-science-2026.08.07.v17',
+	'version' => 'culinary-science-2026.08.07.v18',
 	'sources' => $c99_lebanese_coast_sources,
 	'entities' => $c99_lebanese_coast_entities,
 	'private_entity_ids' => $c99_lebanese_coast_ids,

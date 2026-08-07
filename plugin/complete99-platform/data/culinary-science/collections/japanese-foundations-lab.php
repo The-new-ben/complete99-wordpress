@@ -25,11 +25,14 @@ $c99_foundations_groups = array(
 	),
 	'food_science' => array(
 		'guide-umami-synergy',
+		'molecule-l-glutamate',
+		'molecule-inosine-monophosphate',
 		'guide-wasabi-aitc',
 		'molecule-allyl-isothiocyanate',
 	),
 	'techniques' => array(
 		'preparation-ichiban-dashi',
+		'technique-dashi-extraction',
 	),
 	'equipment' => array(
 		'equipment-wasabi-grater',

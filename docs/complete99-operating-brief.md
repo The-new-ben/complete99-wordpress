@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-07
-Status: source release target 1.17.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 672 science identities, 728 Entity Studio subjects and 24 public science entities across 19 page owners per language
+Status: source release target 1.18.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 672 science identities, 728 Entity Studio subjects and 27 public science entities across 19 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -199,6 +199,15 @@ record or purchasing path. One reviewed Lebanese cuisine root is a public
 noindex discovery gateway; all 121 new identities remain private. The public
 graph contains 24 science entities across 19 canonical page owners per
 language.
+
+Release 1.18.0 keeps Entity Studio at 728 subjects and grows the reviewed public
+science graph to 27 entities across the same 19 canonical page owners per
+language and 38 bilingual routes. The 84-identity Japanese cluster contains 24
+public and 60 private records. Controlled dashi extraction appears inside the ichiban-dashi owner,
+while L-glutamate and inosine monophosphate appear inside the umami owner. The
+culinary-commerce registry is version 12 and binds culinary-science version 18.
+The catalog, prices, stock authority, disabled payments and private operating
+boundary remain unchanged.
 
 - WordPress keeps consumer publishing and commerce readiness metadata.
 - WooCommerce is the product, cart and stock authority. It becomes the payment

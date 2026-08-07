@@ -464,6 +464,9 @@ final class Complete99_Frontend {
 	}
 
 	public static function head_metadata() {
+		$brand_mark = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
+		echo '<link rel="icon" href="' . esc_url( $brand_mark ) . '" type="image/svg+xml" sizes="any" />' . "\n";
+
 		if ( self::is_consumer_transaction_request() ) {
 			$lang        = Complete99_Commerce::transaction_language();
 			$type        = Complete99_Commerce::transaction_page_type();
@@ -493,7 +496,6 @@ final class Complete99_Frontend {
 		$alternate = 'he' === $lang ? $en_url : $he_url;
 		$canonical = get_permalink( $post );
 		$image     = self::post_image_url( $post->ID );
-		$brand_mark = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
 		$description = wp_strip_all_tags( $post->post_excerpt );
 		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
 			$description = 'he' === $lang
@@ -507,7 +509,6 @@ final class Complete99_Frontend {
 			}
 		}
 
-		echo '<link rel="icon" href="' . esc_url( $brand_mark ) . '" type="image/svg+xml" sizes="any" />' . "\n";
 		self::render_canonical_link( $canonical );
 		if ( $he_url ) {
 			echo '<link rel="alternate" hreflang="' . esc_attr( 'he' ) . '" href="' . esc_url( $he_url ) . '" />' . "\n";
@@ -686,9 +687,6 @@ final class Complete99_Frontend {
 		$he_url      = self::live_dish_url( $dish['slug'], 'he' );
 		$en_url      = self::live_dish_url( $dish['slug'], 'en' );
 		$image       = self::live_image_url( $dish );
-		$brand_mark  = COMPLETE99_PLATFORM_URL . 'assets/images/complete99-mark.svg';
-
-		echo '<link rel="icon" href="' . esc_url( $brand_mark ) . '" type="image/svg+xml" sizes="any" />' . "\n";
 		self::render_canonical_link( $canonical );
 		echo '<link rel="alternate" hreflang="he" href="' . esc_url( $he_url ) . '" />' . "\n";
 		echo '<link rel="alternate" hreflang="en" href="' . esc_url( $en_url ) . '" />' . "\n";

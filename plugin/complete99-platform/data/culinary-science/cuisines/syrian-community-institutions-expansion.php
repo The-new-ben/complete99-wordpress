@@ -1034,7 +1034,7 @@ foreach ( $c99_syrian_community_entities as $entity ) {
 
 return array(
 	'schema' => 'complete99-syrian-community-institutions-expansion/v1',
-	'version' => 'culinary-science-2026.08.07.v17',
+	'version' => 'culinary-science-2026.08.07.v18',
 	'sources' => $c99_syrian_community_sources,
 	'entities' => $c99_syrian_community_entities,
 	'private_entity_ids' => $c99_syrian_community_ids,

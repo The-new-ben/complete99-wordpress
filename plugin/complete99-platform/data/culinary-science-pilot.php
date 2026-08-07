@@ -383,6 +383,14 @@ $sources = array(
 		'published_at' => '',
 		'retrieved_at' => '2026-08-06',
 	),
+	'israel-moh-food-allergen-labeling-2026' => array(
+		'type'         => 'official_government',
+		'publisher'    => 'Israel Ministry of Health',
+		'title'        => 'Food label and nutritional labeling: allergen labeling',
+		'url'          => 'https://www.gov.il/en/pages/food-labeling?chapterIndex=4',
+		'published_at' => '2022-10-12',
+		'retrieved_at' => '2026-08-07',
+	),
 	'dashi-combination-palatability-2008' => array(
 		'type'         => 'peer_reviewed_paper',
 		'publisher'    => 'Journal of Cookery Science of Japan',
@@ -941,7 +949,7 @@ $entities[] = $c99_entity(
 		'cross_sell_ids' => array( 'ingredient-kombu', 'ingredient-katsuobushi', 'technique-dashi-extraction' ),
 		'prompt_en' => 'Translucent golden ichiban dashi in a clear laboratory-style culinary vessel, one kombu sheet and paper-thin katsuobushi shavings beside it, backlight revealing clarity and gentle steam, restrained Japanese studio composition, scientifically precise food texture.',
 		'culinary_test_status' => 'not_applicable',
-		'compliance' => array( $c99_compliance( 'fish-allergen', 'קצואובושי הוא מוצר דג ויש לסמן אלרגן דגים ולבדוק מגע צולב במוצר בפועל.', 'Katsuobushi is a fish product; fish allergen labeling and actual-product cross-contact review are required.' ) ),
+		'compliance' => array( $c99_compliance( 'fish-allergen', 'קצואובושי הוא מוצר דג. לפני הצגה או מכירה יש לאמת את תווית המוצר ולסמן דגים בהתאם לדרישות סימון האלרגנים החלות.', 'Katsuobushi is a fish product. Verify the actual product label and identify fish in accordance with the applicable allergen-labeling requirements before display or sale.', array( 'israel-moh-food-allergen-labeling-2026' ) ) ),
 	)
 );
 
@@ -1020,17 +1028,17 @@ $entities[] = $c99_entity(
 	array(
 		'id' => 'technique-dashi-extraction', 'type' => 'technique', 'slug' => 'dashi-extraction', 'parent_id' => 'preparation-ichiban-dashi',
 		'name' => $c99_text( 'מיצוי דאשי מבוקר', 'Controlled dashi extraction' ),
-		'summary' => $c99_text( 'מיצוי דאשי הוא תהליך מדיד של חומר גלם, מים, טמפרטורה, זמן וסינון. המודל שומר כל מתכון או ניסוי כמפרט נפרד כדי שניתן יהיה להשוות בהירות, תפוקה, טעם ועלות לליטר בלי להפוך תנאי מחקר יחידים לכלל מוחלט.', 'Dashi extraction is a measurable process of ingredient, water, temperature, time and filtration. The model stores each recipe or experiment as a separate specification so clarity, yield, taste and cost per liter can be compared without turning one research condition into a universal rule.' ),
+		'summary' => $c99_text( 'מיצוי דאשי מתחיל בבחירה מודעת של קומבו, מים, זמן, טמפרטורה וסינון. שינוי בכל אחד מהם יכול להשפיע על הצלילות, הארומה והטעם. כאן אפשר להבין אילו משתנים כדאי להשוות, בלי להפוך תנאי ניסוי יחיד למתכון מוחלט.', 'Dashi extraction begins with deliberate choices about kombu, water, time, temperature and filtration. Changing any one of them can affect clarity, aroma and flavor. This section explains which variables are worth comparing without turning one experiment into a universal recipe.' ),
 		'seo_group' => 'techniques', 'primary_intent' => $c99_text( 'ללמוד מיצוי דאשי מדויק', 'Learn precise dashi extraction' ),
 		'primary_keyword' => $c99_text( 'מיצוי דאשי', 'dashi extraction' ),
 		'secondary_keywords' => array( 'he' => array( 'טמפרטורת דאשי', 'מיצוי קומבו' ), 'en' => array( 'dashi temperature', 'kombu extraction' ) ),
-		'schema_type' => 'HowTo',
+		'schema_type' => 'DefinedTerm',
 		'facts' => array(
 			$c99_fact( 'fact-dashi-extraction-variables', 'scientific', 'תקציר כנס על ציר קומבו במים שונים תומך בשמירת סוג המים ותנאי המיצוי כחלק בלתי נפרד מן המדידה, כממצא ראשוני התלוי בתנאי הניסוי.', 'A conference proceeding on kombu stock extracted with different water types supports storing water type and extraction conditions with the measurement as preliminary, experiment-bound evidence.', 'conference_context', 'technique_context', array( 'kombu-water-extraction-conference-2024' ) ),
-			$c99_fact( 'fact-dashi-process-entity', 'structural', 'כל גרסת דאשי תוכל לקשר BOM, ציוד, שלבי תהליך, בדיקות אצווה ועלות מנורמלת.', 'Each dashi version can link a BOM, equipment, process steps, batch tests and normalized cost.', 'editorial_inference', 'entity', array( 'maff-dashi-umami' ) ),
+			$c99_fact( 'fact-dashi-process-entity', 'structural', 'לצורך עבודת העריכה נשמרים חומרי הגלם, המים, הציוד, שלבי התהליך והתפוקה כפרטים נפרדים.', 'For editorial work, ingredients, water, equipment, process stages and yield remain separate details.', 'editorial_inference', 'entity', array( 'maff-dashi-umami' ), false ),
 		),
 		'profiles' => $c99_profiles( array(
-			'scientific' => $c99_profile( 'source_backed', 'סוג מים ותנאי מיצוי נשמרים לצד כל תוצאה.', 'Water type and extraction conditions stay attached to every result.', array( 'fact-dashi-extraction-variables' ) ),
+			'scientific' => $c99_profile( 'source_backed', 'סוג המים ותנאי המיצוי משנים את משמעות התוצאה, ולכן קוראים אותם יחד.', 'Water type and extraction conditions change what a result means, so they should be read together.', array( 'fact-dashi-extraction-variables' ) ),
 			'cultural' => $c99_profile( 'pending_evidence', 'הבדלים אזוריים ומסורתיים בשיטות דאשי יתווספו ממקורות ייעודיים.', 'Regional and traditional differences in dashi methods will be added from dedicated sources.' ),
 			'institutional' => $c99_profile( 'pending_evidence', 'פרוטוקולים של בתי ספר ושפים יישמרו כגרסאות מיוחסות.', 'School and chef protocols will be stored as attributed versions.' ),
 			'economic' => $c99_profile( 'pending_evidence', 'המודל יחשב עלות חומר, אנרגיה, זמן עבודה, תפוקה ופחת לליטר.', 'The model will calculate ingredient, energy, labor, yield and shrinkage cost per liter.' ),
@@ -1045,7 +1053,7 @@ $entities[] = $c99_entity(
 		),
 		'revenue_models' => array( 'education', 'content_to_commerce', 'curated_bundle' ),
 		'customer_segments' => array( 'culinary_consumers', 'professional_chefs', 'culinary_students' ),
-		'prompt_en' => 'Scientific culinary process photograph of kombu extraction in a clear temperature-controlled vessel, accurate water line, probe thermometer, timer and filter arranged cleanly, pale golden stock, restrained Japanese laboratory kitchen, no labels or logos.',
+		'prompt_en' => 'Photorealistic culinary studio photograph of controlled kombu dashi extraction in a clear heat-safe vessel, pale golden stock, one natural kombu sheet, unbranded probe thermometer, timer, fine strainer and second vessel arranged in a restrained Japanese teaching kitchen, no readable measurements, labels, logos or packaging.',
 	)
 );
 
@@ -1415,7 +1423,7 @@ $entities[] = $c99_entity(
 $entities[] = $c99_entity( array(
 	'id' => 'molecule-l-glutamate', 'type' => 'molecule', 'slug' => 'l-glutamate', 'parent_id' => 'cuisine-japanese-washoku',
 	'name' => $c99_text( 'L-גלוטמט', 'L-glutamate' ),
-	'summary' => $c99_text( 'L-גלוטמט הוא אניון של חומצה גלוטמית המשתתף בתפיסת אומאמי. במערכת הוא מקושר למקורות מזון ולרצפטור טעם כהקשר מדעי, לא כהבטחת עוצמת טעם לכל מוצר.', 'L-glutamate is the anion of glutamic acid involved in umami perception. In the system it links food sources to taste-receptor context, not to a promised flavor intensity for every product.' ),
+	'summary' => $c99_text( 'L-גלוטמט הוא הצורה היונית של חומצה גלוטמית ומשתתף בתפיסת אומאמי. בנוכחות נוקלאוטידים כמו IMP, תגובת הטעם יכולה להתחזק. הכמות בפועל משתנה בין חומרי גלם ומוצרים, ולכן אין להסיק עוצמת טעם או ריכוז קבוע ללא מדידה.', 'L-glutamate is the ionic form of glutamic acid and participates in umami perception. In the presence of nucleotides such as IMP, the taste response can become stronger. Actual amounts vary among ingredients and products, so flavor intensity or a fixed concentration should not be inferred without measurement.' ),
 	'seo_group' => 'science', 'primary_intent' => $c99_text( 'להבין גלוטמט ואומאמי במזון', 'Understand glutamate and umami in food' ), 'primary_keyword' => $c99_text( 'גלוטמט אומאמי', 'glutamate umami' ),
 	'secondary_keywords' => array( 'he' => array( 'קולטן אומאמי', 'חומצה גלוטמית במזון' ), 'en' => array( 'umami receptor', 'glutamic acid in food' ) ), 'schema_type' => 'ChemicalSubstance',
 	'facts' => array( $c99_fact( 'fact-glutamate-receptor', 'scientific', 'גלוטמט נקשר לרצפטור T1R1/T1R3, ונוקלאוטידים יכולים לחזק את התגובה באופן אלוסטרי.', 'Glutamate binds the T1R1/T1R3 receptor, and nucleotides can enhance the response allosterically.', 'peer_reviewed_context', 'category', array( 'umami-receptor-2009' ) ) ),
@@ -1428,13 +1436,13 @@ $entities[] = $c99_entity( array(
 	) ),
 	'categories' => array( 'culinary-science', 'taste-molecules', 'umami' ), 'attributes' => array( 'pa_flavor_profile' => array( 'umami' ) ), 'tags' => array( 'glutamate', 'umami', 't1r1-t1r3' ),
 	'relations' => array( $c99_relation( 'complements', 'molecule-inosine-monophosphate', 'IMP יכול להגביר תפיסת אומאמי בנוכחות גלוטמט.', 'IMP can enhance umami perception in the presence of glutamate.' ) ),
-	'prompt_en' => 'Scientific editorial visualization of L-glutamate as a clean molecular model beside kombu and clear dashi, accurate atom color convention, dark neutral background, culinary science museum style, no medical symbolism, no labels embedded in the image.'
+	'prompt_en' => 'Photorealistic culinary-science still life of kombu and clear dashi beside an explicitly abstract translucent glass sculpture suggesting molecular context without depicting an exact chemical structure, dark museum background, no text, health symbolism, labels, logos or packaging.'
 ) );
 
 $entities[] = $c99_entity( array(
 	'id' => 'molecule-inosine-monophosphate', 'type' => 'molecule', 'slug' => 'inosine-monophosphate', 'parent_id' => 'cuisine-japanese-washoku',
 	'name' => $c99_text( 'אינוזין מונופוספט, IMP', 'Inosine monophosphate, IMP' ),
-	'summary' => $c99_text( 'IMP הוא נוקלאוטיד טעם שיכול להגביר תפיסת אומאמי בנוכחות גלוטמט. המערכת שומרת את המנגנון כהקשר מחקרי ואינה מייחסת ריכוז קבוע לקצואובושי, דג או נורי ללא בדיקה.', 'IMP is a taste-active nucleotide that can enhance umami perception in the presence of glutamate. The system stores the mechanism as research context and does not assign a fixed concentration to katsuobushi, fish or nori without testing.' ),
+	'summary' => $c99_text( 'IMP הוא נוקלאוטיד בעל תרומה לטעם האומאמי. בנוכחות גלוטמט הוא יכול לחזק את תגובת קולטן T1R1/T1R3. אין מכאן מספר קבוע לקצואובושי, לדג או לנורי: ריכוז ממשי תלוי בחומר הגלם ובמדידה.', 'IMP is a taste-active nucleotide. In the presence of glutamate it can strengthen the response of the T1R1/T1R3 receptor. This does not establish a fixed amount in katsuobushi, fish or nori: actual concentration depends on the ingredient and measurement.' ),
 	'seo_group' => 'science', 'primary_intent' => $c99_text( 'להבין IMP וסינרגיית אומאמי', 'Understand IMP and umami synergy' ), 'primary_keyword' => $c99_text( 'IMP אומאמי', 'IMP umami' ),
 	'secondary_keywords' => array( 'he' => array( 'נוקלאוטיד טעם', 'סינרגיית גלוטמט' ), 'en' => array( 'taste nucleotide', 'glutamate synergy' ) ), 'schema_type' => 'ChemicalSubstance',
 	'facts' => array( $c99_fact( 'fact-imp-allosteric-synergy', 'scientific', 'IMP תורם לסינרגיית אומאמי עם גלוטמט דרך מנגנון אלוסטרי ברצפטור T1R1/T1R3.', 'IMP contributes to glutamate umami synergy through an allosteric mechanism at the T1R1/T1R3 receptor.', 'peer_reviewed_context', 'category', array( 'umami-receptor-2009' ) ) ),
@@ -1447,7 +1455,7 @@ $entities[] = $c99_entity( array(
 	) ),
 	'categories' => array( 'culinary-science', 'taste-molecules', 'umami' ), 'attributes' => array( 'pa_flavor_profile' => array( 'umami-synergy' ) ), 'tags' => array( 'imp', 'nucleotide', 'umami' ),
 	'relations' => array( $c99_relation( 'complements', 'molecule-l-glutamate', 'הסינרגיה נבחנת בנוכחות גלוטמט.', 'Synergy is considered in the presence of glutamate.' ) ),
-	'prompt_en' => 'Scientific editorial visualization of inosine monophosphate as a precise molecular model beside katsuobushi shavings and clear dashi, accurate atom colors, museum-grade dark backdrop, no health claims, no embedded labels.'
+	'prompt_en' => 'Photorealistic culinary-science still life of paper-thin katsuobushi shavings and clear dashi beside an explicitly abstract translucent glass sculpture suggesting nucleotide context without depicting an exact chemical structure, dark museum background, no text, health symbolism, labels, logos or packaging.'
 ) );
 
 $entities[] = $c99_entity( array(
@@ -1725,7 +1733,7 @@ $entities[] = $c99_entity( array(
 		'structural' => $c99_profile( 'pending_evidence', 'המדריך מרכז את הקשר בין גלוטמט, IMP, תפיסת אומאמי והמחקר התומך.', 'The guide brings together glutamate, IMP, perceived umami and the supporting research.' ),
 	) ),
 	'categories' => array( 'knowledge', 'food-science', 'taste', 'umami' ), 'attributes' => array( 'pa_flavor_profile' => array( 'umami' ) ), 'tags' => array( 'umami', 'glutamate', 'imp', 't1r1-t1r3' ),
-	'relations' => array( $c99_relation( 'contains', 'molecule-l-glutamate', 'גלוטמט הוא ישות משנה במדריך.', 'Glutamate is a subject entity in the guide.', true, array( 'umami-receptor-2009' ), 'peer_reviewed_context' ), $c99_relation( 'contains', 'molecule-inosine-monophosphate', 'IMP הוא ישות משנה במדריך.', 'IMP is a subject entity in the guide.', true, array( 'umami-receptor-2009' ), 'peer_reviewed_context' ) ),
+	'relations' => array( $c99_relation( 'contains', 'molecule-l-glutamate', 'גלוטמט הוא אחד מחומרי הטעם שמוסברים במדריך.', 'Glutamate is one of the taste compounds explained in this guide.', true, array( 'umami-receptor-2009' ), 'peer_reviewed_context' ), $c99_relation( 'contains', 'molecule-inosine-monophosphate', 'IMP הוא אחד מחומרי הטעם שמוסברים במדריך.', 'IMP is one of the taste compounds explained in this guide.', true, array( 'umami-receptor-2009' ), 'peer_reviewed_context' ) ),
 	'revenue_models' => array( 'education', 'content_to_commerce' ), 'customer_segments' => array( 'culinary_consumers', 'professional_chefs', 'culinary_students', 'research_readers' ),
 	'prompt_en' => 'Editorial culinary science visualization of glutamate and IMP molecular models beside kombu, katsuobushi and clear dashi, accurate atom conventions, museum-grade dark background, no health claims, text or labels.',
 ) );
@@ -2789,7 +2797,10 @@ $public_pilot_ids = array(
 	'ingredient-kito-yuzu',
 	'ingredient-hon-mirin',
 	'preparation-ichiban-dashi',
+	'technique-dashi-extraction',
 	'guide-umami-synergy',
+	'molecule-l-glutamate',
+	'molecule-inosine-monophosphate',
 	'guide-wasabi-aitc',
 	'molecule-allyl-isothiocyanate',
 	'equipment-wasabi-grater',
@@ -2797,16 +2808,16 @@ $public_pilot_ids = array(
 $public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
 $public_semantic_allowlists = array(
 	'museum-culinary-science' => array( 'cuisine-japanese-washoku', 'cuisine-syrian-regional', 'cuisine-lebanese-regional' ),
-	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-foundations-lab', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'guide-wasabi-aitc', 'equipment-wasabi-grater' ),
+	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-foundations-lab', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'equipment-wasabi-grater' ),
 	'cuisine-syrian-regional' => array( 'museum-culinary-science', 'cuisine-lebanese-regional' ),
 	'cuisine-lebanese-regional' => array( 'museum-culinary-science', 'cuisine-syrian-regional' ),
-	'hub-japanese-foundations-lab' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'guide-umami-synergy', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'preparation-ichiban-dashi', 'equipment-wasabi-grater' ),
+	'hub-japanese-foundations-lab' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'equipment-wasabi-grater' ),
 	'hub-japanese-equipment' => array( 'cuisine-japanese-washoku', 'equipment-wasabi-grater', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'guide-wasabi-aitc' ),
 	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
-	'hub-japanese-techniques' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'hub-japanese-food-science' ),
-	'hub-japanese-food-science' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'guide-wasabi-aitc', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi' ),
-	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'preparation-ichiban-dashi', 'guide-umami-synergy' ),
-	'ingredient-katsuobushi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kombu', 'preparation-ichiban-dashi', 'guide-umami-synergy' ),
+	'hub-japanese-techniques' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'hub-japanese-food-science' ),
+	'hub-japanese-food-science' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi' ),
+	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'guide-umami-synergy', 'molecule-l-glutamate' ),
+	'ingredient-katsuobushi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kombu', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'molecule-inosine-monophosphate' ),
 	'ingredient-kioke-shoyu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
 	'ingredient-kome-koji' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-kioke-shoyu' ),
 	'ingredient-koji-starter-culture' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kome-koji', 'ingredient-koshihikari-rice', 'ingredient-kioke-shoyu' ),
@@ -2815,8 +2826,11 @@ $public_semantic_allowlists = array(
 	'ingredient-fresh-dutch-wasabi' => array( 'cuisine-japanese-washoku', 'ingredient-fresh-wasabi', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'hub-japanese-equipment', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'equipment-wasabi-grater', 'ingredient-kioke-shoyu', 'ingredient-koshihikari-rice' ),
 	'ingredient-kito-yuzu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-hon-mirin' ),
 	'ingredient-hon-mirin' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kioke-shoyu', 'ingredient-kito-yuzu' ),
-	'preparation-ichiban-dashi' => array( 'cuisine-japanese-washoku', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'guide-umami-synergy' ),
-	'guide-umami-synergy' => array( 'cuisine-japanese-washoku', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'preparation-ichiban-dashi' ),
+	'preparation-ichiban-dashi' => array( 'cuisine-japanese-washoku', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'technique-dashi-extraction', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate' ),
+	'technique-dashi-extraction' => array( 'preparation-ichiban-dashi', 'ingredient-kombu' ),
+	'guide-umami-synergy' => array( 'cuisine-japanese-washoku', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'preparation-ichiban-dashi', 'molecule-l-glutamate', 'molecule-inosine-monophosphate' ),
+	'molecule-l-glutamate' => array( 'guide-umami-synergy', 'preparation-ichiban-dashi', 'ingredient-kombu' ),
+	'molecule-inosine-monophosphate' => array( 'guide-umami-synergy', 'preparation-ichiban-dashi', 'ingredient-katsuobushi' ),
 	'guide-wasabi-aitc' => array( 'cuisine-japanese-washoku', 'hub-japanese-food-science', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'molecule-allyl-isothiocyanate', 'equipment-wasabi-grater' ),
 	'molecule-allyl-isothiocyanate' => array( 'guide-wasabi-aitc', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi' ),
 	'equipment-wasabi-grater' => array( 'hub-japanese-equipment', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'guide-wasabi-aitc' ),
@@ -2842,7 +2856,10 @@ $public_asset_receipts = array(
 	'hub-japanese-equipment' => 'sha256:1c36efbad8d50150c0147bb1064bba40abf60feb7ed036cdca9dcabbb6e80b12',
 	'ingredient-hon-mirin' => 'sha256:c8808bebd8f92d7ebfd4b78d3ab3853ebff56fbe00e8d98c3433db75d4de97d0',
 	'preparation-ichiban-dashi' => 'sha256:28eb6c05cec30ba9f4fb986c12afc31b8dd9c3cf2c90a3ec2a25400482a847e2',
+	'technique-dashi-extraction' => 'sha256:ab53bb0156eda6207b1b0c8eeff0b398597fd91ed01b5d38575a03f7d6cb7a33',
 	'guide-umami-synergy' => 'sha256:cff653805e2e90b3ee4d565cdfdd21c8ac4e13782441860bd81a98516d1c7cd5',
+	'molecule-l-glutamate' => 'sha256:a996989c196ec9a50beb17e16aa62dd24fc8b72f8751bdad858ed5a6160b2c65',
+	'molecule-inosine-monophosphate' => 'sha256:49e3f76d6dc7180297c134b34dad0d9c1c99cb57bebfc2e1166cb90a6b5f12c7',
 	'guide-wasabi-aitc' => 'sha256:a74f67aaab227256031f2b0bd477bee76562b36ddf072338ccca69d1b894918c',
 	'molecule-allyl-isothiocyanate' => 'sha256:87fdf5927fd72ba282e97d72c948d87213f02fbdef2dd4a13ce607f042084ae6',
 	'equipment-wasabi-grater' => 'sha256:be0f4f831f58efc4ab6b6c74fa1979aaa4797bf9e4f1be51a19b2afe6d9a1757',
@@ -3029,7 +3046,7 @@ foreach ( $public_meta_descriptions as $public_meta_entity_id => $public_meta_de
 
 foreach ( $public_pilot_ids as $public_entity_id ) {
 	$entity_offset = $entity_offsets[ $public_entity_id ];
-	$public_review_date = in_array( $public_entity_id, array( 'museum-culinary-science', 'cuisine-lebanese-regional' ), true )
+	$public_review_date = in_array( $public_entity_id, array( 'museum-culinary-science', 'cuisine-lebanese-regional', 'technique-dashi-extraction', 'molecule-l-glutamate', 'molecule-inosine-monophosphate' ), true )
 		? '2026-08-07'
 		: '2026-08-06';
 	$entities[ $entity_offset ]['surface_class'] = 'public_discovery';
@@ -3094,7 +3111,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'culinary-science-2026.08.07.v17',
+	'version'       => 'culinary-science-2026.08.07.v18',
 	'generated_at'  => '2026-08-07',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',
