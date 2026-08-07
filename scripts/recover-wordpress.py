@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -15,6 +16,15 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPLOYER_PATH = Path(__file__).with_name("deploy-wordpress.py")
+
+
+def reject_duplicate_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate JSON key: {key}")
+        result[key] = value
+    return result
 
 
 def load_deployer() -> Any:
@@ -33,6 +43,137 @@ def validate_recovery_id(deployer: Any, value: str, label: str) -> str:
     ):
         raise deployer.DeployError(f"{label} is not a valid Complete99 deployment ID")
     return value
+
+
+def load_orphaned_rollback_proof(
+    deployer: Any,
+    raw_path: str,
+) -> dict[str, Any] | None:
+    if not raw_path:
+        return None
+    candidate = Path(raw_path)
+    path = (ROOT / candidate).resolve() if not candidate.is_absolute() else candidate.resolve()
+    proof_root = (ROOT / "docs" / "recovery-proofs").resolve()
+    if proof_root not in path.parents or path.suffix.lower() != ".json":
+        raise deployer.DeployError(
+            "Orphaned rollback proof must be a reviewed JSON file under docs/recovery-proofs"
+        )
+    try:
+        envelope = json.loads(
+            path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        raise deployer.DeployError("Orphaned rollback proof could not be read") from error
+    if (
+        not isinstance(envelope, dict)
+        or set(envelope) != {"schema", "proof", "proof_sha256"}
+        or envelope.get("schema") != "complete99-orphaned-rollback-proof/v1"
+        or not isinstance(envelope.get("proof"), dict)
+    ):
+        raise deployer.DeployError("Orphaned rollback proof schema is invalid")
+    proof = envelope["proof"]
+    canonical = json.dumps(
+        proof,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    proof_sha256 = hashlib.sha256(canonical).hexdigest()
+    if envelope.get("proof_sha256") != proof_sha256:
+        raise deployer.DeployError("Orphaned rollback proof digest does not match")
+    failed = proof.get("failed_run")
+    prior = proof.get("prior_run")
+    failed_keys = {
+        "artifact_sha256",
+        "audit_sha256",
+        "candidate_database_fingerprint",
+        "candidate_plugin_sha256",
+        "candidate_version",
+        "commit",
+        "deployment_id",
+        "run_id",
+    }
+    prior_keys = {
+        "active",
+        "audit_sha256",
+        "commit",
+        "database_fingerprint",
+        "database_version",
+        "deployment_id",
+        "plugin_sha256",
+        "robots_exists",
+        "robots_sha256",
+        "run_id",
+        "sync_configured",
+        "version",
+    }
+    digest = deployer.re.compile(r"[a-f0-9]{64}")
+    commit = deployer.re.compile(r"[a-f0-9]{40}")
+    version = deployer.re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?")
+    if (
+        set(proof) != {"failed_run", "prior_run"}
+        or not isinstance(failed, dict)
+        or not isinstance(prior, dict)
+        or set(failed) != failed_keys
+        or set(prior) != prior_keys
+    ):
+        raise deployer.DeployError("Orphaned rollback proof identities are missing")
+    for record, label in ((failed, "failed"), (prior, "prior")):
+        if (
+            type(record.get("run_id")) is not int
+            or record["run_id"] <= 0
+            or type(record.get("commit")) is not str
+            or commit.fullmatch(record["commit"]) is None
+            or type(record.get("audit_sha256")) is not str
+            or digest.fullmatch(record["audit_sha256"]) is None
+            or type(record.get("deployment_id")) is not str
+        ):
+            raise deployer.DeployError(
+                f"Orphaned rollback {label} audit identity is invalid"
+            )
+        validate_recovery_id(
+            deployer,
+            record["deployment_id"],
+            f"Orphaned rollback {label} deployment ID",
+        )
+    if (
+        failed["deployment_id"] == prior["deployment_id"]
+        or failed["run_id"] == prior["run_id"]
+        or str(failed["run_id"]) not in failed["deployment_id"]
+        or str(prior["run_id"]) not in prior["deployment_id"]
+        or type(failed.get("artifact_sha256")) is not str
+        or digest.fullmatch(failed["artifact_sha256"]) is None
+        or type(failed.get("candidate_plugin_sha256")) is not str
+        or digest.fullmatch(failed["candidate_plugin_sha256"]) is None
+        or type(failed.get("candidate_database_fingerprint")) is not str
+        or digest.fullmatch(failed["candidate_database_fingerprint"]) is None
+        or type(failed.get("candidate_version")) is not str
+        or version.fullmatch(failed["candidate_version"]) is None
+        or type(prior.get("version")) is not str
+        or version.fullmatch(prior["version"]) is None
+        or type(prior.get("database_version")) is not str
+        or prior.get("database_version") != prior.get("version")
+        or prior.get("active") is not True
+        or prior.get("robots_exists") is not True
+        or prior.get("sync_configured") is not True
+        or type(prior.get("plugin_sha256")) is not str
+        or digest.fullmatch(prior["plugin_sha256"]) is None
+        or type(prior.get("database_fingerprint")) is not str
+        or digest.fullmatch(prior["database_fingerprint"]) is None
+        or type(prior.get("robots_sha256")) is not str
+        or digest.fullmatch(prior["robots_sha256"]) is None
+        or failed["candidate_version"] == prior["version"]
+        or failed["candidate_plugin_sha256"] == prior["plugin_sha256"]
+        or failed["candidate_database_fingerprint"]
+        == prior["database_fingerprint"]
+    ):
+        raise deployer.DeployError("Orphaned rollback reviewed identities are invalid")
+    return {
+        "path": str(path.relative_to(ROOT)).replace("\\", "/"),
+        "proof": proof,
+        "proof_sha256": proof_sha256,
+    }
 
 
 def discover_lock_owner(
@@ -246,7 +387,15 @@ def main() -> int:
     )
     parser.add_argument("--local-test", action="store_true")
     parser.add_argument("--audit-dir", type=Path, default=ROOT / "recovery-audit")
+    parser.add_argument(
+        "--orphaned-rollback-proof",
+        default=os.environ.get("COMPLETE99_ORPHANED_ROLLBACK_PROOF", ""),
+    )
     args = parser.parse_args()
+    orphaned_proof = load_orphaned_rollback_proof(
+        deployer,
+        str(args.orphaned_rollback_proof),
+    )
     app_password = os.environ.get("WP_APP_PASSWORD", "")
     if not args.base_url or not args.user or not app_password:
         raise deployer.DeployError(
@@ -296,6 +445,10 @@ def main() -> int:
             allowed_hosts,
         )
         if not owner_id:
+            if orphaned_proof is not None:
+                raise deployer.DeployError(
+                    "Reviewed orphaned rollback proof was supplied but no lock owner exists"
+                )
             audit = {
                 "deployment_id": probe_id,
                 "discovery": discovery,
@@ -320,7 +473,23 @@ def main() -> int:
                 )
             )
             return 0
+        if (
+            orphaned_proof is not None
+            and orphaned_proof["proof"]["failed_run"]["deployment_id"]
+            != owner_id
+        ):
+            raise deployer.DeployError(
+                "Reviewed orphaned rollback proof does not own the discovered lock"
+            )
         args.deployment_id = owner_id
+    elif (
+        orphaned_proof is not None
+        and orphaned_proof["proof"]["failed_run"]["deployment_id"]
+        != args.deployment_id
+    ):
+        raise deployer.DeployError(
+            "Reviewed orphaned rollback proof does not own the requested lock"
+        )
 
     token = secrets.token_urlsafe(36)
     snippet_id: int | None = None
@@ -380,6 +549,121 @@ def main() -> int:
             "recovery_ready": bool(status.get("recovery_ready")),
         }
 
+        exact_orphaned_lock = (
+            status.get("phase") == "rolling_back"
+            and not status.get("state_exists")
+            and status.get("lock_owned")
+            and status.get("recovery_ready")
+            and status.get("process_lock_available")
+        )
+        matching_orphaned_receipt = (
+            status.get("phase") in {"committed", "cleanup_failed"}
+            and not status.get("state_exists")
+            and status.get("lock_owned")
+            and orphaned_proof is not None
+            and status.get("orphaned_recovery_proof_sha256")
+            == orphaned_proof["proof_sha256"]
+            and deployer.re.fullmatch(
+                r"[a-f0-9]{64}",
+                str(status.get("orphaned_recovery_receipt_sha256", "")),
+            )
+            is not None
+        )
+        if orphaned_proof is not None:
+            if not (exact_orphaned_lock or matching_orphaned_receipt):
+                raise deployer.DeployError(
+                    "Reviewed orphaned rollback proof was not consumed by its exact recovery state"
+                )
+            audit["orphaned_rollback_proof"] = {
+                "path": orphaned_proof["path"],
+                "proof_sha256": orphaned_proof["proof_sha256"],
+            }
+            if matching_orphaned_receipt:
+                audit["initial_orphaned_rollback_receipt"] = {
+                    "phase": status.get("phase", ""),
+                    "state_exists": bool(status.get("state_exists")),
+                    "lock_owned": bool(status.get("lock_owned")),
+                    "committed_outcome": status.get("committed_outcome", ""),
+                    "committed_expected_active": bool(
+                        status.get("committed_expected_active")
+                    ),
+                    "committed_expected_absent": bool(
+                        status.get("committed_expected_absent")
+                    ),
+                    "committed_expected_version": status.get(
+                        "committed_expected_version", ""
+                    ),
+                    "committed_expected_deployment": status.get(
+                        "committed_expected_deployment", ""
+                    ),
+                    "committed_expected_plugin_sha256": status.get(
+                        "committed_expected_plugin_sha256", ""
+                    ),
+                    "committed_expected_database_fingerprint": status.get(
+                        "committed_expected_database_fingerprint", ""
+                    ),
+                    "committed_expected_robots_exists": bool(
+                        status.get("committed_expected_robots_exists")
+                    ),
+                    "committed_expected_robots_sha256": status.get(
+                        "committed_expected_robots_sha256", ""
+                    ),
+                    "committed_expected_sync_configured": bool(
+                        status.get("committed_expected_sync_configured")
+                    ),
+                    "orphaned_recovery_proof_sha256": status.get(
+                        "orphaned_recovery_proof_sha256", ""
+                    ),
+                    "orphaned_recovery_receipt_sha256": status.get(
+                        "orphaned_recovery_receipt_sha256", ""
+                    ),
+                    "orphaned_reconciled_from": status.get(
+                        "orphaned_reconciled_from", ""
+                    ),
+                    "orphaned_observed_deployment": status.get(
+                        "orphaned_observed_deployment", ""
+                    ),
+                    "orphaned_recovery_evidence_exists": bool(
+                        status.get("orphaned_recovery_evidence_exists")
+                    ),
+                    "orphaned_recovery_evidence_sha256": status.get(
+                        "orphaned_recovery_evidence_sha256", ""
+                    ),
+                }
+
+        if exact_orphaned_lock:
+            if orphaned_proof is None:
+                raise deployer.DeployError(
+                    "Orphaned rollback requires a reviewed recovery proof"
+                )
+            if (
+                orphaned_proof["proof"]["failed_run"]["deployment_id"]
+                != args.deployment_id
+            ):
+                raise deployer.DeployError(
+                    "Orphaned rollback proof does not own the discovered lock"
+                )
+            audit["orphaned_rollback_reconciliation"] = (
+                deployer.reconcile_orphaned_rollback(
+                    client,
+                    token,
+                    args.deployment_id,
+                    status,
+                    orphaned_proof["proof"],
+                    orphaned_proof["proof_sha256"],
+                )
+            )
+            status = deployer.poll_deployment_status(
+                client,
+                token,
+                args.deployment_id,
+            )
+            audit["reconciled_status"] = {
+                "phase": status.get("phase", ""),
+                "state_exists": bool(status.get("state_exists")),
+                "lock_owned": bool(status.get("lock_owned")),
+            }
+
         phase = str(status.get("phase", ""))
         if phase in {"committed", "cleanup_failed"}:
             committed_outcome = str(status.get("committed_outcome", ""))
@@ -391,6 +675,21 @@ def main() -> int:
             )
             expected_plugin_sha256 = str(
                 status.get("committed_expected_plugin_sha256", "")
+            )
+            expected_database_fingerprint = str(
+                status.get("committed_expected_database_fingerprint", "")
+            )
+            expected_robots_exists = bool(
+                status.get("committed_expected_robots_exists")
+            )
+            expected_robots_sha256 = str(
+                status.get("committed_expected_robots_sha256", "")
+            )
+            expected_sync_configured = bool(
+                status.get("committed_expected_sync_configured")
+            )
+            orphaned_receipt = bool(
+                status.get("orphaned_recovery_receipt_sha256")
             )
             exact_identity = (
                 committed_outcome in {"installed", "rolled_back"}
@@ -420,6 +719,41 @@ def main() -> int:
                     and status.get("current_plugin_sha256")
                     == expected_plugin_sha256
                 )
+            if orphaned_receipt:
+                if orphaned_proof is None:
+                    raise deployer.DeployError(
+                        "Orphaned rollback receipt requires its reviewed proof"
+                    )
+                prior = orphaned_proof["proof"]["prior_run"]
+                exact_identity = (
+                    exact_identity
+                    and committed_outcome == "rolled_back"
+                    and status.get("orphaned_recovery_proof_sha256")
+                    == orphaned_proof["proof_sha256"]
+                    and deployer.re.fullmatch(
+                        r"[a-f0-9]{64}", expected_database_fingerprint
+                    )
+                    is not None
+                    and status.get("database_fingerprint")
+                    == expected_database_fingerprint
+                    and status.get("current_database_version")
+                    == expected_version
+                    and expected_sync_configured
+                    and bool(status.get("current_sync_configured"))
+                    and expected_robots_exists
+                    and deployer.re.fullmatch(
+                        r"[a-f0-9]{64}", expected_robots_sha256
+                    )
+                    is not None
+                    and status.get("current_robots_sha256")
+                    == expected_robots_sha256
+                    and expected_version == prior["version"]
+                    and expected_deployment == prior["deployment_id"]
+                    and expected_plugin_sha256 == prior["plugin_sha256"]
+                    and expected_database_fingerprint
+                    == prior["database_fingerprint"]
+                    and expected_robots_sha256 == prior["robots_sha256"]
+                )
             if not exact_identity:
                 raise deployer.DeployError(
                     "Committed recovery refused cleanup without the exact healthy release identity"
@@ -431,12 +765,22 @@ def main() -> int:
                     client,
                     expected_version,
                     expected_deployment,
+                    require_sync_configured=expected_sync_configured,
                 )
                 audit["rendered_home"] = deployer.verify_rendered_home(
                     client,
                     expected_version,
                     expected_deployment,
+                    args.deployment_id if orphaned_receipt else "",
                 )
+                if orphaned_receipt:
+                    audit["orphaned_rollback_robots"] = (
+                        deployer.verify_prior_robots(
+                            client,
+                            expected_robots_exists,
+                            expected_robots_sha256,
+                        )
+                    )
             else:
                 audit["committed_inactive_plugin"] = (
                     deployer.verify_inactive_plugin(client, expected_version)
@@ -444,7 +788,11 @@ def main() -> int:
             audit["finalize"] = deployer.finalize_deployment(
                 client, token, args.deployment_id
             )
-            audit["decision"] = "finish_committed_cleanup"
+            audit["decision"] = (
+                "finish_orphaned_rollback_cleanup"
+                if orphaned_receipt
+                else "finish_committed_cleanup"
+            )
         elif phase == "finalized" and not status.get("state_exists") and not status.get(
             "lock_owned"
         ):

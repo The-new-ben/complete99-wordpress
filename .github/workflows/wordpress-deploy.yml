@@ -13,6 +13,11 @@ on:
         required: true
         default: true
         type: boolean
+      orphaned_rollback_proof:
+        description: Reviewed repository-relative proof for one orphaned rollback lock
+        required: false
+        default: ''
+        type: string
 permissions:
   actions: read
   contents: read
@@ -114,7 +119,7 @@ jobs:
           $releaseDir = Join-Path $env:RUNNER_TEMP "complete99-verified-release-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           & python --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & python -c "import sys; assert sys.version_info >= (3, 11), sys.version"
+          & python -c "import sys; raise SystemExit('Python 3.11 or newer is required: ' + sys.version if sys.version_info < (3, 11) else 0)"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & python scripts/validate-package.py --dist $releaseDir
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -154,11 +159,13 @@ jobs:
           }
 
       - name: Run live recovery probe and dry-run acceptance
+        id: preflight
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
           WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
           WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
+          COMPLETE99_ORPHANED_ROLLBACK_PROOF: ${{ inputs.orphaned_rollback_proof }}
         shell: powershell
         run: |
           $releaseDir = Join-Path $env:RUNNER_TEMP "complete99-verified-release-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
@@ -166,10 +173,22 @@ jobs:
           if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.bootstrap_code_snippets }}" -eq "true") {
             $bootstrapArgs += "--bootstrap-code-snippets"
           }
-          & python scripts/recover-wordpress.py `
+          $probeId = "c99-recovery-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $recoveryOutput = @(& python scripts/recover-wordpress.py `
             --discover `
-            --probe-id "c99-recovery-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
-            @bootstrapArgs
+            --probe-id $probeId `
+            @bootstrapArgs)
+          $recoveryExitCode = $LASTEXITCODE
+          if ($recoveryExitCode -ne 0) { exit $recoveryExitCode }
+          $recoverySummary = ($recoveryOutput -join "`n").Trim()
+          if ([string]::IsNullOrWhiteSpace($recoverySummary)) {
+            Write-Error "The live recovery probe did not return its exact audit summary."
+            exit 1
+          }
+          Write-Output $recoverySummary
+          $env:COMPLETE99_RECOVERY_SUMMARY_JSON = $recoverySummary
+          & python scripts/validate-recovery-audit.py `
+            --expected-probe-id $probeId
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $dryId = "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
@@ -184,16 +203,22 @@ jobs:
           import json
           import pathlib
           import sys
+          def require(condition, message):
+              if not condition:
+                  raise SystemExit(message)
           record = json.loads((pathlib.Path("deploy-audit") / f"{sys.argv[1]}.json").read_text())
-          assert record["result"] == "dry-run-passed"
-          assert record["cleanup"]["snippet_active"] is False
-          assert record["cleanup"]["row_absence_verified"] is True
-          assert record["cleanup"]["route_404"] is True
+          cleanup = record.get("cleanup", {})
+          require(record.get("deployment_id") == sys.argv[1], "Dry-run audit deployment ID changed")
+          require(record.get("result") == "dry-run-passed", "Dry-run audit did not pass")
+          require(cleanup.get("snippet_active") is False, "Dry-run bridge remained active")
+          require(cleanup.get("row_absence_verified") is True, "Dry-run bridge row remained")
+          require(cleanup.get("route_404") is True, "Dry-run bridge route remained")
           '@
           $auditVerification | python - $dryId
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Deploy the exact CI artifact with independent verification
+        id: production_deploy
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
@@ -217,7 +242,7 @@ jobs:
 
       - name: Detect whether the production mutation edge was crossed
         id: mutation_state
-        if: failure()
+        if: failure() && steps.production_deploy.outcome == 'failure'
         shell: powershell
         run: |
           $mutationMarker = Join-Path $env:RUNNER_TEMP "complete99-live-mutation-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT.marker"
@@ -228,7 +253,8 @@ jobs:
           }
 
       - name: Recover any interrupted mutation with a recreated temporary bridge
-        if: failure() && steps.mutation_state.outputs.started == 'true'
+        id: recovery
+        if: failure() && steps.production_deploy.outcome == 'failure' && steps.mutation_state.outputs.started == 'true'
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
@@ -269,6 +295,7 @@ jobs:
           exit $LASTEXITCODE
 
       - name: Recover an interrupted WooCommerce bridge
+        id: commerce_recovery
         if: steps.commerce.outcome == 'failure'
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
@@ -280,6 +307,25 @@ jobs:
           & python scripts/materialize-woocommerce.py `
             --deployment-id "c99-commerce-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
             --recover-bridge
+          exit $LASTEXITCODE
+
+      - name: Validate exact deployment-stage audit outcomes
+        if: always()
+        env:
+          COMPLETE99_PREFLIGHT_OUTCOME: ${{ steps.preflight.outcome }}
+          COMPLETE99_PRODUCTION_OUTCOME: ${{ steps.production_deploy.outcome }}
+          COMPLETE99_MUTATION_OUTCOME: ${{ steps.mutation_state.outcome }}
+          COMPLETE99_MUTATION_STARTED: ${{ steps.mutation_state.outputs.started }}
+          COMPLETE99_RECOVERY_OUTCOME: ${{ steps.recovery.outcome }}
+          COMPLETE99_COMMERCE_OUTCOME: ${{ steps.commerce.outcome }}
+          COMPLETE99_COMMERCE_RECOVERY_OUTCOME: ${{ steps.commerce_recovery.outcome }}
+        shell: powershell
+        run: |
+          & python scripts/validate-recovery-audit.py `
+            --stage-outcomes `
+            --dry-run-id "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
+            --production-id "c99-prod-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT" `
+            --commerce-id "c99-commerce-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           exit $LASTEXITCODE
 
       - name: Fail closed after an audited commerce failure
@@ -298,5 +344,5 @@ jobs:
             deploy-audit/*.json
             recovery-audit/*.json
             commerce-audit/*.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30

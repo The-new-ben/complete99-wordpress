@@ -1,0 +1,30 @@
+{
+  "schema": "complete99-orphaned-rollback-proof/v1",
+  "proof": {
+    "failed_run": {
+      "artifact_sha256": "07608924e347ca5bbe118bb082c04f312fcba60c3fe2183371cee9ce207c7a0d",
+      "audit_sha256": "4fbf62fbd69ea10d748a9ad468efc9005d3c2af6fc3fab56bd1240dc97b53197",
+      "candidate_database_fingerprint": "ea156c4e721967fe5cc1a4b23a1b0b49f54eb50173c1e8519cc5dd3971c543cf",
+      "candidate_plugin_sha256": "0838d8a1ce28cb0d5dbda2c42771d6a496bdff4b802e4935ff4421519ae4ed40",
+      "candidate_version": "1.17.0",
+      "commit": "f1c2cf521f961173a23df2c92d83b400a65d8062",
+      "deployment_id": "c99-prod-31171940371-1",
+      "run_id": 31171940371
+    },
+    "prior_run": {
+      "active": true,
+      "audit_sha256": "c23525c7f8853979269ffb3e90f9a27fd164251f827461282372421f19768d17",
+      "commit": "e493a406c41f3a9d3fa91f51c3faaa949bbd80f3",
+      "database_fingerprint": "aa92fc77c985e6446a38fce64ba8296485ee7efd120ac1a085e5c2632d0d82fd",
+      "database_version": "1.16.0",
+      "deployment_id": "c99-prod-31158626196-1",
+      "plugin_sha256": "bbbd06e6e176fd9055252907673768b80d1683795b44d1c9201b8b3435286da2",
+      "robots_exists": true,
+      "robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "run_id": 31158626196,
+      "sync_configured": true,
+      "version": "1.16.0"
+    }
+  },
+  "proof_sha256": "a80fcc662163456b9c17062f192c5abe6c28237121a44ea3d9680e863d1969d1"
+}

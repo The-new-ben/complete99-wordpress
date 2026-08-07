@@ -1565,6 +1565,18 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertNotIn("--mutation-marker", preflight)
         self.assertIn("--dry-run", preflight)
         self.assertIn("--dist $releaseDir", preflight)
+        recovery_probe = preflight.index("scripts/recover-wordpress.py")
+        recovery_validator = preflight.index("scripts/validate-recovery-audit.py")
+        dry_run = preflight.index("--dry-run")
+        self.assertLess(recovery_probe, recovery_validator)
+        self.assertLess(recovery_validator, dry_run)
+        self.assertIn(
+            "COMPLETE99_ORPHANED_ROLLBACK_PROOF: "
+            "${{ inputs.orphaned_rollback_proof }}",
+            preflight,
+        )
+        self.assertIn("COMPLETE99_RECOVERY_SUMMARY_JSON", preflight)
+        self.assertIn("--expected-probe-id $probeId", preflight)
 
         production = workflow.split(
             "- name: Deploy the exact CI artifact with independent verification",
@@ -1589,11 +1601,46 @@ class PipelineHardeningTests(unittest.TestCase):
             1,
         )[0]
         self.assertIn(
-            "if: failure() && steps.mutation_state.outputs.started == 'true'",
+            "if: failure() && steps.production_deploy.outcome == 'failure' "
+            "&& steps.mutation_state.outputs.started == 'true'",
             recovery,
         )
         self.assertNotIn("c99-dry-", recovery)
         self.assertIn("c99-prod-", recovery)
+        self.assertNotIn("COMPLETE99_ORPHANED_ROLLBACK_PROOF", recovery)
+
+        mutation_detection = workflow.split(
+            "- name: Detect whether the production mutation edge was crossed", 1
+        )[1].split(
+            "- name: Recover any interrupted mutation with a recreated temporary bridge",
+            1,
+        )[0]
+        self.assertIn(
+            "if: failure() && steps.production_deploy.outcome == 'failure'",
+            mutation_detection,
+        )
+        self.assertIn("if-no-files-found: error", workflow)
+        self.assertNotIn("if-no-files-found: warn", workflow)
+
+        stage_audit = workflow.split(
+            "- name: Validate exact deployment-stage audit outcomes", 1
+        )[1].split(
+            "- name: Fail closed after an audited commerce failure", 1
+        )[0]
+        self.assertIn("if: always()", stage_audit)
+        self.assertIn("--stage-outcomes", stage_audit)
+        self.assertIn("COMPLETE99_PREFLIGHT_OUTCOME", stage_audit)
+        self.assertIn("COMPLETE99_PRODUCTION_OUTCOME", stage_audit)
+        self.assertIn("COMPLETE99_RECOVERY_OUTCOME", stage_audit)
+        self.assertIn("COMPLETE99_COMMERCE_OUTCOME", stage_audit)
+        self.assertIn("COMPLETE99_COMMERCE_RECOVERY_OUTCOME", stage_audit)
+        self.assertIn("--dry-run-id", stage_audit)
+        self.assertIn("--production-id", stage_audit)
+        self.assertIn("--commerce-id", stage_audit)
+        self.assertLess(
+            workflow.index("- name: Recover an interrupted WooCommerce bridge"),
+            workflow.index("- name: Validate exact deployment-stage audit outcomes"),
+        )
 
         main_flow = deployer.split("def main() -> int:", 1)[1]
         ensure = main_flow.index(
@@ -1687,10 +1734,16 @@ class PipelineHardeningTests(unittest.TestCase):
             "bootstrap_code_snippets:", 1
         )[0]
         bootstrap_input = workflow.split("bootstrap_code_snippets:", 1)[1].split(
+            "orphaned_rollback_proof:", 1
+        )[0]
+        recovery_proof_input = workflow.split("orphaned_rollback_proof:", 1)[1].split(
             "permissions:", 1
         )[0]
         self.assertIn("default: true", rollback_input)
         self.assertIn("default: true", bootstrap_input)
+        self.assertIn("required: false", recovery_proof_input)
+        self.assertIn("default: ''", recovery_proof_input)
+        self.assertIn("type: string", recovery_proof_input)
         rollback_guard = workflow.split(
             "- name: Require the 1.3.1 rollback and identical-artifact redeploy exercise",
             1,
@@ -1729,7 +1782,9 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertNotIn("fetch-depth: 0", checkout_block)
         self.assertNotIn("actions/setup-python@", deploy_job)
         self.assertIn("python --version", deploy_job)
-        self.assertIn("sys.version_info >= (3, 11)", deploy_job)
+        self.assertIn("sys.version_info < (3, 11)", deploy_job)
+        self.assertNotIn("assert sys.version_info", deploy_job)
+        self.assertNotRegex(workflow, r"(?m)^\s*assert\s")
         self.assertGreaterEqual(workflow.count("shell: powershell"), 2)
 
 

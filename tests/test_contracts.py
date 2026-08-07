@@ -746,7 +746,8 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("run-id: ${{ needs.require-green-ci.outputs.ci_run_id }}", deploy)
         self.assertIn("recover-wordpress.py", deploy)
         self.assertIn(
-            "if: failure() && steps.mutation_state.outputs.started == 'true'",
+            "if: failure() && steps.production_deploy.outcome == 'failure' "
+            "&& steps.mutation_state.outputs.started == 'true'",
             deploy,
         )
         self.assertNotIn("build-plugin-zip.py", deploy)

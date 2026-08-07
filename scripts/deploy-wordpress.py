@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -36,6 +37,10 @@ REST_IDENTITY_PATH = "/wp-json/?_fields=home,url"
 SNIPPET_PREFIX = "tmp-complete99-deploy-"
 BOOTSTRAP_SNIPPET_NAME = "c99-deploy-bootstrap"
 BOOTSTRAP_SNIPPET_KNOWN_ID = 5
+PUBLIC_READ_ATTEMPTS = 3
+PUBLIC_READ_TIMEOUT_SECONDS = 30
+PUBLIC_READ_RETRY_DELAYS_SECONDS = (2, 5)
+PUBLIC_READ_RETRYABLE_HTTP = frozenset({502, 503, 504})
 MIN_PACKAGE_UPLOAD_BYTES = 2 * 1024 * 1024
 MAX_PACKAGE_UPLOAD_BYTES = 32 * 1024 * 1024
 PACKAGE_UPLOAD_HEADROOM_BYTES = 64 * 1024
@@ -231,6 +236,10 @@ class DeployError(RuntimeError):
     pass
 
 
+class NetworkDeployError(DeployError):
+    """A transport failure where no trusted HTTP response was received."""
+
+
 def package_upload_ceiling(package_size: int) -> int:
     """Return a bounded bridge ceiling that safely contains the exact package."""
 
@@ -396,19 +405,35 @@ class Client:
         path: str,
         body: bytes | None,
         headers: dict[str, str],
+        *,
+        network_timeout: int | None = None,
     ) -> tuple[int, bytes]:
         url = self.base_url + path
         request = urllib.request.Request(url, data=body, headers=headers, method=method)
         try:
-            with self.opener.open(request, timeout=self.timeout) as response:
+            with self.opener.open(
+                request,
+                timeout=self.timeout if network_timeout is None else network_timeout,
+            ) as response:
                 if response.geturl() != url:
                     raise DeployError("Deployment requests may not follow redirects")
                 return response.status, response.read()
         except urllib.error.HTTPError as error:
-            return error.code, error.read()
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
+            try:
+                return error.code, error.read()
+            except (http.client.HTTPException, TimeoutError, OSError) as read_error:
+                raise NetworkDeployError(
+                    f"Network request failed while reading the HTTP error body: "
+                    f"{type(read_error).__name__}"
+                ) from read_error
+        except (
+            urllib.error.URLError,
+            http.client.HTTPException,
+            TimeoutError,
+            OSError,
+        ) as error:
             reason = getattr(error, "reason", type(error).__name__)
-            raise DeployError(f"Network request failed: {reason}") from error
+            raise NetworkDeployError(f"Network request failed: {reason}") from error
 
     @staticmethod
     def _parse_json_response(raw: bytes) -> Any:
@@ -417,12 +442,109 @@ class Client:
         except (UnicodeDecodeError, json.JSONDecodeError):
             return {"non_json_response": True, "length": len(raw)}
 
+    def _bounded_public_read(
+        self,
+        request: urllib.request.Request,
+        url: str,
+        max_bytes: int,
+        redirect_error: str,
+        network_error: str,
+    ) -> tuple[int, bytes]:
+        """Retry only bounded anonymous reads that cannot mutate WordPress."""
+        last_network_error: Exception | None = None
+        for attempt in range(PUBLIC_READ_ATTEMPTS):
+            try:
+                with self.opener.open(
+                    request,
+                    timeout=min(self.timeout, PUBLIC_READ_TIMEOUT_SECONDS),
+                ) as response:
+                    if response.geturl() != url:
+                        raise DeployError(redirect_error)
+                    return response.status, response.read(max_bytes + 1)
+            except urllib.error.HTTPError as error:
+                status = error.code
+                try:
+                    raw = error.read(max_bytes + 1)
+                except (http.client.HTTPException, TimeoutError, OSError) as read_error:
+                    last_network_error = read_error
+                    if attempt + 1 < PUBLIC_READ_ATTEMPTS:
+                        time.sleep(PUBLIC_READ_RETRY_DELAYS_SECONDS[attempt])
+                        continue
+                    raise NetworkDeployError(
+                        f"{network_error}: {type(read_error).__name__}"
+                    ) from read_error
+                if (
+                    status in PUBLIC_READ_RETRYABLE_HTTP
+                    and attempt + 1 < PUBLIC_READ_ATTEMPTS
+                ):
+                    time.sleep(PUBLIC_READ_RETRY_DELAYS_SECONDS[attempt])
+                    continue
+                return status, raw
+            except (
+                urllib.error.URLError,
+                http.client.HTTPException,
+                TimeoutError,
+                OSError,
+            ) as error:
+                last_network_error = error
+                if attempt + 1 < PUBLIC_READ_ATTEMPTS:
+                    time.sleep(PUBLIC_READ_RETRY_DELAYS_SECONDS[attempt])
+                    continue
+                reason = getattr(error, "reason", type(error).__name__)
+                raise NetworkDeployError(f"{network_error}: {reason}") from error
+        reason = (
+            getattr(last_network_error, "reason", type(last_network_error).__name__)
+            if last_network_error is not None
+            else "retry budget exhausted"
+        )
+        raise NetworkDeployError(f"{network_error}: {reason}")
+
+    def _request_transport_with_safe_retries(
+        self,
+        method: str,
+        path: str,
+        body: bytes | None,
+        headers: dict[str, str],
+        network_timeout: int | None,
+    ) -> tuple[int, bytes]:
+        """Retry one authenticated transport only when the HTTP method is safe."""
+
+        attempts = PUBLIC_READ_ATTEMPTS if method == "GET" else 1
+        for attempt in range(attempts):
+            try:
+                status, raw = self._request_once(
+                    method,
+                    path,
+                    body,
+                    headers,
+                    network_timeout=(
+                        min(self.timeout, PUBLIC_READ_TIMEOUT_SECONDS)
+                        if method == "GET" and network_timeout is None
+                        else network_timeout
+                    ),
+                )
+            except NetworkDeployError:
+                if attempt + 1 >= attempts:
+                    raise
+                time.sleep(PUBLIC_READ_RETRY_DELAYS_SECONDS[attempt])
+                continue
+            if (
+                status in PUBLIC_READ_RETRYABLE_HTTP
+                and attempt + 1 < attempts
+            ):
+                time.sleep(PUBLIC_READ_RETRY_DELAYS_SECONDS[attempt])
+                continue
+            return status, raw
+        raise NetworkDeployError("Authenticated read retry budget was exhausted")
+
     def request(
         self,
         method: str,
         path: str,
         payload: dict[str, Any] | None = None,
         expected: tuple[int, ...] = (200, 201),
+        *,
+        network_timeout: int | None = None,
     ) -> tuple[int, Any]:
         if not path.startswith("/") or path.startswith("//"):
             raise DeployError("Deployment request path must be site-relative")
@@ -441,7 +563,13 @@ class Client:
             if self.use_query_rest_transport and alternate_path is not None
             else path
         )
-        status, raw = self._request_once(method, effective_path, body, headers)
+        status, raw = self._request_transport_with_safe_retries(
+            method,
+            effective_path,
+            body,
+            headers,
+            network_timeout,
+        )
         parsed = self._parse_json_response(raw)
 
         # UPress can reject pretty wp-json paths in nginx before WordPress runs.
@@ -454,7 +582,13 @@ class Client:
             and isinstance(parsed, dict)
             and parsed.get("non_json_response") is True
         ):
-            status, raw = self._request_once(method, alternate_path, body, headers)
+            status, raw = self._request_transport_with_safe_retries(
+                method,
+                alternate_path,
+                body,
+                headers,
+                network_timeout,
+            )
             parsed = self._parse_json_response(raw)
             if not (
                 status == 403
@@ -579,18 +713,13 @@ class Client:
             },
             method="GET",
         )
-        try:
-            with self.opener.open(request, timeout=self.timeout) as response:
-                if response.geturl() != url:
-                    raise DeployError("Anonymous render verification may not follow redirects")
-                status = response.status
-                raw = response.read(5 * 1024 * 1024 + 1)
-        except urllib.error.HTTPError as error:
-            status = error.code
-            raw = error.read(5 * 1024 * 1024 + 1)
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
-            reason = getattr(error, "reason", type(error).__name__)
-            raise DeployError(f"Anonymous render verification failed: {reason}") from error
+        status, raw = self._bounded_public_read(
+            request,
+            url,
+            5 * 1024 * 1024,
+            "Anonymous render verification may not follow redirects",
+            "Anonymous render verification failed",
+        )
         if len(raw) > 5 * 1024 * 1024:
             raise DeployError("Anonymous homepage exceeded the verification size ceiling")
         if status not in expected:
@@ -621,18 +750,13 @@ class Client:
             },
             method="GET",
         )
-        try:
-            with self.opener.open(request, timeout=self.timeout) as response:
-                if response.geturl() != url:
-                    raise DeployError("Anonymous byte verification may not follow redirects")
-                status = response.status
-                raw = response.read(max_bytes + 1)
-        except urllib.error.HTTPError as error:
-            status = error.code
-            raw = error.read(max_bytes + 1)
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
-            reason = getattr(error, "reason", type(error).__name__)
-            raise DeployError(f"Anonymous byte verification failed: {reason}") from error
+        status, raw = self._bounded_public_read(
+            request,
+            url,
+            max_bytes,
+            "Anonymous byte verification may not follow redirects",
+            "Anonymous byte verification failed",
+        )
         if len(raw) > max_bytes:
             raise DeployError("Anonymous byte verification exceeded the size ceiling")
         if status not in expected:
@@ -661,18 +785,13 @@ class Client:
             },
             method="GET",
         )
-        try:
-            with self.opener.open(request, timeout=self.timeout) as response:
-                if response.geturl() != url:
-                    raise DeployError("Public verification may not follow redirects")
-                status = response.status
-                raw = response.read(1024 * 1024 + 1)
-        except urllib.error.HTTPError as error:
-            status = error.code
-            raw = error.read(1024 * 1024 + 1)
-        except (urllib.error.URLError, TimeoutError, OSError) as error:
-            reason = getattr(error, "reason", type(error).__name__)
-            raise DeployError(f"Public verification failed: {reason}") from error
+        status, raw = self._bounded_public_read(
+            request,
+            url,
+            1024 * 1024,
+            "Public verification may not follow redirects",
+            "Public verification failed",
+        )
         if len(raw) > 1024 * 1024:
             raise DeployError("Public JSON verification exceeded the size ceiling")
         try:
@@ -1137,12 +1256,40 @@ def bridge_call(client: Client, action: str, token: str, deployment_id: str, **f
     payload = {"token": token, "deployment_id": deployment_id}
     payload.update(fields)
     route_id = urllib.parse.quote(deployment_id, safe="")
-    _, response = client.request(
-        "POST",
-        f"/wp-json/complete99-deploy/v1/{route_id}/{action}",
-        payload,
-    )
-    if not isinstance(response, dict):
+    attempts = PUBLIC_READ_ATTEMPTS if action == "status" else 1
+    for attempt in range(attempts):
+        try:
+            if action == "status" and isinstance(client, Client):
+                _, response = client.request(
+                    "POST",
+                    f"/wp-json/complete99-deploy/v1/{route_id}/{action}",
+                    payload,
+                    network_timeout=min(
+                        client.timeout,
+                        PUBLIC_READ_TIMEOUT_SECONDS,
+                    ),
+                )
+            else:
+                _, response = client.request(
+                    "POST",
+                    f"/wp-json/complete99-deploy/v1/{route_id}/{action}",
+                    payload,
+                )
+            break
+        except NetworkDeployError:
+            if attempt + 1 >= attempts:
+                raise
+        except HTTPDeployError as error:
+            if (
+                error.status not in PUBLIC_READ_RETRYABLE_HTTP
+                or attempt + 1 >= attempts
+            ):
+                raise
+        time.sleep(PUBLIC_READ_RETRY_DELAYS_SECONDS[attempt])
+    if (
+        not isinstance(response, dict)
+        or response.get("non_json_response") is True
+    ):
         raise DeployError(f"Bridge action {action} returned an invalid response")
     return response
 
@@ -1549,7 +1696,9 @@ def verify_rollback_integrity(
     deployment_id: str,
     rollback: dict[str, Any],
 ) -> dict[str, Any]:
-    status = bridge_call(client, "status", token, deployment_id)
+    # Status is an idempotent read. Polling lets a transient runner-to-origin
+    # timeout clear without issuing a second rollback mutation.
+    status = poll_deployment_status(client, token, deployment_id)
     expected = str(rollback.get("baseline_database_fingerprint", ""))
     actual = str(status.get("database_fingerprint", ""))
     if not re.fullmatch(r"[a-f0-9]{64}", expected) or actual != expected:
@@ -1593,6 +1742,114 @@ def verify_rollback_integrity(
         "robots_prior_exists": prior_robots_exists,
         "robots_sha256": expected_robots_sha256,
         "robots_restored": bool(status.get("robots_restored")),
+    }
+
+
+def reconcile_orphaned_rollback(
+    client: Client,
+    token: str,
+    deployment_id: str,
+    status: dict[str, Any],
+    proof: dict[str, Any],
+    proof_sha256: str,
+) -> dict[str, Any]:
+    """Create a durable terminal rollback receipt from reviewed audit proof."""
+    failed = proof.get("failed_run", {})
+    prior = proof.get("prior_run", {})
+    reviewed_candidate_bindings = {
+        "expected_sha256": failed.get("artifact_sha256"),
+        "expected_version": failed.get("candidate_version"),
+        "installed_plugin_sha256": failed.get("candidate_plugin_sha256"),
+        "post_install_database_fingerprint": failed.get(
+            "candidate_database_fingerprint"
+        ),
+    }
+    for key, reviewed_value in reviewed_candidate_bindings.items():
+        observed_value = status.get(key)
+        if observed_value not in {None, ""} and observed_value != reviewed_value:
+            raise DeployError(
+                f"Orphaned rollback failed-run identity does not match {key}"
+            )
+    if (
+        status.get("phase") != "rolling_back"
+        or status.get("state_exists")
+        or not status.get("lock_owned")
+        or not status.get("recovery_ready")
+        or not status.get("process_lock_available")
+        or deployment_id != failed.get("deployment_id")
+        or status.get("current_version") != prior.get("version")
+        or status.get("current_database_version") != prior.get("database_version")
+        or status.get("current_active") is not prior.get("active")
+        or status.get("current_plugin_sha256") != prior.get("plugin_sha256")
+        or status.get("current_sync_configured") is not prior.get("sync_configured")
+        or status.get("current_robots_sha256") != prior.get("robots_sha256")
+        or status.get("current_deployment")
+        not in {failed.get("deployment_id"), prior.get("deployment_id")}
+    ):
+        raise DeployError(
+            "Orphaned rollback live state does not match the reviewed audit proof"
+        )
+    response = bridge_call(
+        client,
+        "reconcile-orphaned-rollback",
+        token,
+        deployment_id,
+        proof_sha256=proof_sha256,
+        expected_observed_deployment=failed["deployment_id"],
+        expected_prior_deployment=prior["deployment_id"],
+        expected_prior_version=prior["version"],
+        expected_prior_database_version=prior["database_version"],
+        expected_prior_active=prior["active"],
+        expected_prior_plugin_sha256=prior["plugin_sha256"],
+        expected_baseline_database_fingerprint=prior["database_fingerprint"],
+        expected_prior_robots_exists=prior["robots_exists"],
+        expected_prior_robots_sha256=prior["robots_sha256"],
+        expected_sync_configured=prior["sync_configured"],
+        reviewed_proof=proof,
+    )
+    if (
+        not response.get("reconciled")
+        or response.get("phase") != "committed"
+        or not response.get("lock_retained")
+        or not re.fullmatch(
+            r"[a-f0-9]{64}", str(response.get("receipt_sha256", ""))
+        )
+    ):
+        raise DeployError("Orphaned rollback terminal receipt was not confirmed")
+    committed = poll_deployment_status(client, token, deployment_id)
+    expected_receipt = {
+        "committed_outcome": "rolled_back",
+        "committed_expected_active": bool(prior["active"]),
+        "committed_expected_absent": False,
+        "committed_expected_version": str(prior["version"]),
+        "committed_expected_deployment": str(prior["deployment_id"]),
+        "committed_expected_plugin_sha256": str(prior["plugin_sha256"]),
+        "committed_expected_database_fingerprint": str(
+            prior["database_fingerprint"]
+        ),
+        "committed_expected_robots_exists": bool(prior["robots_exists"]),
+        "committed_expected_robots_sha256": str(prior["robots_sha256"]),
+        "committed_expected_sync_configured": bool(prior["sync_configured"]),
+        "orphaned_recovery_proof_sha256": proof_sha256,
+        "orphaned_recovery_receipt_sha256": str(response["receipt_sha256"]),
+    }
+    if committed.get("phase") != "committed" or committed.get("state_exists"):
+        raise DeployError("Orphaned rollback terminal phase was not durable")
+    for key, value in expected_receipt.items():
+        if committed.get(key) != value:
+            raise DeployError(f"Orphaned rollback receipt failed for {key}")
+    return {
+        "evidence_directory_exists": bool(
+            response.get("evidence_directory_exists")
+        ),
+        "evidence_directory_sha256": str(
+            response.get("evidence_directory_sha256", "")
+        ),
+        "lock_retained": True,
+        "marker_corrected": bool(response.get("marker_corrected")),
+        "phase": "committed",
+        "proof_sha256": proof_sha256,
+        "receipt_sha256": str(response["receipt_sha256"]),
     }
 
 
@@ -1932,6 +2189,7 @@ def main() -> int:
     deployed = False
     mutation_pending = False
     finalized = False
+    completed_rollback: dict[str, Any] | None = None
     audit: dict[str, Any] = {
         "artifact": artifact.name,
         "commit": os.environ.get("GITHUB_SHA", "").strip(),
@@ -2118,6 +2376,7 @@ def main() -> int:
                 rollback = rollback_with_recovery(client, token, deployment_id)
                 if not rollback.get("rolled_back") or not rollback.get("database_restore"):
                     raise DeployError("Rollback exercise was not confirmed")
+                completed_rollback = rollback
                 (
                     rollback_robots_prior_exists,
                     rollback_robots_prior_sha256,
@@ -2140,6 +2399,7 @@ def main() -> int:
                         rollback.get("robots_restore")
                     ),
                 }
+                gate = "rollback-integrity"
                 audit["rollback_integrity"] = verify_rollback_integrity(
                     client, token, deployment_id, rollback
                 )
@@ -2149,18 +2409,21 @@ def main() -> int:
                     rollback_robots_prior_exists,
                     rollback_robots_prior_sha256,
                 )
+                gate = "rollback-health"
                 audit["rollback_health"] = verify_prior_health(client, rollback)
+                gate = "rollback-rendered-home"
                 audit["rollback_rendered_home"] = verify_rendered_home(
                     client,
                     str(rollback.get("prior_version", "")),
                     str(rollback.get("prior_deployment", "")),
                     deployment_id,
                 )
-                gate = "finalize"
+                gate = "rollback-finalize"
                 audit["rollback_finalize"] = finalize_deployment(client, token, deployment_id)
                 finalized = True
                 reservation_acquired = False
                 mutation_pending = False
+                completed_rollback = None
                 gate = "install"
                 finalized = False
                 reservation = preflight_with_recovery(client, token, deployment_id)
@@ -2280,6 +2543,69 @@ def main() -> int:
                 "rollback_refused": True,
                 "reason": "committed_cleanup_requires_idempotent_finalize",
             }
+        elif (
+            mutation_pending
+            and not finalized
+            and completed_rollback is not None
+        ):
+            # The rollback mutation already returned a confirmed restore. If a
+            # later readback times out, verify and finalize that same rollback;
+            # never issue a second rollback against an already-restored state.
+            try:
+                audit["failure_rollback_integrity"] = verify_rollback_integrity(
+                    client,
+                    token,
+                    deployment_id,
+                    completed_rollback,
+                )
+                (
+                    completed_robots_prior_exists,
+                    completed_robots_prior_sha256,
+                ) = verify_robots_journal_identity(completed_rollback)
+                audit["failure_rollback_robots"] = verify_prior_robots(
+                    client,
+                    completed_robots_prior_exists,
+                    completed_robots_prior_sha256,
+                )
+                if completed_rollback.get("prior_active"):
+                    audit["failure_rollback_health"] = verify_health(
+                        client,
+                        str(completed_rollback.get("prior_version", "")),
+                        str(completed_rollback.get("prior_deployment", "")),
+                    )
+                    audit["failure_rollback_rendered_home"] = verify_rendered_home(
+                        client,
+                        str(completed_rollback.get("prior_version", "")),
+                        str(completed_rollback.get("prior_deployment", "")),
+                        deployment_id,
+                    )
+                elif completed_rollback.get("had_plugin"):
+                    audit["failure_rollback_inactive_plugin"] = verify_inactive_plugin(
+                        client,
+                        str(completed_rollback.get("prior_version", "")),
+                    )
+                else:
+                    audit["failure_rollback_absence"] = verify_plugin_absent(client)
+                audit["failure_finalize"] = finalize_deployment(
+                    client,
+                    token,
+                    deployment_id,
+                )
+                finalized = True
+                reservation_acquired = False
+                mutation_pending = False
+                audit["completed_rollback_recovery"] = {
+                    "already_completed": True,
+                    "finalized": True,
+                    "second_rollback_refused": True,
+                }
+            except Exception as rollback_verification_error:
+                audit["completed_rollback_recovery"] = {
+                    "already_completed": True,
+                    "error": type(rollback_verification_error).__name__,
+                    "finalized": False,
+                    "second_rollback_refused": True,
+                }
         elif mutation_pending and not finalized:
             unstarted_recovered = False
             try:
