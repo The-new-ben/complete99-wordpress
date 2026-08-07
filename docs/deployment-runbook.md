@@ -93,14 +93,14 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.12.0, require the Entity Studio contracts to prove private
+3. For release 1.13.0, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
    bounded API pagination, orphan-dossier audit access and fail-closed
-   observation identity collisions. Require the cumulative 200-entity
-   culinary-science registry v12, culinary-commerce registry v6 and the exact
-   256-subject Entity Studio index: 200 science identities plus 56 product
+   observation identity collisions. Require the cumulative 287-entity
+   culinary-science registry v13, culinary-commerce registry v7 and the exact
+   343-subject Entity Studio index: 287 science identities plus 56 product
    identities. Require exact evidence chronology and evidence-class alignment
    with each source type.
 4. Require the public read-model integrity tests to prove

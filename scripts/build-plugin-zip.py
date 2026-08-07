@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-07 03:55:00"
+RELEASE_LAST_UPDATED = "2026-08-07 05:30:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,14 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the bilingual culinary-science registry to 287 entities and Entity Studio to 343 subjects: 287 science identities plus 56 product identities.</li>"
+                "<li>Added 86 private, source-bound Syrian regional-depth identities plus one separate pomegranate-concentrate identity, bringing the Syrian graph to 196 entities across 56 dishes, 55 ingredients, 21 regional or topic hubs, 17 techniques, 17 traditions, 15 preparations, markets, restaurants and hospitality institutions.</li>"
+                "<li>Kept Aleppan, Damascene, Homsi, Hamawi, coastal, Jazira, Euphrates, Palmyrene, Idlib, Afrin, Suwayda and Hauran evidence distinct, and scoped Jewish, Assyrian, Kurdish, Druze and family records to their actual sources.</li>"
+                "<li>Bound the observed pomegranate concentrate to its exact retail-listing identity, kept pomegranate molasses as comparison only, filtered techniques out of commercial cross-sells and separated registry validity from active-offer readiness.</li>"
+                "<li>Preserved the exact 36-product public WooCommerce store, 23 public science entities, public routes, prices, stock, cart, disabled payment state and no-role boundary unchanged. All 87 new identities remain private, noindex and reference-only.</li>"
+                "</ul>"
+                "<h4>1.12.1</h4>"
                 "<ul>"
                 "<li>Replaced the last construction-style phrase in the English pantry with direct consumer cooking language for kome koji.</li>"
                 "<li>Preserved all 36 WooCommerce products, prices, stock, images, filters, cart behavior, Syrian research entities and disabled payment state unchanged.</li>"

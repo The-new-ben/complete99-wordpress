@@ -18,6 +18,13 @@ SYRIAN_LEAF = (
     / "cuisines"
     / "syrian-foundations.php"
 )
+SYRIAN_DEPTH_LEAF = (
+    PLUGIN
+    / "data"
+    / "culinary-science"
+    / "cuisines"
+    / "syrian-regional-depth.php"
+)
 
 EXPECTED_REGIONS = {
     "region-syria-aleppo",
@@ -57,6 +64,7 @@ EXPECTED_DISHES = {
     "dish-kitawiyeh-afrin-kurdish",
 }
 EXPECTED_INGREDIENTS = {
+    "ingredient-pomegranate-concentrate",
     "ingredient-syrian-bulgur",
     "ingredient-syrian-jreesh",
     "ingredient-syrian-freekeh",
@@ -141,6 +149,112 @@ EXPECTED_MARKET_EVIDENCE = {
     "listing-keter-harimon-pomegranate-concentrate-250ml-tamar-hst-20260806",
     "listing-tamar-bakfar-pure-ground-sumac-100g-indexed-20260806",
 }
+EXPECTED_DEPTH_BY_TYPE = {
+    "culinary_institution": {
+        "institution-hasel-al-door-suwayda",
+        "institution-southern-syrian-madafa",
+    },
+    "dish": {
+        "dish-adjwe-date-crescents-aleppan-jewish",
+        "dish-al-khubziyyeh-homs",
+        "dish-al-mir-jazira",
+        "dish-al-mughtuta-homs",
+        "dish-al-uruq-jazira",
+        "dish-arman-idlib",
+        "dish-basmeshqat",
+        "dish-burma-palmyra",
+        "dish-chika-raqqa",
+        "dish-damascene-booza",
+        "dish-dikhwa-qamishli-assyrian",
+        "dish-fatteh-shamiyya",
+        "dish-harraq-isbao",
+        "dish-juwayqat-qamishli-family",
+        "dish-kawaj-idlib",
+        "dish-kibbeh-al-mhabaleh-homs",
+        "dish-kibbeh-charola-aleppan-jewish",
+        "dish-kibbeh-mabroumeh",
+        "dish-kibbeh-somakiyya",
+        "dish-kishk-mhabbash-palmyra",
+        "dish-lazzaqiyyat-suwayda-hauran",
+        "dish-maarouk-damascus",
+        "dish-mansaf-qamishli-family",
+        "dish-maoudeh-damascene-jewish",
+        "dish-medias-damascene-jewish",
+        "dish-merge-hamees-jazira",
+        "dish-qaren-yaruq-deir-ez-zor",
+        "dish-sakhtoura-hama",
+        "dish-shakriyeh-hama",
+        "dish-siyayil-raqqa-deir",
+        "dish-stuffed-carrots-homs",
+        "dish-thurud-bamiya-deir-ez-zor",
+    },
+    "guide": {
+        "guide-boraniyeh-kulki-afrin-held",
+        "guide-damascene-sweets",
+        "guide-syrian-jewish-kibbeh-family",
+    },
+    "ingredient": {
+        "ingredient-aleppo-pepper",
+        "ingredient-damascene-rose",
+        "ingredient-hauran-dried-dairy-system",
+        "ingredient-qamar-al-din",
+        "ingredient-suwayda-grape-molasses",
+        "ingredient-syrian-baharat",
+        "ingredient-syrian-coast-citrus-system",
+        "ingredient-syrian-orange-blossom-water",
+    },
+    "market": {
+        "market-souq-al-attarine-aleppo",
+        "market-souq-al-buzuriyah",
+        "market-souq-al-saqatiyya",
+        "market-syrian-coast-fish-landing-network",
+    },
+    "preparation": {
+        "preparation-kibbeh-fried-forms-aleppo",
+        "preparation-lahm-bi-ajin-maarrat",
+        "preparation-latakia-kibbeh-pomegranate-sauce",
+        "preparation-latakia-kibbeh-tahini-sauce",
+        "preparation-meatless-bulgur-balls-maarrat",
+        "preparation-mujadara-thursday-syrian-jewish",
+        "preparation-qamar-al-din-drink",
+        "preparation-saj-kibbeh-aleppo",
+        "preparation-waraq-enab-hamawi",
+    },
+    "restaurant": {"restaurant-bakdash", "restaurant-haj-abdo"},
+    "technique": {
+        "technique-aleppine-sour-fruit-cookery",
+        "technique-dermale-qawarma-jazira",
+        "technique-hauran-grain-shrak-tannour",
+        "technique-home-shairiyya-euphrates",
+        "technique-jazira-wheat-to-bulgur",
+    },
+    "topic_hub": {
+        "hub-aleppine-kibbeh-family",
+        "hub-homsi-kibbeh-liquid-methods",
+        "hub-kutilk-shamburak-jazira",
+        "region-syria-afrin-depth",
+        "region-syria-baniyas",
+        "region-syria-deir-ez-zor",
+        "region-syria-idlib-maarrat",
+        "region-syria-jableh",
+        "region-syria-latakia",
+        "region-syria-palmyra",
+        "region-syria-qamishli-family-transmission",
+        "region-syria-raqqa",
+    },
+    "tradition": {
+        "tradition-al-mrah-rose-craft",
+        "tradition-aleppan-jewish-shabbat-bread-hamine",
+        "tradition-damascene-jewish-holiday-foodways",
+        "tradition-homs-sweet-thursday",
+        "tradition-qamishli-eid-kleija-maamoul",
+        "tradition-qamishli-first-ramadan-white-dish",
+        "tradition-syrian-coast-eid-bulgur",
+        "tradition-syrian-jewish-foodways-depth",
+        "tradition-syrian-jewish-migration-adaptation",
+    },
+}
+EXPECTED_DEPTH_IDS = set().union(*EXPECTED_DEPTH_BY_TYPE.values())
 EXPECTED_PUBLIC_JAPANESE = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
@@ -249,19 +363,35 @@ def _one_relation(entity: dict, relation_type: str, target_id: str) -> dict:
 def test_full_syrian_foundation_inventory_is_exact(
     registry: dict, syrian_entities: dict[str, dict]
 ) -> None:
-    assert registry["version"] == "culinary-science-2026.08.06.v12"
-    assert len(syrian_entities) == 109
+    assert registry["version"] == "culinary-science-2026.08.07.v13"
+    assert len(syrian_entities) == 196
     by_type: dict[str, set[str]] = {}
     for entity in syrian_entities.values():
         by_type.setdefault(entity["type"], set()).add(entity["id"])
 
     assert by_type["cuisine"] == {"cuisine-syrian-regional"}
-    assert by_type["topic_hub"] == EXPECTED_REGIONS
-    assert by_type["dish"] == EXPECTED_DISHES
-    assert by_type["ingredient"] == EXPECTED_INGREDIENTS
-    assert by_type["technique"] == EXPECTED_TECHNIQUES
-    assert by_type["tradition"] == EXPECTED_TRADITIONS
-    assert by_type["preparation"] == EXPECTED_PREPARATIONS
+    assert by_type["topic_hub"] == (
+        EXPECTED_REGIONS | EXPECTED_DEPTH_BY_TYPE["topic_hub"]
+    )
+    assert by_type["dish"] == EXPECTED_DISHES | EXPECTED_DEPTH_BY_TYPE["dish"]
+    assert by_type["ingredient"] == (
+        EXPECTED_INGREDIENTS | EXPECTED_DEPTH_BY_TYPE["ingredient"]
+    )
+    assert by_type["technique"] == (
+        EXPECTED_TECHNIQUES | EXPECTED_DEPTH_BY_TYPE["technique"]
+    )
+    assert by_type["tradition"] == (
+        EXPECTED_TRADITIONS | EXPECTED_DEPTH_BY_TYPE["tradition"]
+    )
+    assert by_type["preparation"] == (
+        EXPECTED_PREPARATIONS | EXPECTED_DEPTH_BY_TYPE["preparation"]
+    )
+    assert by_type["guide"] == EXPECTED_DEPTH_BY_TYPE["guide"]
+    assert by_type["market"] == EXPECTED_DEPTH_BY_TYPE["market"]
+    assert by_type["restaurant"] == EXPECTED_DEPTH_BY_TYPE["restaurant"]
+    assert by_type["culinary_institution"] == EXPECTED_DEPTH_BY_TYPE[
+        "culinary_institution"
+    ]
     assert by_type["retail_listing"] == {
         "listing-sugat-freekeh-500g-big-dabach-20260806",
         "listing-keter-harimon-pomegranate-concentrate-250ml-tamar-hst-20260806",
@@ -278,7 +408,87 @@ def test_full_syrian_foundation_inventory_is_exact(
         | EXPECTED_TRADITIONS
         | EXPECTED_PREPARATIONS
         | EXPECTED_MARKET_EVIDENCE
+        | EXPECTED_DEPTH_IDS
     )
+
+
+def test_regional_depth_module_is_modular_source_bound_and_fail_closed(
+    entities: dict[str, dict]
+) -> None:
+    loader = SCIENCE_DATA.read_text(encoding="utf-8")
+    assert "syrian-regional-depth.php" in loader
+    assert SYRIAN_DEPTH_LEAF.is_file()
+
+    for entity_id in EXPECTED_DEPTH_IDS:
+        entity = entities[entity_id]
+        assert entity["surface_class"] == "editorial_draft"
+        assert entity["index_policy"] == "noindex_private"
+        assert entity["publication"] == {
+            "state": "private_preview",
+            "public_api": False,
+            "public_page": False,
+            "search_index": False,
+            "approved_at": "",
+        }
+        assert entity["seo"]["route_mode"] == "private"
+        assert entity["commerce"]["state"] == "reference_only"
+        assert entity["commerce"]["public_offer_allowed"] is False
+        assert entity["commerce"]["woo_product_code"] == ""
+        assert entity["visual"]["asset_state"] == "rights_review_required"
+        assert entity["visual"]["rights_state"] == "pending"
+        assert entity["visual"]["prompt_en"]
+        assert all(fact["public_safe"] is False for fact in entity["facts"])
+
+        if entity["type"] in {"dish", "preparation", "ingredient", "technique"}:
+            science_facts = [
+                fact for fact in entity["facts"] if fact["dimension"] == "scientific"
+            ]
+            assert len(science_facts) == 1, entity_id
+            science_text = science_facts[0]["statement"]["en"].lower()
+            assert "no measured" in science_text or "supplies no" in science_text
+
+
+def test_regional_depth_keeps_techniques_out_of_commerce_cross_sells(
+    entities: dict[str, dict]
+) -> None:
+    allowed_types = {"ingredient", "equipment", "material_specification"}
+    for entity_id in EXPECTED_DEPTH_IDS:
+        entity = entities[entity_id]
+        for target_id in entity["commerce"]["cross_sell_ids"]:
+            assert entities[target_id]["type"] in allowed_types, (
+                entity_id,
+                target_id,
+                entities[target_id]["type"],
+            )
+
+    for entity_id, technique_id in {
+        "dish-arman-idlib": "technique-syrian-yogurt-sauce-stability",
+        "dish-merge-hamees-jazira": "technique-syrian-saj-bread",
+        "dish-shakriyeh-hama": "technique-syrian-yogurt-sauce-stability",
+        "preparation-saj-kibbeh-aleppo": "technique-syrian-saj-bread",
+    }.items():
+        _one_relation(entities[entity_id], "requires", technique_id)
+        assert technique_id not in entities[entity_id]["commerce"]["cross_sell_ids"]
+
+
+def test_regional_depth_preserves_family_and_community_boundaries(
+    entities: dict[str, dict]
+) -> None:
+    qamishli = entities["region-syria-qamishli-family-transmission"]
+    qamishli_text = json.dumps(qamishli, ensure_ascii=False).lower()
+    assert "never lived in qamishli" in qamishli_text
+    assert "not presented as direct observation" in qamishli_text
+
+    jewish = entities["tradition-syrian-jewish-foodways-depth"]
+    assert jewish["parent_id"] == "cuisine-syrian-regional"
+    jewish_text = json.dumps(jewish, ensure_ascii=False).lower()
+    assert "without replacing syrian cuisine" in jewish_text
+    assert "not one uniform syrian jewish formula" in jewish_text
+
+    raw_hazard = entities["technique-dermale-qawarma-jazira"]
+    raw_text = json.dumps(raw_hazard, ensure_ascii=False).lower()
+    assert "no public instructions" in raw_text
+    assert "food-safety expert" in raw_text
 
 
 def test_every_syrian_entity_is_fail_closed_and_non_commercial(
@@ -983,7 +1193,7 @@ def test_market_evidence_is_dated_scoped_and_linked(
             10.9,
         ),
         "listing-keter-harimon-pomegranate-concentrate-250ml-tamar-hst-20260806": (
-            "ingredient-syrian-pomegranate-molasses",
+            "ingredient-pomegranate-concentrate",
             "tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026",
             29.9,
         ),
@@ -1003,9 +1213,9 @@ def test_market_evidence_is_dated_scoped_and_linked(
         assert measurement["value"] == price
         assert measurement["currency"] == "ILS"
         assert measurement["observed_at"] == "2026-08-06T22:45:00+03:00"
-        assert observation_id in entities[ingredient_id]["commerce"]["business_model"][
-            "observation_entity_ids"
-        ]
+        assert observation_id in entities[ingredient_id]["commerce"][
+            "business_model"
+        ]["observation_entity_ids"]
         assert observation["commerce"]["public_offer_allowed"] is False
 
     pomegranate = entities[
@@ -1014,6 +1224,16 @@ def test_market_evidence_is_dated_scoped_and_linked(
     assert "not establish identity with traditional dibs rumman" in pomegranate[
         "summary"
     ]["en"]
+    comparison = _one_relation(
+        pomegranate, "references", "ingredient-syrian-pomegranate-molasses"
+    )
+    assert "comparison only" in comparison["note"]["en"]
+    assert pomegranate["id"] not in entities[
+        "ingredient-syrian-pomegranate-molasses"
+    ]["commerce"]["business_model"]["observation_entity_ids"]
+    assert pomegranate["id"] in entities["ingredient-pomegranate-concentrate"][
+        "commerce"
+    ]["business_model"]["observation_entity_ids"]
 
     sumac = entities[
         "listing-tamar-bakfar-pure-ground-sumac-100g-indexed-20260806"
@@ -1085,5 +1305,5 @@ def test_public_syrian_trust_copy_is_written_for_readers(
 
 
 def test_syrian_files_have_no_em_dash() -> None:
-    for path in (SYRIAN_LEAF, SCIENCE_DATA, Path(__file__)):
+    for path in (SYRIAN_LEAF, SYRIAN_DEPTH_LEAF, SCIENCE_DATA, Path(__file__)):
         assert "\N{EM DASH}" not in path.read_text(encoding="utf-8"), path

@@ -2283,6 +2283,19 @@ foreach ( $c99_syrian_foundations_module['sources'] as $syrian_source_id => $syr
 $entities = array_merge( $entities, $c99_syrian_foundations_module['entities'] );
 $c99_syrian_private_lookup = array_fill_keys( $c99_syrian_foundations_module['private_entity_ids'], true );
 
+$c99_syrian_regional_depth_module = require __DIR__ . '/culinary-science/cuisines/syrian-regional-depth.php';
+foreach ( $c99_syrian_regional_depth_module['sources'] as $syrian_depth_source_id => $syrian_depth_source ) {
+	if ( isset( $sources[ $syrian_depth_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Syrian regional-depth source ID: ' . $syrian_depth_source_id );
+	}
+	$sources[ $syrian_depth_source_id ] = $syrian_depth_source;
+}
+$entities = array_merge( $entities, $c99_syrian_regional_depth_module['entities'] );
+$c99_syrian_private_lookup = array_replace(
+	$c99_syrian_private_lookup,
+	array_fill_keys( $c99_syrian_regional_depth_module['private_entity_ids'], true )
+);
+
 /*
  * SEO architecture is computed from one explicit parent map. The same chain
  * drives canonical paths, breadcrumbs, expected child coverage and the public
@@ -2874,8 +2887,8 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'culinary-science-2026.08.06.v12',
-	'generated_at'  => '2026-08-06',
+	'version'       => 'culinary-science-2026.08.07.v13',
+	'generated_at'  => '2026-08-07',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',
 	'controlled_vocabulary' => array(

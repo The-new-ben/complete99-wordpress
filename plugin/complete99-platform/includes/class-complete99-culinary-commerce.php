@@ -90,7 +90,7 @@ final class Complete99_Culinary_Commerce {
 			return self::error( 'complete99_commerce_registry_missing', 'The culinary commerce registry is unavailable.', 500 );
 		}
 		$registry = require $path;
-		$valid = self::validate_registry( $registry );
+		$valid = self::validate_registry( $registry, $fresh );
 		if ( self::is_error( $valid ) ) {
 			return $valid;
 		}
@@ -102,9 +102,10 @@ final class Complete99_Culinary_Commerce {
 	 * Validate relational identity, evidence, state machines and money fields.
 	 *
 	 * @param mixed $registry Candidate registry.
+	 * @param bool  $fresh    Refresh the linked culinary-science registry too.
 	 * @return true|WP_Error
 	 */
-	public static function validate_registry( $registry ) {
+	public static function validate_registry( $registry, $fresh = false ) {
 		try {
 			self::assert_exact_keys(
 				$registry,
@@ -139,7 +140,7 @@ final class Complete99_Culinary_Commerce {
 				self::assert_identifier_list( $registry['controlled_vocabulary'][ $key ], 'registry.controlled_vocabulary.' . $key, false, 50 );
 			}
 
-			$science = self::science_registry();
+			$science = self::science_registry( $fresh );
 			if ( self::is_error( $science ) ) {
 				throw new RuntimeException( 'registry.knowledge_registry_unavailable' );
 			}
@@ -568,13 +569,10 @@ final class Complete99_Culinary_Commerce {
 			$variant = $variants[ $sku['variant_id'] ];
 			$product = $products[ $variant['product_id'] ];
 			$source_entity = $science_entities[ $record['source_entity_id'] ];
-			$targets = array( $source_entity['parent_id'] );
+			$targets = array( $source_entity['id'], $source_entity['parent_id'] );
 			$source_ids = array();
 			foreach ( $source_entity['facts'] as $fact ) {
 				$source_ids = array_merge( $source_ids, $fact['source_ids'] );
-			}
-			foreach ( $source_entity['relations'] as $relation ) {
-				$targets[] = $relation['target_id'];
 			}
 			if ( ! in_array( $product['knowledge_entity_id'], $targets, true ) ) {
 				throw new RuntimeException( $path . '.subject_mismatch' );
@@ -998,7 +996,7 @@ final class Complete99_Culinary_Commerce {
 	public static function status() {
 		$registry = self::registry();
 		if ( self::is_error( $registry ) ) {
-			return array( 'ready' => false, 'version' => '', 'products' => 0, 'skus' => 0, 'observations' => 0, 'active_offers' => 0, 'digest' => '' );
+			return array( 'ready' => false, 'registry_valid' => false, 'commerce_ready' => false, 'version' => '', 'products' => 0, 'skus' => 0, 'observations' => 0, 'active_offers' => 0, 'digest' => '' );
 		}
 		$today = gmdate( 'Y-m-d' );
 		$active = array_filter(
@@ -1008,13 +1006,15 @@ final class Complete99_Culinary_Commerce {
 			}
 		);
 		return array(
-			'ready'         => true,
-			'version'       => $registry['version'],
-			'products'      => count( $registry['products'] ),
-			'skus'          => count( $registry['skus'] ),
-			'observations'  => count( $registry['market_observations'] ),
-			'active_offers' => count( $active ),
-			'digest'        => self::registry_digest( $registry ),
+			'ready'          => true,
+			'registry_valid' => true,
+			'commerce_ready' => 0 < count( $active ),
+			'version'        => $registry['version'],
+			'products'       => count( $registry['products'] ),
+			'skus'           => count( $registry['skus'] ),
+			'observations'   => count( $registry['market_observations'] ),
+			'active_offers'  => count( $active ),
+			'digest'         => self::registry_digest( $registry ),
 		);
 	}
 
@@ -1309,11 +1309,11 @@ final class Complete99_Culinary_Commerce {
 		);
 	}
 
-	private static function science_registry() {
+	private static function science_registry( $fresh = false ) {
 		if ( ! class_exists( 'Complete99_Culinary_Science', false ) || ! is_callable( array( 'Complete99_Culinary_Science', 'registry' ) ) ) {
 			return self::error( 'complete99_science_required', 'The culinary science registry is required.', 500 );
 		}
-		return Complete99_Culinary_Science::registry();
+		return Complete99_Culinary_Science::registry( $fresh );
 	}
 
 	private static function registry_digest( $registry ) {

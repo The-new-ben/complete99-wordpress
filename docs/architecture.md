@@ -137,8 +137,8 @@ Observation identifiers fail closed on cross-registry collisions. Entity Studio
 cannot create or update a WooCommerce product, price, stock quantity, cart,
 order, public page, sitemap entry or active channel offer.
 
-Release 1.12.0 extends the private graph to 256 Entity Studio subjects: 200
-science identities plus 56 product identities. Price-basis coverage is 56 of
+Release 1.13.0 extends the private graph to 343 Entity Studio subjects: 287
+science identities plus 56 product identities. Price-basis coverage remains 56 of
 56: 36 unchanged public WooCommerce prices and 20 private planning prices. This
 coverage is not a statement that 56 products are public or available. The 17
 earlier draft offers remain inactive. The three new Syrian product identities
@@ -148,11 +148,18 @@ the active POS projection. Only the exact explicit value `public` is eligible
 for public source-market projection. Missing, malformed and unknown values
 remain private. Payment remains disabled and no role is installed or assigned.
 
-The cumulative culinary-science registry contains 200 entities. The Syrian
-module contributes 109: 106 culinary entities, including 46 ingredient entities,
-plus three private held market observations. One safe consumer gateway is
+Commerce status separates `registry_valid` from `commerce_ready`. A valid
+private graph keeps health checks and migrations operational. It does not claim
+active-offer readiness. In this release the registry is valid and culinary
+commerce readiness is false because there are zero effective channel offers.
+
+The cumulative culinary-science registry contains 287 entities. The Syrian
+module contributes 196 identities, including 56 dishes, 55 ingredients, 21
+regional or topic hubs, 17 techniques, 17 traditions, 15 preparations, markets,
+restaurants and hospitality institutions, plus three private held market
+observations. One safe consumer gateway is
 projected as `noindex,follow`; the
-other 108 Syrian entities remain private. Across all cuisines, 23 public science
+other 195 Syrian entities remain private. Across all cuisines, 23 public science
 entities resolve through 18 canonical page owners per language.
 
 ## Identity and language

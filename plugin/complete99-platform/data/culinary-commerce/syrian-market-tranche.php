@@ -59,7 +59,7 @@ $syrian_listings = array(
 	array(
 		'key'                   => 'keter-harimon-pomegranate-concentrate-250ml',
 		'listing_entity_id'     => 'listing-keter-harimon-pomegranate-concentrate-250ml-tamar-hst-20260806',
-		'knowledge_entity_id'   => 'ingredient-syrian-pomegranate-molasses',
+		'knowledge_entity_id'   => 'ingredient-pomegranate-concentrate',
 		'source_id'             => 'tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026',
 		'source_url'            => 'https://www.tamar-hst.co.il/product-details/209856/%D7%A8%D7%9B%D7%96_%D7%A8%D7%99%D7%9E%D7%95%D7%9F',
 		'seller_id'             => 'seller-tamar-hst',
@@ -69,7 +69,7 @@ $syrian_listings = array(
 		'tax_state'             => 'unknown',
 		'shipping_state'        => 'unknown',
 		'availability_state'    => 'add_to_cart_visible',
-		'comparability'         => 'like_for_like',
+		'comparability'         => 'non_comparable',
 		'name'                  => $c99_commerce_text( 'רכז רימונים כתר הרימון 250 מ״ל', 'Keter Harimon pomegranate concentrate 250 ml' ),
 		'product_family'        => 'syrian-pomegranate-concentrate',
 		'brand_id'              => '',

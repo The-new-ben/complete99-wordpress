@@ -910,6 +910,7 @@ $c99_syrian_ingredient_specs = array(
 	array( 'id' => 'ingredient-syrian-allspice', 'slug' => 'aleppan-jewish-yebra-allspice', 'he' => 'פלפל אנגלי ביברה משפחתית חלבית-יהודית', 'en' => 'Allspice in Aleppan Jewish Family Yebra', 'region' => 'aleppo-diaspora', 'fact_he' => 'מקור המשפחה של Charles Dabbah מציין פלפל אנגלי טחון במילוי הבשר והאורז. הרשומה אינה מסיקה מכך שכל מילוי עלי גפן סורי משתמש באותו תבלין.', 'fact_en' => 'The Charles Dabbah family source lists ground allspice in the meat and rice filling. The record does not infer that every Syrian grape-leaf filling uses the same spice.', 'sources' => array( 'jfs-yebra-apricots' ), 'used_in' => 'preparation-yebra-aleppan-jewish-apricot', 'used_in_sources' => array( 'jfs-yebra-apricots' ), 'visual' => 'whole allspice berries and a separate small sample of freshly ground allspice, no mixed-spice substitution' ),
 	array( 'id' => 'ingredient-syrian-dried-mint', 'slug' => 'aleppan-jewish-yebra-dried-mint', 'he' => 'נענע מיובשת ביברה משפחתית חלבית-יהודית', 'en' => 'Dried Mint in Aleppan Jewish Family Yebra', 'region' => 'aleppo-diaspora', 'fact_he' => 'מקור המשפחה של Charles Dabbah מציין נענע מיובשת בין שכבות היברה. נענע טרייה ומיובשת אינן מאוחדות אוטומטית במפרט מוצר.', 'fact_en' => 'The Charles Dabbah family source lists dried mint between the yebra layers. Fresh and dried mint are not automatically merged in a product specification.', 'sources' => array( 'jfs-yebra-apricots' ), 'used_in' => 'preparation-yebra-aleppan-jewish-apricot', 'used_in_sources' => array( 'jfs-yebra-apricots' ), 'visual' => 'crumbled dried mint leaves in a plain dish beside a small intact dried sprig, no fresh-mint equivalence cue' ),
 	array( 'id' => 'ingredient-aleppan-ou-souring-concentrate', 'slug' => 'aleppan-ou-souring-concentrate-source-term', 'he' => 'אוּ׳, תרכיז חמוץ במונח המקור המשפחתי', 'en' => 'Ou Sour Concentrate, Family Source Term', 'region' => 'aleppo-diaspora', 'fact_he' => 'דף היברה של Jewish Food Society משתמש במונח אוּ׳ לנוזל חמוץ-מתוק אך אינו מגדיר בדף את הרכבו. לכן הישות נשמרת כמונח מקור נפרד ואינה מאוחדת עם תמרהינדי, משמש או רימון ללא מקור זהות נוסף.', 'fact_en' => 'The Jewish Food Society yebra page uses the term ou for a sweet-sour liquid but does not define its composition on that page. The entity therefore remains a separate source term and is not merged with tamarind, apricot or pomegranate without additional identity evidence.', 'sources' => array( 'jfs-yebra-apricots' ), 'used_in' => 'preparation-yebra-aleppan-jewish-apricot', 'used_in_sources' => array( 'jfs-yebra-apricots' ), 'visual' => 'an unbranded dark souring liquid in a neutral glass identified only in metadata as the source term ou, no tamarind, apricot or pomegranate shown and no ingredient equivalence claim' ),
+	array( 'id' => 'ingredient-pomegranate-concentrate', 'slug' => 'pomegranate-concentrate-product-identity', 'he' => 'רכז רימונים, זהות מוצר נפרדת', 'en' => 'Pomegranate Concentrate, Separate Product Identity', 'region' => 'market-specific-unverified-origin', 'fact_he' => 'דף המוצר המתועד משתמש בשם רכז רימונים. השם אינו מוכיח שזהות המוצר זהה לדיבס רומאן או למולסת רימונים מסורתית, ולכן הישות נשמרת בנפרד עד בדיקת תווית, רכיבים וריכוז.', 'fact_en' => 'The observed product page uses the name pomegranate concentrate. That name does not prove identity with traditional dibs rumman or pomegranate molasses, so the entity remains separate until label, ingredient and concentration review.', 'sources' => array( 'tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026' ), 'visual' => 'unbranded pomegranate concentrate in a plain measured vessel beside an empty label-review card, no pomegranate-molasses equivalence cue' ),
 );
 
 foreach ( $c99_syrian_ingredient_specs as $ingredient_spec ) {
@@ -950,6 +951,9 @@ foreach ( $c99_syrian_ingredient_specs as $ingredient_spec ) {
 	$compliance = array();
 	if ( in_array( $ingredient_spec['id'], array( 'ingredient-syrian-bulgur', 'ingredient-syrian-jreesh', 'ingredient-syrian-freekeh', 'ingredient-syrian-tahini', 'ingredient-syrian-walnuts', 'ingredient-syrian-unspecified-nuts', 'ingredient-syrian-pistachios', 'ingredient-syrian-matzah', 'ingredient-syrian-cheese', 'ingredient-syrian-semolina', 'ingredient-syrian-qeshta-cream', 'ingredient-syrian-fresh-yogurt', 'ingredient-syrian-kishk', 'ingredient-syrian-jameed', 'ingredient-syrian-higet', 'ingredient-syrian-samn', 'ingredient-syrian-coastal-fish' ), true ) ) {
 		$compliance[] = $c99_compliance( 'product-allergen-verification', 'יש לבדוק תווית מוצר ומגע צולב לאלרגן הרלוונטי לפני כל שימוש מסחרי או פרסום.', 'Verify the product label and relevant allergen cross-contact before any commercial use or publication.', array( 'israel-moh-allergen-survey-2024' ), false );
+	}
+	if ( 'ingredient-pomegranate-concentrate' === $ingredient_spec['id'] ) {
+		$compliance[] = $c99_compliance( 'pomegranate-concentrate-identity-review', 'יש לאמת את רשימת הרכיבים, תוספת הסוכר, הריכוז, האלרגנים, חיי המדף והאחסון של המוצר המדויק לפני הפעלה.', 'Verify ingredients, added sugar, concentration, allergens, shelf life and storage for the exact product before activation.', array( 'tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026' ), false );
 	}
 	if ( 'ingredient-syrian-red-meat' === $ingredient_spec['id'] ) {
 		$compliance[] = $c99_compliance( 'no-raw-ground-meat-guidance', 'אין להציג הוראות לבשר טחון נא. כל יישום מנה דורש בישול לפי תוכנית היגיינה והנחיית טמפרטורה מאומתת.', 'Do not present raw-ground-meat instructions. Every dish application requires cooking under a hygiene plan and validated temperature guidance.', array( 'cdc-raw-kibbeh-salmonella-2013', 'foodsafety-safe-temperatures', 'israel-moh-food-hygiene' ), false );
@@ -1527,7 +1531,8 @@ $c99_syrian_market_specs = array(
 		'id' => 'listing-keter-harimon-pomegranate-concentrate-250ml-tamar-hst-20260806',
 		'type' => 'retail_listing',
 		'slug' => 'keter-harimon-pomegranate-concentrate-250ml-tamar-hst-20260806',
-		'parent' => 'ingredient-syrian-pomegranate-molasses',
+		'parent' => 'ingredient-pomegranate-concentrate',
+		'comparison_target' => 'ingredient-syrian-pomegranate-molasses',
 		'source_id' => 'tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026',
 		'source_url' => 'https://www.tamar-hst.co.il/product-details/209856/%D7%A8%D7%9B%D7%96_%D7%A8%D7%99%D7%9E%D7%95%D7%9F',
 		'name_he' => 'רכז רימון כתר הרימון 250 מ״ל בתמר HST, תצפית 6.8.2026',
@@ -1597,6 +1602,20 @@ foreach ( $c99_syrian_market_specs as $market_spec ) {
 		),
 	);
 	$fact_id = 'fact-' . $market_spec['slug'] . '-price-scope';
+	$market_relations = array(
+		$c99_relation( 'references', $market_spec['parent'], 'הרשומה מצביעה לישות ההקשר בלי להפוך אותה למוצר פעיל או להצעה.', 'The record points to its context entity without turning it into an active product or offer.', false, array( $market_spec['source_id'] ), 'market_observation' ),
+	);
+	if ( isset( $market_spec['comparison_target'] ) ) {
+		$market_relations[] = $c99_relation(
+			'references',
+			$market_spec['comparison_target'],
+			'רכז הרימונים מקושר למולסת רימונים לצורך השוואה בלבד. שם המוצר אינו מוכיח זהות או שקילות.',
+			'The pomegranate concentrate links to pomegranate molasses for comparison only. The product name does not prove identity or equivalence.',
+			false,
+			array( $market_spec['source_id'] ),
+			'market_observation'
+		);
+	}
 	$c99_syrian_entities[] = $c99_syrian_entity( array(
 		'id' => $market_spec['id'],
 		'type' => $market_spec['type'],
@@ -1612,9 +1631,7 @@ foreach ( $c99_syrian_market_specs as $market_spec ) {
 		'facts' => array(
 			$c99_fact( $fact_id, 'economic', $market_spec['fact_he'], $market_spec['fact_en'], 'market_observation', 'market_snapshot', array( $market_spec['source_id'] ), false, $measurement, $observed_at ),
 		),
-		'relations' => array(
-			$c99_relation( 'references', $market_spec['parent'], 'הרשומה מצביעה לישות חומר הגלם בלי להפוך אותה למוצר פעיל או להצעה.', 'The record points to the ingredient entity without turning it into an active product or offer.', false, array( $market_spec['source_id'] ), 'market_observation' ),
-		),
+		'relations' => $market_relations,
 		'categories' => array( 'market-intelligence', 'syrian-research', 'dated-observations' ),
 		'attributes' => array( 'pa_market' => array( 'israel-online-retail' ) ),
 		'tags' => array( 'private-market-evidence', 'ils', 'observed-2026-08-06' ),
@@ -1625,13 +1642,13 @@ foreach ( $c99_syrian_market_specs as $market_spec ) {
 }
 
 $c99_syrian_observation_links = array(
+	'ingredient-pomegranate-concentrate' => array(
+		'observation_id' => 'listing-keter-harimon-pomegranate-concentrate-250ml-tamar-hst-20260806',
+		'source_id' => 'tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026',
+	),
 	'ingredient-syrian-freekeh' => array(
 		'observation_id' => 'listing-sugat-freekeh-500g-big-dabach-20260806',
 		'source_id' => 'big-dabach-sugat-freekeh-500g-listing-2026',
-	),
-	'ingredient-syrian-pomegranate-molasses' => array(
-		'observation_id' => 'listing-keter-harimon-pomegranate-concentrate-250ml-tamar-hst-20260806',
-		'source_id' => 'tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026',
 	),
 	'ingredient-syrian-sumac' => array(
 		'observation_id' => 'listing-tamar-bakfar-pure-ground-sumac-100g-indexed-20260806',
@@ -1661,7 +1678,7 @@ $c99_syrian_private_entity_ids = array_column( $c99_syrian_entities, 'id' );
 
 return array(
 	'schema' => 'complete99-syrian-foundations-module/v1',
-	'version' => 'culinary-science-2026.08.06.v12',
+	'version' => 'culinary-science-2026.08.07.v13',
 	'sources' => $c99_syrian_sources,
 	'entities' => $c99_syrian_entities,
 	'private_entity_ids' => $c99_syrian_private_entity_ids,
@@ -1674,11 +1691,11 @@ return array(
 		'cuisine_hubs' => 1,
 		'regional_hubs' => 9,
 		'dishes' => 24,
-		'ingredients' => 46,
+		'ingredients' => 47,
 		'techniques' => 12,
 		'traditions' => 8,
 		'preparations' => 6,
 		'market_evidence' => 3,
-		'total_entities' => 109,
+		'total_entities' => 110,
 	),
 );

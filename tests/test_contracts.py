@@ -97,13 +97,22 @@ class Complete99ContractTests(unittest.TestCase):
         )
         self.assertTrue(manifest["sections"]["changelog"])
 
-    def test_release_1_12_1_manifest_describes_consumer_copy_hotfix_and_cumulative_boundary(self) -> None:
+    def test_release_1_13_0_manifest_describes_syrian_depth_and_cumulative_boundary(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
+        self.assertIn("<h4>1.13.0</h4>", changelog)
+        self.assertIn("culinary-science registry to 287 entities", changelog)
+        self.assertIn("Entity Studio to 343 subjects", changelog)
+        self.assertIn("86 private, source-bound Syrian regional-depth identities", changelog)
+        self.assertIn("Syrian graph to 196 entities", changelog)
+        self.assertIn("56 dishes, 55 ingredients", changelog)
+        self.assertIn("All 87 new identities remain private, noindex and reference-only", changelog)
+        self.assertIn("exact retail-listing identity", changelog)
+        self.assertIn("active-offer readiness", changelog)
         self.assertIn("<h4>1.12.1</h4>", changelog)
         self.assertIn("direct consumer cooking language for kome koji", changelog)
         self.assertIn("<h4>1.12.0</h4>", changelog)
@@ -472,7 +481,8 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertNotIn("empty( $commerce_graph['ready'] )", migration_gate)
 
         self.assertIn("empty( $science['ready'] )", graph_gate)
-        self.assertIn("empty( $commerce_graph['ready'] )", graph_gate)
+        self.assertIn("! $commerce_registry_valid", graph_gate)
+        self.assertNotIn("empty( $commerce_graph['ready'] )", graph_gate)
         self.assertIn("'complete99_culinary_graph_unavailable'", graph_gate)
         self.assertIn(
             "'Complete99 culinary data is temporarily unavailable.'", graph_gate
