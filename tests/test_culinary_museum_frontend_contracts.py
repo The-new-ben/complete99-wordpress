@@ -95,6 +95,24 @@ class CulinaryMuseumFrontendContracts(unittest.TestCase):
             r"(?s)\.c99-museum-citation a\s*\{[^}]*min-width:\s*44px[^}]*min-height:\s*44px",
         )
 
+    def test_trust_copy_addresses_the_reader_not_an_internal_workflow(self) -> None:
+        frontend = FRONTEND.read_text(encoding="utf-8")
+        science = SCIENCE_DATA.read_text(encoding="utf-8")
+
+        self.assertIn("How we check the information", frontend)
+        self.assertIn("איך אנחנו בודקים את המידע", frontend)
+        self.assertNotIn("What triggers a new review", frontend)
+        self.assertNotIn("מה מפעיל בדיקה מחדש", frontend)
+
+        self.assertIn("source you can open and read", science)
+        self.assertIn("contact page", science)
+        self.assertNotIn("Each fact is stored with an evidence class", science)
+        self.assertNotIn("A source update, standard change", science)
+        self.assertIn("Page details", frontend)
+        self.assertIn("פרטי העמוד", frontend)
+        self.assertNotIn("Dossier details", frontend)
+        self.assertNotIn("פרטי התיק", frontend)
+
     @unittest.skipUnless(shutil.which("php"), "PHP is required for label evaluation")
     def test_dashi_and_emitted_relationship_labels_are_fully_bilingual(self) -> None:
         frontend_path = json.dumps(FRONTEND.as_posix())
@@ -263,6 +281,13 @@ $evidence_label = new ReflectionMethod(
 $evidence_label->setAccessible(true);
 
 $taxonomy_values = array(
+    'pa-region',
+    'pa-community',
+    'cuisines',
+    'syrian-culinary-science',
+    'syrian-cuisine',
+    'syria-national',
+    'syrian-multi-community',
     'japanese-food-science',
     'dashi-ingredients',
     'controlled-water-extraction',
@@ -296,6 +321,22 @@ echo json_encode(array(
         )
         self.assertEqual(0, completed.returncode, completed.stderr)
         result = json.loads(completed.stdout)
+        self.assertEqual("אזור", result["taxonomy"]["pa-region"])
+        self.assertEqual(
+            "מסורת וקהילה", result["taxonomy"]["pa-community"]
+        )
+        self.assertEqual("מטבחי עולם", result["taxonomy"]["cuisines"])
+        self.assertEqual(
+            "המטבח הסורי", result["taxonomy"]["syrian-culinary-science"]
+        )
+        self.assertEqual(
+            "מטבח סורי", result["taxonomy"]["syrian-cuisine"]
+        )
+        self.assertEqual("סוריה", result["taxonomy"]["syria-national"])
+        self.assertEqual(
+            "מסורות סוריות רב קהילתיות",
+            result["taxonomy"]["syrian-multi-community"],
+        )
         self.assertEqual("מדע האוכל היפני", result["taxonomy"]["japanese-food-science"])
         self.assertEqual("חומרי גלם לדאשי", result["taxonomy"]["dashi-ingredients"])
         self.assertEqual("מיצוי מבוקר במים", result["taxonomy"]["controlled-water-extraction"])

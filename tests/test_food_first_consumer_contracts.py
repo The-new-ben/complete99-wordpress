@@ -406,6 +406,149 @@ echo json_encode(
         assert not re.search(pattern, public_copy, re.IGNORECASE), pattern
 
 
+def test_dish_components_and_generic_pages_use_consumer_intent_actions() -> None:
+    consumer = _read(CONSUMER)
+    dish_components = _php_method(consumer, "render_dish_component_tree")
+    generic_page = _php_method(consumer, "render_generic_page")
+    action_map = _php_method(consumer, "generic_page_actions")
+
+    for marker in (
+        "מרכיבים וטעמים",
+        "Ingredients and flavours",
+        "מה יש במנה",
+        "What is in the dish",
+    ):
+        assert marker in dish_components
+    for stale in (
+        "עץ המנה",
+        "Dish tree",
+        "מה פוגשים במנה",
+        "What you meet in the dish",
+    ):
+        assert stale not in dish_components
+
+    assert "self::generic_page_actions( $key, $lang )" in generic_page
+    assert "foreach ( $actions as $action_index => $action )" in generic_page
+    assert 'id="c99-consumer-page-content"' in generic_page
+    for marker in (
+        "למנות שלנו",
+        "See our dishes",
+        "מגיעים אלינו",
+        "Visit us",
+        "ניווט לאבן גבירול 99",
+        "Get directions",
+        "לכל המרכיבים",
+        "Explore ingredients",
+        "למדריכי הבישול",
+        "Cooking guides",
+        "לסיפורי האוכל",
+        "Explore food stories",
+        "למנות מהסיפורים",
+        "See the dishes",
+        "למדריכים",
+        "Explore guides",
+        "לבשל עם המרכיבים",
+        "Cook with the ingredients",
+        "שאלה בנושא פרטיות",
+        "Ask a privacy question",
+        "לתנאי השימוש",
+        "Read the terms",
+        "למדיניות הפרטיות",
+        "Read the privacy policy",
+        "ליצירת קשר",
+        "Contact us",
+        "דיווח על קושי בנגישות",
+        "Report an accessibility barrier",
+        "חזרה לעמוד הבית",
+        "Back to the homepage",
+    ):
+        assert marker in action_map
+    assert "Complete99_Commerce::catalog_is_ready()" in action_map
+    assert "#c99-ingredient-index-title" in action_map
+    assert "Complete99_Commerce::order_url( $lang )" in action_map
+    assert "google.com/maps/search/" in action_map
+    for stale in ("לתפריט ההזמנות", "Open ordering menu"):
+        assert stale not in action_map
+
+
+def test_generic_page_action_map_returns_distinct_working_destinations() -> None:
+    consumer_path = _php_path(CONSUMER)
+    result = _run_php_json(
+        f"""
+define('ABSPATH', __DIR__);
+function home_url($path = '') {{
+    return 'https://complete99.example' . (string) $path;
+}}
+class Complete99_Content {{
+    public static function route_url($key, $lang) {{
+        $prefix = 'en' === $lang ? '/en' : '';
+        return $prefix . '/' . str_replace('_', '-', (string) $key) . '/';
+    }}
+}}
+class Complete99_Commerce {{
+    public static function catalog_is_ready() {{ return true; }}
+    public static function order_url($lang) {{
+        return 'https://wolt.example/' . (string) $lang . '/complete99';
+    }}
+}}
+require '{consumer_path}';
+$method = new ReflectionMethod('Complete99_Consumer', 'generic_page_actions');
+$method->setAccessible(true);
+$result = array();
+foreach (array('he', 'en') as $lang) {{
+    foreach (array('about', 'contact', 'ingredients', 'traditions', 'knowledge', 'privacy', 'terms', 'accessibility') as $key) {{
+        $result[$lang][$key] = $method->invoke(null, $key, $lang);
+    }}
+}}
+echo json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+"""
+    )
+
+    expected_labels = {
+        "he": {
+            "about": ["למנות שלנו", "מגיעים אלינו"],
+            "contact": ["ניווט לאבן גבירול 99", "הזמנה ב-Wolt"],
+            "ingredients": ["לכל המרכיבים", "למדריכי הבישול"],
+            "traditions": ["לסיפורי האוכל", "למנות מהסיפורים"],
+            "knowledge": ["למדריכים", "לבשל עם המרכיבים"],
+            "privacy": ["שאלה בנושא פרטיות", "לתנאי השימוש"],
+            "terms": ["למדיניות הפרטיות", "ליצירת קשר"],
+            "accessibility": ["דיווח על קושי בנגישות", "חזרה לעמוד הבית"],
+        },
+        "en": {
+            "about": ["See our dishes", "Visit us"],
+            "contact": ["Get directions", "Order on Wolt"],
+            "ingredients": ["Explore ingredients", "Cooking guides"],
+            "traditions": ["Explore food stories", "See the dishes"],
+            "knowledge": ["Explore guides", "Cook with the ingredients"],
+            "privacy": ["Ask a privacy question", "Read the terms"],
+            "terms": ["Read the privacy policy", "Contact us"],
+            "accessibility": ["Report an accessibility barrier", "Back to the homepage"],
+        },
+    }
+    for language, page_actions in result.items():
+        assert set(page_actions) == {
+            "about",
+            "contact",
+            "ingredients",
+            "traditions",
+            "knowledge",
+            "privacy",
+            "terms",
+            "accessibility",
+        }
+        for key, actions in page_actions.items():
+            assert [action["label"] for action in actions] == expected_labels[language][key]
+            assert len(actions) == 2
+            assert actions[0]["url"] != actions[1]["url"]
+            assert all(action["url"] for action in actions)
+        assert page_actions["contact"][0]["external"] is True
+        assert page_actions["contact"][1]["external"] is True
+        assert "#c99-ingredient-index-title" in page_actions["ingredients"][0]["url"]
+        assert "#c99-consumer-page-content" in page_actions["traditions"][0]["url"]
+        assert "#c99-consumer-page-content" in page_actions["knowledge"][0]["url"]
+
+
 def test_proposal_is_a_public_culinary_group_order_route() -> None:
     launch_path = _php_path(LAUNCH)
     proposal = _run_php_json(
@@ -432,6 +575,10 @@ echo json_encode(
     assert proposal["title"] == {
         "he": "ארוחות לקבוצות ולמקומות עבודה",
         "en": "Meals for groups and workplaces",
+    }
+    assert proposal["slug"] == {
+        "he": "request-proposal",
+        "en": "request-proposal",
     }
 
     consumer = _read(CONSUMER)

@@ -97,6 +97,27 @@ class Complete99ContractTests(unittest.TestCase):
         )
         self.assertTrue(manifest["sections"]["changelog"])
 
+    def test_release_1_12_manifest_describes_cumulative_boundary(self) -> None:
+        manifest = json.loads(
+            (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        changelog = manifest["sections"]["changelog"]
+        self.assertIn("<h4>1.12.0</h4>", changelog)
+        self.assertIn("culinary-science registry to 200 entities", changelog)
+        self.assertIn("Entity Studio to 256 subjects", changelog)
+        self.assertIn("200 science identities plus 56 product identities", changelog)
+        self.assertIn("36 live WooCommerce prices and 20 private planning prices", changelog)
+        self.assertIn("109-entity Syrian regional foundation", changelog)
+        self.assertIn("106 culinary entities, including 46 ingredient entities", changelog)
+        self.assertIn("six preparation entities", changelog)
+        self.assertIn("plus three private held market observations", changelog)
+        self.assertIn("one safe noindex consumer gateway and 108 private entities", changelog)
+        self.assertIn("23 entities across 18 canonical page owners per language", changelog)
+        self.assertIn("added no WooCommerce offers, stock, supplier claims", changelog)
+        self.assertIn("payment activation or role assignments", changelog)
+
     def test_all_required_content_types_exist(self) -> None:
         text = (PLUGIN / "includes" / "class-complete99-content.php").read_text(encoding="utf-8")
         required = {

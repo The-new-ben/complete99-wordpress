@@ -432,11 +432,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_11_0(self) -> None:
+    def test_release_version_is_exact_1_12_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.11\.0$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.11.0' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.11.0' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.12\.0$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.12.0' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.12.0' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -1537,7 +1537,7 @@ echo wp_json_encode(array(
             self.assertIn("Complete99_REST::public_indexable_items()", source)
         self.assertIn("Complete99_REST::public_indexable_item_by_slug", robots)
 
-    def test_consumer_copy_describes_live_catalog_cart_and_pending_payment(self) -> None:
+    def test_consumer_copy_describes_live_catalog_cart_and_phone_confirmation(self) -> None:
         for stale in (
             "there are currently no products for sale",
             "there are currently no products for purchase",
@@ -1548,14 +1548,26 @@ echo wp_json_encode(array(
         ):
             self.assertNotIn(stale, self.consumer_content.lower())
         for current in (
-            "The pantry presents 36 culinary products",
+            "The pantry presents culinary products",
             "Products can be added to the cart",
-            "Electronic payment will open after the payment provider is connected",
-            "המזווה מציג 36 מוצרי קולינריה",
+            "Build your pantry basket on the site and complete confirmation by phone",
+            "the Complete99 team confirms stock, the fulfilment method and the final amount by phone",
+            "המזווה מציג מוצרי קולינריה",
             "אפשר להוסיף מוצרים לסל",
-            "סליקה אלקטרונית תיפתח לאחר חיבור ספק הסליקה",
+            "אפשר להכין סל באתר ולסיים את האישור בשיחה",
+            "צוות קומפלט 99 מאשר בשיחה את המלאי, אופן הקבלה והסכום הסופי",
         ):
             self.assertIn(current, self.consumer_content)
+        for construction_status in (
+            "payment provider is connected",
+            "payment provider is being connected",
+            "ספק הסליקה",
+            "30 מוצרי מזווה",
+            "shop 30 pantry goods",
+            "36 מוצרי קולינריה",
+            "36 culinary products",
+        ):
+            self.assertNotIn(construction_status, self.consumer_content.lower())
 
     def test_live_materializer_never_mutates_a_payment_gateway(self) -> None:
         self.assertNotIn("payment_gateways(", self.live_catalog)

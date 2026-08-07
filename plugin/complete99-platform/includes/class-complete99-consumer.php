@@ -394,8 +394,8 @@ final class Complete99_Consumer {
 		<section class="c99-dish-components" aria-labelledby="c99-dish-components-title">
 			<div class="c99-container c99-dish-components-grid">
 				<div>
-					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'עץ המנה' : 'Dish tree' ); ?></p>
-					<h2 id="c99-dish-components-title"><?php echo esc_html( $is_he ? 'מה פוגשים במנה' : 'What you meet in the dish' ); ?></h2>
+					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'מרכיבים וטעמים' : 'Ingredients and flavours' ); ?></p>
+					<h2 id="c99-dish-components-title"><?php echo esc_html( $is_he ? 'מה יש במנה' : 'What is in the dish' ); ?></h2>
 					<p><?php echo esc_html( $is_he ? 'הרשימה מחברת את המנה למרכיבים ולרטבים שמופיעים בתיאור התפריט. מכל מרכיב אפשר להמשיך לספריית המרכיבים ולמדריכים הקולינריים.' : 'This list connects the dish with ingredients and sauces named in the menu description. Continue from each ingredient to the ingredient library and culinary guides.' ); ?></p>
 					<div class="c99-inline-links">
 						<a href="<?php echo esc_url( self::route( 'ingredients', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'לספריית המרכיבים' : 'Ingredient library' ); ?></a>
@@ -1014,7 +1014,8 @@ final class Complete99_Consumer {
 	}
 
 	private static function render_generic_page( $post, $lang, $key ) {
-		$is_he = 'he' === $lang;
+		$is_he   = 'he' === $lang;
+		$actions = self::generic_page_actions( $key, $lang );
 		$media = array(
 			'about'       => array( 'c99-food-house-spread-hero-2021-wp-v01', $is_he ? 'מבחר מנות של קומפלט 99' : 'A selection of Complete99 dishes' ),
 			'contact'     => array( 'c99-food-sabich-pita-gallery-2021-wp-v01', $is_he ? 'סביח בפיתה' : 'Sabich in a pita' ),
@@ -1038,15 +1039,16 @@ final class Complete99_Consumer {
 					<h1><?php echo esc_html( $post->post_title ); ?></h1>
 					<p class="c99-hero-summary"><?php echo esc_html( $post->post_excerpt ); ?></p>
 					<div class="c99-hero-actions">
-						<a class="c99-button c99-button-primary" href="<?php echo esc_url( self::route( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'למנות' : 'Explore dishes' ); ?></a>
-						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( Complete99_Commerce::order_url( $lang ) ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'לתפריט ההזמנות' : 'Open ordering menu' ); ?></a>
+						<?php foreach ( $actions as $action_index => $action ) : ?>
+							<a class="c99-button <?php echo esc_attr( 0 === $action_index ? 'c99-button-primary' : 'c99-button-secondary' ); ?>" href="<?php echo esc_url( $action['url'] ); ?>"<?php if ( ! empty( $action['external'] ) ) : ?> target="_blank" rel="noopener noreferrer"<?php endif; ?>><?php echo esc_html( $action['label'] ); ?></a>
+						<?php endforeach; ?>
 					</div>
 				</div>
 				<figure><?php self::brand_picture( $selected[0], $selected[1], 1000, 700, true ); ?></figure>
 			</div>
 		</section>
 		<?php if ( 'ingredients' === $key ) : ?><?php self::render_live_ingredient_index( $lang ); ?><?php endif; ?>
-		<section class="c99-consumer-editorial">
+		<section id="c99-consumer-page-content" class="c99-consumer-editorial">
 			<div class="c99-container c99-consumer-editorial-grid">
 				<article class="c99-article"><?php echo apply_filters( 'the_content', $post->post_content ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></article>
 				<aside class="c99-consumer-note">
@@ -1066,6 +1068,111 @@ final class Complete99_Consumer {
 		</section>
 		<?php self::render_order_band( $lang ); ?>
 		<?php
+	}
+
+	private static function generic_page_actions( $key, $lang ) {
+		$is_he       = 'he' === $lang;
+		$content_url = self::route( $key, $lang ) . '#c99-consumer-page-content';
+		$actions     = array(
+			'about' => array(
+				array(
+					'url'      => self::route( 'dishes', $lang ),
+					'label'    => $is_he ? 'למנות שלנו' : 'See our dishes',
+					'external' => false,
+				),
+				array(
+					'url'      => self::route( 'contact', $lang ),
+					'label'    => $is_he ? 'מגיעים אלינו' : 'Visit us',
+					'external' => false,
+				),
+			),
+			'contact' => array(
+				array(
+					'url'      => 'https://www.google.com/maps/search/?api=1&query=Ibn%20Gabirol%2099%2C%20Tel%20Aviv%2C%20Israel',
+					'label'    => $is_he ? 'ניווט לאבן גבירול 99' : 'Get directions',
+					'external' => true,
+				),
+				array(
+					'url'      => Complete99_Commerce::order_url( $lang ),
+					'label'    => $is_he ? 'הזמנה ב-Wolt' : 'Order on Wolt',
+					'external' => true,
+				),
+			),
+			'ingredients' => array(
+				array(
+					'url'      => Complete99_Commerce::catalog_is_ready() ? self::route( 'ingredients', $lang ) . '#c99-ingredient-index-title' : $content_url,
+					'label'    => $is_he ? 'לכל המרכיבים' : 'Explore ingredients',
+					'external' => false,
+				),
+				array(
+					'url'      => self::route( 'knowledge', $lang ),
+					'label'    => $is_he ? 'למדריכי הבישול' : 'Cooking guides',
+					'external' => false,
+				),
+			),
+			'traditions' => array(
+				array(
+					'url'      => $content_url,
+					'label'    => $is_he ? 'לסיפורי האוכל' : 'Explore food stories',
+					'external' => false,
+				),
+				array(
+					'url'      => self::route( 'dishes', $lang ),
+					'label'    => $is_he ? 'למנות מהסיפורים' : 'See the dishes',
+					'external' => false,
+				),
+			),
+			'knowledge' => array(
+				array(
+					'url'      => $content_url,
+					'label'    => $is_he ? 'למדריכים' : 'Explore guides',
+					'external' => false,
+				),
+				array(
+					'url'      => self::route( 'ingredients', $lang ),
+					'label'    => $is_he ? 'לבשל עם המרכיבים' : 'Cook with the ingredients',
+					'external' => false,
+				),
+			),
+			'privacy' => array(
+				array(
+					'url'      => self::route( 'contact', $lang ),
+					'label'    => $is_he ? 'שאלה בנושא פרטיות' : 'Ask a privacy question',
+					'external' => false,
+				),
+				array(
+					'url'      => self::route( 'terms', $lang ),
+					'label'    => $is_he ? 'לתנאי השימוש' : 'Read the terms',
+					'external' => false,
+				),
+			),
+			'terms' => array(
+				array(
+					'url'      => self::route( 'privacy', $lang ),
+					'label'    => $is_he ? 'למדיניות הפרטיות' : 'Read the privacy policy',
+					'external' => false,
+				),
+				array(
+					'url'      => self::route( 'contact', $lang ),
+					'label'    => $is_he ? 'ליצירת קשר' : 'Contact us',
+					'external' => false,
+				),
+			),
+			'accessibility' => array(
+				array(
+					'url'      => self::route( 'contact', $lang ),
+					'label'    => $is_he ? 'דיווח על קושי בנגישות' : 'Report an accessibility barrier',
+					'external' => false,
+				),
+				array(
+					'url'      => self::route( 'home', $lang ),
+					'label'    => $is_he ? 'חזרה לעמוד הבית' : 'Back to the homepage',
+					'external' => false,
+				),
+			),
+		);
+
+		return isset( $actions[ $key ] ) ? $actions[ $key ] : $actions['about'];
 	}
 
 	private static function eyebrow( $key, $lang ) {

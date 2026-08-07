@@ -75,7 +75,7 @@ status remains visible to the closed operational checks.
 
 ## Commerce boundary
 
-WooCommerce 10.9.4 is the product, stock and cart engine for release 1.11.0. The
+WooCommerce 10.9.4 is the product, stock and cart engine for release 1.12.0. The
 curated 36-product store and classic cart become public when the exact catalog
 receipt passes. Payment and electronic checkout remain closed until the
 separate controlled checkout gate passes. Administrators can later exercise
@@ -90,13 +90,22 @@ commercial rationale, revision history and workflow metadata are never public
 content. The Studio cannot publish WooCommerce products, change live price or
 stock, activate an offer or open payment.
 
-Release 1.11.0 preserves the 36 public products and carries 17 private draft
-planning offers, including 12 new Japanese premium-market candidates. There are
-zero new active offers. The 53 of 53 coverage metric means every known product
-identity has either a current public price or a private planned price. It does
-not mean every identity is publicly sellable. Public source-market projection
-requires the exact explicit value `public`; missing, malformed, unknown and
-`held` values remain private.
+Release 1.12.0 preserves the 36 public products and all 17 earlier private draft
+offers. It adds three private Syrian planning-price observations without
+creating a WooCommerce product, channel offer, stock record or supplier claim.
+There are zero new active or draft offers. The 56 of 56 coverage metric means
+every known product identity has either a current public price or a private
+planning price: 36 live prices plus 20 private planning prices. It does not mean
+every identity is publicly sellable. Public source-market projection requires
+the exact explicit value `public`; missing, malformed, unknown and `held` values
+remain private. Payment remains disabled and no role is installed or assigned.
+
+The science registry contains 200 entities. The Syrian module contributes 109:
+106 culinary entities, including 46 ingredient entities, plus three private held
+market observations. Its one safe consumer gateway remains `noindex,follow`;
+the other 108 Syrian entities remain
+private. Across the complete public science graph, 23 entities resolve through
+18 canonical page owners per language.
 
 Product discovery remains contained in the curated store. Payment and checkout
 Store API routes remain blocked while payment is closed. Anonymous core product, variation,

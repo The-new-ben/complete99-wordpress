@@ -1,6 +1,6 @@
 <?php
 /**
- * Japanese Foundations Lab collection and its narrow canonical owner.
+ * Japanese cooking foundations collection and its narrow canonical owner.
  *
  * The collection presents existing approved public entities without changing
  * their ontology parents, canonical owners or search intents.
@@ -51,10 +51,10 @@ return array(
 			'type'        => 'topic_hub',
 			'slug'        => 'japanese-foundations-lab',
 			'parent_id'   => 'cuisine-japanese-washoku',
-			'name'        => $c99_text( 'מעבדת היסודות של המטבח היפני', 'Japanese Foundations Lab' ),
+			'name'        => $c99_text( 'שער לבישול היפני', 'Explore Japanese cooking' ),
 			'summary'     => $c99_text(
-				'מסלול עיון ממוקד שמחבר בין חומרי גלם יפניים, מדע הטעם, טכניקות הכנה וכלים מקצועיים. אפשר להתחיל מקומבו או ווסאבי, להמשיך להסבר המדעי, ולגלות את שיטת העבודה והכלי המתאים.',
-				'A focused reading path connecting Japanese ingredients, flavor science, preparation techniques and professional tools. Start with kombu or wasabi, continue to the science, and discover the matching method and tool.'
+				'מסלול פשוט אל חומרי הגלם, מדע הטעם, שיטות ההכנה והכלים של המטבח היפני. מתחילים במה שמסקרן אתכם וממשיכים אל המרכיב, ההסבר, השיטה והכלי המתאים.',
+				'A clear path into Japanese ingredients, flavor science, cooking methods and tools. Start with what interests you, then continue to the ingredient, explanation, method and matching tool.'
 			),
 			'surface_class' => 'editorial_draft',
 			'index_policy'  => 'noindex_until_longform_review',
@@ -75,8 +75,8 @@ return array(
 				$c99_fact(
 					'fact-japanese-foundations-lab-reading-path',
 					'structural',
-					'האוסף מרכז חומרי גלם, מדע מזון, טכניקות וכלים בארבעה מסלולי גילוי ברורים, וכל פריט ממשיך לעמוד בעמוד ובכתובת הייעודיים לו.',
-					'The collection brings ingredients, food science, techniques and tools into four clear discovery paths, while every item retains its dedicated page and address.',
+					'ארבעה מסלולים עוזרים להתחיל מחומר גלם, מדע, שיטת הכנה או כלי, ולהמשיך לנושאים הקשורים.',
+					'Four paths make it easy to start with an ingredient, science, a cooking method or a tool, then continue to related topics.',
 					'official_source',
 					'entity',
 					array( 'complete99-public-site' )
@@ -127,10 +127,10 @@ return array(
 			'membership_digest' => 'sha256:' . hash( 'sha256', $c99_foundations_receipt_basis ),
 		),
 		'display'              => array(
-			'title'          => $c99_text( 'מעבדת היסודות של המטבח היפני', 'Japanese Foundations Lab' ),
+			'title'          => $c99_text( 'שער לבישול היפני', 'Explore Japanese cooking' ),
 			'description'    => $c99_text(
-				'ארבעה מסלולי גילוי מחברים בין חומרי הגלם, מדע הטעם, טכניקות ההכנה והכלים המקצועיים של המטבח היפני.',
-				'Four discovery paths connect the ingredients, flavor science, preparation techniques and professional tools of Japanese cuisine.'
+				'בוחרים חומר גלם, שאלה מדעית, שיטת הכנה או כלי, וממשיכים למידע שעוזר לבחור, לבשל ולהבין.',
+				'Choose an ingredient, a science question, a cooking method or a tool, then continue to information that helps you choose, cook and understand.'
 			),
 			'hero_entity_id' => 'hub-japanese-foundations-lab',
 			'groups'         => array(

@@ -274,7 +274,7 @@ final class Complete99_Culinary_Museum_Frontend {
 						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מוזיאון המדע של הקולינריה' : 'Culinary Science Museum' ); ?></p>
 						<h1><?php echo esc_html( isset( $entity['seo']['h1'] ) ? $entity['seo']['h1'] : $entity['name'] ); ?></h1>
 						<p class="c99-museum-lede"><?php echo esc_html( isset( $entity['seo']['opening'] ) ? $entity['seo']['opening'] : $entity['summary'] ); ?></p>
-						<div class="c99-museum-fact-strip" aria-label="<?php echo esc_attr( $is_he ? 'פרטי התיק' : 'Dossier details' ); ?>">
+						<div class="c99-museum-fact-strip" aria-label="<?php echo esc_attr( $is_he ? 'פרטי העמוד' : 'Page details' ); ?>">
 							<span><strong><?php echo esc_html( count( $entity['sources'] ) ); ?></strong> <?php echo esc_html( $is_he ? 'מקורות' : 'sources' ); ?></span>
 							<span><strong><?php echo esc_html( self::entity_type_label( $entity['type'], $lang ) ); ?></strong></span>
 							<span><strong><?php echo esc_html( $is_he ? 'עודכן' : 'Updated' ); ?></strong> <time datetime="<?php echo esc_attr( $entity['trust']['substantive_updated_at'] ); ?>"><?php echo esc_html( $entity['trust']['substantive_updated_at'] ); ?></time></span>
@@ -305,7 +305,7 @@ final class Complete99_Culinary_Museum_Frontend {
 	}
 
 	/**
-	 * Render the Japanese Foundations Lab from its approved public projection.
+	 * Render the Japanese cooking gateway from its approved public projection.
 	 * Member order is presentation order only and never changes entity ownership.
 	 */
 	private static function render_collection_page( $bundle, $collection ) {
@@ -319,12 +319,12 @@ final class Complete99_Culinary_Museum_Frontend {
 				<?php self::render_breadcrumbs( $entity, $bundle ); ?>
 				<div class="c99-museum-hero-grid">
 					<div class="c99-museum-hero-copy">
-						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מעבדת יסודות המטבח היפני' : 'Japanese Foundations Lab' ); ?></p>
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'שער לבישול היפני' : 'Explore Japanese cooking' ); ?></p>
 						<h1><?php echo esc_html( isset( $entity['seo']['h1'] ) ? $entity['seo']['h1'] : $entity['name'] ); ?></h1>
 						<p class="c99-museum-lede"><?php echo esc_html( isset( $entity['seo']['opening'] ) ? $entity['seo']['opening'] : $entity['summary'] ); ?></p>
-						<div class="c99-museum-fact-strip" aria-label="<?php echo esc_attr( $is_he ? 'פרטי האוסף' : 'Collection details' ); ?>">
-							<span><strong><?php echo esc_html( $member_count ); ?></strong> <?php echo esc_html( $is_he ? 'נושאים מקושרים' : 'connected topics' ); ?></span>
-							<span><strong><?php echo esc_html( count( $collection['groups'] ) ); ?></strong> <?php echo esc_html( $is_he ? 'תחומי יסוד' : 'foundation groups' ); ?></span>
+						<div class="c99-museum-fact-strip" aria-label="<?php echo esc_attr( $is_he ? 'פרטי העמוד' : 'Page details' ); ?>">
+							<span><strong><?php echo esc_html( $member_count ); ?></strong> <?php echo esc_html( $is_he ? 'נושאים לבחירה' : 'topics to explore' ); ?></span>
+							<span><strong><?php echo esc_html( count( $collection['groups'] ) ); ?></strong> <?php echo esc_html( $is_he ? 'דרכי גילוי' : 'ways to explore' ); ?></span>
 							<span><strong><?php echo esc_html( $is_he ? 'עודכן' : 'Updated' ); ?></strong> <time datetime="<?php echo esc_attr( $entity['trust']['substantive_updated_at'] ); ?>"><?php echo esc_html( $entity['trust']['substantive_updated_at'] ); ?></time></span>
 						</div>
 					</div>
@@ -338,10 +338,10 @@ final class Complete99_Culinary_Museum_Frontend {
 				<section class="c99-foundations-lab" aria-labelledby="c99-foundations-title" data-c99-foundations-filter data-c99-foundations-canonical-url="<?php echo esc_url( $bundle['canonical_url'] ); ?>" data-c99-foundations-query="<?php echo esc_attr( self::COLLECTION_FILTER_QUERY ); ?>">
 					<div class="c99-foundations-heading">
 						<div>
-							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מפת היסודות' : 'Foundations map' ); ?></p>
-							<h2 id="c99-foundations-title"><?php echo esc_html( $is_he ? 'ארבע דרכים להעמיק במטבח היפני' : 'Four ways to explore Japanese cuisine' ); ?></h2>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'בחרו מאיפה להתחיל' : 'Choose where to start' ); ?></p>
+							<h2 id="c99-foundations-title"><?php echo esc_html( $is_he ? 'חומרי גלם, טעם, שיטות וכלים' : 'Ingredients, flavor, methods and tools' ); ?></h2>
 						</div>
-						<p><?php echo esc_html( $is_he ? 'בחרו תחום וגלו כיצד חומרי גלם, מדע, טכניקות וכלים מתחברים זה לזה.' : 'Choose a field and discover how ingredients, science, techniques and tools connect.' ); ?></p>
+						<p><?php echo esc_html( $is_he ? 'בחרו מה מסקרן אתכם וגלו מה קונים, איך משתמשים בו, למה הוא טעים ואיזה כלי מתאים.' : 'Choose what interests you and discover what to buy, how to use it, why it tastes the way it does and which tool fits.' ); ?></p>
 					</div>
 
 					<div class="c99-foundations-filter-shell">
@@ -371,7 +371,7 @@ final class Complete99_Culinary_Museum_Frontend {
 									<span class="c99-foundations-card-type"><?php echo esc_html( self::entity_type_label( $member['entity_type'], $lang ) ); ?></span>
 									<h3><?php echo esc_html( $member['name'] ); ?></h3>
 									<p><?php echo esc_html( $member['summary'] ); ?></p>
-									<strong><?php echo esc_html( $is_he ? 'לנושא המלא' : 'Explore the full topic' ); ?></strong>
+									<strong><?php echo esc_html( self::collection_member_cta( $member['entity_type'], $lang ) ); ?></strong>
 								</a>
 							</article>
 						<?php endforeach; ?>
@@ -398,6 +398,24 @@ final class Complete99_Culinary_Museum_Frontend {
 			return 1 === $count ? 'נושא אחד מוצג' : $count . ' נושאים מוצגים';
 		}
 		return 1 === $count ? '1 topic shown' : $count . ' topics shown';
+	}
+
+	private static function collection_member_cta( $entity_type, $lang ) {
+		$is_he = 'he' === $lang;
+		$labels = array(
+			'ingredient' => array( 'להכיר את המרכיב', 'Learn about the ingredient' ),
+			'molecule'   => array( 'להבין את המדע', 'Understand the science' ),
+			'reaction'   => array( 'להבין את המדע', 'Understand the science' ),
+			'guide'      => array( 'להבין את המדע', 'Understand the science' ),
+			'preparation' => array( 'ללמוד את השיטה', 'Learn the method' ),
+			'technique'  => array( 'ללמוד את השיטה', 'Learn the method' ),
+			'equipment'  => array( 'לבחור את הכלי', 'Choose the tool' ),
+		);
+		$type = strtolower( trim( (string) $entity_type ) );
+		if ( ! isset( $labels[ $type ] ) ) {
+			return $is_he ? 'לגלות עוד' : 'Explore more';
+		}
+		return $labels[ $type ][ $is_he ? 0 : 1 ];
 	}
 
 	private static function render_offer( $entity ) {
@@ -747,9 +765,9 @@ final class Complete99_Culinary_Museum_Frontend {
 		?>
 		<section class="c99-museum-side-card c99-museum-trust" aria-labelledby="c99-museum-trust-title">
 			<p class="c99-museum-card-label"><?php echo esc_html( $is_he ? 'שיטת מחקר' : 'Research method' ); ?></p>
-			<h2 id="c99-museum-trust-title"><?php echo esc_html( $is_he ? 'מקור, היקף ותיקון' : 'Source, scope and correction' ); ?></h2>
+			<h2 id="c99-museum-trust-title"><?php echo esc_html( $is_he ? 'איך אנחנו בודקים את המידע' : 'How we check the information' ); ?></h2>
 			<p><?php echo esc_html( isset( $trust['research_method'] ) ? $trust['research_method'] : '' ); ?></p>
-			<?php if ( ! empty( $trust['next_review_trigger'] ) ) : ?><p><strong><?php echo esc_html( $is_he ? 'מה מפעיל בדיקה מחדש:' : 'What triggers a new review:' ); ?></strong> <?php echo esc_html( $trust['next_review_trigger'] ); ?></p><?php endif; ?>
+			<?php if ( ! empty( $trust['next_review_trigger'] ) ) : ?><p><?php echo esc_html( $trust['next_review_trigger'] ); ?></p><?php endif; ?>
 			<?php if ( '' !== $correction_url ) : ?><a class="c99-museum-source-link" href="<?php echo esc_url( $correction_url ); ?>"><?php echo esc_html( $is_he ? 'שליחת תיקון מבוסס' : 'Submit a sourced correction' ); ?></a><?php endif; ?>
 		</section>
 		<?php
@@ -1415,6 +1433,8 @@ final class Complete99_Culinary_Museum_Frontend {
 		$lang = isset( self::$bundle['language'] ) ? self::$bundle['language'] : 'en';
 		$labels = array(
 			'pa-origin' => array( 'מקור', 'Origin' ),
+			'pa-region' => array( 'אזור', 'Region' ),
+			'pa-community' => array( 'מסורת וקהילה', 'Tradition and community' ),
 			'pa-species' => array( 'מין', 'Species' ),
 			'pa-cultivar' => array( 'זן', 'Cultivar' ),
 			'pa-processing-method' => array( 'שיטת עיבוד', 'Processing method' ),
@@ -1441,6 +1461,11 @@ final class Complete99_Culinary_Museum_Frontend {
 			'curated-discovery' => array( 'המשך מומלץ', 'Recommended next' ),
 			'world-cuisines' => array( 'מטבחי עולם', 'World cuisines' ),
 			'culinary-museum' => array( 'מוזיאון קולינרי', 'Culinary museum' ),
+			'cuisines' => array( 'מטבחי עולם', 'World cuisines' ),
+			'syrian-culinary-science' => array( 'המטבח הסורי', 'Syrian cuisine' ),
+			'syrian-cuisine' => array( 'מטבח סורי', 'Syrian cuisine' ),
+			'syria-national' => array( 'סוריה', 'Syria' ),
+			'syrian-multi-community' => array( 'מסורות סוריות רב קהילתיות', 'Syrian multi-community traditions' ),
 			'culinary-science' => array( 'מדע הקולינריה', 'Culinary science' ),
 			'knowledge-graph' => array( 'ידע מקושר', 'Connected knowledge' ),
 			'topic-clusters' => array( 'נושאים קשורים', 'Related topics' ),

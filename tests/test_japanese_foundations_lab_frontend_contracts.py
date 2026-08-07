@@ -206,12 +206,12 @@ function c99_bundle($lang) {{
         'entity' => array(
             'id' => 'hub-japanese-foundations-lab',
             'type' => 'topic_hub',
-            'name' => 'he' === $lang ? 'מעבדת יסודות המטבח היפני' : 'Japanese Foundations Lab',
+            'name' => 'he' === $lang ? 'שער לבישול היפני' : 'Explore Japanese cooking',
             'summary' => 'A connected public collection.',
             'seo' => array(
                 'route_mode' => 'standalone',
                 'canonical_path' => $path,
-                'title' => 'Japanese Foundations Lab | Complete99',
+                'title' => 'Explore Japanese cooking | Complete99',
                 'h1' => 'he' === $lang ? 'יסודות המטבח היפני' : 'Japanese culinary foundations',
                 'opening' => 'A connected guide to ingredients, science, techniques and equipment.',
                 'meta_description' => 'A connected public collection of Japanese culinary foundations.',
@@ -422,6 +422,11 @@ $schema = new ReflectionMethod(
     'schema_graph'
 );
 $schema->setAccessible(true);
+$member_cta = new ReflectionMethod(
+    'Complete99_Culinary_Museum_Frontend',
+    'collection_member_cta'
+);
+$member_cta->setAccessible(true);
 
 function c99_real_render($bundle) {{
     ob_start();
@@ -437,6 +442,26 @@ echo json_encode(array(
     'he_html' => c99_real_render($he),
     'en_html' => c99_real_render($en),
     'en_schema' => $schema->invoke(null, $en),
+    'cta_he' => array(
+        'ingredient' => $member_cta->invoke(null, 'ingredient', 'he'),
+        'molecule' => $member_cta->invoke(null, 'molecule', 'he'),
+        'reaction' => $member_cta->invoke(null, 'reaction', 'he'),
+        'guide' => $member_cta->invoke(null, 'guide', 'he'),
+        'preparation' => $member_cta->invoke(null, 'preparation', 'he'),
+        'technique' => $member_cta->invoke(null, 'technique', 'he'),
+        'equipment' => $member_cta->invoke(null, 'equipment', 'he'),
+        'unknown' => $member_cta->invoke(null, 'unknown', 'he'),
+    ),
+    'cta_en' => array(
+        'ingredient' => $member_cta->invoke(null, 'ingredient', 'en'),
+        'molecule' => $member_cta->invoke(null, 'molecule', 'en'),
+        'reaction' => $member_cta->invoke(null, 'reaction', 'en'),
+        'guide' => $member_cta->invoke(null, 'guide', 'en'),
+        'preparation' => $member_cta->invoke(null, 'preparation', 'en'),
+        'technique' => $member_cta->invoke(null, 'technique', 'en'),
+        'equipment' => $member_cta->invoke(null, 'equipment', 'en'),
+        'unknown' => $member_cta->invoke(null, 'unknown', 'en'),
+    ),
 ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
 """
         completed = subprocess.run(
@@ -481,7 +506,61 @@ echo json_encode(array(
                 self.assertNotIn(forbidden, public_json)
 
         self.assertTrue(any("א" <= char <= "ת" for char in result["he_html"]))
-        self.assertIn("Japanese Foundations Lab", result["en_html"])
+        for marker in (
+            "Explore Japanese cooking",
+            "Choose where to start",
+            "Ingredients, flavor, methods and tools",
+            "Learn about the ingredient",
+            "Understand the science",
+            "Learn the method",
+            "Choose the tool",
+        ):
+            self.assertIn(marker, result["en_html"])
+        for marker in (
+            "שער לבישול היפני",
+            "בחרו מאיפה להתחיל",
+            "חומרי גלם, טעם, שיטות וכלים",
+            "להכיר את המרכיב",
+            "להבין את המדע",
+            "ללמוד את השיטה",
+            "לבחור את הכלי",
+        ):
+            self.assertIn(marker, result["he_html"])
+        for stale in (
+            "Japanese Foundations Lab",
+            "Foundations map",
+            "Explore the full topic",
+            "מעבדת יסודות המטבח היפני",
+            "מפת היסודות",
+            "לנושא המלא",
+        ):
+            self.assertNotIn(stale, result["he_html"] + result["en_html"])
+        self.assertEqual(
+            {
+                "ingredient": "להכיר את המרכיב",
+                "molecule": "להבין את המדע",
+                "reaction": "להבין את המדע",
+                "guide": "להבין את המדע",
+                "preparation": "ללמוד את השיטה",
+                "technique": "ללמוד את השיטה",
+                "equipment": "לבחור את הכלי",
+                "unknown": "לגלות עוד",
+            },
+            result["cta_he"],
+        )
+        self.assertEqual(
+            {
+                "ingredient": "Learn about the ingredient",
+                "molecule": "Understand the science",
+                "reaction": "Understand the science",
+                "guide": "Understand the science",
+                "preparation": "Learn the method",
+                "technique": "Learn the method",
+                "equipment": "Choose the tool",
+                "unknown": "Explore more",
+            },
+            result["cta_en"],
+        )
         graph = result["en_schema"]["@graph"]
         item_list = next(node for node in graph if node.get("@type") == "ItemList")
         self.assertEqual(15, item_list["numberOfItems"])

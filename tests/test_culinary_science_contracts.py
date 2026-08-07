@@ -27,10 +27,11 @@ REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
 EXPECTED_SCHEMA = "complete99-culinary-science-registry/v5"
-EXPECTED_VERSION = "japanese-pilot-2026.08.06.v11"
+EXPECTED_VERSION = "culinary-science-2026.08.06.v12"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
+    "cuisine-syrian-regional",
     "hub-japanese-foundations-lab",
     "hub-japanese-equipment",
     "hub-japanese-food-science",
@@ -68,6 +69,7 @@ EXPECTED_CLUSTERS = {
     "cluster-culinary-science-museum",
     "cluster-global-culinary-institutions",
     "cluster-japanese-washoku",
+    "cluster-syrian-regional-cuisine",
 }
 PROFILE_DIMENSIONS = {
     "scientific",
@@ -138,6 +140,10 @@ EXPECTED_CANONICAL_OWNERS = {
     "cuisine-japanese-washoku": (
         "cuisine",
         "/museum/japanese-culinary-science/",
+    ),
+    "cuisine-syrian-regional": (
+        "cuisine",
+        "/museum/syrian-culinary-science/",
     ),
     "hub-japanese-foundations-lab": (
         "topic_hub",
@@ -706,7 +712,7 @@ def test_registry_v5_directly_validates_with_minimum_complete_pilot(
     assert clusters == EXPECTED_CLUSTERS
     assert science_payload["status"]["ready"] is True
     assert science_payload["status"]["entity_count"] == len(registry["entities"])
-    assert science_payload["status"]["cluster_count"] == 3
+    assert science_payload["status"]["cluster_count"] == 4
 
 
 def test_single_museum_root_is_the_exact_bilingual_owner(

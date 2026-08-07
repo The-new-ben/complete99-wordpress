@@ -93,14 +93,16 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.11.0, require the Entity Studio contracts to prove private
+3. For release 1.12.0, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
    bounded API pagination, orphan-dossier audit access and fail-closed
-   observation identity collisions. Require culinary-science registry v11 and
-   culinary-commerce registry v5, exact 2026-08-06 evidence chronology and
-   evidence-class alignment with each source type.
+   observation identity collisions. Require the cumulative 200-entity
+   culinary-science registry v12, culinary-commerce registry v6 and the exact
+   256-subject Entity Studio index: 200 science identities plus 56 product
+   identities. Require exact evidence chronology and evidence-class alignment
+   with each source type.
 4. Require the public read-model integrity tests to prove
    recursive canonical hashing, exclusion of the top-level `digest` field,
    `hash_equals` verification and fail-closed handling of missing, malformed,
@@ -115,11 +117,19 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    Require the four 1.9.0 additions to have exact product codes, prices, one
    unit of opening stock, disabled backorders, image hashes, relations and
    dated market evidence. Confirm all 32 earlier products keep their current
-   operational stock rather than being reset. Confirm all 17 planning offers
-   remain private drafts, all 12 new candidates have planning stock zero and no
-   WooCommerce code, zero new offers are active and price-basis coverage is
-   exactly 53 of 53 product identities. Confirm only the exact explicit
-   `public_market_projection=public` value can enter the public projection.
+   operational stock rather than being reset. Confirm all 17 earlier planning
+   offers remain private drafts and all 12 Japanese candidates retain planning
+   stock zero and no WooCommerce code. Confirm the three Syrian product
+   identities are private held market observations only, with no WooCommerce
+   code, channel offer, stock, supplier, landed-cost or margin claim. Require
+   zero new active or draft offers and exact 56 of 56 price-basis coverage: 36
+   live prices plus 20 private planning prices. Confirm the Syrian module has 109
+   entities, comprising 106 culinary entities, including 46 ingredient entities,
+   plus three private observations, with one safe noindex consumer gateway and
+   108 private entities. Confirm only
+   the exact explicit `public_market_projection=public` value can enter the
+   public projection, and require 23 public science entities across 18
+   canonical page owners per language.
 8. Build twice and require identical bytes:
 
    `python scripts/build-plugin-zip.py --verify-reproducible`

@@ -29,9 +29,9 @@ Large raw media streams may use purpose-built storage, and credentials stay in
 server-side secret stores. WordPress retains the canonical entity identity,
 evidence reference, authorization state and publication decision.
 
-Release 1.11.0 installs infrastructure only and does not install or assign
-Complete99 worker roles. Commerce order, refund, fulfilment and stock events use
-an unassigned private outbox until a later operating decision.
+Release 1.12.0 does not install or assign Complete99 worker roles. Commerce
+order, refund, fulfilment and stock events use an unassigned private outbox
+until a later operating decision.
 
 ## WordPress content model
 
@@ -137,15 +137,23 @@ Observation identifiers fail closed on cross-registry collisions. Entity Studio
 cannot create or update a WooCommerce product, price, stock quantity, cart,
 order, public page, sitemap entry or active channel offer.
 
-Release 1.11.0 extends the private graph to 144 Entity Studio subjects and 53
-product identities. Price-basis coverage is 53 of 53: 36 unchanged public
-WooCommerce prices and 17 private draft planning prices. This coverage is not a
-statement that 53 products are public or available. The 17 plans create zero
-active offers, carry no verified supplier or landed-cost claim and do not enter
-the active POS projection. The 12 newest candidates have planning stock zero,
-no WooCommerce product code and `public_market_projection=held`. Only the exact
-explicit value `public` is eligible for public source-market projection. Missing,
-malformed and unknown values remain private. Payment remains disabled.
+Release 1.12.0 extends the private graph to 256 Entity Studio subjects: 200
+science identities plus 56 product identities. Price-basis coverage is 56 of
+56: 36 unchanged public WooCommerce prices and 20 private planning prices. This
+coverage is not a statement that 56 products are public or available. The 17
+earlier draft offers remain inactive. The three new Syrian product identities
+are private held market observations only, with no WooCommerce product code,
+channel offer, stock, supplier, landed-cost or margin claim. They do not enter
+the active POS projection. Only the exact explicit value `public` is eligible
+for public source-market projection. Missing, malformed and unknown values
+remain private. Payment remains disabled and no role is installed or assigned.
+
+The cumulative culinary-science registry contains 200 entities. The Syrian
+module contributes 109: 106 culinary entities, including 46 ingredient entities,
+plus three private held market observations. One safe consumer gateway is
+projected as `noindex,follow`; the
+other 108 Syrian entities remain private. Across all cuisines, 23 public science
+entities resolve through 18 canonical page owners per language.
 
 ## Identity and language
 

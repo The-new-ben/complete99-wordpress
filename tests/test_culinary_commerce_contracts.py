@@ -22,25 +22,28 @@ SCIENCE_CLASS = PLUGIN / "includes" / "class-complete99-culinary-science.php"
 COMMERCE_CLASS = PLUGIN / "includes" / "class-complete99-culinary-commerce.php"
 SCIENCE_DATA = PLUGIN / "data" / "culinary-science-pilot.php"
 COMMERCE_DATA = PLUGIN / "data" / "culinary-commerce-pilot.php"
+SYRIAN_COMMERCE_DATA = (
+    PLUGIN / "data" / "culinary-commerce" / "syrian-market-tranche.php"
+)
 
 EXPECTED_SCHEMA = "complete99-culinary-commerce-registry/v2"
-EXPECTED_VERSION = "japanese-commerce-pilot-2026.08.06.v5"
+EXPECTED_VERSION = "culinary-commerce-2026.08.06.v6"
 EXPECTED_COUNTS = {
     "countries": 5,
     "currencies": 5,
     "locales": 6,
     "tax_zones": 5,
-    "markets": 5,
+    "markets": 6,
     "channels": 4,
-    "sellers": 12,
+    "sellers": 15,
     "brands": 16,
     "manufacturers": 16,
-    "products": 22,
-    "variants": 22,
-    "skus": 22,
+    "products": 25,
+    "variants": 25,
+    "skus": 25,
     "supplier_offers": 0,
-    "evidence_artifacts": 23,
-    "market_observations": 22,
+    "evidence_artifacts": 26,
+    "market_observations": 25,
     "channel_offers": 17,
     "landed_cost_scenarios": 0,
     "margin_scenarios": 0,
@@ -778,6 +781,7 @@ echo json_encode(
         COMMERCE_CLASS,
         SCIENCE_DATA,
         COMMERCE_DATA,
+        SYRIAN_COMMERCE_DATA,
     ],
 )
 def test_culinary_commerce_php_files_lint_cleanly(php_file: Path) -> None:
@@ -930,6 +934,163 @@ def test_public_market_projection_uses_an_explicit_legacy_allowlist(
             "public",
             "held",
         }
+
+
+def test_syrian_retail_tranche_is_private_research_without_commercial_wiring(
+    commerce_payload: dict[str, Any],
+) -> None:
+    registry = commerce_payload["registry"]
+    products = _id_index(registry["products"])
+    variants = _id_index(registry["variants"])
+    skus = _id_index(registry["skus"])
+    observations = _id_index(registry["market_observations"])
+    artifacts = _id_index(registry["evidence_artifacts"])
+
+    expected = {
+        "sugat-freekeh-500g": {
+            "knowledge_entity_id": "ingredient-syrian-freekeh",
+            "amount_minor": 1090,
+            "normalized_amount_minor": 2180,
+            "normalized_unit_code": "kg",
+            "source_url": "https://www.bigdabach.co.il/?catalogProduct=6279611",
+        },
+        "keter-harimon-pomegranate-concentrate-250ml": {
+            "knowledge_entity_id": "ingredient-syrian-pomegranate-molasses",
+            "amount_minor": 2990,
+            "normalized_amount_minor": 11960,
+            "normalized_unit_code": "l",
+            "source_url": (
+                "https://www.tamar-hst.co.il/product-details/209856/"
+                "%D7%A8%D7%9B%D7%96_%D7%A8%D7%99%D7%9E%D7%95%D7%9F"
+            ),
+        },
+        "tamar-bakfar-pure-ground-sumac-100g": {
+            "knowledge_entity_id": "ingredient-syrian-sumac",
+            "amount_minor": 1100,
+            "normalized_amount_minor": 11000,
+            "normalized_unit_code": "kg",
+            "source_url": (
+                "https://tamarbakfar.co.il/product/"
+                "%D7%A1%D7%95%D7%9E%D7%A7-%D7%98%D7%97%D7%95%D7%9F-"
+                "%D7%98%D7%94%D7%95%D7%A8/"
+            ),
+        },
+    }
+    syrian_sku_ids = {f"sku-{key}" for key in expected}
+    assert {
+        sku_id
+        for sku_id, sku in skus.items()
+        if sku["internal_code"].startswith("C99-SY-")
+    } == syrian_sku_ids
+
+    for key, price in expected.items():
+        product = products[f"product-{key}"]
+        variant = variants[f"variant-{key}"]
+        sku = skus[f"sku-{key}"]
+        observation = observations[f"observation-{key}-20260806"]
+        artifact = artifacts[f"evidence-{key}-20260806"]
+
+        assert product["state"] == "research_candidate"
+        assert product["knowledge_entity_id"] == price["knowledge_entity_id"]
+        assert variant["state"] == "research_candidate"
+        assert variant["attributes"]["planning_stock_quantity"] == "0"
+        assert variant["attributes"]["public_market_projection"] == "held"
+        assert sku["state"] == "research_candidate"
+        assert sku["woo_product_code"] == ""
+        assert sku["inventory_policy"] == "research_only"
+        assert sku["internal_code"].startswith("C99-SY-")
+        assert observation["currency_id"] == "currency-ils"
+        assert observation["amount_minor"] == price["amount_minor"]
+        assert observation["normalization"]["normalized_amount_minor"] == price[
+            "normalized_amount_minor"
+        ]
+        assert observation["normalization"]["normalized_unit_code"] == price[
+            "normalized_unit_code"
+        ]
+        assert observation["observed_at"].startswith("2026-08-06T")
+        assert artifact["source_url"] == price["source_url"]
+        assert artifact["captured_at"].startswith("2026-08-06T")
+        assert artifact["verification_state"] == "source_reviewed"
+        assert artifact["retention_state"] == "source_pointer_only"
+        assert artifact["offer_approval_eligible"] is False
+
+    assert not {
+        offer["sku_id"] for offer in registry["channel_offers"]
+    } & syrian_sku_ids
+    assert not {
+        offer["sku_id"] for offer in registry["supplier_offers"]
+    } & syrian_sku_ids
+    assert not {
+        scenario["sku_id"] for scenario in registry["landed_cost_scenarios"]
+    } & syrian_sku_ids
+    assert not {
+        component["sku_id"]
+        for bundle in registry["bundles"]
+        for component in bundle["components"]
+    } & syrian_sku_ids
+    assert not {
+        sku_id
+        for edge in registry["merchandising_edges"]
+        for sku_id in (edge["source_sku_id"], edge["target_sku_id"])
+    } & syrian_sku_ids
+
+    freekeh_observation = observations[
+        "observation-sugat-freekeh-500g-20260806"
+    ]
+    science_entities = _id_index(commerce_payload["science"]["entities"])
+    freekeh_science = science_entities[
+        "listing-sugat-freekeh-500g-big-dabach-20260806"
+    ]
+    science_availability = freekeh_science["facts"][0]["measurement"][
+        "line_items"
+    ][0]["availability"]
+    assert (
+        freekeh_observation["availability_state"]
+        == science_availability
+        == "indexed_price_no_live_availability"
+    )
+
+
+def test_inactive_tamar_bakfar_sumac_evidence_cannot_look_current(
+    commerce_payload: dict[str, Any],
+) -> None:
+    registry = commerce_payload["registry"]
+    observations = _id_index(registry["market_observations"])
+    artifacts = _id_index(registry["evidence_artifacts"])
+    variants = _id_index(registry["variants"])
+    sellers = _id_index(registry["sellers"])
+    key = "tamar-bakfar-pure-ground-sumac-100g"
+
+    observation = observations[f"observation-{key}-20260806"]
+    artifact = artifacts[f"evidence-{key}-20260806"]
+    attributes = variants[f"variant-{key}"]["attributes"]
+    seller = sellers["seller-tamar-bakfar-historical"]
+
+    assert observation["availability_state"] == (
+        "historical_index_only_domain_inactive"
+    )
+    assert observation["comparability"] == "non_comparable"
+    assert observation["availability_state"] not in {
+        "in_stock",
+        "listed_for_sale",
+        "add_to_cart_visible",
+        "add_to_cart_available",
+    }
+    assert attributes["current_availability_claim"] == "none"
+    assert attributes["current_price_claim"] == "none"
+    assert attributes["public_market_projection"] == "held"
+    assert "parked-domain" in attributes["domain_state_at_retrieval"]
+    assert seller["status"] == "historical_source_inactive"
+    assert artifact["capture_method"] == (
+        "historical-search-index-plus-live-redirect-review"
+    )
+    assert artifact["source_url"] == (
+        "https://tamarbakfar.co.il/product/"
+        "%D7%A1%D7%95%D7%9E%D7%A7-%D7%98%D7%97%D7%95%D7%9F-"
+        "%D7%98%D7%94%D7%95%D7%A8/"
+    )
+    assert "no current seller availability" in artifact["claim_locator"]
+    assert artifact["offer_approval_eligible"] is False
 
 
 def test_premium_tranche_keeps_stock_zero_gates_and_compliance_in_private_variants(
@@ -1691,6 +1852,7 @@ def test_culinary_commerce_files_contain_no_em_dash_u2014() -> None:
         COMMERCE_CLASS,
         SCIENCE_DATA,
         COMMERCE_DATA,
+        SYRIAN_COMMERCE_DATA,
         Path(__file__),
     ]
     offenders = [

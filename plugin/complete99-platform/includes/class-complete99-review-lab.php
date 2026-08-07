@@ -298,7 +298,7 @@ final class Complete99_Review_Lab {
 				self::link( home_url( '/dishes/' ), 'כל המנות' );
 				self::link( home_url( '/ingredients/' ), 'כל המרכיבים' );
 				self::link( home_url( '/knowledge/' ), 'מרכז הידע' );
-				self::link( home_url( '/request-a-proposal/' ), 'הזמנה לקבוצה' );
+				self::link( home_url( '/request-proposal/' ), 'הזמנה לקבוצה' );
 				self::link( rest_url( 'complete99/v1/health' ), 'בדיקת בריאות' );
 				self::link( Complete99_Settings::app_url( 'he' ), 'מערכת התפעול' );
 				self::link( admin_url( 'tools.php?page=complete99-entity-studio' ), 'Entity Studio' );

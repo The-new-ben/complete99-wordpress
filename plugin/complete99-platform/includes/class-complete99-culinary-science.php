@@ -1846,7 +1846,12 @@ final class Complete99_Culinary_Science {
 		$internal_links = self::public_internal_links( $entity, $registry, $lang );
 
 		$asset_slug = preg_replace( '/[^a-z0-9-]/', '', (string) $entity['slug'] );
-		$asset_stem = 'c99-science-' . $asset_slug . '-v01';
+		$asset_stems = array(
+			'cuisine-syrian-regional' => 'c99-science-syrian-regional-table-v01',
+		);
+		$asset_stem = isset( $asset_stems[ $entity['id'] ] )
+			? $asset_stems[ $entity['id'] ]
+			: 'c99-science-' . $asset_slug . '-v01';
 		$asset_base = defined( 'COMPLETE99_PLATFORM_URL' ) ? COMPLETE99_PLATFORM_URL : '';
 		$visual_alts = array(
 			'hub-japanese-foundations-lab' => array( 'he' => 'שולחן יסודות המטבח היפני עם אורז בהאנגירי, קומבו, קצואובושי, שויו, יוזו, וואסבי, קוג׳י, נורי, כלי מדידה וסכין יפנית', 'en' => 'Japanese culinary foundations table with rice in a hangiri, kombu, katsuobushi, shoyu, yuzu, wasabi, koji, nori, measurement tools and a Japanese knife' ),
@@ -1861,6 +1866,7 @@ final class Complete99_Culinary_Science {
 			'ingredient-kito-yuzu' => array( 'he' => 'יוזו קיטו שלם וחצוי, עם קליפה עבה ופלחי פרי מוארים', 'en' => 'Whole and halved Kito yuzu showing thick rind and illuminated juice vesicles' ),
 			'ingredient-hon-mirin' => array( 'he' => 'הון מירין ענברי בכלי זכוכית לצד אורז דביק וקוג׳י אורז', 'en' => 'Amber hon mirin in a glass vessel beside glutinous rice and rice koji' ),
 			'guide-umami-synergy' => array( 'he' => 'דאשי, קומבו וקצואובושי לצד המחשה מולקולרית של גלוטמט ו-IMP', 'en' => 'Dashi, kombu and katsuobushi beside a molecular illustration of glutamate and IMP' ),
+			'cuisine-syrian-regional' => array( 'he' => 'שולחן מנות סוריות עם מוחמרה, עלי גפן, קובה מבושלת, תריד ודג עם אורז ובצל שחום', 'en' => 'Syrian tasting table with muhammara, grape leaves, cooked kibbeh, thareed, and fish with rice and browned onion' ),
 		);
 		$visual = array(
 			'url'      => $asset_base . 'assets/images/science/' . rawurlencode( $asset_stem . '.webp' ),
