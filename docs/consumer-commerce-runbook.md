@@ -1,9 +1,82 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-07
-Release target: Complete99 Platform 1.13.0
+Release target: Complete99 Platform 1.14.0
 
-## Current 1.13.0 Syrian regional-depth boundary
+## Current 1.14.0 Lebanese cuisine foundation boundary
+
+Release 1.14.0 expands the culinary-science registry from 287 to 369 entities
+and Entity Studio from 343 to 425 subjects: 369 science identities plus the
+same 56 product identities. The registry contracts are
+`culinary-science-2026.08.07.v14` and
+`culinary-commerce-2026.08.07.v8`. The public boundary remains exactly 23
+science entities across 18 canonical page owners per language, and the public
+WooCommerce catalog remains exactly 36 owner-authorized products.
+
+The Lebanese foundation contains exactly 82 identities:
+
+- 1 cuisine;
+- 13 regional or topic hubs;
+- 27 dishes;
+- 2 preparations;
+- 8 ingredients;
+- 5 techniques;
+- 9 traditions;
+- 5 culinary institutions;
+- 2 markets;
+- 3 restaurants;
+- 1 trade-compliance rule;
+- 6 retail listings.
+
+Every Lebanese identity is an `editorial_draft` with `noindex_private`,
+`private_preview`, private-route and `reference_only` state. None has a public
+page, public API row, search-index permission, public taxonomy projection,
+WooCommerce product code, public offer, stock, supplier claim, cross-sell,
+up-sell or POS row. Visual assets remain in rights review. The tranche adds no
+product identity or private planning-price identity, so price-basis coverage
+remains 56 of 56: 36 live WooCommerce prices and 20 private planning prices.
+
+The six 2026-08-07 observations are non-comparable external benchmarks only:
+
+- Mymoune pomegranate molasses, 250 ml, USD 11.49 at Spinneys Lebanon;
+- Mymoune zaatar, 200 g, USD 8.49 at Spinneys Lebanon;
+- Terroirs du Liban premium zaatar, 70 g, EUR 7.82 in its European store;
+- Terroirs du Liban freekeh, 500 g, EUR 15.20 in its European store;
+- Pereg zaatar baladi, ILS 88 per kilogram, as an Israeli comparison;
+- organic pomegranate concentrate, 280 g, ILS 25.90 at Nitzat Haduvdevan, as
+  an Israeli comparison distinct from pomegranate molasses.
+
+Tax and shipping status remain unknown where the source does not establish
+them. The observations are not Complete99 prices, offers, stock, supplier
+terms, market averages, landed costs or evidence of Israeli availability.
+Freekeh remains distinct from bulgur, concentrate remains distinct from
+molasses, and a local comparison product is not called Lebanese without
+origin-label evidence.
+
+Every Lebanese record references the central Israel-Lebanon trade-compliance
+rule based on Director-General Instruction 2.4 dated 2026-03-08. Direct or
+indirect trade with Lebanon, supplier contact, samples, payment, third-party
+routing and represented delivery remain blocked without written legal and
+official authorization. The records are editorial sources and benchmarks, not
+a purchasing workflow.
+
+Shared Levantine families are connected for comparison without merging
+identity or assigning exclusive origin. This applies to sayadiyah, samkeh
+harra, kibbeh summakiyeh, mujaddara, bulgur, kishk, pomegranate molasses, sumac
+and olive oil. Family and occasion evidence remains scoped to the named family,
+community, place or ritual. Lebanese Jewish records do not turn shared dishes
+into Jewish inventions, and Palestinian foodways in Lebanon are not reassigned
+Lebanese origin or treated as commercial leads.
+
+Food-safety records fail closed. Kibbeh nayyeh has no recipe, preparation
+instructions or consumption recommendation. Kishk, ambarees, traditional
+labneh and qawarma records require measured process controls such as pH, water
+activity, microbiology, temperature, refrigeration, packaging, traceability or
+HACCP review before any operational use. The Aley and Chouf wild-plant record
+is bounded research, not permission to forage, self-identify or consume an
+unverified plant.
+
+## Historical 1.13.0 Syrian regional-depth boundary
 
 Release 1.13.0 expands the science registry to 287 entities and Entity Studio
 to 343 subjects: 287 science identities plus 56 product identities. The Syrian

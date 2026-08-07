@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-07
-Status: source release target 1.13.0, with 12 public dishes, 36 unchanged public products, 20 private planning prices, 287 science identities and 23 public science entities across 18 page owners per language
+Status: source release target 1.14.0, with 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 369 science identities, 425 Entity Studio subjects and 23 public science entities across 18 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -71,6 +71,9 @@ copy.
   security controls.
 - Draft content, failed checks, evidence workflows, migration and deployment
   terms, signing details and machine-generated drafts.
+- All 82 Lebanese research identities, including their sources, institutional
+  and market benchmarks, retail observations and trade-compliance record. They
+  remain private, `noindex` and reference-only.
 
 No Complete99 worker role is installed or assigned by release 1.6.0. Role
 definitions remain dormant infrastructure. The commerce outbox has no worker
@@ -185,6 +188,13 @@ Release 1.12.0 creates contracts and checks, not worker assignments.
 - Its dossiers remain private and cannot become public pages or active offers
   through the Studio.
 
+Release 1.14.0 expands Entity Studio to 425 subjects: 369 science identities
+plus the unchanged 56 product identities. Culinary science is registry version
+14 and culinary commerce is registry version 8. The 82 Lebanese identities do
+not create a product, offer, supplier, stock record or purchasing path. The
+public graph remains 23 science entities across 18 canonical page owners per
+language.
+
 - WordPress keeps consumer publishing and commerce readiness metadata.
 - WooCommerce is the product, cart and stock authority. It becomes the payment
   authority only after gateway credentials and live acceptance.
@@ -293,6 +303,29 @@ the three private held market observations. One safe Syrian
 consumer gateway is `noindex,follow`, the
 other 195 Syrian entities remain private, and the public science graph contains
 23 entities across 18 canonical page owners per language.
+
+Release 1.14.0 preserves those Syria facts and expands the cumulative science
+registry to 369 entities by adding an 82-entity Lebanese regional foundation.
+All 82 Lebanese identities remain private, `noindex` and reference-only. The
+foundation covers regional and community foodways, dishes, preparations,
+ingredients, techniques, traditions, institutions, markets, restaurants, one
+trade-compliance rule and six retail observations. Entity Studio now resolves
+425 subjects: 369 science identities plus the same 56 product identities.
+Price-basis coverage remains 36 public WooCommerce prices plus 20 private
+planning prices. Release 1.14.0 creates zero new active or draft offers and
+does not change the 36-product public catalog, payment-disabled state, stock or
+public routes.
+
+Every Lebanese entity is governed by the current private Israel-Lebanon trade
+boundary. Israel Ministry of Economy and Industry Director-General Instruction
+2.4 dated 8 March 2026 is recorded as broadly prohibiting direct or indirect
+trade with enemy states and listing Lebanon. Complete99 must not contact a
+Lebanese supplier, order a sample, make payment, route a purchase through a
+third party or represent delivery from Lebanon without written legal and
+official authorization. The six retail observations are research benchmarks,
+not lawful supply routes, offers, landed-cost inputs or availability in Israel.
+This is a fail-closed operating rule, not legal advice or an approved
+exception.
 
 ## 9. Integrations and future hardware
 

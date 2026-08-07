@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-07 05:30:00"
+RELEASE_LAST_UPDATED = "2026-08-07 18:30:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,14 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the bilingual culinary-science registry to 369 entities and Entity Studio to 425 subjects: 369 science identities plus 56 product identities.</li>"
+                "<li>Added an 82-entity private Lebanese regional foundation with 27 dishes, 13 regional or topic hubs, eight ingredients, five techniques, nine traditions, institutions, markets, restaurants, six dated retail observations and one central trade-compliance rule.</li>"
+                "<li>Kept Beirut, Mount Lebanon and Chouf, North and Tripoli, Bekaa and Baalbek-Hermel, South Lebanon, Jewish family, Druze, Armenian-Lebanese and Palestinian-in-Lebanon evidence within their sourced regional or community boundaries.</li>"
+                "<li>Kept shared Levantine dish families separate from Syrian identities, blocked exclusive-origin claims, distinguished pomegranate concentrate from molasses and retained every external price as a dated non-comparable reference.</li>"
+                "<li>Preserved the exact 36-product public WooCommerce store, 23 public science entities, 18 public page owners, prices, stock, cart, disabled payment state and no-role boundary unchanged. All 82 Lebanese identities remain private, noindex and reference-only.</li>"
+                "</ul>"
+                "<h4>1.13.0</h4>"
                 "<ul>"
                 "<li>Expanded the bilingual culinary-science registry to 287 entities and Entity Studio to 343 subjects: 287 science identities plus 56 product identities.</li>"
                 "<li>Added 86 private, source-bound Syrian regional-depth identities plus one separate pomegranate-concentrate identity, bringing the Syrian graph to 196 entities across 56 dishes, 55 ingredients, 21 regional or topic hubs, 17 techniques, 17 traditions, 15 preparations, markets, restaurants and hospitality institutions.</li>"
