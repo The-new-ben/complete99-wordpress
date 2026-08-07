@@ -54,10 +54,37 @@ snapshot and manifest, transactional storage, migration invariants, sync
 configuration, robots file, public health and rendered homepage. It must not
 stabilize, finalize, roll back, deploy, purge caches or materialize commerce.
 
+If and only if both the current database fingerprint and manifest digest have
+changed from the historical failed-recovery observation while every non-DB
+safety invariant and every prior-state identity still matches exactly, the
+run records `interrupted_forward_database_mismatch_observed`. This is a
+successful evidence-capture result, not recovery authority. Its observation-v2
+receipt contains a strict allowlist of non-secret booleans, versions,
+deployment IDs, digests, the aggregate database manifest and transactional
+storage identity, plus a canonical receipt digest and the deterministic
+mismatch list. It contains no database rows, option values, rollback journal,
+filesystem path, lock owner, fence, token or credential. The receipt and audit
+both record `proof_consumed: false`.
+
+The mismatch path is rejected unless both database identities changed,
+`interrupted_forward_candidate` is false for that reason alone, and the
+plugin, runtime, migration invariants, baseline journal, prior plugin and
+deployment identities, marker, version, sync state, robots checkpoints,
+rollback-artifact absence, owner phase and lease are otherwise exact. Health,
+homepage and robots acceptance and both temporary-bridge deletion/route-404
+proofs remain mandatory. Observation-only workflow execution exits
+immediately after independent audit validation and cannot reach dry-run,
+production, recovery or commerce steps.
+
 The resulting non-secret recovery audit must be copied into
 `docs/recovery-proofs/observations/` without changing its bytes. A reviewed v2
 proof then binds that audit, its workflow commit and run ID, the complete
 database manifest, storage identity and every current release identity.
+An unchanged observation continues to use adoption schema v1. A DB-mismatch
+observation can be authorized only by a separately reviewed adoption schema
+v2 that binds the exact observation-v2 path, bytes, commit, run ID, current
+fingerprint, full manifest and storage identity. The historical v1 proof or
+observation-v2 receipt alone can never authorize adoption.
 
 ### Step 2: proof-gated forward adoption
 

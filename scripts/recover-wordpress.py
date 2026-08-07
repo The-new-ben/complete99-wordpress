@@ -1252,6 +1252,169 @@ def validate_interrupted_forward_observation_audit(
         )
 
 
+def validate_interrupted_forward_database_mismatch_observation_audit(
+    deployer: Any,
+    audit: dict[str, Any],
+    failed: dict[str, Any],
+    prior: dict[str, Any],
+    recovery_identity: dict[str, str],
+    adoption: dict[str, Any],
+) -> None:
+    """Authenticate a DB-drift observation without treating it as authority."""
+    validate_reviewed_audit_common(
+        deployer,
+        audit,
+        failed["deployment_id"],
+        "Interrupted forward database mismatch observation",
+    )
+    expected_keys = {
+        "bootstrap_cleanup",
+        "bridge_site_identity",
+        "cleanup",
+        "commit",
+        "decision",
+        "deployment_id",
+        "discovery",
+        "finished_at",
+        "health",
+        "identity",
+        "interrupted_forward_observation",
+        "interrupted_forward_proof",
+        "local_test",
+        "proof_consumed",
+        "rendered_home",
+        "result",
+        "robots",
+        "started_at",
+    }
+    discovery = audit.get("discovery")
+    discovery_bootstrap = (
+        discovery.get("bootstrap_cleanup") if isinstance(discovery, dict) else None
+    )
+    discovery_cleanup = (
+        discovery.get("cleanup") if isinstance(discovery, dict) else None
+    )
+    expected_historical_path = (
+        f"docs/recovery-proofs/{failed['deployment_id']}.json"
+    )
+    observation = audit.get("interrupted_forward_observation")
+    if (
+        set(audit) != expected_keys
+        or audit.get("commit") != adoption["observation_commit"]
+        or audit.get("decision")
+        != "observe_interrupted_forward_database_mismatch"
+        or audit.get("result")
+        != "interrupted_forward_database_mismatch_observed"
+        or audit.get("proof_consumed") is not False
+        or not isinstance(discovery, dict)
+        or set(discovery)
+        != {
+            "bootstrap_cleanup",
+            "cleanup",
+            "owner_deployment_id",
+            "owner_phase",
+            "probe_id",
+            "result",
+        }
+        or discovery.get("probe_id")
+        != f"c99-recovery-probe-{adoption['observation_run_id']}-1"
+        or discovery.get("owner_deployment_id") != failed["deployment_id"]
+        or discovery.get("owner_phase") != "installing"
+        or discovery.get("result") != "owner-discovered"
+        or not exact_json_equal(
+            discovery_bootstrap,
+            {
+                "exact_name": "c99-deploy-bootstrap",
+                "known_id": 5,
+                "known_id_matched": False,
+                "removed_ids": [],
+                "row_absence_verified": True,
+            },
+        )
+        or not isinstance(discovery_cleanup, dict)
+        or set(discovery_cleanup)
+        != {
+            "removed_ids",
+            "route_404",
+            "row_absence_verified",
+            "snippet_active",
+            "snippet_deleted",
+        }
+        or not isinstance(discovery_cleanup.get("removed_ids"), list)
+        or len(discovery_cleanup["removed_ids"]) != 1
+        or type(discovery_cleanup["removed_ids"][0]) is not int
+        or discovery_cleanup["removed_ids"][0] <= 0
+        or discovery_cleanup.get("route_404") is not True
+        or discovery_cleanup.get("row_absence_verified") is not True
+        or discovery_cleanup.get("snippet_active") is not False
+        or discovery_cleanup.get("snippet_deleted") is not True
+        or not isinstance(observation, dict)
+        or not exact_json_equal(
+            audit.get("interrupted_forward_proof"),
+            {
+                "path": expected_historical_path,
+                "proof_sha256": adoption["observation_proof_sha256"],
+                "schema": "complete99-interrupted-forward-proof/v1",
+            },
+        )
+    ):
+        raise deployer.DeployError(
+            "Interrupted forward database mismatch observation audit schema is invalid"
+        )
+    expected_observation = validate_interrupted_forward_database_mismatch_status(
+        deployer,
+        observation.get("safe_status"),
+        {
+            "proof": {"failed_run": failed, "prior_run": prior},
+            "recovery_identity": recovery_identity,
+        },
+    )
+    if (
+        not exact_json_equal(observation, expected_observation)
+        or observation.get("database_fingerprint")
+        != adoption["observed_database_fingerprint"]
+        or observation.get("database_manifest_sha256")
+        != adoption["observed_database_manifest_sha256"]
+        or not exact_json_equal(
+            observation.get("database_manifest"),
+            adoption["observed_database_manifest"],
+        )
+        or not exact_json_equal(
+            observation.get("database_storage"),
+            adoption["observed_database_storage"],
+        )
+        or not exact_json_equal(
+            audit.get("health"),
+            {
+                "component": "complete99-platform",
+                "database_version": adoption["observed_version"],
+                "deployment_id": adoption["observed_deployment_id"],
+                "status": "ok",
+                "sync_configured": True,
+                "version": adoption["observed_version"],
+            },
+        )
+        or not exact_json_equal(
+            audit.get("robots"),
+            {"sha256": adoption["observed_robots_sha256"], "status": 200},
+        )
+        or not isinstance(audit.get("rendered_home"), dict)
+        or audit["rendered_home"].get("deployment_id")
+        != adoption["observed_deployment_id"]
+        or audit["rendered_home"].get("version")
+        != adoption["observed_version"]
+        or audit["rendered_home"].get("exact_path") != "/"
+        or deployer.re.fullmatch(
+            r"[a-f0-9]{64}",
+            str(audit["rendered_home"].get("body_sha256", "")),
+        )
+        is None
+    ):
+        raise deployer.DeployError(
+            "Interrupted forward database mismatch observation conflicts with the reviewed state"
+        )
+
+
 def load_interrupted_forward_proof(
     deployer: Any,
     raw_path: str,
@@ -1459,6 +1622,9 @@ def load_interrupted_forward_proof(
     base_proof_sha256 = canonical_proof_sha256(base_proof)
     adoption = proof.get("forward_adoption")
     if schema == "complete99-interrupted-forward-proof/v2":
+        adoption_schema = (
+            adoption.get("schema") if isinstance(adoption, dict) else None
+        )
         adoption_keys = {
             "observation_audit_path",
             "observation_audit_sha256",
@@ -1480,8 +1646,11 @@ def load_interrupted_forward_proof(
         if (
             not isinstance(adoption, dict)
             or set(adoption) != adoption_keys
-            or adoption.get("schema")
-            != "complete99-interrupted-forward-adoption/v1"
+            or adoption_schema
+            not in {
+                "complete99-interrupted-forward-adoption/v1",
+                "complete99-interrupted-forward-adoption/v2",
+            }
             or type(adoption.get("observation_run_id")) is not int
             or adoption["observation_run_id"] <= failed["run_id"]
             or type(adoption.get("observation_commit")) is not str
@@ -1499,10 +1668,26 @@ def load_interrupted_forward_proof(
             != failed["installed_plugin_sha256"]
             or adoption.get("observed_robots_sha256") != prior["robots_sha256"]
             or adoption.get("observed_version") != failed["version"]
-            or adoption.get("observed_database_fingerprint")
-            != recovery_identity["database_fingerprint"]
-            or adoption.get("observed_database_manifest_sha256")
-            != recovery_identity["database_manifest_sha256"]
+            or (
+                adoption_schema
+                == "complete99-interrupted-forward-adoption/v1"
+                and (
+                    adoption.get("observed_database_fingerprint")
+                    != recovery_identity["database_fingerprint"]
+                    or adoption.get("observed_database_manifest_sha256")
+                    != recovery_identity["database_manifest_sha256"]
+                )
+            )
+            or (
+                adoption_schema
+                == "complete99-interrupted-forward-adoption/v2"
+                and (
+                    adoption.get("observed_database_fingerprint")
+                    == recovery_identity["database_fingerprint"]
+                    or adoption.get("observed_database_manifest_sha256")
+                    == recovery_identity["database_manifest_sha256"]
+                )
+            )
         ):
             raise deployer.DeployError(
                 "Interrupted forward v2 adoption identity is invalid"
@@ -1568,13 +1753,23 @@ def load_interrupted_forward_proof(
             raise deployer.DeployError(
                 "Interrupted forward observation audit must be distinct from source evidence"
             )
-        validate_interrupted_forward_observation_audit(
-            deployer,
-            observation_audit,
-            failed,
-            prior,
-            adoption,
-        )
+        if adoption_schema == "complete99-interrupted-forward-adoption/v2":
+            validate_interrupted_forward_database_mismatch_observation_audit(
+                deployer,
+                observation_audit,
+                failed,
+                prior,
+                recovery_identity,
+                adoption,
+            )
+        else:
+            validate_interrupted_forward_observation_audit(
+                deployer,
+                observation_audit,
+                failed,
+                prior,
+                adoption,
+            )
     return {
         "base_proof_sha256": base_proof_sha256,
         "path": str(path.relative_to(ROOT)).replace("\\", "/"),
@@ -1802,6 +1997,194 @@ def validate_interrupted_forward_status(
         "runtime_version": failed["version"],
         "schema": "complete99-interrupted-forward-observation/v1",
         "state_exists": True,
+    }
+
+
+INTERRUPTED_FORWARD_DATABASE_MISMATCHES = [
+    "database_fingerprint",
+    "database_manifest_sha256",
+    "interrupted_forward_candidate",
+]
+
+INTERRUPTED_FORWARD_SAFE_STATUS_KEYS = (
+    "adopted_forward_no_rollback",
+    "baseline_database_fingerprint",
+    "baseline_database_journal_valid",
+    "baseline_sync_configured",
+    "baseline_sync_secret_existed",
+    "current_active",
+    "current_database_version",
+    "current_deployment",
+    "current_plugin_main_exists",
+    "current_plugin_sha256",
+    "current_robots_sha256",
+    "current_sync_configured",
+    "current_target_dir_exists",
+    "current_version",
+    "database_fingerprint",
+    "database_fingerprint_available",
+    "database_manifest",
+    "database_manifest_sha256",
+    "database_restored",
+    "database_storage",
+    "deployment_id",
+    "expected_sha256",
+    "expected_version",
+    "had_plugin",
+    "installed_plugin_sha256",
+    "interrupted_forward_candidate",
+    "interrupted_forward_database_manifest_sha256",
+    "interrupted_forward_proof_sha256",
+    "lock_owned",
+    "migration_failed",
+    "migration_invariants_valid",
+    "no_rollback_artifacts",
+    "phase",
+    "post_install_database_fingerprint",
+    "prior_active",
+    "prior_deployment",
+    "prior_plugin_main_exists",
+    "prior_plugin_sha256",
+    "prior_target_dir_exists",
+    "prior_version",
+    "process_lock_available",
+    "recovery_ready",
+    "robots_applied",
+    "robots_managed_sha256",
+    "robots_prior_exists",
+    "robots_prior_sha256",
+    "robots_restored",
+    "runtime_loaded",
+    "runtime_version",
+    "state_exists",
+)
+
+
+def validate_interrupted_forward_database_mismatch_status(
+    deployer: Any,
+    status: dict[str, Any],
+    loaded_proof: dict[str, Any],
+) -> dict[str, Any]:
+    """Capture DB-only drift while proving every other forward invariant."""
+    if not isinstance(status, dict):
+        raise deployer.DeployError(
+            "Interrupted forward database mismatch status is invalid"
+        )
+    proof = loaded_proof["proof"]
+    failed = proof["failed_run"]
+    prior = proof["prior_run"]
+    historical_database_fingerprint = loaded_proof["recovery_identity"][
+        "database_fingerprint"
+    ]
+    historical_database_manifest_sha256 = loaded_proof["recovery_identity"][
+        "database_manifest_sha256"
+    ]
+    validate_database_manifest(
+        deployer,
+        status.get("database_manifest"),
+        status.get("database_manifest_sha256"),
+        "Interrupted forward drift database",
+    )
+    validate_transactional_storage(
+        deployer,
+        status.get("database_storage"),
+        "Interrupted forward drift database",
+    )
+    current_database_fingerprint = status.get("database_fingerprint")
+    current_database_manifest_sha256 = status.get("database_manifest_sha256")
+    recorded_plugin_sha256 = status.get("installed_plugin_sha256")
+    if (
+        type(current_database_fingerprint) is not str
+        or deployer.re.fullmatch(
+            r"[a-f0-9]{64}", current_database_fingerprint
+        )
+        is None
+        or current_database_fingerprint == historical_database_fingerprint
+        or current_database_manifest_sha256
+        == historical_database_manifest_sha256
+        or status.get("deployment_id") != failed["deployment_id"]
+        or status.get("phase") != "installing"
+        or status.get("state_exists") is not True
+        or status.get("lock_owned") is not True
+        or status.get("recovery_ready") is not True
+        or status.get("process_lock_available") is not True
+        or status.get("expected_sha256") != failed["artifact_sha256"]
+        or status.get("expected_version") != failed["version"]
+        or recorded_plugin_sha256
+        not in {"", failed["installed_plugin_sha256"]}
+        or status.get("current_target_dir_exists") is not True
+        or status.get("current_plugin_main_exists") is not True
+        or status.get("current_plugin_sha256")
+        != failed["installed_plugin_sha256"]
+        or status.get("current_active") is not True
+        or status.get("current_version") != failed["version"]
+        or status.get("runtime_loaded") is not True
+        or status.get("runtime_version") != failed["version"]
+        or status.get("migration_failed") is not False
+        or status.get("migration_invariants_valid") is not True
+        or status.get("no_rollback_artifacts") is not True
+        or status.get("database_restored") is not False
+        or status.get("baseline_database_journal_valid") is not True
+        or status.get("baseline_sync_secret_existed") is not True
+        or status.get("baseline_sync_configured") is not True
+        or status.get("current_deployment") != failed["deployment_id"]
+        or status.get("current_database_version") != failed["version"]
+        or status.get("baseline_database_fingerprint")
+        != failed["baseline_database_fingerprint"]
+        or (
+            status.get("post_install_database_fingerprint") != ""
+            and (
+                type(status.get("post_install_database_fingerprint"))
+                is not str
+                or deployer.re.fullmatch(
+                    r"[a-f0-9]{64}",
+                    status["post_install_database_fingerprint"],
+                )
+                is None
+            )
+        )
+        or status.get("current_sync_configured") is not True
+        or status.get("database_fingerprint_available") is not True
+        or status.get("had_plugin") is not True
+        or status.get("prior_target_dir_exists") is not True
+        or status.get("prior_plugin_main_exists") is not True
+        or status.get("prior_plugin_sha256") != prior["plugin_sha256"]
+        or status.get("prior_version") != prior["version"]
+        or status.get("prior_active") is not True
+        or status.get("prior_deployment") != prior["deployment_id"]
+        or status.get("robots_applied") is not True
+        or status.get("robots_restored") is not False
+        or status.get("robots_prior_exists") is not True
+        or status.get("robots_prior_sha256") != prior["robots_sha256"]
+        or status.get("robots_managed_sha256") != prior["robots_sha256"]
+        or status.get("current_robots_sha256") != prior["robots_sha256"]
+        or status.get("adopted_forward_no_rollback") is not False
+        or status.get("interrupted_forward_candidate") is not False
+        or status.get("interrupted_forward_proof_sha256") != ""
+        or status.get("interrupted_forward_database_manifest_sha256") != ""
+    ):
+        raise deployer.DeployError(
+            "Interrupted forward mismatch was not isolated to both reviewed database identities"
+        )
+    safe_status = {
+        key: status.get(key) for key in INTERRUPTED_FORWARD_SAFE_STATUS_KEYS
+    }
+    safe_status_sha256 = canonical_proof_sha256(safe_status)
+    return {
+        "database_fingerprint": current_database_fingerprint,
+        "database_identity_changed": True,
+        "database_manifest": status["database_manifest"],
+        "database_manifest_sha256": current_database_manifest_sha256,
+        "database_storage": status["database_storage"],
+        "historical_database_fingerprint": historical_database_fingerprint,
+        "historical_database_manifest_sha256": (
+            historical_database_manifest_sha256
+        ),
+        "mismatches": list(INTERRUPTED_FORWARD_DATABASE_MISMATCHES),
+        "proof_consumed": False,
+        "safe_status": safe_status,
+        "safe_status_sha256": safe_status_sha256,
+        "schema": "complete99-interrupted-forward-observation/v2",
     }
 
 
@@ -3159,10 +3542,25 @@ def main() -> int:
                 "schema": interrupted_proof["schema"],
             }
             if interrupted_observe_only:
-                observation = validate_interrupted_forward_status(
-                    deployer,
-                    status,
-                    interrupted_proof,
+                recovery_identity = interrupted_proof["recovery_identity"]
+                database_drift = (
+                    status.get("database_fingerprint")
+                    != recovery_identity["database_fingerprint"]
+                    and status.get("database_manifest_sha256")
+                    != recovery_identity["database_manifest_sha256"]
+                )
+                observation = (
+                    validate_interrupted_forward_database_mismatch_status(
+                        deployer,
+                        status,
+                        interrupted_proof,
+                    )
+                    if database_drift
+                    else validate_interrupted_forward_status(
+                        deployer,
+                        status,
+                        interrupted_proof,
+                    )
                 )
                 observation_commit = os.environ.get("GITHUB_SHA", "")
                 if args.local_test and not observation_commit:
@@ -3192,8 +3590,17 @@ def main() -> int:
                     client,
                     prior_forward["robots_sha256"],
                 )
-                audit["decision"] = "observe_interrupted_forward"
-                audit["result"] = "interrupted_forward_observed"
+                if database_drift:
+                    audit["decision"] = (
+                        "observe_interrupted_forward_database_mismatch"
+                    )
+                    audit["proof_consumed"] = False
+                    audit["result"] = (
+                        "interrupted_forward_database_mismatch_observed"
+                    )
+                else:
+                    audit["decision"] = "observe_interrupted_forward"
+                    audit["result"] = "interrupted_forward_observed"
                 raise ObservationComplete()
 
             if status.get("phase") == "installing":
@@ -4054,15 +4461,14 @@ def main() -> int:
         )
         audit_path = deployer.write_audit(args.audit_dir.resolve(), audit)
 
-    print(
-        json.dumps(
-            {
-                "audit": str(audit_path),
-                "deployment_id": args.deployment_id,
-                "result": audit["result"],
-            }
-        )
-    )
+    summary = {
+        "audit": str(audit_path),
+        "deployment_id": args.deployment_id,
+        "result": audit["result"],
+    }
+    if "proof_consumed" in audit:
+        summary["proof_consumed"] = audit["proof_consumed"]
+    print(json.dumps(summary))
     if primary_error:
         raise primary_error
     return 0

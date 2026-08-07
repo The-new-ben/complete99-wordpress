@@ -234,12 +234,15 @@ def interrupted_forward_status(
         "current_target_dir_exists": True,
         "current_version": failed["version"],
         "database_fingerprint": database_fingerprint,
+        "database_fingerprint_available": True,
         "database_manifest": manifest,
         "database_manifest_sha256": manifest_sha256,
+        "database_restored": False,
         "database_storage": {"engine": "INNODB", "tables": 3},
         "deployment_id": failed["deployment_id"],
         "expected_sha256": failed["artifact_sha256"],
         "expected_version": failed["version"],
+        "had_plugin": True,
         "installed_plugin_sha256": (
             failed["installed_plugin_sha256"] if adopted else ""
         ),
@@ -256,12 +259,21 @@ def interrupted_forward_status(
         "no_rollback_artifacts": True,
         "phase": status_phase,
         "post_install_database_fingerprint": (
-            database_fingerprint if adopted else ""
+            database_fingerprint
         ),
+        "prior_active": True,
+        "prior_deployment": prior["deployment_id"],
+        "prior_plugin_main_exists": True,
+        "prior_plugin_sha256": prior["plugin_sha256"],
+        "prior_target_dir_exists": True,
+        "prior_version": prior["version"],
         "process_lock_available": True,
         "recovery_ready": (not adopted) or status_phase == "committing",
         "robots_applied": True,
         "robots_managed_sha256": prior["robots_sha256"],
+        "robots_prior_exists": True,
+        "robots_prior_sha256": prior["robots_sha256"],
+        "robots_restored": False,
         "runtime_loaded": True,
         "runtime_version": failed["version"],
         "stabilized": adopted,
@@ -2090,6 +2102,136 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             ):
                 RECOVER.load_interrupted_forward_proof(DEPLOY, str(outside))
 
+    def test_adoption_v2_loader_selects_only_database_mismatch_audit(self) -> None:
+        loaded = interrupted_forward_loaded(version=2)
+        failed = loaded["proof"]["failed_run"]
+        base_proof = {
+            "failed_run": failed,
+            "prior_run": loaded["proof"]["prior_run"],
+        }
+        historical_identity = {
+            "database_fingerprint": "0" * 64,
+            "database_manifest_sha256": "1" * 64,
+        }
+        adoption = loaded["proof"]["forward_adoption"]
+        adoption["schema"] = "complete99-interrupted-forward-adoption/v2"
+        proof = {**base_proof, "forward_adoption": adoption}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_root = root / "docs" / "recovery-proofs"
+            proof_root.mkdir(parents=True)
+            historical_path = proof_root / f"{failed['deployment_id']}.json"
+            historical_path.write_text(
+                json.dumps(
+                    {
+                        "proof": base_proof,
+                        "proof_sha256": RECOVER.canonical_proof_sha256(
+                            base_proof
+                        ),
+                        "schema": "complete99-interrupted-forward-proof/v1",
+                    }
+                ),
+                encoding="utf-8",
+            )
+            v2_path = proof_root / f"{failed['deployment_id']}-v2.json"
+
+            def write_v2(value: dict[str, Any]) -> None:
+                v2_path.write_text(
+                    json.dumps(
+                        {
+                            "proof": value,
+                            "proof_sha256": RECOVER.canonical_proof_sha256(value),
+                            "schema": "complete99-interrupted-forward-proof/v2",
+                        }
+                    ),
+                    encoding="utf-8",
+                )
+
+            write_v2(proof)
+            observation = {"schema": "sentinel-observation"}
+
+            def bound_audit(
+                _deployer: Any,
+                raw_path: str,
+                _expected_sha256: str,
+                _label: str,
+            ) -> dict[str, Any]:
+                return (
+                    observation
+                    if raw_path == adoption["observation_audit_path"]
+                    else {}
+                )
+
+            mismatch_validator = mock.Mock()
+            legacy_validator = mock.Mock()
+
+            def load() -> dict[str, Any]:
+                with mock.patch.object(
+                    RECOVER,
+                    "ROOT",
+                    root,
+                ), mock.patch.object(
+                    RECOVER,
+                    "load_bound_recovery_audit",
+                    side_effect=bound_audit,
+                ), mock.patch.object(
+                    RECOVER,
+                    "validate_interrupted_forward_source_audits",
+                    return_value=historical_identity,
+                ), mock.patch.object(
+                    RECOVER,
+                    "validate_interrupted_forward_database_mismatch_observation_audit",
+                    mismatch_validator,
+                ), mock.patch.object(
+                    RECOVER,
+                    "validate_interrupted_forward_observation_audit",
+                    legacy_validator,
+                ):
+                    return RECOVER.load_interrupted_forward_proof(
+                        DEPLOY,
+                        str(v2_path),
+                    )
+
+            result = load()
+            self.assertEqual(
+                "complete99-interrupted-forward-adoption/v2",
+                result["proof"]["forward_adoption"]["schema"],
+            )
+            mismatch_validator.assert_called_once()
+            legacy_validator.assert_not_called()
+
+            for label, mutate in (
+                (
+                    "v1 cannot bind drift",
+                    lambda value: value["forward_adoption"].__setitem__(
+                        "schema", "complete99-interrupted-forward-adoption/v1"
+                    ),
+                ),
+                (
+                    "v2 requires fingerprint drift",
+                    lambda value: value["forward_adoption"].__setitem__(
+                        "observed_database_fingerprint",
+                        historical_identity["database_fingerprint"],
+                    ),
+                ),
+                (
+                    "v2 requires manifest drift",
+                    lambda value: value["forward_adoption"].__setitem__(
+                        "observed_database_manifest_sha256",
+                        historical_identity["database_manifest_sha256"],
+                    ),
+                ),
+            ):
+                with self.subTest(label=label):
+                    changed = copy.deepcopy(proof)
+                    mutate(changed)
+                    write_v2(changed)
+                    with self.assertRaisesRegex(
+                        DEPLOY.DeployError,
+                        "adoption identity",
+                    ):
+                        load()
+
     def test_interrupted_status_requires_every_forward_safety_signal(self) -> None:
         loaded = interrupted_forward_loaded(version=1)
         status = interrupted_forward_status(loaded)
@@ -2127,6 +2269,139 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
                         malformed,
                         loaded,
                     )
+
+    def test_database_mismatch_observation_requires_coupled_drift_only(self) -> None:
+        loaded = interrupted_forward_loaded(version=1)
+        status = interrupted_forward_status(loaded)
+        historical_manifest = copy.deepcopy(status["database_manifest"])
+        manifest = copy.deepcopy(historical_manifest)
+        manifest["posts_sha256"] = "f" * 64
+        status["database_manifest"] = manifest
+        status["database_manifest_sha256"] = hashlib.sha256(
+            json.dumps(
+                manifest,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        status["database_fingerprint"] = "f" * 64
+        status["interrupted_forward_candidate"] = False
+        receipt = RECOVER.validate_interrupted_forward_database_mismatch_status(
+            DEPLOY,
+            status,
+            loaded,
+        )
+        self.assertEqual(
+            "complete99-interrupted-forward-observation/v2",
+            receipt["schema"],
+        )
+        self.assertFalse(receipt["proof_consumed"])
+        self.assertEqual(
+            RECOVER.INTERRUPTED_FORWARD_DATABASE_MISMATCHES,
+            receipt["mismatches"],
+        )
+        self.assertEqual(
+            RECOVER.canonical_proof_sha256(receipt["safe_status"]),
+            receipt["safe_status_sha256"],
+        )
+
+        mutations = (
+            ("deployment", "deployment_id", "c99-prod-other-2000-1"),
+            ("phase", "phase", "installed"),
+            ("state", "state_exists", False),
+            ("lock", "lock_owned", False),
+            ("lease", "recovery_ready", False),
+            ("process lock", "process_lock_available", False),
+            ("artifact", "expected_sha256", "0" * 64),
+            ("expected version", "expected_version", "1.17.0"),
+            ("recorded plugin", "installed_plugin_sha256", "0" * 64),
+            ("target dir", "current_target_dir_exists", False),
+            ("plugin main", "current_plugin_main_exists", False),
+            ("plugin tree", "current_plugin_sha256", "0" * 64),
+            ("active", "current_active", False),
+            ("header version", "current_version", "1.17.0"),
+            ("runtime loaded", "runtime_loaded", False),
+            ("runtime version", "runtime_version", "1.17.0"),
+            ("migration failed", "migration_failed", True),
+            ("migration invariants", "migration_invariants_valid", False),
+            ("rollback", "no_rollback_artifacts", False),
+            ("database restored", "database_restored", True),
+            ("journal", "baseline_database_journal_valid", False),
+            ("baseline sync exists", "baseline_sync_secret_existed", False),
+            ("baseline sync configured", "baseline_sync_configured", False),
+            ("marker", "current_deployment", "c99-prod-other-2000-1"),
+            ("database version", "current_database_version", "1.17.0"),
+            ("baseline fingerprint", "baseline_database_fingerprint", "0" * 64),
+            ("current sync", "current_sync_configured", False),
+            ("fingerprint unavailable", "database_fingerprint_available", False),
+            ("prior plugin absent", "had_plugin", False),
+            ("prior target", "prior_target_dir_exists", False),
+            ("prior main", "prior_plugin_main_exists", False),
+            ("prior plugin", "prior_plugin_sha256", "0" * 64),
+            ("prior version", "prior_version", "1.16.0"),
+            ("prior active", "prior_active", False),
+            ("prior deployment", "prior_deployment", "c99-prod-other-1900-1"),
+            ("robots applied", "robots_applied", False),
+            ("robots restored", "robots_restored", True),
+            ("prior robots absent", "robots_prior_exists", False),
+            ("prior robots", "robots_prior_sha256", "0" * 64),
+            ("managed robots", "robots_managed_sha256", "0" * 64),
+            ("current robots", "current_robots_sha256", "0" * 64),
+            ("adopted", "adopted_forward_no_rollback", True),
+            ("candidate true", "interrupted_forward_candidate", True),
+            ("state proof", "interrupted_forward_proof_sha256", "0" * 64),
+            (
+                "state manifest proof",
+                "interrupted_forward_database_manifest_sha256",
+                "0" * 64,
+            ),
+            (
+                "unsafe lineage",
+                "post_install_database_fingerprint",
+                "secret-like-value",
+            ),
+        )
+        for label, field, replacement in mutations:
+            with self.subTest(label=label):
+                changed = copy.deepcopy(status)
+                changed[field] = replacement
+                with self.assertRaises(DEPLOY.DeployError):
+                    RECOVER.validate_interrupted_forward_database_mismatch_status(
+                        DEPLOY,
+                        changed,
+                        loaded,
+                    )
+
+        only_fingerprint = copy.deepcopy(status)
+        only_fingerprint["database_manifest"] = historical_manifest
+        only_fingerprint["database_manifest_sha256"] = loaded[
+            "recovery_identity"
+        ]["database_manifest_sha256"]
+        with self.assertRaises(DEPLOY.DeployError):
+            RECOVER.validate_interrupted_forward_database_mismatch_status(
+                DEPLOY,
+                only_fingerprint,
+                loaded,
+            )
+        only_manifest = copy.deepcopy(status)
+        only_manifest["database_fingerprint"] = loaded["recovery_identity"][
+            "database_fingerprint"
+        ]
+        with self.assertRaises(DEPLOY.DeployError):
+            RECOVER.validate_interrupted_forward_database_mismatch_status(
+                DEPLOY,
+                only_manifest,
+                loaded,
+            )
+        invalid_storage = copy.deepcopy(status)
+        invalid_storage["database_storage"] = {"engine": "MYISAM", "tables": 3}
+        with self.assertRaises(DEPLOY.DeployError):
+            RECOVER.validate_interrupted_forward_database_mismatch_status(
+                DEPLOY,
+                invalid_storage,
+                loaded,
+            )
 
     def test_bridge_markers_bind_v2_proof_and_reviewed_database(self) -> None:
         loaded = interrupted_forward_loaded(version=2)
@@ -2809,6 +3084,97 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
         audit = write_audit.call_args.args[1]
         self.assertEqual("interrupted_forward_observed", audit["result"])
         self.assertEqual("observe_interrupted_forward", audit["decision"])
+
+    def test_database_mismatch_observation_succeeds_as_unconsumed_evidence(self) -> None:
+        loaded = interrupted_forward_loaded(version=1)
+        status = interrupted_forward_status(loaded)
+        manifest = copy.deepcopy(status["database_manifest"])
+        manifest["postmeta_sha256"] = "f" * 64
+        status["database_manifest"] = manifest
+        status["database_manifest_sha256"] = hashlib.sha256(
+            json.dumps(
+                manifest,
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        status["database_fingerprint"] = "f" * 64
+        status["interrupted_forward_candidate"] = False
+        fake, adopt, rollback, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=status,
+            observe_only=True,
+        )
+        adopt.assert_not_called()
+        rollback.assert_not_called()
+        fake.finalize_deployment.assert_not_called()
+        fake.verify_health.assert_called_once()
+        fake.verify_rendered_home.assert_called_once()
+        fake.verify_managed_robots.assert_called_once()
+        fake.delete_snippet_and_prove_404.assert_called_once()
+        audit = write_audit.call_args.args[1]
+        self.assertEqual(
+            "interrupted_forward_database_mismatch_observed",
+            audit["result"],
+        )
+        self.assertEqual(
+            "observe_interrupted_forward_database_mismatch",
+            audit["decision"],
+        )
+        self.assertFalse(audit["proof_consumed"])
+        bootstrap = {
+            "exact_name": "c99-deploy-bootstrap",
+            "known_id": 5,
+            "known_id_matched": False,
+            "removed_ids": [],
+            "row_absence_verified": True,
+        }
+        audit["bootstrap_cleanup"] = bootstrap
+        audit["bridge_site_identity"] = {
+            "home_host": "complete99.co.il",
+            "rest_host": "complete99.co.il",
+            "siteurl_host": "complete99.co.il",
+        }
+        audit["identity"] = {
+            "id": 1,
+            "roles": ["administrator"],
+            "site_identity": {
+                "home": "https://complete99.co.il",
+                "url": "https://complete99.co.il",
+            },
+        }
+        audit["local_test"] = False
+        receipt = audit["interrupted_forward_observation"]
+        adoption = {
+            "observation_commit": "d" * 40,
+            "observation_proof_sha256": loaded["proof_sha256"],
+            "observation_run_id": 2100,
+            "observed_database_fingerprint": receipt["database_fingerprint"],
+            "observed_database_manifest": receipt["database_manifest"],
+            "observed_database_manifest_sha256": receipt[
+                "database_manifest_sha256"
+            ],
+            "observed_database_storage": receipt["database_storage"],
+            "observed_deployment_id": loaded["proof"]["failed_run"][
+                "deployment_id"
+            ],
+            "observed_plugin_sha256": loaded["proof"]["failed_run"][
+                "installed_plugin_sha256"
+            ],
+            "observed_robots_sha256": loaded["proof"]["prior_run"][
+                "robots_sha256"
+            ],
+            "observed_version": loaded["proof"]["failed_run"]["version"],
+        }
+        RECOVER.validate_interrupted_forward_database_mismatch_observation_audit(
+            DEPLOY,
+            audit,
+            loaded["proof"]["failed_run"],
+            loaded["proof"]["prior_run"],
+            loaded["recovery_identity"],
+            adoption,
+        )
 
     def test_recovery_resumes_durable_adoption_through_idempotent_receipt(self) -> None:
         loaded = interrupted_forward_loaded(version=2)
