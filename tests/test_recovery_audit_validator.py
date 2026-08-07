@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Callable
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +40,10 @@ DATABASE_SHA = "c" * 64
 ROBOTS_SHA = "d" * 64
 RECEIPT_SHA = "e" * 64
 BODY_SHA = "f" * 64
+OBSERVED_DATABASE_SHA = "7" * 64
+RECONCILED_DATABASE_SHA = "8" * 64
+V2_RECEIPT_SCHEMA = "complete99-orphaned-rollback-receipt/v2"
+TEST_PRIOR_PROOF_SHA = "a4ce856b05d66fcfe6a7ac062bfce6c336f12798d9022427e44a75c827304733"
 
 
 def cleanup_record() -> dict[str, object]:
@@ -316,6 +321,252 @@ def orphaned_observation_audit(proof_digest: str) -> dict[str, object]:
     }
 
 
+def write_reviewed_v2_proof(
+    repository_root: Path,
+) -> tuple[Path, dict[str, object], str]:
+    historical_path, historical_envelope, historical_digest = write_reviewed_proof(
+        repository_root
+    )
+    attestation = orphaned_observation_audit(historical_digest)
+    attestation_path = (
+        repository_root
+        / "docs"
+        / "recovery-proofs"
+        / "observations"
+        / f"{FAILED_ID}-run-40000000000.json"
+    )
+    attestation_path.parent.mkdir(parents=True, exist_ok=True)
+    attestation_path.write_text(
+        json.dumps(attestation, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    attestation_digest = hashlib.sha256(attestation_path.read_bytes()).hexdigest()
+    manifest, manifest_sha256 = database_manifest()
+    reconciliation = {
+        "attestation_audit_sha256": attestation_digest,
+        "attestation_path": attestation_path.relative_to(repository_root).as_posix(),
+        "attestation_run_id": 40000000000,
+        "attestation_sha256": attestation_digest,
+        "attestation_source_commit": "9" * 40,
+        "baseline_database_fingerprint": DATABASE_SHA,
+        "expected_reconciled_database_fingerprint": RECONCILED_DATABASE_SHA,
+        "mode": "preserve-reviewed-drift-marker-only",
+        "observed_database_fingerprint": OBSERVED_DATABASE_SHA,
+        "observed_deployment": FAILED_ID,
+        "preserved_manifest": manifest,
+        "preserved_manifest_sha256": manifest_sha256,
+        "prior_proof_sha256": historical_digest,
+        "schema": "complete99-orphaned-database-reconciliation/v1",
+        "target_deployment": PRIOR_ID,
+        "transactional_storage": {"engine": "INNODB", "tables": 3},
+    }
+    proof = {
+        **historical_envelope["proof"],
+        "database_reconciliation": reconciliation,
+    }
+    canonical = json.dumps(
+        proof,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    proof_digest = hashlib.sha256(canonical).hexdigest()
+    envelope = {
+        "schema": "complete99-orphaned-rollback-proof/v2",
+        "proof": proof,
+        "proof_sha256": proof_digest,
+    }
+    proof_path = historical_path.with_name(f"{FAILED_ID}-v2.json")
+    proof_path.write_text(
+        json.dumps(envelope, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return proof_path, envelope, proof_digest
+
+
+def v2_recovery_audit(
+    proof_digest: str,
+    *,
+    marker_rows_affected: int = 1,
+    receipt_resume: bool = False,
+) -> dict[str, object]:
+    manifest, manifest_sha256 = database_manifest()
+    attestation_bytes = (
+        json.dumps(
+            orphaned_observation_audit(TEST_PRIOR_PROOF_SHA),
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    ).encode("utf-8")
+    attestation_sha256 = hashlib.sha256(attestation_bytes).hexdigest()
+    marker_transition = (
+        "corrected" if marker_rows_affected == 1 else "already-correct"
+    )
+    audit = orphaned_audit(proof_digest)
+    audit.update(
+        {
+            "bootstrap_cleanup": bootstrap_cleanup_record(),
+            "bridge_site_identity": {
+                "home_host": "complete99.co.il",
+                "rest_host": "complete99.co.il",
+                "siteurl_host": "complete99.co.il",
+            },
+            "finished_at": "2026-08-07T14:00:01Z",
+            "identity": {
+                "id": 1,
+                "roles": ["administrator"],
+                "site_identity": {
+                    "home": "https://complete99.co.il",
+                    "url": "https://complete99.co.il",
+                },
+            },
+            "local_test": False,
+            "started_at": "2026-08-07T14:00:00Z",
+        }
+    )
+    audit["cleanup"] = observation_cleanup_record()
+    audit["discovery"] = {
+        "bootstrap_cleanup": bootstrap_cleanup_record(),
+        "cleanup": observation_cleanup_record(),
+        "owner_deployment_id": FAILED_ID,
+        "owner_phase": "committed" if receipt_resume else "rolling_back",
+        "probe_id": PROBE_ID,
+        "result": "owner-discovered",
+    }
+    audit["orphaned_rollback_proof"] = {
+        "path": f"docs/recovery-proofs/{FAILED_ID}-v2.json",
+        "proof_sha256": proof_digest,
+    }
+    audit["initial_status"] = {
+        "database_fingerprint": (
+            RECONCILED_DATABASE_SHA
+            if receipt_resume or marker_rows_affected == 0
+            else OBSERVED_DATABASE_SHA
+        ),
+        "database_manifest_sha256": manifest_sha256,
+        "database_storage": {"engine": "INNODB", "tables": 3},
+        "lock_owned": True,
+        "phase": "committed" if receipt_resume else "rolling_back",
+        "process_lock_available": True,
+        "projected_database_fingerprint": RECONCILED_DATABASE_SHA,
+        "projected_deployment_id": PRIOR_ID,
+        "recovery_ready": not receipt_resume,
+        "state_exists": False,
+    }
+    audit["pre_finalize_orphaned_identity"] = {
+        "phase": "committed",
+        "state_exists": False,
+        "lock_owned": True,
+        "recovery_ready": False,
+        "process_lock_available": True,
+        "current_active": True,
+        "current_target_dir_exists": True,
+        "current_plugin_main_exists": True,
+        "current_version": "1.16.0",
+        "current_database_version": "1.16.0",
+        "current_deployment": PRIOR_ID,
+        "current_plugin_sha256": PLUGIN_SHA,
+        "current_sync_configured": True,
+        "current_robots_sha256": ROBOTS_SHA,
+        "database_fingerprint": RECONCILED_DATABASE_SHA,
+        "database_manifest_sha256": manifest_sha256,
+    }
+    audit["orphaned_rollback_reconciliation"] = {
+        "attestation_audit_sha256": attestation_sha256,
+        "attestation_run_id": 40000000000,
+        "attestation_sha256": attestation_sha256,
+        "attestation_source_commit": "9" * 40,
+        "evidence_directory_exists": False,
+        "evidence_directory_sha256": "",
+        "historical_baseline_database_fingerprint": DATABASE_SHA,
+        "lock_retained": True,
+        "marker_corrected": marker_rows_affected == 1,
+        "marker_rows_affected": marker_rows_affected,
+        "marker_transition": marker_transition,
+        "mode": "preserve-reviewed-drift-marker-only",
+        "observed_database_fingerprint": OBSERVED_DATABASE_SHA,
+        "phase": "committed",
+        "preserved_manifest_sha256": manifest_sha256,
+        "proof_sha256": proof_digest,
+        "prior_proof_sha256": TEST_PRIOR_PROOF_SHA,
+        "receipt_schema": V2_RECEIPT_SCHEMA,
+        "receipt_sha256": RECEIPT_SHA,
+        "reconciled_database_fingerprint": RECONCILED_DATABASE_SHA,
+        "response_recovered": False,
+    }
+    audit["reconciled_status"] = {
+        "current_deployment": PRIOR_ID,
+        "database_fingerprint": RECONCILED_DATABASE_SHA,
+        "database_manifest_sha256": manifest_sha256,
+        "expected_sha256": PROOF_SHA,
+        "expected_version": "1.17.0",
+        "installed_plugin_sha256": "3" * 64,
+        "lock_owned": True,
+        "orphaned_historical_baseline_database_fingerprint": DATABASE_SHA,
+        "orphaned_marker_rows_affected": marker_rows_affected,
+        "orphaned_marker_transition": marker_transition,
+        "orphaned_observed_database_fingerprint": OBSERVED_DATABASE_SHA,
+        "orphaned_preserved_manifest_sha256": manifest_sha256,
+        "orphaned_reconciliation_mode": "preserve-reviewed-drift-marker-only",
+        "orphaned_prior_proof_sha256": TEST_PRIOR_PROOF_SHA,
+        "orphaned_attestation_run_id": 40000000000,
+        "orphaned_attestation_sha256": attestation_sha256,
+        "orphaned_attestation_audit_sha256": attestation_sha256,
+        "orphaned_attestation_source_commit": "9" * 40,
+        "orphaned_recovery_proof_sha256": proof_digest,
+        "orphaned_recovery_receipt_schema": V2_RECEIPT_SCHEMA,
+        "orphaned_recovery_receipt_sha256": RECEIPT_SHA,
+        "phase": "committed",
+        "post_install_database_fingerprint": "2" * 64,
+        "state_exists": False,
+    }
+    if receipt_resume:
+        del audit["orphaned_rollback_reconciliation"]
+        del audit["reconciled_status"]
+        audit["initial_orphaned_rollback_receipt"] = {
+            "phase": "committed",
+            "state_exists": False,
+            "lock_owned": True,
+            "expected_sha256": PROOF_SHA,
+            "expected_version": "1.17.0",
+            "installed_plugin_sha256": "3" * 64,
+            "post_install_database_fingerprint": "2" * 64,
+            "committed_outcome": "rolled_back",
+            "committed_expected_active": True,
+            "committed_expected_absent": False,
+            "committed_expected_version": "1.16.0",
+            "committed_expected_deployment": PRIOR_ID,
+            "committed_expected_plugin_sha256": PLUGIN_SHA,
+            "committed_expected_database_fingerprint": RECONCILED_DATABASE_SHA,
+            "committed_expected_robots_exists": True,
+            "committed_expected_robots_sha256": ROBOTS_SHA,
+            "committed_expected_sync_configured": True,
+            "orphaned_recovery_proof_sha256": proof_digest,
+            "orphaned_recovery_receipt_sha256": RECEIPT_SHA,
+            "orphaned_reconciled_from": "rolling_back",
+            "orphaned_observed_deployment": FAILED_ID,
+            "orphaned_recovery_evidence_exists": False,
+            "orphaned_recovery_evidence_sha256": "",
+            "orphaned_recovery_receipt_schema": V2_RECEIPT_SCHEMA,
+            "orphaned_historical_baseline_database_fingerprint": DATABASE_SHA,
+            "orphaned_observed_database_fingerprint": OBSERVED_DATABASE_SHA,
+            "orphaned_preserved_manifest_sha256": manifest_sha256,
+            "orphaned_marker_rows_affected": marker_rows_affected,
+            "orphaned_marker_transition": marker_transition,
+            "orphaned_reconciliation_mode": "preserve-reviewed-drift-marker-only",
+            "orphaned_prior_proof_sha256": TEST_PRIOR_PROOF_SHA,
+            "orphaned_attestation_run_id": 40000000000,
+            "orphaned_attestation_sha256": attestation_sha256,
+            "orphaned_attestation_audit_sha256": attestation_sha256,
+            "orphaned_attestation_source_commit": "9" * 40,
+        }
+    return audit
+
+
 def write_audit(audit_root: Path, audit: dict[str, object]) -> Path:
     audit_root.mkdir(parents=True, exist_ok=True)
     path = audit_root / f"{audit['deployment_id']}.json"
@@ -404,6 +655,475 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             },
             result,
         )
+
+    def test_exact_v2_fresh_retry_and_durable_receipt_paths_pass(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, _, proof_digest = write_reviewed_v2_proof(repository_root)
+            proof_argument = str(proof_path.relative_to(repository_root))
+            audit_root = repository_root / "recovery-audit"
+            cases = (
+                ("fresh marker", v2_recovery_audit(proof_digest)),
+                (
+                    "lost response recovered from durable receipt",
+                    v2_recovery_audit(proof_digest),
+                ),
+                (
+                    "prior marker retry",
+                    v2_recovery_audit(
+                        proof_digest,
+                        marker_rows_affected=0,
+                    ),
+                ),
+                (
+                    "durable receipt resume",
+                    v2_recovery_audit(
+                        proof_digest,
+                        receipt_resume=True,
+                    ),
+                ),
+            )
+            cases[1][1]["orphaned_rollback_reconciliation"][
+                "response_recovered"
+            ] = True
+            for label, audit in cases:
+                with self.subTest(label=label):
+                    result = self.validate(
+                        repository_root,
+                        audit_root,
+                        audit,
+                        proof_argument,
+                    )
+                    self.assertEqual(
+                        {
+                            "deployment_id": FAILED_ID,
+                            "proof_consumed": True,
+                            "result": "recovered",
+                            "validated": True,
+                        },
+                        result,
+                    )
+
+    def test_v2_proof_binds_exact_raw_attestation_and_rejects_schema_confusion(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+            VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+            attestation_path = repository_root / envelope["proof"][
+                "database_reconciliation"
+            ]["attestation_path"]
+            attestation_path.write_bytes(attestation_path.read_bytes() + b" ")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "attestation digest does not match",
+            ):
+                VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+    def test_validator_rejects_crossed_candidate_identity_and_float_storage(
+        self,
+    ) -> None:
+        def rehash(envelope: dict[str, object]) -> None:
+            envelope["proof_sha256"] = hashlib.sha256(
+                json.dumps(
+                    envelope["proof"],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+            envelope["proof"]["failed_run"]["deployment_id"] = (
+                "c99-prod-x31171940371x-1"
+            )
+            rehash(envelope)
+            proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "run identities conflict",
+            ):
+                VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+            proof = envelope["proof"]
+            proof["failed_run"]["candidate_version"] = proof["prior_run"][
+                "version"
+            ]
+            proof["failed_run"]["candidate_plugin_sha256"] = proof[
+                "prior_run"
+            ]["plugin_sha256"]
+            proof["failed_run"]["candidate_database_fingerprint"] = proof[
+                "prior_run"
+            ]["database_fingerprint"]
+            rehash(envelope)
+            proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "indistinguishable from the prior release",
+            ):
+                VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+        for label, raw_path in (
+            (
+                "internal parent",
+                "docs/recovery-proofs/observations/../observations/"
+                "c99-prod-31171940371-1-run-40000000000.json",
+            ),
+            (
+                "case changed prefix",
+                "Docs/recovery-proofs/observations/"
+                "c99-prod-31171940371-1-run-40000000000.json",
+            ),
+            (
+                "uppercase suffix",
+                "docs/recovery-proofs/observations/"
+                "c99-prod-31171940371-1-run-40000000000.JSON",
+            ),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                repository_root = Path(temporary)
+                proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+                envelope["proof"]["database_reconciliation"][
+                    "attestation_path"
+                ] = raw_path
+                envelope["proof_sha256"] = hashlib.sha256(
+                    json.dumps(
+                        envelope["proof"],
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ).encode("utf-8")
+                ).hexdigest()
+                proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+                with self.assertRaisesRegex(
+                    VALIDATOR.AuditValidationError,
+                    "escaped its evidence root",
+                ):
+                    VALIDATOR.load_reviewed_proof(
+                        str(proof_path),
+                        repository_root,
+                    )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+            envelope["proof"]["database_reconciliation"][
+                "transactional_storage"
+            ]["tables"] = 3.0
+            rehash(envelope)
+            proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "not fully transactional",
+            ):
+                VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+            envelope["schema"] = "complete99-orphaned-rollback-proof/v1"
+            proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "unexpected fields",
+            ):
+                VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+            envelope["proof"]["database_reconciliation"]["unexpected"] = True
+            envelope["proof_sha256"] = hashlib.sha256(
+                json.dumps(
+                    envelope["proof"],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()
+            proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "reconciliation fields are invalid",
+            ):
+                VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+            envelope["proof"]["database_reconciliation"][
+                "attestation_path"
+            ] = "docs/recovery-proofs/../outside.json"
+            envelope["proof_sha256"] = hashlib.sha256(
+                json.dumps(
+                    envelope["proof"],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()
+            proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "escaped its evidence root",
+            ):
+                VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, envelope, _ = write_reviewed_v2_proof(repository_root)
+            reconciliation = envelope["proof"]["database_reconciliation"]
+            attestation_path = repository_root / reconciliation["attestation_path"]
+            original = attestation_path.read_text(encoding="utf-8")
+            duplicate = (
+                '{\n  "deployment_id": "' + FAILED_ID + '",' + original[1:]
+            )
+            attestation_path.write_text(duplicate, encoding="utf-8", newline="\n")
+            attestation_digest = hashlib.sha256(
+                attestation_path.read_bytes()
+            ).hexdigest()
+            reconciliation["attestation_sha256"] = attestation_digest
+            reconciliation["attestation_audit_sha256"] = attestation_digest
+            envelope["proof_sha256"] = hashlib.sha256(
+                json.dumps(
+                    envelope["proof"],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()
+            proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "duplicate key",
+            ):
+                VALIDATOR.load_reviewed_proof(str(proof_path), repository_root)
+
+    def test_repository_v2_proof_binds_the_exact_production_observation(self) -> None:
+        proof_path = (
+            ROOT
+            / "docs"
+            / "recovery-proofs"
+            / f"{FAILED_ID}-v2.json"
+        )
+        _, proof, digest = VALIDATOR.load_reviewed_proof(
+            str(proof_path),
+            ROOT,
+        )
+        self.assertEqual(
+            "fb5494a81454b6af12f00148ac9524cbc7a1ed35c17972e6de69050e2a4557d1",
+            digest,
+        )
+        reconciliation = proof["database_reconciliation"]
+        self.assertEqual(
+            "5f35544ae1ae7c49b0e3c9675b8f19d57e9bb2a7da0e19762b8178c597983dab",
+            reconciliation["observed_database_fingerprint"],
+        )
+        self.assertEqual(
+            "97dcbcde203aa3f7d1ac849c9f0136bdfc88d3c59bec1290219e0e840a591d1c",
+            reconciliation["expected_reconciled_database_fingerprint"],
+        )
+        self.assertEqual(
+            "db93ccabda28b2848161d445e35b8010de18c89f3764b07b5434e76ffce6351f",
+            reconciliation["attestation_sha256"],
+        )
+
+    def test_validator_rejects_attestation_parent_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, _, _ = write_reviewed_v2_proof(repository_root)
+            observation_dir = (
+                repository_root
+                / "docs"
+                / "recovery-proofs"
+                / "observations"
+            )
+            original_is_symlink = Path.is_symlink
+            for symlink_component in (
+                repository_root / "docs",
+                observation_dir,
+            ):
+                with self.subTest(component=symlink_component.name):
+                    def is_symlink(candidate: Path) -> bool:
+                        return (
+                            candidate == symlink_component
+                            or original_is_symlink(candidate)
+                        )
+
+                    with mock.patch.object(
+                        Path,
+                        "is_symlink",
+                        autospec=True,
+                        side_effect=is_symlink,
+                    ), self.assertRaisesRegex(
+                        VALIDATOR.AuditValidationError,
+                        "escaped its evidence root",
+                    ):
+                        VALIDATOR.load_reviewed_proof(
+                            str(proof_path),
+                            repository_root,
+                        )
+
+    def test_v2_audit_rejects_baseline_substitution_crossed_state_and_extras(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, _, proof_digest = write_reviewed_v2_proof(repository_root)
+            proof_argument = str(proof_path.relative_to(repository_root))
+            audit_root = repository_root / "recovery-audit"
+            cases: list[tuple[str, dict[str, object], str]] = []
+
+            baseline_receipt = v2_recovery_audit(
+                proof_digest,
+                receipt_resume=True,
+            )
+            baseline_receipt["initial_orphaned_rollback_receipt"][
+                "committed_expected_database_fingerprint"
+            ] = DATABASE_SHA
+            cases.append(("baseline receipt", baseline_receipt, "failed for"))
+
+            changed_candidate_receipt = v2_recovery_audit(
+                proof_digest,
+                receipt_resume=True,
+            )
+            changed_candidate_receipt["initial_orphaned_rollback_receipt"][
+                "post_install_database_fingerprint"
+            ] = "0" * 64
+            cases.append(
+                (
+                    "changed candidate receipt",
+                    changed_candidate_receipt,
+                    "V2 durable receipt failed for post_install_database_fingerprint",
+                )
+            )
+
+            crossed = v2_recovery_audit(proof_digest)
+            crossed["initial_status"]["database_fingerprint"] = (
+                RECONCILED_DATABASE_SHA
+            )
+            cases.append(("crossed marker state", crossed, "authorized marker state"))
+
+            wrong_manifest = v2_recovery_audit(proof_digest)
+            wrong_manifest["reconciled_status"][
+                "database_manifest_sha256"
+            ] = "0" * 64
+            cases.append(("changed manifest", wrong_manifest, "durable receipt"))
+
+            wrong_fresh_candidate = v2_recovery_audit(proof_digest)
+            wrong_fresh_candidate["reconciled_status"]["expected_sha256"] = (
+                "0" * 64
+            )
+            cases.append(
+                (
+                    "changed fresh candidate identity",
+                    wrong_fresh_candidate,
+                    "V2 reconciled status differs from its durable receipt",
+                )
+            )
+
+            bool_int_alias = v2_recovery_audit(proof_digest)
+            bool_int_alias["reconciled_status"]["lock_owned"] = 1
+            cases.append(
+                (
+                    "boolean integer alias",
+                    bool_int_alias,
+                    "Reconciled lock was not retained",
+                )
+            )
+
+            receipt_bool_int_alias = v2_recovery_audit(
+                proof_digest,
+                receipt_resume=True,
+            )
+            receipt_bool_int_alias["initial_orphaned_rollback_receipt"][
+                "committed_expected_active"
+            ] = 1
+            cases.append(
+                (
+                    "receipt boolean integer alias",
+                    receipt_bool_int_alias,
+                    "Initial receipt failed for committed_expected_active",
+                )
+            )
+
+            wrong_schema = v2_recovery_audit(proof_digest)
+            wrong_schema["orphaned_rollback_reconciliation"][
+                "receipt_schema"
+            ] = "complete99-orphaned-rollback-receipt/v1"
+            cases.append(("receipt schema confusion", wrong_schema, "reviewed proof"))
+
+            reversed_timestamps = v2_recovery_audit(proof_digest)
+            reversed_timestamps["started_at"] = "2026-08-07T14:00:02Z"
+            cases.append(
+                (
+                    "reversed recovery timestamps",
+                    reversed_timestamps,
+                    "finished before it started",
+                )
+            )
+
+            extra = v2_recovery_audit(proof_digest)
+            extra["unexpected"] = True
+            cases.append(("extra audit field", extra, "unexpected or missing fields"))
+
+            extra_receipt = v2_recovery_audit(proof_digest)
+            extra_receipt["orphaned_rollback_reconciliation"][
+                "unexpected"
+            ] = True
+            cases.append(
+                ("extra receipt field", extra_receipt, "audit fields are invalid")
+            )
+
+            coerced_response = v2_recovery_audit(proof_digest)
+            coerced_response["orphaned_rollback_reconciliation"][
+                "response_recovered"
+            ] = "true"
+            cases.append(
+                (
+                    "coerced lost response flag",
+                    coerced_response,
+                    "marker transition is invalid",
+                )
+            )
+
+            changed_pre_finalize_identity = v2_recovery_audit(proof_digest)
+            changed_pre_finalize_identity["pre_finalize_orphaned_identity"][
+                "current_plugin_sha256"
+            ] = "0" * 64
+            cases.append(
+                (
+                    "changed pre-finalize identity",
+                    changed_pre_finalize_identity,
+                    "pre-finalize identity differs from the reviewed release",
+                )
+            )
+
+            both = v2_recovery_audit(proof_digest)
+            both["initial_orphaned_rollback_receipt"] = v2_recovery_audit(
+                proof_digest,
+                receipt_resume=True,
+            )["initial_orphaned_rollback_receipt"]
+            cases.append(("ambiguous receipt paths", both, "terminal receipt path"))
+
+            for label, audit, error in cases:
+                with self.subTest(label=label), self.assertRaisesRegex(
+                    VALIDATOR.AuditValidationError,
+                    error,
+                ):
+                    self.validate(
+                        repository_root,
+                        audit_root,
+                        audit,
+                        proof_argument,
+                    )
 
     def test_observation_rejects_manifest_tampering_and_mutation_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

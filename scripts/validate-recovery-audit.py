@@ -38,6 +38,29 @@ def require(condition: bool, message: str) -> None:
         raise AuditValidationError(message)
 
 
+def exact_json_equal(left: Any, right: Any) -> bool:
+    """Compare decoded JSON without Python's bool/int equality aliasing."""
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, dict):
+        return set(left) == set(right) and all(
+            exact_json_equal(left[key], right[key]) for key in left
+        )
+    if isinstance(left, list):
+        return len(left) == len(right) and all(
+            exact_json_equal(left_item, right_item)
+            for left_item, right_item in zip(left, right, strict=True)
+        )
+    return left == right
+
+
+def resolves_without_indirection(unresolved: Path, resolved: Path) -> bool:
+    """Reject symlinks and Windows junctions in reviewed evidence paths."""
+    lexical = os.path.normcase(os.path.abspath(os.fspath(unresolved)))
+    canonical = os.path.normcase(os.fspath(resolved))
+    return lexical == canonical
+
+
 def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -150,21 +173,29 @@ def load_reviewed_proof(
     repository_root: Path,
 ) -> tuple[Path, dict[str, Any], str]:
     candidate = Path(raw_path)
-    path = (
-        (repository_root / candidate).resolve()
-        if not candidate.is_absolute()
-        else candidate.resolve()
+    unresolved_path = (
+        repository_root / candidate if not candidate.is_absolute() else candidate
     )
-    proof_root = (repository_root / "docs" / "recovery-proofs").resolve()
+    path = unresolved_path.resolve()
+    unresolved_proof_root = repository_root / "docs" / "recovery-proofs"
+    proof_root = unresolved_proof_root.resolve()
     require(
-        proof_root in path.parents and path.suffix.lower() == ".json",
+        resolves_without_indirection(unresolved_proof_root, proof_root)
+        and resolves_without_indirection(unresolved_path, path)
+        and proof_root in path.parents
+        and path.suffix.lower() == ".json",
         "Recovery proof must be a JSON file under docs/recovery-proofs",
     )
     envelope = read_json(path, "Recovery proof")
+    proof_schema = envelope.get("schema")
     require(
         set(envelope) == {"schema", "proof", "proof_sha256"}
-        and type(envelope.get("schema")) is str
-        and envelope.get("schema") == "complete99-orphaned-rollback-proof/v1",
+        and type(proof_schema) is str
+        and proof_schema
+        in {
+            "complete99-orphaned-rollback-proof/v1",
+            "complete99-orphaned-rollback-proof/v2",
+        },
         "Recovery proof schema is invalid",
     )
     proof = require_mapping(envelope.get("proof"), "Recovery proof payload")
@@ -194,8 +225,13 @@ def load_reviewed_proof(
         "sync_configured",
         "version",
     }
+    expected_proof_keys = (
+        {"database_reconciliation", "failed_run", "prior_run"}
+        if proof_schema == "complete99-orphaned-rollback-proof/v2"
+        else {"failed_run", "prior_run"}
+    )
     require(
-        set(proof) == {"failed_run", "prior_run"}
+        set(proof) == expected_proof_keys
         and set(failed) == failed_keys
         and set(prior) == prior_keys,
         "Recovery proof identities are missing or contain unexpected fields",
@@ -230,9 +266,9 @@ def load_reviewed_proof(
         )
     require(
         failed["deployment_id"] != prior["deployment_id"]
-        and failed["run_id"] != prior["run_id"]
-        and str(failed["run_id"]) in failed["deployment_id"]
-        and str(prior["run_id"]) in prior["deployment_id"],
+        and failed["run_id"] > prior["run_id"]
+        and f"-{failed['run_id']}-" in failed["deployment_id"]
+        and f"-{prior['run_id']}-" in prior["deployment_id"],
         "Recovery proof run identities conflict",
     )
     require_digest(failed.get("artifact_sha256"), "Failed artifact")
@@ -259,6 +295,19 @@ def load_reviewed_proof(
     require_digest(prior.get("plugin_sha256"), "Prior plugin")
     require_digest(prior.get("database_fingerprint"), "Prior database fingerprint")
     require_digest(prior.get("robots_sha256"), "Prior robots.txt")
+    require(
+        failed["candidate_version"] != prior["version"]
+        and failed["candidate_plugin_sha256"] != prior["plugin_sha256"]
+        and failed["candidate_database_fingerprint"]
+        != prior["database_fingerprint"],
+        "Failed candidate identity is indistinguishable from the prior release",
+    )
+    if proof_schema == "complete99-orphaned-rollback-proof/v2":
+        validate_v2_database_reconciliation(
+            proof,
+            proof_root,
+            repository_root.resolve(),
+        )
     return path, proof, proof_sha256
 
 
@@ -317,6 +366,7 @@ def validate_database_storage(value: Any, label: str) -> None:
     require(set(storage) == {"engine", "tables"}, f"{label} fields are invalid")
     require(
         storage.get("engine") in {"INNODB", "XTRADB", "INNODB,XTRADB"}
+        and type(storage.get("tables")) is int
         and storage.get("tables") == 3,
         f"{label} is not fully transactional",
     )
@@ -364,6 +414,10 @@ def validate_orphaned_observation_audit(
             type(value) is str and UTC_TIMESTAMP.fullmatch(value) is not None,
             f"Observation audit {key} is invalid",
         )
+    require(
+        audit["finished_at"] >= audit["started_at"],
+        "Observation audit finished before it started",
+    )
     identity = require_mapping(audit.get("identity"), "Observation identity")
     require(
         set(identity) == {"id", "roles", "site_identity"}
@@ -540,7 +594,10 @@ def validate_orphaned_observation_audit(
         ),
     }
     for key, expected in expected_identity.items():
-        require(observation.get(key) == expected, f"Observation identity failed for {key}")
+        require(
+            exact_json_equal(observation.get(key), expected),
+            f"Observation identity failed for {key}",
+        )
     require(
         observation.get("current_deployment")
         in {failed.get("deployment_id"), prior.get("deployment_id")},
@@ -585,13 +642,251 @@ def validate_orphaned_observation_audit(
         "Observation status and attestation differ",
     )
     require(
-        initial_status.get("database_storage")
-        == observation.get("database_storage"),
+        exact_json_equal(
+            initial_status.get("database_storage"),
+            observation.get("database_storage"),
+        ),
         "Observation status storage and attestation differ",
     )
     validate_observation_cleanup(
         audit.get("cleanup"),
         "Observation bridge cleanup",
+    )
+
+
+def validate_v2_database_reconciliation(
+    proof: dict[str, Any],
+    proof_root: Path,
+    repository_root: Path,
+) -> None:
+    failed = require_mapping(proof.get("failed_run"), "Failed-run proof")
+    prior = require_mapping(proof.get("prior_run"), "Prior-run proof")
+    reconciliation = require_mapping(
+        proof.get("database_reconciliation"),
+        "Reviewed database reconciliation",
+    )
+    expected_keys = {
+        "attestation_audit_sha256",
+        "attestation_path",
+        "attestation_run_id",
+        "attestation_sha256",
+        "attestation_source_commit",
+        "baseline_database_fingerprint",
+        "expected_reconciled_database_fingerprint",
+        "mode",
+        "observed_database_fingerprint",
+        "observed_deployment",
+        "preserved_manifest",
+        "preserved_manifest_sha256",
+        "prior_proof_sha256",
+        "schema",
+        "target_deployment",
+        "transactional_storage",
+    }
+    require(
+        set(reconciliation) == expected_keys,
+        "Reviewed database reconciliation fields are invalid",
+    )
+    require(
+        reconciliation.get("schema")
+        == "complete99-orphaned-database-reconciliation/v1"
+        and reconciliation.get("mode")
+        == "preserve-reviewed-drift-marker-only",
+        "Reviewed database reconciliation identity is invalid",
+    )
+    attestation_run_id = reconciliation.get("attestation_run_id")
+    require(
+        type(attestation_run_id) is int
+        and attestation_run_id > failed.get("run_id", 0),
+        "Reviewed attestation run ID is invalid",
+    )
+    source_commit = reconciliation.get("attestation_source_commit")
+    require(
+        type(source_commit) is str
+        and COMMIT.fullmatch(source_commit) is not None
+        and source_commit
+        not in {failed.get("commit"), prior.get("commit")},
+        "Reviewed attestation source commit is invalid",
+    )
+    for key in (
+        "attestation_audit_sha256",
+        "attestation_sha256",
+        "baseline_database_fingerprint",
+        "expected_reconciled_database_fingerprint",
+        "observed_database_fingerprint",
+        "preserved_manifest_sha256",
+        "prior_proof_sha256",
+    ):
+        require_digest(
+            reconciliation.get(key),
+            f"Reviewed database reconciliation {key}",
+        )
+    validate_database_manifest(
+        reconciliation.get("preserved_manifest"),
+        reconciliation.get("preserved_manifest_sha256"),
+        "Reviewed preserved database manifest",
+    )
+    validate_database_storage(
+        reconciliation.get("transactional_storage"),
+        "Reviewed transactional database storage",
+    )
+
+    base_proof = {"failed_run": failed, "prior_run": prior}
+    canonical_base = json.dumps(
+        base_proof,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    prior_proof_sha256 = hashlib.sha256(canonical_base).hexdigest()
+    baseline_database_fingerprint = prior.get("database_fingerprint")
+    observed_database_fingerprint = reconciliation.get(
+        "observed_database_fingerprint"
+    )
+    reconciled_database_fingerprint = reconciliation.get(
+        "expected_reconciled_database_fingerprint"
+    )
+    require(
+        reconciliation.get("prior_proof_sha256") == prior_proof_sha256
+        and reconciliation.get("observed_deployment")
+        == failed.get("deployment_id")
+        and reconciliation.get("target_deployment")
+        == prior.get("deployment_id")
+        and reconciliation.get("baseline_database_fingerprint")
+        == baseline_database_fingerprint
+        and len(
+            {
+                baseline_database_fingerprint,
+                observed_database_fingerprint,
+                reconciled_database_fingerprint,
+            }
+        )
+        == 3,
+        "Reviewed database reconciliation conflicts with its historical proof",
+    )
+
+    unresolved_historical_path = (
+        proof_root / f"{failed.get('deployment_id', '')}.json"
+    )
+    historical_path = unresolved_historical_path.resolve()
+    require(
+        resolves_without_indirection(
+            unresolved_historical_path,
+            historical_path,
+        )
+        and historical_path.parent == proof_root
+        and historical_path.is_file(),
+        "Historical recovery proof bound by v2 is missing",
+    )
+    historical_envelope = read_json(historical_path, "Historical recovery proof")
+    require(
+        set(historical_envelope) == {"schema", "proof", "proof_sha256"}
+        and historical_envelope.get("schema")
+        == "complete99-orphaned-rollback-proof/v1"
+        and exact_json_equal(historical_envelope.get("proof"), base_proof)
+        and historical_envelope.get("proof_sha256") == prior_proof_sha256,
+        "Historical recovery proof does not match the v2 base proof",
+    )
+
+    raw_attestation_path = reconciliation.get("attestation_path")
+    require(
+        type(raw_attestation_path) is str and bool(raw_attestation_path),
+        "Reviewed attestation path is invalid",
+    )
+    relative_attestation = Path(raw_attestation_path)
+    expected_relative_root = Path("docs/recovery-proofs/observations")
+    try:
+        evidence_relative = relative_attestation.relative_to(
+            expected_relative_root
+        )
+    except ValueError:
+        evidence_relative = None
+    unresolved_attestation_root = repository_root / expected_relative_root
+    attestation_root = unresolved_attestation_root.resolve()
+    unresolved_attestation_path = repository_root / relative_attestation
+    attestation_path = unresolved_attestation_path.resolve()
+    symlink_in_evidence_path = False
+    evidence_cursor = repository_root
+    for part in relative_attestation.parts:
+        evidence_cursor /= part
+        if evidence_cursor.is_symlink():
+            symlink_in_evidence_path = True
+            break
+    require(
+        not relative_attestation.is_absolute()
+        and raw_attestation_path.startswith(
+            "docs/recovery-proofs/observations/"
+        )
+        and relative_attestation.as_posix() == raw_attestation_path
+        and ".." not in raw_attestation_path
+        and ".." not in relative_attestation.parts
+        and resolves_without_indirection(
+            unresolved_attestation_root,
+            attestation_root,
+        )
+        and resolves_without_indirection(
+            unresolved_attestation_path,
+            attestation_path,
+        )
+        and attestation_root in attestation_path.parents
+        and raw_attestation_path.endswith(".json")
+        and evidence_relative is not None
+        and not symlink_in_evidence_path,
+        "Reviewed attestation escaped its evidence root",
+    )
+    try:
+        raw_attestation = attestation_path.read_bytes()
+        attestation = parse_json(
+            raw_attestation.decode("utf-8"),
+            "Reviewed observation attestation",
+        )
+    except (OSError, UnicodeDecodeError) as error:
+        raise AuditValidationError(
+            "Reviewed observation attestation could not be read"
+        ) from error
+    attestation_sha256 = hashlib.sha256(raw_attestation).hexdigest()
+    require(
+        reconciliation.get("attestation_sha256") == attestation_sha256
+        and reconciliation.get("attestation_audit_sha256")
+        == attestation_sha256,
+        "Reviewed observation attestation digest does not match",
+    )
+
+    expected_probe_id = f"c99-recovery-probe-{attestation_run_id}-1"
+    validate_orphaned_observation_audit(
+        attestation,
+        historical_path,
+        base_proof,
+        prior_proof_sha256,
+        repository_root,
+        expected_probe_id,
+    )
+    observation = require_mapping(
+        attestation.get("orphaned_rollback_observation"),
+        "Reviewed observation payload",
+    )
+    require(
+        observation.get("current_deployment") == failed.get("deployment_id")
+        and observation.get("current_database_fingerprint")
+        == observed_database_fingerprint
+        and observation.get("projected_deployment_id")
+        == prior.get("deployment_id")
+        and observation.get("projected_database_fingerprint")
+        == reconciled_database_fingerprint
+        and observation.get("historical_baseline_database_fingerprint")
+        == baseline_database_fingerprint
+        and observation.get("historical_baseline_matches_projection") is False
+        and exact_json_equal(
+            observation.get("database_manifest"),
+            reconciliation.get("preserved_manifest"),
+        )
+        and observation.get("database_manifest_sha256")
+        == reconciliation.get("preserved_manifest_sha256")
+        and exact_json_equal(
+            observation.get("database_storage"),
+            reconciliation.get("transactional_storage"),
+        ),
+        "Reviewed observation does not authorize the v2 database reconciliation",
     )
 
 
@@ -617,9 +912,20 @@ def validate_orphaned_proof_audit(
     proof: dict[str, Any],
     proof_sha256: str,
     repository_root: Path,
+    expected_probe_id: str,
 ) -> None:
     failed = require_mapping(proof.get("failed_run"), "Failed-run proof")
     prior = require_mapping(proof.get("prior_run"), "Prior-run proof")
+    reconciliation_value = proof.get("database_reconciliation")
+    proof_is_v2 = isinstance(reconciliation_value, dict)
+    reconciliation = (
+        require_mapping(
+            reconciliation_value,
+            "Reviewed database reconciliation",
+        )
+        if proof_is_v2
+        else {}
+    )
     expected_deployment_id = failed.get("deployment_id")
     require(
         type(expected_deployment_id) is str
@@ -639,19 +945,140 @@ def validate_orphaned_proof_audit(
         "Reviewed recovery proof was consumed by the wrong recovery path",
     )
 
+    if proof_is_v2:
+        fresh_fields = {
+            "orphaned_rollback_reconciliation",
+            "reconciled_status",
+        }
+        receipt_fields = {"initial_orphaned_rollback_receipt"}
+        expected_fields = {
+            "bootstrap_cleanup",
+            "bridge_site_identity",
+            "cleanup",
+            "decision",
+            "deployment_id",
+            "discovery",
+            "finalize",
+            "finished_at",
+            "health",
+            "identity",
+            "initial_status",
+            "local_test",
+            "orphaned_rollback_proof",
+            "orphaned_rollback_robots",
+            "pre_finalize_orphaned_identity",
+            "rendered_home",
+            "result",
+            "started_at",
+        }
+        has_fresh_shape = fresh_fields <= set(audit) and not (
+            receipt_fields & set(audit)
+        )
+        has_receipt_shape = receipt_fields <= set(audit) and not (
+            fresh_fields & set(audit)
+        )
+        require(
+            has_fresh_shape != has_receipt_shape,
+            "V2 recovery audit must contain exactly one terminal receipt path",
+        )
+        expected_fields |= fresh_fields if has_fresh_shape else receipt_fields
+        require(
+            set(audit) == expected_fields,
+            "V2 recovery audit contains unexpected or missing fields",
+        )
+        require(audit.get("local_test") is False, "V2 recovery audit is not production-only")
+        for key in ("started_at", "finished_at"):
+            value = audit.get(key)
+            require(
+                type(value) is str and UTC_TIMESTAMP.fullmatch(value) is not None,
+                f"V2 recovery audit {key} is invalid",
+            )
+        require(
+            audit["finished_at"] >= audit["started_at"],
+            "V2 recovery audit finished before it started",
+        )
+        validate_bootstrap_cleanup(
+            audit.get("bootstrap_cleanup"),
+            "V2 recovery bootstrap cleanup",
+        )
+        bridge_identity = require_mapping(
+            audit.get("bridge_site_identity"),
+            "V2 recovery bridge identity",
+        )
+        require(
+            bridge_identity
+            == {
+                "home_host": "complete99.co.il",
+                "rest_host": "complete99.co.il",
+                "siteurl_host": "complete99.co.il",
+            },
+            "V2 recovery bridge identity changed",
+        )
+        identity = require_mapping(audit.get("identity"), "V2 recovery identity")
+        require(
+            set(identity) == {"id", "roles", "site_identity"}
+            and type(identity.get("id")) is int
+            and identity.get("id") > 0
+            and isinstance(identity.get("roles"), list)
+            and all(type(role) is str and role for role in identity["roles"]),
+            "V2 recovery authentication identity is invalid",
+        )
+        site_identity = require_mapping(
+            identity.get("site_identity"),
+            "V2 recovery REST identity",
+        )
+        require(
+            site_identity
+            == {
+                "home": "https://complete99.co.il",
+                "url": "https://complete99.co.il",
+            },
+            "V2 recovery REST identity changed",
+        )
+
     discovery = require_mapping(audit.get("discovery"), "Recovery discovery")
     require(
         discovery.get("result") == "owner-discovered"
         and discovery.get("owner_deployment_id") == expected_deployment_id,
         "Recovery discovery did not find the proof's exact lock owner",
     )
-    validate_cleanup(discovery.get("cleanup"), "Discovery bridge cleanup")
+    if proof_is_v2:
+        require(
+            set(discovery)
+            == {
+                "bootstrap_cleanup",
+                "cleanup",
+                "owner_deployment_id",
+                "owner_phase",
+                "probe_id",
+                "result",
+            }
+            and discovery.get("probe_id") == expected_probe_id
+            and discovery.get("owner_phase")
+            in {"rolling_back", "committed", "cleanup_failed"},
+            "V2 recovery discovery identity is invalid",
+        )
+        validate_bootstrap_cleanup(
+            discovery.get("bootstrap_cleanup"),
+            "V2 discovery bootstrap cleanup",
+        )
+        validate_observation_cleanup(
+            discovery.get("cleanup"),
+            "V2 discovery bridge cleanup",
+        )
+    else:
+        validate_cleanup(discovery.get("cleanup"), "Discovery bridge cleanup")
 
     expected_path = proof_path.relative_to(repository_root.resolve()).as_posix()
     proof_record = require_mapping(
         audit.get("orphaned_rollback_proof"),
         "Recovery proof audit",
     )
+    if proof_is_v2:
+        require(
+            set(proof_record) == {"path", "proof_sha256"},
+            "V2 recovery proof audit fields are invalid",
+        )
     require(proof_record.get("path") == expected_path, "Recovery proof path changed")
     require(
         proof_record.get("proof_sha256") == proof_sha256,
@@ -667,6 +1094,16 @@ def validate_orphaned_proof_audit(
         has_reconciliation != has_receipt_resume,
         "Recovery audit must prove exactly one orphaned rollback consumption path",
     )
+    if proof_is_v2:
+        require(
+            discovery.get("owner_phase")
+            == (
+                "rolling_back"
+                if has_reconciliation
+                else initial_status.get("phase")
+            ),
+            "V2 discovery phase differs from its recovery path",
+        )
 
     prior_version = prior.get("version")
     prior_deployment_id = prior.get("deployment_id")
@@ -678,7 +1115,112 @@ def validate_orphaned_proof_audit(
         prior.get("database_fingerprint"),
         "Prior database fingerprint",
     )
+    committed_database_fingerprint = (
+        require_digest(
+            reconciliation.get("expected_reconciled_database_fingerprint"),
+            "Reviewed reconciled database fingerprint",
+        )
+        if proof_is_v2
+        else prior_database_fingerprint
+    )
     prior_robots_sha256 = require_digest(prior.get("robots_sha256"), "Prior robots.txt")
+
+    if proof_is_v2:
+        require(
+            set(initial_status)
+            == {
+                "database_fingerprint",
+                "database_manifest_sha256",
+                "database_storage",
+                "lock_owned",
+                "phase",
+                "process_lock_available",
+                "projected_database_fingerprint",
+                "projected_deployment_id",
+                "recovery_ready",
+                "state_exists",
+            },
+            "V2 initial status fields are invalid",
+        )
+        require(
+            initial_status.get("state_exists") is False
+            and initial_status.get("lock_owned") is True
+            and initial_status.get("process_lock_available") is True
+            and initial_status.get("projected_deployment_id")
+            == prior_deployment_id
+            and initial_status.get("projected_database_fingerprint")
+            == committed_database_fingerprint
+            and initial_status.get("database_manifest_sha256")
+            == reconciliation.get("preserved_manifest_sha256"),
+            "V2 initial status does not match the reviewed database state",
+        )
+        validate_database_storage(
+            initial_status.get("database_storage"),
+            "V2 initial database storage",
+        )
+        require(
+            exact_json_equal(
+                initial_status.get("database_storage"),
+                reconciliation.get("transactional_storage"),
+            ),
+            "V2 initial database storage changed",
+        )
+        pre_finalize_identity = require_mapping(
+            audit.get("pre_finalize_orphaned_identity"),
+            "V2 pre-finalize orphaned identity",
+        )
+        require(
+            set(pre_finalize_identity)
+            == {
+                "phase",
+                "state_exists",
+                "lock_owned",
+                "recovery_ready",
+                "process_lock_available",
+                "current_active",
+                "current_target_dir_exists",
+                "current_plugin_main_exists",
+                "current_version",
+                "current_database_version",
+                "current_deployment",
+                "current_plugin_sha256",
+                "current_sync_configured",
+                "current_robots_sha256",
+                "database_fingerprint",
+                "database_manifest_sha256",
+            },
+            "V2 pre-finalize identity fields are invalid",
+        )
+        require(
+            pre_finalize_identity.get("phase")
+            == (
+                "committed"
+                if has_reconciliation
+                else initial_status.get("phase")
+            )
+            and pre_finalize_identity.get("state_exists") is False
+            and pre_finalize_identity.get("lock_owned") is True
+            and pre_finalize_identity.get("recovery_ready") is False
+            and pre_finalize_identity.get("process_lock_available") is True
+            and pre_finalize_identity.get("current_active") is True
+            and pre_finalize_identity.get("current_target_dir_exists") is True
+            and pre_finalize_identity.get("current_plugin_main_exists") is True
+            and pre_finalize_identity.get("current_version") == prior_version
+            and pre_finalize_identity.get("current_database_version")
+            == prior_version
+            and pre_finalize_identity.get("current_deployment")
+            == prior_deployment_id
+            and pre_finalize_identity.get("current_plugin_sha256")
+            == prior_plugin_sha256
+            and pre_finalize_identity.get("current_sync_configured") is True
+            and pre_finalize_identity.get("current_robots_sha256")
+            == prior_robots_sha256
+            and pre_finalize_identity.get("database_fingerprint")
+            == committed_database_fingerprint
+            and pre_finalize_identity.get("database_manifest_sha256")
+            == reconciliation.get("preserved_manifest_sha256"),
+            "V2 pre-finalize identity differs from the reviewed release",
+        )
 
     if has_reconciliation:
         require(
@@ -717,10 +1259,191 @@ def validate_orphaned_proof_audit(
         else:
             require(not evidence_sha256, "Absent recovery evidence has a digest")
 
+        if proof_is_v2:
+            expected_reconciliation_keys = {
+                "evidence_directory_exists",
+                "evidence_directory_sha256",
+                "attestation_audit_sha256",
+                "attestation_run_id",
+                "attestation_sha256",
+                "attestation_source_commit",
+                "historical_baseline_database_fingerprint",
+                "lock_retained",
+                "marker_corrected",
+                "marker_rows_affected",
+                "marker_transition",
+                "mode",
+                "observed_database_fingerprint",
+                "phase",
+                "preserved_manifest_sha256",
+                "prior_proof_sha256",
+                "proof_sha256",
+                "receipt_schema",
+                "receipt_sha256",
+                "reconciled_database_fingerprint",
+                "response_recovered",
+            }
+            require(
+                set(reconciliation) == expected_reconciliation_keys,
+                "V2 reconciliation audit fields are invalid",
+            )
+            marker_rows_affected = reconciliation.get("marker_rows_affected")
+            marker_transition = reconciliation.get("marker_transition")
+            marker_corrected = reconciliation.get("marker_corrected")
+            require(
+                type(marker_rows_affected) is int
+                and marker_rows_affected in {0, 1}
+                and marker_transition in {"corrected", "already-correct"}
+                and type(marker_corrected) is bool
+                and type(reconciliation.get("response_recovered")) is bool
+                and marker_corrected is (marker_rows_affected == 1)
+                and (marker_transition == "corrected")
+                is (marker_rows_affected == 1),
+                "V2 reconciliation marker transition is invalid",
+            )
+            require(
+                reconciliation.get("receipt_schema")
+                == "complete99-orphaned-rollback-receipt/v2"
+                and reconciliation.get(
+                    "historical_baseline_database_fingerprint"
+                )
+                == prior_database_fingerprint
+                and reconciliation.get("observed_database_fingerprint")
+                == proof["database_reconciliation"].get(
+                    "observed_database_fingerprint"
+                )
+                and reconciliation.get("reconciled_database_fingerprint")
+                == committed_database_fingerprint
+                and reconciliation.get("preserved_manifest_sha256")
+                == proof["database_reconciliation"].get(
+                    "preserved_manifest_sha256"
+                )
+                and reconciliation.get("mode")
+                == proof["database_reconciliation"].get("mode")
+                and reconciliation.get("prior_proof_sha256")
+                == proof["database_reconciliation"].get("prior_proof_sha256")
+                and reconciliation.get("attestation_run_id")
+                == proof["database_reconciliation"].get("attestation_run_id")
+                and reconciliation.get("attestation_sha256")
+                == proof["database_reconciliation"].get("attestation_sha256")
+                and reconciliation.get("attestation_audit_sha256")
+                == proof["database_reconciliation"].get(
+                    "attestation_audit_sha256"
+                )
+                and reconciliation.get("attestation_source_commit")
+                == proof["database_reconciliation"].get(
+                    "attestation_source_commit"
+                ),
+                "V2 reconciliation audit differs from the reviewed proof",
+            )
+            expected_initial_database_fingerprint = (
+                proof["database_reconciliation"][
+                    "observed_database_fingerprint"
+                ]
+                if marker_rows_affected == 1
+                else committed_database_fingerprint
+            )
+            require(
+                initial_status.get("phase") == "rolling_back"
+                and initial_status.get("recovery_ready") is True
+                and initial_status.get("database_fingerprint")
+                == expected_initial_database_fingerprint,
+                "V2 reconciliation did not start from an authorized marker state",
+            )
+
         reconciled = require_mapping(audit.get("reconciled_status"), "Reconciled status")
         require(reconciled.get("phase") == "committed", "Reconciled status was not committed")
         require(reconciled.get("state_exists") is False, "Reconciled state journal remained")
         require(reconciled.get("lock_owned") is True, "Reconciled lock was not retained")
+        if proof_is_v2:
+            expected_status_keys = {
+                "current_deployment",
+                "database_fingerprint",
+                "database_manifest_sha256",
+                "expected_sha256",
+                "expected_version",
+                "installed_plugin_sha256",
+                "lock_owned",
+                "orphaned_historical_baseline_database_fingerprint",
+                "orphaned_marker_rows_affected",
+                "orphaned_marker_transition",
+                "orphaned_observed_database_fingerprint",
+                "orphaned_preserved_manifest_sha256",
+                "orphaned_reconciliation_mode",
+                "orphaned_prior_proof_sha256",
+                "orphaned_attestation_run_id",
+                "orphaned_attestation_sha256",
+                "orphaned_attestation_audit_sha256",
+                "orphaned_attestation_source_commit",
+                "orphaned_recovery_proof_sha256",
+                "orphaned_recovery_receipt_schema",
+                "orphaned_recovery_receipt_sha256",
+                "phase",
+                "post_install_database_fingerprint",
+                "state_exists",
+            }
+            require(
+                set(reconciled) == expected_status_keys,
+                "V2 reconciled status fields are invalid",
+            )
+            expected_status = {
+                "current_deployment": prior_deployment_id,
+                "database_fingerprint": committed_database_fingerprint,
+                "database_manifest_sha256": proof["database_reconciliation"][
+                    "preserved_manifest_sha256"
+                ],
+                "expected_sha256": failed.get("artifact_sha256"),
+                "expected_version": failed.get("candidate_version"),
+                "installed_plugin_sha256": failed.get(
+                    "candidate_plugin_sha256"
+                ),
+                "lock_owned": True,
+                "orphaned_historical_baseline_database_fingerprint": prior_database_fingerprint,
+                "orphaned_marker_rows_affected": reconciliation[
+                    "marker_rows_affected"
+                ],
+                "orphaned_marker_transition": reconciliation[
+                    "marker_transition"
+                ],
+                "orphaned_observed_database_fingerprint": proof[
+                    "database_reconciliation"
+                ]["observed_database_fingerprint"],
+                "orphaned_preserved_manifest_sha256": proof[
+                    "database_reconciliation"
+                ]["preserved_manifest_sha256"],
+                "orphaned_reconciliation_mode": proof[
+                    "database_reconciliation"
+                ]["mode"],
+                "orphaned_prior_proof_sha256": proof[
+                    "database_reconciliation"
+                ]["prior_proof_sha256"],
+                "orphaned_attestation_run_id": proof[
+                    "database_reconciliation"
+                ]["attestation_run_id"],
+                "orphaned_attestation_sha256": proof[
+                    "database_reconciliation"
+                ]["attestation_sha256"],
+                "orphaned_attestation_audit_sha256": proof[
+                    "database_reconciliation"
+                ]["attestation_audit_sha256"],
+                "orphaned_attestation_source_commit": proof[
+                    "database_reconciliation"
+                ]["attestation_source_commit"],
+                "orphaned_recovery_proof_sha256": proof_sha256,
+                "orphaned_recovery_receipt_schema": "complete99-orphaned-rollback-receipt/v2",
+                "orphaned_recovery_receipt_sha256": reconciliation[
+                    "receipt_sha256"
+                ],
+                "post_install_database_fingerprint": failed.get(
+                    "candidate_database_fingerprint"
+                ),
+                "phase": "committed",
+                "state_exists": False,
+            }
+            require(
+                exact_json_equal(reconciled, expected_status),
+                "V2 reconciled status differs from its durable receipt",
+            )
     else:
         receipt = require_mapping(
             audit.get("initial_orphaned_rollback_receipt"),
@@ -747,6 +1470,27 @@ def validate_orphaned_proof_audit(
             "orphaned_recovery_evidence_exists",
             "orphaned_recovery_evidence_sha256",
         }
+        if proof_is_v2:
+            receipt_keys.update(
+                {
+                    "expected_sha256",
+                    "expected_version",
+                    "installed_plugin_sha256",
+                    "post_install_database_fingerprint",
+                    "orphaned_historical_baseline_database_fingerprint",
+                    "orphaned_marker_rows_affected",
+                    "orphaned_marker_transition",
+                    "orphaned_observed_database_fingerprint",
+                    "orphaned_preserved_manifest_sha256",
+                    "orphaned_recovery_receipt_schema",
+                    "orphaned_reconciliation_mode",
+                    "orphaned_prior_proof_sha256",
+                    "orphaned_attestation_run_id",
+                    "orphaned_attestation_sha256",
+                    "orphaned_attestation_audit_sha256",
+                    "orphaned_attestation_source_commit",
+                }
+            )
         require(
             set(receipt) == receipt_keys,
             "Initial orphaned rollback receipt fields are incomplete",
@@ -772,7 +1516,7 @@ def validate_orphaned_proof_audit(
             "committed_expected_version": prior_version,
             "committed_expected_deployment": prior_deployment_id,
             "committed_expected_plugin_sha256": prior_plugin_sha256,
-            "committed_expected_database_fingerprint": prior_database_fingerprint,
+            "committed_expected_database_fingerprint": committed_database_fingerprint,
             "committed_expected_robots_exists": True,
             "committed_expected_robots_sha256": prior_robots_sha256,
             "committed_expected_sync_configured": True,
@@ -781,7 +1525,10 @@ def validate_orphaned_proof_audit(
             "orphaned_observed_deployment": expected_deployment_id,
         }
         for key, expected in expected_receipt.items():
-            require(receipt.get(key) == expected, f"Initial receipt failed for {key}")
+            require(
+                exact_json_equal(receipt.get(key), expected),
+                f"Initial receipt failed for {key}",
+            )
         require_digest(
             receipt.get("orphaned_recovery_receipt_sha256"),
             "Initial orphaned rollback receipt",
@@ -794,6 +1541,65 @@ def validate_orphaned_proof_audit(
             require_digest(receipt_evidence_sha256, "Receipt evidence directory")
         else:
             require(not receipt_evidence_sha256, "Absent receipt evidence has a digest")
+        if proof_is_v2:
+            marker_rows_affected = receipt.get("orphaned_marker_rows_affected")
+            marker_transition = receipt.get("orphaned_marker_transition")
+            require(
+                type(marker_rows_affected) is int
+                and marker_rows_affected in {0, 1}
+                and marker_transition in {"corrected", "already-correct"}
+                and (marker_transition == "corrected")
+                is (marker_rows_affected == 1),
+                "V2 durable receipt marker transition is invalid",
+            )
+            expected_v2_receipt = {
+                "expected_sha256": failed.get("artifact_sha256"),
+                "expected_version": failed.get("candidate_version"),
+                "installed_plugin_sha256": failed.get(
+                    "candidate_plugin_sha256"
+                ),
+                "post_install_database_fingerprint": failed.get(
+                    "candidate_database_fingerprint"
+                ),
+                "orphaned_historical_baseline_database_fingerprint": prior_database_fingerprint,
+                "orphaned_observed_database_fingerprint": proof[
+                    "database_reconciliation"
+                ]["observed_database_fingerprint"],
+                "orphaned_preserved_manifest_sha256": proof[
+                    "database_reconciliation"
+                ]["preserved_manifest_sha256"],
+                "orphaned_recovery_receipt_schema": "complete99-orphaned-rollback-receipt/v2",
+                "orphaned_reconciliation_mode": proof[
+                    "database_reconciliation"
+                ]["mode"],
+                "orphaned_prior_proof_sha256": proof[
+                    "database_reconciliation"
+                ]["prior_proof_sha256"],
+                "orphaned_attestation_run_id": proof[
+                    "database_reconciliation"
+                ]["attestation_run_id"],
+                "orphaned_attestation_sha256": proof[
+                    "database_reconciliation"
+                ]["attestation_sha256"],
+                "orphaned_attestation_audit_sha256": proof[
+                    "database_reconciliation"
+                ]["attestation_audit_sha256"],
+                "orphaned_attestation_source_commit": proof[
+                    "database_reconciliation"
+                ]["attestation_source_commit"],
+            }
+            for key, expected in expected_v2_receipt.items():
+                require(
+                    exact_json_equal(receipt.get(key), expected),
+                    f"V2 durable receipt failed for {key}",
+                )
+            require(
+                initial_status.get("phase") in {"committed", "cleanup_failed"}
+                and initial_status.get("recovery_ready") is False
+                and initial_status.get("database_fingerprint")
+                == committed_database_fingerprint,
+                "V2 durable receipt resume did not start from committed state",
+            )
 
     health = require_mapping(audit.get("health"), "Recovered health")
     expected_health = {
@@ -805,7 +1611,10 @@ def validate_orphaned_proof_audit(
         "version": prior_version,
     }
     for key, expected in expected_health.items():
-        require(health.get(key) == expected, f"Recovered health failed for {key}")
+        require(
+            exact_json_equal(health.get(key), expected),
+            f"Recovered health failed for {key}",
+        )
 
     rendered = require_mapping(audit.get("rendered_home"), "Recovered rendered body")
     require(rendered.get("exact_path") == "/", "Rendered recovery used the wrong path")
@@ -823,7 +1632,13 @@ def validate_orphaned_proof_audit(
     require(robots.get("status") == 200, "Recovered robots.txt was not public")
     require(robots.get("sha256") == prior_robots_sha256, "Recovered robots.txt changed")
     validate_finalize(audit.get("finalize"), "Orphaned recovery finalization")
-    validate_cleanup(audit.get("cleanup"), "Orphaned recovery bridge cleanup")
+    if proof_is_v2:
+        validate_observation_cleanup(
+            audit.get("cleanup"),
+            "V2 orphaned recovery bridge cleanup",
+        )
+    else:
+        validate_cleanup(audit.get("cleanup"), "Orphaned recovery bridge cleanup")
 
 
 def validate_recovery_audit(
@@ -902,6 +1717,7 @@ def validate_recovery_audit(
                 proof,
                 proof_sha256,
                 repository_root.resolve(),
+                expected_probe_id,
             )
             proof_consumed = True
     elif result == "no-recovery-needed":
