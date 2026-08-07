@@ -11,9 +11,23 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.15.0`. Production truth comes
+The source tree targets Complete99 Platform `1.16.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.16.0 expands the bilingual culinary-science registry to 551 entities
+and Entity Studio to 607 subjects: 551 science identities plus the unchanged
+56 product identities. It adds 86 private Syrian identities in three modular
+groups: 30 west and central identities, 31 east and south identities, and 25
+community and institutional identities. The Syrian graph grows from 196 to 282
+identities while preserving separate evidence paths for Aleppo, Damascus, Homs,
+Hama, Idlib, Qadmus, Kassab, Baniyas, Jableh, Qamishli, Deir ez-Zor,
+Al-Bukamal, Palmyra, Suwayda and Hauran. Jewish family records are expanded
+alongside Syrian-Armenian, Assyrian, Kurdish, Druze and other regional records,
+without treating one community as the whole cuisine. Four unresolved plant,
+preservation or product-identity records remain held. All 86 identities are
+private, `noindex` and reference-only. The release adds no product, offer,
+supplier, price, stock, import route or public page.
 
 Release 1.15.0 expands the bilingual culinary-science registry to 465 entities
 and Entity Studio to 521 subjects: 465 science identities plus the unchanged
@@ -47,11 +61,12 @@ identities remain private, `noindex` and reference-only. The exact 36-product
 public store, 23 public science identities, prices, stock, cart, public routes,
 payment-disabled state and no-role boundary remain unchanged.
 
-The commerce registry is version 9 and binds culinary-science registry version
-15. It preserves the 56 existing product identities, 36 public WooCommerce
-products and 20 private planning prices. The Iraqi tranche adds no retail
+The commerce registry is version 10 and binds culinary-science registry version
+16. It preserves the 56 existing product identities, 36 public WooCommerce
+products and 20 private planning prices. The Syrian expansion adds no retail
 listing, price observation, product identity, offer, supplier, stock record or
-purchasing route. The earlier Lebanese retail observations, pomegranate-concentrate
+purchasing route. The earlier Iraqi trade boundary, Lebanese retail
+observations, pomegranate-concentrate
 identity boundary, comparison-only treatment of pomegranate molasses, exclusion
 of techniques from product cross-sells and separation of registry validity from
 active-offer readiness remain in force.
@@ -98,9 +113,11 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The current 1.15.0 culinary-science registry contains 465 bounded entities. The
-196-identity Syrian and 82-identity Lebanese modules remain unchanged. All 96
-Iraqi identities are private, `noindex` and reference-only.
+The current 1.16.0 culinary-science registry contains 551 bounded entities. The
+Syrian graph contains 282 identities, the Lebanese graph remains at 82 and the
+Iraqi graph remains at 96. All 86 new Syrian identities, all 82 Lebanese
+identities and all 96 Iraqi identities are private, `noindex` and
+reference-only.
 Twenty-three public entities continue to project through 18 canonical page
 owners per language, for 36 distinct Hebrew and English routes. Shared page
 ownership prevents closely related entities from competing for the same search
@@ -262,3 +279,6 @@ label or disclaimer.
 - [Launch QA](docs/launch-qa.md)
 - [Deployment runbook](docs/deployment-runbook.md)
 - [Emergency recovery](docs/recovery.md)
+- [Syrian regional, community and institutional expansion](docs/syrian-regional-expansion-2026-08-07.md)
+- [Iraqi cuisine foundation](docs/iraqi-cuisine-foundation-2026-08-07.md)
+- [Lebanese cuisine foundation](docs/lebanese-cuisine-foundation-2026-08-07.md)

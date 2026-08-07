@@ -93,20 +93,21 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.15.0, require the Entity Studio contracts to prove private
+3. For release 1.16.0, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
    bounded API pagination, orphan-dossier audit access and fail-closed
-   observation identity collisions. Require the cumulative 465-entity
-   `culinary-science-2026.08.07.v15` registry, the
-   `culinary-commerce-2026.08.07.v9` registry and the exact 521-subject Entity
-   Studio index: 465 science identities plus 56 product identities. Require
+   observation identity collisions. Require the cumulative 551-entity
+   `culinary-science-2026.08.07.v16` registry, the
+   `culinary-commerce-2026.08.07.v10` registry and the exact 607-subject Entity
+   Studio index: 551 science identities plus 56 product identities. Require
    exact evidence chronology and evidence-class alignment with each source
-   type. Require the Iraqi tranche to contain exactly 96 identities: 1 cuisine,
-   16 topic hubs, 32 dishes, 4 preparations, 12 ingredients, 8 techniques, 10
-   traditions, 5 culinary institutions, 3 markets, 2 restaurants, 1 compliance
-   rule and 2 guides.
+   type. Require the Syrian expansion to contain exactly 86 identities in
+   three modules: 30 west and central, 31 east and south, and 25 community and
+   institutional identities. Require the new type distribution to be 4 topic
+   hubs, 21 dishes, 14 ingredients, 13 techniques, 12 traditions, 7 guides, 1
+   preparation, 9 culinary institutions, 1 market and 4 restaurants.
 4. Require the public read-model integrity tests to prove
    recursive canonical hashing, exclusion of the top-level `digest` field,
    `hash_equals` verification and fail-closed handling of missing, malformed,
@@ -128,11 +129,13 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    code, channel offer, stock, supplier, landed-cost or margin claim. Require
    zero new active or draft offers and exact 56 of 56 price-basis coverage: 36
    live prices plus 20 private planning prices. Preserve the release 1.13.0
-   Syrian graph at exactly 196 identities, including 56 dishes, 55 ingredients,
-   21 regional or topic hubs, 17 techniques, 17 traditions and 15
-   preparations, plus markets, restaurants, hospitality institutions and three
-   private observations. One safe Syrian consumer gateway remains
-   `noindex,follow`; the other 195 Syrian entities remain private. Confirm all
+   Syrian graph at exactly 282 identities, including 77 dishes, 69 ingredients,
+   25 regional or topic hubs, 30 techniques, 29 traditions, 16 preparations,
+   10 guides, 11 culinary institutions, 5 markets, 6 restaurants and the three
+   preserved private market records. One safe Syrian consumer gateway remains
+   `noindex,follow`; the other 281 Syrian entities remain private. Confirm the
+   86 new records contain no price, supplier, stock, product, offer or public
+   route, and confirm the four exact held identities. Confirm all
    82 Lebanese and 96 Iraqi identities remain private, noindex and
    reference-only. Confirm
    the six dated Lebanese retail observations create no product identity,
@@ -255,7 +258,40 @@ chooses only between finishing an already committed cleanup and rolling back an
 uncommitted mutation. It then proves its row absent and its route 404. The production
 workflow runs this command automatically after a failed deployment step.
 
-## Release 1.15.0 live verification
+## Release 1.16.0 live verification
+
+Before installation:
+
+1. Confirm the artifact, manifest and deployment marker all report `1.16.0`.
+2. Confirm contract readback reports 551 science identities, 56 product
+   identities, 607 Entity Studio subjects, 36 public WooCommerce products, 23
+   public science identities and 18 public page owners per language.
+3. Confirm the Syrian cluster reports exactly 282 identities. Confirm the 86
+   new identities and their 30, 31 and 25 module split with the documented type
+   distribution.
+4. Confirm all 86 new identities are private, noindex and reference-only, and
+   contain no offer, price observation, stock, supplier, product or public
+   route. Confirm the four exact held identities remain fail closed.
+5. Confirm the Lebanese cluster remains 82 and the Iraqi cluster remains 96.
+
+After installation and cache purge:
+
+1. Verify anonymous health returns version `1.16.0`, deployment ID
+   `c99-wp-1.16.0` and the expected database version.
+2. Verify public science remains exactly 23 and public page ownership remains
+   exactly 18 per language. No new Syrian identity may appear in public API,
+   search, sitemap, catalog, POS projection or structured data.
+3. Request representative Hebrew and English Syrian private candidates with
+   cache busting. They must remain unavailable while route mode is private.
+4. Verify the exact 36-product store, cart, stock authority and disabled payment
+   state are unchanged.
+5. Run real Chrome acceptance on Hebrew and English home and store pages at
+   desktop and 390 CSS pixels, including direction, canonical, hreflang,
+   overflow, keyboard focus and first-party console errors.
+6. Confirm deployment cleanup returns route 404, leaves no bridge row or active
+   snippet, and preserves rollback evidence.
+
+## Historical release 1.15.0 live verification
 
 Before installation:
 
@@ -353,11 +389,14 @@ A production release is complete only when the non-secret audit JSON shows:
   version 1.9.0 additions;
 - a private Entity Studio registration and invariant check with no public route,
   no new role and no WooCommerce write;
-- exact registry receipts for culinary science v15 and culinary commerce v9,
-  with 465 science identities, 56 product identities and 521 Entity Studio
+- exact registry receipts for culinary science v16 and culinary commerce v10,
+  with 551 science identities, 56 product identities and 607 Entity Studio
   subjects;
 - exact 56 of 56 product price-basis coverage, comprising 36 live prices and 20
-  private planning prices, with zero active or draft offer added by 1.15.0;
+  private planning prices, with zero active or draft offer added by 1.16.0;
+- exact 282-identity Syrian type counts, including the 86 new private identities
+  and four exact held records, with no price, product, offer, supplier, stock or
+  public projection;
 - exact 96-identity Iraqi type counts and proof that all 96 remain private,
   noindex and reference-only, with no price observation, offer, stock, supplier
   or public projection;
@@ -365,10 +404,11 @@ A production release is complete only when the non-secret audit JSON shows:
   noindex and reference-only;
 - six dated Lebanese retail observations with no product identity, offer,
   stock, supplier, import route, landed cost or public price projection;
-- an unchanged 196-identity Syrian graph, 23 public science entities and 18
+- 23 public science entities and 18
   public canonical page owners per language;
-- negative public evidence for the Lebanon cluster across API, search, sitemap,
-  rendered routes, public catalog, POS and structured data;
+- negative public evidence for the Syrian expansion and Lebanon cluster across
+  API, search, sitemap, rendered routes, public catalog, POS and structured
+  data;
 - `sync_configured: true` after an exact secret checkpoint, without exposing the
   value;
 - anonymous `robots.txt` content and SHA-256 matching the managed policy;

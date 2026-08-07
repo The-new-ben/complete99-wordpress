@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.15.0
+Release target: Complete99 Platform 1.16.0
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.15.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.15.0 and its versioned package URL.
+- The public update manifest matches version 1.16.0 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -48,24 +48,30 @@ Release target: Complete99 Platform 1.15.0
   emit canonical and hreflang metadata, remain `noindex,follow`, and are absent
   from the museum sitemap provider until their separate index gate is approved.
 - The cumulative registries identify themselves exactly as
-  `culinary-science-2026.08.07.v15` and
-  `culinary-commerce-2026.08.07.v9`.
+  `culinary-science-2026.08.07.v16` and
+  `culinary-commerce-2026.08.07.v10`.
 - Public museum responses cannot expose visual prompts, supplier terms, landed
   cost, margins, connector state, approval identities or private workflow data.
 - Entity Studio remains private, requires `manage_options`, creates no role,
   exposes no public route and cannot delete dossier records or revisions.
-- Entity Studio resolves exactly 521 subjects: 465 science identities plus 56
+- Entity Studio resolves exactly 607 subjects: 551 science identities plus 56
   product identities. Price-basis coverage is 56 of 56, comprising 36 current
   public WooCommerce prices and 20 private planning prices.
 - The 17 earlier planning offers remain draft. The three Syrian product
   identities are private held market observations only and create no new offer,
   WooCommerce price, stock, supplier claim or active POS row.
-- The Syrian module contains exactly 196 identities, including 56 dishes, 55
-  ingredients, 21 regional or topic hubs, 17 techniques, 17 traditions and 15
-  preparations, plus markets, restaurants, hospitality institutions and three
-  private held market observations.
+- The Syrian graph contains exactly 282 identities, including 77 dishes, 69
+  ingredients, 25 regional or topic hubs, 30 techniques, 29 traditions, 16
+  preparations, 10 guides, 11 culinary institutions, 5 markets, 6 restaurants
+  and the preserved three private market records.
   One safe consumer gateway is
-  `noindex,follow`; the other 195 Syrian entities remain private.
+  `noindex,follow`; the other 281 Syrian entities remain private.
+- The 86-identity Syrian expansion is exact: 30 west and central identities, 31
+  east and south identities, and 25 community and institutional identities.
+  All 86 are private, noindex and reference-only, with zero price, supplier,
+  stock, public page, POS or ordering path.
+- The four exact held identities remain fail closed for unresolved Arum,
+  preservation, Palmyra identity and Hauran identity questions.
 - The Lebanese foundation contains exactly 82 identities: 1 cuisine, 13 topic
   hubs, 27 dishes, 2 preparations, 8 ingredients, 5 techniques, 9 traditions,
   5 culinary institutions, 2 markets, 3 restaurants, 1 compliance rule and 6
@@ -167,13 +173,13 @@ Release target: Complete99 Platform 1.15.0
 - WooCommerce 10.9.4 is installed from the pinned official package and the
   full installed tree matches the expected digest.
 - The public store contains exactly 36 owner-authorized catalog products and is indexable.
-- Release 1.15.0 preserves all 36 public products unchanged and adds no public,
+- Release 1.16.0 preserves all 36 public products unchanged and adds no public,
   private or POS offer, stock, supplier claim, payment activation or role
   assignment.
 - The 12 new Japanese premium-market candidates remain private
   `research_candidate` records with planning stock zero, blank WooCommerce
   product codes, held projection and one held draft offer each.
-- Entity Studio reports exactly 521 subjects, 56 product identities, 36 live
+- Entity Studio reports exactly 607 subjects, 56 product identities, 36 live
   prices, 20 private planning prices and 56 of 56 price-basis coverage.
 - The three Syrian planning-price observations remain private and held, with no
   WooCommerce product code, channel offer, stock, supplier, landed-cost or
@@ -183,6 +189,8 @@ Release target: Complete99 Platform 1.15.0
   offers and do not alter the 56-product identity count.
 - The Iraqi foundation contains no retail or price observation and creates zero
   active or draft offers.
+- The 86 new Syrian identities contain no retail or price observation and
+  create zero active or draft offers.
 - Public source-market projection emits only exact explicit `public` variants.
   Missing, malformed, unknown and `held` values emit no public row.
 - Release 1.9.0 adds exactly four owner-authorized offers to the previous

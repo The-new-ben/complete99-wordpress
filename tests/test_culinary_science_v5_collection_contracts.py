@@ -145,7 +145,7 @@ echo json_encode(array(
 def test_v5_registry_has_one_exact_modular_collection(v5_payload: dict) -> None:
     registry = v5_payload["registry"]
     assert registry["schema"] == "complete99-culinary-science-registry/v5"
-    assert registry["version"] == "culinary-science-2026.08.07.v15"
+    assert registry["version"] == "culinary-science-2026.08.07.v16"
     assert len(registry["collections"]) == 1
     collection = registry["collections"][0]
     assert set(collection) == {
