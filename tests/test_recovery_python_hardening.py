@@ -59,7 +59,7 @@ def valid_proof() -> dict[str, Any]:
             "candidate_database_fingerprint": "4" * 64,
             "candidate_version": "1.17.0",
             "commit": "5" * 40,
-            "deployment_id": "c99-prod-failed-1234",
+            "deployment_id": "c99-prod-failed-1234-1",
             "run_id": 1234,
         },
         "prior_run": {
@@ -68,7 +68,7 @@ def valid_proof() -> dict[str, Any]:
             "commit": "7" * 40,
             "database_fingerprint": "8" * 64,
             "database_version": "1.16.0",
-            "deployment_id": "c99-prod-prior-1200",
+            "deployment_id": "c99-prod-prior-1200-1",
             "plugin_sha256": "9" * 64,
             "robots_exists": True,
             "robots_sha256": "a" * 64,
@@ -163,6 +163,62 @@ class _SequenceOpener:
 
 
 class SafeReadRetryTests(unittest.TestCase):
+    def test_client_rejects_duplicate_json_response_keys(self) -> None:
+        raw = b'{"phase":"committed","phase":"rolling_back"}'
+        parsed = DEPLOY.Client._parse_json_response(raw)
+        self.assertEqual(
+            {"invalid_json_response": True, "length": len(raw)},
+            parsed,
+        )
+
+    def test_duplicate_json_403_never_replays_mutation_via_rest_fallback(
+        self,
+    ) -> None:
+        client = make_client()
+        request_once = mock.Mock(
+            return_value=(403, b'{"code":"blocked","code":"blocked"}')
+        )
+        with mock.patch.object(
+            client,
+            "_request_once",
+            request_once,
+        ), self.assertRaisesRegex(DEPLOY.DeployError, "invalid JSON"):
+            client.request(
+                "POST",
+                "/wp-json/complete99-deploy/v1/example/reconcile-orphaned-rollback",
+                {"token": "secret"},
+            )
+        self.assertEqual(1, request_once.call_count)
+        self.assertFalse(client.use_query_rest_transport)
+
+    def test_expected_404_with_duplicate_json_is_not_cleanup_proof(self) -> None:
+        client = make_client()
+        request_once = mock.Mock(
+            return_value=(404, b'{"code":"rest_no_route","code":"other"}')
+        )
+        with mock.patch.object(
+            client,
+            "_request_once",
+            request_once,
+        ), self.assertRaisesRegex(DEPLOY.DeployError, "invalid JSON"):
+            client.request(
+                "POST",
+                "/wp-json/complete99-deploy/v1/example/preflight",
+                {"token": "secret"},
+                expected=(404,),
+            )
+        self.assertEqual(1, request_once.call_count)
+
+    def test_public_health_json_rejects_duplicate_keys(self) -> None:
+        client = make_client()
+        raw = b'{"status":"bad","status":"ok"}'
+        with mock.patch.object(
+            client,
+            "_bounded_public_read",
+            return_value=(200, raw),
+        ), self.assertRaisesRegex(DEPLOY.DeployError, "invalid JSON"):
+            client.request_public_json("/wp-json/complete99/v1/health")
+
     def test_authenticated_get_retries_with_exact_delays_and_timeout_cap(self) -> None:
         client = make_client()
         request_once = mock.Mock(
@@ -321,6 +377,72 @@ class SafeReadRetryTests(unittest.TestCase):
                     )
                 self.assertEqual([30, 30], opener.timeouts)
                 sleep.assert_called_once_with(2)
+
+
+class FinalizeRecoveryTests(unittest.TestCase):
+    def exact_response(self) -> dict[str, Any]:
+        return {
+            "cache_purge": {},
+            "finalized": True,
+            "lock_released": True,
+            "state_removed": True,
+        }
+
+    def test_finalize_retries_semantically_invalid_success_once(self) -> None:
+        bridge = mock.Mock(side_effect=[{}, self.exact_response()])
+        with mock.patch.object(DEPLOY, "bridge_call", bridge), mock.patch.object(
+            DEPLOY,
+            "poll_deployment_status",
+        ) as status:
+            result = DEPLOY.finalize_deployment(
+                object(),
+                "token",
+                "c99-prod-finalize-1234",
+            )
+        self.assertTrue(result["response_recovered"])
+        self.assertEqual(2, bridge.call_count)
+        status.assert_not_called()
+
+    def test_finalize_rejects_truthy_non_boolean_receipt(self) -> None:
+        truthy = {
+            "cache_purge": {},
+            "finalized": 1,
+            "lock_released": "yes",
+            "state_removed": 1,
+        }
+        bridge = mock.Mock(side_effect=[truthy, self.exact_response()])
+        with mock.patch.object(DEPLOY, "bridge_call", bridge):
+            result = DEPLOY.finalize_deployment(
+                object(),
+                "token",
+                "c99-prod-finalize-1234",
+            )
+        self.assertTrue(result["response_recovered"])
+        self.assertEqual(2, bridge.call_count)
+
+    def test_finalize_recovers_released_lock_after_two_invalid_responses(
+        self,
+    ) -> None:
+        bridge = mock.Mock(side_effect=[{}, {"finalized": "yes"}])
+        status = {
+            "phase": "finalized",
+            "state_exists": False,
+            "lock_owned": False,
+        }
+        with mock.patch.object(DEPLOY, "bridge_call", bridge), mock.patch.object(
+            DEPLOY,
+            "poll_deployment_status",
+            return_value=status,
+        ) as status_call:
+            result = DEPLOY.finalize_deployment(
+                object(),
+                "token",
+                "c99-prod-finalize-1234",
+            )
+        self.assertTrue(result["response_recovered"])
+        self.assertTrue(result["finalized"])
+        self.assertEqual(2, bridge.call_count)
+        status_call.assert_called_once()
 
 
 class CompletedRollbackTests(unittest.TestCase):
@@ -533,6 +655,499 @@ class OrphanObservationTests(unittest.TestCase):
             )
 
 
+class V2ReconciliationTests(unittest.TestCase):
+    def envelope(self) -> dict[str, Any]:
+        return json.loads(
+            (
+                ROOT
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31171940371-1-v2.json"
+            ).read_text(encoding="utf-8")
+        )
+
+    def initial_status(self, proof: dict[str, Any]) -> dict[str, Any]:
+        failed = proof["failed_run"]
+        prior = proof["prior_run"]
+        reconciliation = proof["database_reconciliation"]
+        return {
+            "phase": "rolling_back",
+            "state_exists": False,
+            "lock_owned": True,
+            "recovery_ready": True,
+            "process_lock_available": True,
+            # The extant production orphan predates durable candidate identity
+            # fields in the lock. With its state journal absent, the bridge
+            # truthfully returns empty values and the reviewed proof supplies
+            # the immutable historical binding.
+            "expected_sha256": "",
+            "expected_version": "",
+            "installed_plugin_sha256": "",
+            "post_install_database_fingerprint": "",
+            "current_version": prior["version"],
+            "current_database_version": prior["database_version"],
+            "current_active": prior["active"],
+            "current_plugin_sha256": prior["plugin_sha256"],
+            "current_sync_configured": prior["sync_configured"],
+            "current_robots_sha256": prior["robots_sha256"],
+            "current_deployment": failed["deployment_id"],
+            "database_fingerprint": reconciliation[
+                "observed_database_fingerprint"
+            ],
+            "projected_deployment_id": prior["deployment_id"],
+            "projected_database_fingerprint": reconciliation[
+                "expected_reconciled_database_fingerprint"
+            ],
+            "database_manifest": reconciliation["preserved_manifest"],
+            "database_manifest_sha256": reconciliation[
+                "preserved_manifest_sha256"
+            ],
+            "database_storage": reconciliation["transactional_storage"],
+        }
+
+    def test_v2_missing_candidate_identity_is_allowed_only_for_absent_state(
+        self,
+    ) -> None:
+        envelope = self.envelope()
+        proof = envelope["proof"]
+        status = self.initial_status(proof)
+
+        DEPLOY.validate_orphaned_rollback_live_state(
+            proof["failed_run"]["deployment_id"],
+            status,
+            proof,
+        )
+
+        status["state_exists"] = True
+        with self.assertRaisesRegex(DEPLOY.DeployError, "expected_sha256"):
+            DEPLOY.validate_orphaned_rollback_live_state(
+                proof["failed_run"]["deployment_id"],
+                status,
+                proof,
+            )
+
+    def test_v2_present_candidate_identity_must_match_reviewed_proof(self) -> None:
+        envelope = self.envelope()
+        proof = envelope["proof"]
+        status = self.initial_status(proof)
+        status["expected_sha256"] = "0" * 64
+
+        with self.assertRaisesRegex(DEPLOY.DeployError, "expected_sha256"):
+            DEPLOY.validate_orphaned_rollback_live_state(
+                proof["failed_run"]["deployment_id"],
+                status,
+                proof,
+            )
+
+    def committed_status(
+        self,
+        proof: dict[str, Any],
+        proof_sha256: str,
+        receipt_sha256: str,
+        *,
+        marker_rows_affected: int,
+    ) -> dict[str, Any]:
+        failed = proof["failed_run"]
+        prior = proof["prior_run"]
+        reconciliation = proof["database_reconciliation"]
+        marker_transition = (
+            "corrected" if marker_rows_affected == 1 else "already-correct"
+        )
+        return {
+            "phase": "committed",
+            "state_exists": False,
+            "lock_owned": True,
+            "expected_sha256": failed["artifact_sha256"],
+            "expected_version": failed["candidate_version"],
+            "installed_plugin_sha256": failed[
+                "candidate_plugin_sha256"
+            ],
+            "post_install_database_fingerprint": failed[
+                "candidate_database_fingerprint"
+            ],
+            "committed_outcome": "rolled_back",
+            "committed_expected_active": prior["active"],
+            "committed_expected_absent": False,
+            "committed_expected_version": prior["version"],
+            "committed_expected_deployment": prior["deployment_id"],
+            "committed_expected_plugin_sha256": prior["plugin_sha256"],
+            "committed_expected_database_fingerprint": reconciliation[
+                "expected_reconciled_database_fingerprint"
+            ],
+            "committed_expected_robots_exists": prior["robots_exists"],
+            "committed_expected_robots_sha256": prior["robots_sha256"],
+            "committed_expected_sync_configured": prior["sync_configured"],
+            "orphaned_recovery_proof_sha256": proof_sha256,
+            "orphaned_recovery_receipt_sha256": receipt_sha256,
+            "orphaned_recovery_receipt_schema": "complete99-orphaned-rollback-receipt/v2",
+            "orphaned_recovery_evidence_exists": False,
+            "orphaned_recovery_evidence_sha256": "",
+            "orphaned_reconciled_from": "rolling_back",
+            "orphaned_observed_deployment": failed["deployment_id"],
+            "orphaned_reconciliation_mode": reconciliation["mode"],
+            "orphaned_prior_proof_sha256": reconciliation[
+                "prior_proof_sha256"
+            ],
+            "orphaned_attestation_run_id": reconciliation[
+                "attestation_run_id"
+            ],
+            "orphaned_attestation_sha256": reconciliation[
+                "attestation_sha256"
+            ],
+            "orphaned_attestation_audit_sha256": reconciliation[
+                "attestation_audit_sha256"
+            ],
+            "orphaned_attestation_source_commit": reconciliation[
+                "attestation_source_commit"
+            ],
+            "orphaned_historical_baseline_database_fingerprint": reconciliation[
+                "baseline_database_fingerprint"
+            ],
+            "orphaned_observed_database_fingerprint": reconciliation[
+                "observed_database_fingerprint"
+            ],
+            "orphaned_preserved_manifest_sha256": reconciliation[
+                "preserved_manifest_sha256"
+            ],
+            "orphaned_marker_rows_affected": marker_rows_affected,
+            "orphaned_marker_transition": marker_transition,
+            "current_deployment": prior["deployment_id"],
+            "database_fingerprint": reconciliation[
+                "expected_reconciled_database_fingerprint"
+            ],
+            "database_manifest_sha256": reconciliation[
+                "preserved_manifest_sha256"
+            ],
+        }
+
+    def response(
+        self,
+        proof: dict[str, Any],
+        receipt_sha256: str,
+        *,
+        marker_rows_affected: int,
+    ) -> dict[str, Any]:
+        reconciliation = proof["database_reconciliation"]
+        return {
+            "reconciled": True,
+            "phase": "committed",
+            "lock_retained": True,
+            "receipt_schema": "complete99-orphaned-rollback-receipt/v2",
+            "receipt_sha256": receipt_sha256,
+            "evidence_directory_exists": False,
+            "evidence_directory_sha256": "",
+            "marker_corrected": marker_rows_affected == 1,
+            "marker_rows_affected": marker_rows_affected,
+            "marker_transition": (
+                "corrected"
+                if marker_rows_affected == 1
+                else "already-correct"
+            ),
+            "historical_baseline_database_fingerprint": reconciliation[
+                "baseline_database_fingerprint"
+            ],
+            "observed_database_fingerprint": reconciliation[
+                "observed_database_fingerprint"
+            ],
+            "reconciled_database_fingerprint": reconciliation[
+                "expected_reconciled_database_fingerprint"
+            ],
+            "preserved_manifest_sha256": reconciliation[
+                "preserved_manifest_sha256"
+            ],
+        }
+
+    def test_v2_request_binds_reviewed_fields_and_validates_row_one_receipt(self) -> None:
+        envelope = self.envelope()
+        proof = envelope["proof"]
+        receipt_sha256 = "f" * 64
+        calls: list[tuple[str, dict[str, Any]]] = []
+
+        def bridge_call(
+            _client: object,
+            action: str,
+            _token: str,
+            _deployment_id: str,
+            **fields: Any,
+        ) -> dict[str, Any]:
+            calls.append((action, fields))
+            if action == "reconcile-orphaned-rollback":
+                return self.response(
+                    proof,
+                    receipt_sha256,
+                    marker_rows_affected=1,
+                )
+            return self.committed_status(
+                proof,
+                envelope["proof_sha256"],
+                receipt_sha256,
+                marker_rows_affected=1,
+            )
+
+        with mock.patch.object(DEPLOY, "bridge_call", side_effect=bridge_call):
+            result = DEPLOY.reconcile_orphaned_rollback(
+                object(),
+                "token",
+                proof["failed_run"]["deployment_id"],
+                self.initial_status(proof),
+                proof,
+                envelope["proof_sha256"],
+            )
+
+        self.assertEqual(
+            ["reconcile-orphaned-rollback", "status"],
+            [action for action, _fields in calls],
+        )
+        request = calls[0][1]
+        reconciliation = proof["database_reconciliation"]
+        self.assertEqual(proof, request["reviewed_proof"])
+        self.assertEqual(
+            reconciliation["observed_database_fingerprint"],
+            request["expected_observed_database_fingerprint"],
+        )
+        self.assertEqual(
+            reconciliation["expected_reconciled_database_fingerprint"],
+            request["expected_reconciled_database_fingerprint"],
+        )
+        self.assertEqual(1, result["marker_rows_affected"])
+        self.assertFalse(result["response_recovered"])
+
+    def test_v2_lost_mutation_response_uses_one_read_only_status_and_never_retries(self) -> None:
+        envelope = self.envelope()
+        proof = envelope["proof"]
+        receipt_sha256 = "e" * 64
+        calls: list[str] = []
+
+        def bridge_call(
+            _client: object,
+            action: str,
+            _token: str,
+            _deployment_id: str,
+            **_fields: Any,
+        ) -> dict[str, Any]:
+            calls.append(action)
+            if action == "reconcile-orphaned-rollback":
+                raise DEPLOY.NetworkDeployError("response lost")
+            return self.committed_status(
+                proof,
+                envelope["proof_sha256"],
+                receipt_sha256,
+                marker_rows_affected=1,
+            )
+
+        with mock.patch.object(DEPLOY, "bridge_call", side_effect=bridge_call):
+            result = DEPLOY.reconcile_orphaned_rollback(
+                object(),
+                "token",
+                proof["failed_run"]["deployment_id"],
+                self.initial_status(proof),
+                proof,
+                envelope["proof_sha256"],
+            )
+
+        self.assertEqual(["reconcile-orphaned-rollback", "status"], calls)
+        self.assertTrue(result["response_recovered"])
+        self.assertEqual(receipt_sha256, result["receipt_sha256"])
+
+    def test_v2_ambiguous_http_error_uses_read_only_receipt_recovery(self) -> None:
+        envelope = self.envelope()
+        proof = envelope["proof"]
+        receipt_sha256 = "c" * 64
+        calls: list[str] = []
+
+        def bridge_call(
+            _client: object,
+            action: str,
+            _token: str,
+            _deployment_id: str,
+            **_fields: Any,
+        ) -> dict[str, Any]:
+            calls.append(action)
+            if action == "reconcile-orphaned-rollback":
+                raise DEPLOY.HTTPDeployError(
+                    "ambiguous gateway response",
+                    status=502,
+                    code="gateway_error",
+                    data={},
+                )
+            return self.committed_status(
+                proof,
+                envelope["proof_sha256"],
+                receipt_sha256,
+                marker_rows_affected=0,
+            )
+
+        with mock.patch.object(DEPLOY, "bridge_call", side_effect=bridge_call):
+            result = DEPLOY.reconcile_orphaned_rollback(
+                object(),
+                "token",
+                proof["failed_run"]["deployment_id"],
+                self.initial_status(proof),
+                proof,
+                envelope["proof_sha256"],
+            )
+
+        self.assertEqual(["reconcile-orphaned-rollback", "status"], calls)
+        self.assertTrue(result["response_recovered"])
+        self.assertEqual("already-correct", result["marker_transition"])
+
+    def test_v2_invalid_success_response_uses_read_only_receipt_recovery(
+        self,
+    ) -> None:
+        envelope = self.envelope()
+        proof = envelope["proof"]
+        receipt_sha256 = "a" * 64
+        wrong_fingerprint = self.response(
+            proof,
+            receipt_sha256,
+            marker_rows_affected=1,
+        )
+        wrong_fingerprint["observed_database_fingerprint"] = "0" * 64
+        wrong_receipt = self.response(
+            proof,
+            "b" * 64,
+            marker_rows_affected=1,
+        )
+
+        for label, invalid_response in (
+            ("empty object", {}),
+            ("wrong reviewed fingerprint", wrong_fingerprint),
+            ("wrong durable receipt", wrong_receipt),
+        ):
+            calls: list[str] = []
+
+            def bridge_call(
+                _client: object,
+                action: str,
+                _token: str,
+                _deployment_id: str,
+                **_fields: Any,
+            ) -> dict[str, Any]:
+                calls.append(action)
+                if action == "reconcile-orphaned-rollback":
+                    return invalid_response
+                return self.committed_status(
+                    proof,
+                    envelope["proof_sha256"],
+                    receipt_sha256,
+                    marker_rows_affected=1,
+                )
+
+            with self.subTest(label=label), mock.patch.object(
+                DEPLOY,
+                "bridge_call",
+                side_effect=bridge_call,
+            ):
+                result = DEPLOY.reconcile_orphaned_rollback(
+                    object(),
+                    "token",
+                    proof["failed_run"]["deployment_id"],
+                    self.initial_status(proof),
+                    proof,
+                    envelope["proof_sha256"],
+                )
+            self.assertTrue(result["response_recovered"])
+            self.assertEqual(["reconcile-orphaned-rollback", "status"], calls)
+
+    def test_v2_crossed_marker_and_fingerprint_fails_before_mutation(self) -> None:
+        envelope = self.envelope()
+        proof = envelope["proof"]
+        status = self.initial_status(proof)
+        status["current_deployment"] = proof["prior_run"]["deployment_id"]
+        bridge = mock.Mock()
+        with mock.patch.object(DEPLOY, "bridge_call", bridge), self.assertRaisesRegex(
+            DEPLOY.DeployError,
+            "reviewed v2 attestation",
+        ):
+            DEPLOY.reconcile_orphaned_rollback(
+                object(),
+                "token",
+                proof["failed_run"]["deployment_id"],
+                status,
+                proof,
+                envelope["proof_sha256"],
+            )
+        bridge.assert_not_called()
+
+    def test_v1_reconciliation_response_and_audit_shape_remain_unchanged(self) -> None:
+        proof = valid_proof()
+        proof_sha256 = proof_record(proof)["proof_sha256"]
+        failed = proof["failed_run"]
+        prior = proof["prior_run"]
+        receipt_sha256 = "d" * 64
+        status = {
+            "phase": "rolling_back",
+            "state_exists": False,
+            "lock_owned": True,
+            "recovery_ready": True,
+            "process_lock_available": True,
+            "current_version": prior["version"],
+            "current_database_version": prior["database_version"],
+            "current_active": prior["active"],
+            "current_plugin_sha256": prior["plugin_sha256"],
+            "current_sync_configured": prior["sync_configured"],
+            "current_robots_sha256": prior["robots_sha256"],
+            "current_deployment": failed["deployment_id"],
+        }
+        response = {
+            "reconciled": True,
+            "phase": "committed",
+            "lock_retained": True,
+            "marker_corrected": True,
+            "receipt_sha256": receipt_sha256,
+            "evidence_directory_exists": False,
+            "evidence_directory_sha256": "",
+        }
+        committed = {
+            "phase": "committed",
+            "state_exists": False,
+            "lock_owned": True,
+            "committed_outcome": "rolled_back",
+            "committed_expected_active": prior["active"],
+            "committed_expected_absent": False,
+            "committed_expected_version": prior["version"],
+            "committed_expected_deployment": prior["deployment_id"],
+            "committed_expected_plugin_sha256": prior["plugin_sha256"],
+            "committed_expected_database_fingerprint": prior[
+                "database_fingerprint"
+            ],
+            "committed_expected_robots_exists": prior["robots_exists"],
+            "committed_expected_robots_sha256": prior["robots_sha256"],
+            "committed_expected_sync_configured": prior["sync_configured"],
+            "orphaned_recovery_proof_sha256": proof_sha256,
+            "orphaned_recovery_receipt_sha256": receipt_sha256,
+        }
+        with mock.patch.object(
+            DEPLOY,
+            "bridge_call",
+            return_value=response,
+        ), mock.patch.object(
+            DEPLOY,
+            "poll_deployment_status",
+            return_value=committed,
+        ):
+            result = DEPLOY.reconcile_orphaned_rollback(
+                object(),
+                "token",
+                failed["deployment_id"],
+                status,
+                proof,
+                proof_sha256,
+            )
+        self.assertEqual(
+            {
+                "evidence_directory_exists",
+                "evidence_directory_sha256",
+                "lock_retained",
+                "marker_corrected",
+                "phase",
+                "proof_sha256",
+                "receipt_sha256",
+            },
+            set(result),
+        )
+
+
 class RecoveryProofTests(unittest.TestCase):
     def _write_proof(
         self,
@@ -550,6 +1165,45 @@ class RecoveryProofTests(unittest.TestCase):
         path = proof_dir / name
         path.write_text(json.dumps(envelope), encoding="utf-8")
         return path
+
+    def _write_production_v2_fixture(
+        self,
+        root: Path,
+        *,
+        envelope: dict[str, Any] | None = None,
+        observation_bytes: bytes | None = None,
+        historical_bytes: bytes | None = None,
+    ) -> Path:
+        proof_dir = root / "docs" / "recovery-proofs"
+        observation_dir = proof_dir / "observations"
+        observation_dir.mkdir(parents=True)
+        source_root = ROOT / "docs" / "recovery-proofs"
+        if envelope is None:
+            envelope = json.loads(
+                (source_root / "c99-prod-31171940371-1-v2.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+        if observation_bytes is None:
+            observation_bytes = (
+                source_root
+                / "observations"
+                / "c99-prod-31171940371-1-run-31185136097.json"
+            ).read_bytes()
+        if historical_bytes is None:
+            historical_bytes = (
+                source_root / "c99-prod-31171940371-1.json"
+            ).read_bytes()
+        proof_path = proof_dir / "v2.json"
+        proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+        (
+            observation_dir
+            / "c99-prod-31171940371-1-run-31185136097.json"
+        ).write_bytes(observation_bytes)
+        (proof_dir / "c99-prod-31171940371-1.json").write_bytes(
+            historical_bytes
+        )
+        return proof_path
 
     def test_proof_loader_enforces_path_digest_and_strict_scalar_types(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -629,12 +1283,453 @@ class RecoveryProofTests(unittest.TestCase):
                             str(malformed_path),
                         )
 
+            embedded_run = valid_proof()
+            embedded_run["failed_run"]["deployment_id"] = (
+                "c99-prod-failed-x1234x-1"
+            )
+            embedded_path = self._write_proof(
+                root,
+                embedded_run,
+                name="embedded-run-id.json",
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "reviewed identities",
+            ):
+                RECOVER.load_orphaned_rollback_proof(
+                    DEPLOY,
+                    str(embedded_path),
+                )
+
+    def test_v2_proof_binds_the_exact_committed_observation_bytes(self) -> None:
+        proof_source = (
+            ROOT
+            / "docs"
+            / "recovery-proofs"
+            / "c99-prod-31171940371-1-v2.json"
+        )
+        historical_source = (
+            ROOT
+            / "docs"
+            / "recovery-proofs"
+            / "c99-prod-31171940371-1.json"
+        )
+        observation_source = (
+            ROOT
+            / "docs"
+            / "recovery-proofs"
+            / "observations"
+            / "c99-prod-31171940371-1-run-31185136097.json"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_dir = root / "docs" / "recovery-proofs"
+            observation_dir = proof_dir / "observations"
+            observation_dir.mkdir(parents=True)
+            proof_path = proof_dir / proof_source.name
+            historical_path = proof_dir / historical_source.name
+            observation_path = observation_dir / observation_source.name
+            proof_path.write_bytes(proof_source.read_bytes())
+            historical_path.write_bytes(historical_source.read_bytes())
+            observation_path.write_bytes(observation_source.read_bytes())
+
+            with mock.patch.object(RECOVER, "ROOT", root):
+                loaded = RECOVER.load_orphaned_rollback_proof(
+                    DEPLOY,
+                    str(proof_path),
+                )
+            self.assertIsNotNone(loaded)
+            assert loaded is not None
+            self.assertEqual(
+                "complete99-orphaned-rollback-proof/v2",
+                loaded["schema"],
+            )
+            self.assertEqual(
+                "db93ccabda28b2848161d445e35b8010de18c89f3764b07b5434e76ffce6351f",
+                hashlib.sha256(observation_path.read_bytes()).hexdigest(),
+            )
+
+            observation_path.write_bytes(observation_path.read_bytes() + b"\n")
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "attestation digest",
+            ):
+                RECOVER.load_orphaned_rollback_proof(
+                    DEPLOY,
+                    str(proof_path),
+                )
+
+    def test_v2_attestation_duplicate_keys_fail_even_with_rehashed_proof(self) -> None:
+        envelope = json.loads(
+            (
+                ROOT
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31171940371-1-v2.json"
+            ).read_text(encoding="utf-8")
+        )
+        raw_observation = (
+            ROOT
+            / "docs"
+            / "recovery-proofs"
+            / "observations"
+            / "c99-prod-31171940371-1-run-31185136097.json"
+        ).read_text(encoding="utf-8")
+        duplicated = raw_observation.replace(
+            '  "result": "orphaned-rollback-observed",',
+            '  "result": "orphaned-rollback-observed",\n  "result": "orphaned-rollback-observed",',
+            1,
+        ).encode("utf-8")
+        attestation_sha256 = hashlib.sha256(duplicated).hexdigest()
+        reconciliation = envelope["proof"]["database_reconciliation"]
+        reconciliation["attestation_sha256"] = attestation_sha256
+        reconciliation["attestation_audit_sha256"] = attestation_sha256
+        envelope["proof_sha256"] = hashlib.sha256(
+            json.dumps(
+                envelope["proof"],
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_dir = root / "docs" / "recovery-proofs"
+            observation_dir = proof_dir / "observations"
+            observation_dir.mkdir(parents=True)
+            proof_path = proof_dir / "v2.json"
+            historical_path = proof_dir / "c99-prod-31171940371-1.json"
+            observation_path = (
+                observation_dir
+                / "c99-prod-31171940371-1-run-31185136097.json"
+            )
+            proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+            historical_path.write_bytes(
+                (
+                    ROOT
+                    / "docs"
+                    / "recovery-proofs"
+                    / "c99-prod-31171940371-1.json"
+                ).read_bytes()
+            )
+            observation_path.write_bytes(duplicated)
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "attestation could not be read",
+            ):
+                RECOVER.load_orphaned_rollback_proof(
+                    DEPLOY,
+                    str(proof_path),
+                )
+
+    def test_v2_attestation_parent_symlink_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_path = self._write_production_v2_fixture(root)
+            observation_dir = root / "docs" / "recovery-proofs" / "observations"
+            original_is_symlink = Path.is_symlink
+            for symlink_component in (root / "docs", observation_dir):
+                with self.subTest(component=symlink_component.name):
+                    def is_symlink(candidate: Path) -> bool:
+                        return (
+                            candidate == symlink_component
+                            or original_is_symlink(candidate)
+                        )
+
+                    with mock.patch.object(RECOVER, "ROOT", root), mock.patch.object(
+                        Path,
+                        "is_symlink",
+                        autospec=True,
+                        side_effect=is_symlink,
+                    ), self.assertRaisesRegex(
+                        DEPLOY.DeployError,
+                        "attestation must be under",
+                    ):
+                        RECOVER.load_orphaned_rollback_proof(
+                            DEPLOY,
+                            str(proof_path),
+                        )
+
+    def test_v2_loader_rejects_weak_pre_mutation_evidence_contracts(self) -> None:
+        source_root = ROOT / "docs" / "recovery-proofs"
+
+        def production_envelope() -> dict[str, Any]:
+            return json.loads(
+                (source_root / "c99-prod-31171940371-1-v2.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        def rehash(envelope: dict[str, Any]) -> None:
+            envelope["proof_sha256"] = hashlib.sha256(
+                json.dumps(
+                    envelope["proof"],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()
+
+        def bind_observation(
+            envelope: dict[str, Any],
+            observation: dict[str, Any],
+        ) -> bytes:
+            observation_bytes = (
+                json.dumps(
+                    observation,
+                    ensure_ascii=False,
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n"
+            ).encode("utf-8")
+            observation_sha256 = hashlib.sha256(observation_bytes).hexdigest()
+            reconciliation = envelope["proof"]["database_reconciliation"]
+            reconciliation["attestation_sha256"] = observation_sha256
+            reconciliation["attestation_audit_sha256"] = observation_sha256
+            rehash(envelope)
+            return observation_bytes
+
+        older_run = production_envelope()
+        older_run["proof"]["database_reconciliation"]["attestation_run_id"] = (
+            older_run["proof"]["failed_run"]["run_id"]
+        )
+        rehash(older_run)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_path = self._write_production_v2_fixture(
+                root,
+                envelope=older_run,
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "reconciliation identity",
+            ):
+                RECOVER.load_orphaned_rollback_proof(DEPLOY, str(proof_path))
+
+        reused_source_commit = production_envelope()
+        reused_source_commit["proof"]["database_reconciliation"][
+            "attestation_source_commit"
+        ] = reused_source_commit["proof"]["failed_run"]["commit"]
+        rehash(reused_source_commit)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_path = self._write_production_v2_fixture(
+                root,
+                envelope=reused_source_commit,
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "reconciliation identity",
+            ):
+                RECOVER.load_orphaned_rollback_proof(DEPLOY, str(proof_path))
+
+        bool_int_alias = production_envelope()
+        observation = json.loads(
+            (
+                source_root
+                / "observations"
+                / "c99-prod-31171940371-1-run-31185136097.json"
+            ).read_text(encoding="utf-8")
+        )
+        observation["orphaned_rollback_observation"]["state_exists"] = 0
+        observation["initial_status"]["state_exists"] = 0
+        observation_bytes = bind_observation(bool_int_alias, observation)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_path = self._write_production_v2_fixture(
+                root,
+                envelope=bool_int_alias,
+                observation_bytes=observation_bytes,
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "attestation",
+            ):
+                RECOVER.load_orphaned_rollback_proof(DEPLOY, str(proof_path))
+
+        observed_baseline = production_envelope()
+        observed_baseline_reconciliation = observed_baseline["proof"][
+            "database_reconciliation"
+        ]
+        observed_baseline_reconciliation[
+            "observed_database_fingerprint"
+        ] = observed_baseline_reconciliation["baseline_database_fingerprint"]
+        rehash(observed_baseline)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_path = self._write_production_v2_fixture(
+                root,
+                envelope=observed_baseline,
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "reviewed state conflicts",
+            ):
+                RECOVER.load_orphaned_rollback_proof(DEPLOY, str(proof_path))
+
+        for label, raw_path in (
+            (
+                "dot segment",
+                "docs/recovery-proofs/observations/./"
+                "c99-prod-31171940371-1-run-31185136097.json",
+            ),
+            (
+                "internal parent segment",
+                "docs/recovery-proofs/observations/../observations/"
+                "c99-prod-31171940371-1-run-31185136097.json",
+            ),
+            (
+                "case changed prefix",
+                "Docs/recovery-proofs/observations/"
+                "c99-prod-31171940371-1-run-31185136097.json",
+            ),
+            (
+                "uppercase suffix",
+                "docs/recovery-proofs/observations/"
+                "c99-prod-31171940371-1-run-31185136097.JSON",
+            ),
+            (
+                "double-dot filename",
+                "docs/recovery-proofs/observations/"
+                "c99-prod-31171940371-1-run-31185136097..json",
+            ),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
+                noncanonical_path = production_envelope()
+                noncanonical_path["proof"]["database_reconciliation"][
+                    "attestation_path"
+                ] = raw_path
+                rehash(noncanonical_path)
+                root = Path(directory)
+                proof_path = self._write_production_v2_fixture(
+                    root,
+                    envelope=noncanonical_path,
+                )
+                with mock.patch.object(
+                    RECOVER,
+                    "ROOT",
+                    root,
+                ), self.assertRaisesRegex(
+                    DEPLOY.DeployError,
+                    "attestation must be under",
+                ):
+                    RECOVER.load_orphaned_rollback_proof(
+                        DEPLOY,
+                        str(proof_path),
+                    )
+
+        for label, started_at, finished_at in (
+            ("invalid timestamp", "reviewed", "2026-08-07T13:58:29Z"),
+            (
+                "reversed timestamps",
+                "2026-08-07T13:58:30Z",
+                "2026-08-07T13:58:29Z",
+            ),
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as directory:
+                timestamp_envelope = production_envelope()
+                observation = json.loads(
+                    (
+                        source_root
+                        / "observations"
+                        / "c99-prod-31171940371-1-run-31185136097.json"
+                    ).read_text(encoding="utf-8")
+                )
+                observation["started_at"] = started_at
+                observation["finished_at"] = finished_at
+                observation_bytes = bind_observation(
+                    timestamp_envelope,
+                    observation,
+                )
+                root = Path(directory)
+                proof_path = self._write_production_v2_fixture(
+                    root,
+                    envelope=timestamp_envelope,
+                    observation_bytes=observation_bytes,
+                )
+                with mock.patch.object(
+                    RECOVER,
+                    "ROOT",
+                    root,
+                ), self.assertRaisesRegex(
+                    DEPLOY.DeployError,
+                    "cleanup contract",
+                ):
+                    RECOVER.load_orphaned_rollback_proof(
+                        DEPLOY,
+                        str(proof_path),
+                    )
+
+        float_storage = production_envelope()
+        float_storage["proof"]["database_reconciliation"][
+            "transactional_storage"
+        ]["tables"] = 3.0
+        rehash(float_storage)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_path = self._write_production_v2_fixture(
+                root,
+                envelope=float_storage,
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "storage identity",
+            ):
+                RECOVER.load_orphaned_rollback_proof(DEPLOY, str(proof_path))
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_path = self._write_production_v2_fixture(
+                root,
+                historical_bytes=b"{}\n",
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "historical proof",
+            ):
+                RECOVER.load_orphaned_rollback_proof(DEPLOY, str(proof_path))
+
+        cleanup_envelope = production_envelope()
+        observation = json.loads(
+            (
+                source_root
+                / "observations"
+                / "c99-prod-31171940371-1-run-31185136097.json"
+            ).read_text(encoding="utf-8")
+        )
+        observation["cleanup"]["route_404"] = False
+        cleanup_bytes = (
+            json.dumps(observation, ensure_ascii=False, indent=2, sort_keys=True)
+            + "\n"
+        ).encode("utf-8")
+        cleanup_sha256 = hashlib.sha256(cleanup_bytes).hexdigest()
+        cleanup_reconciliation = cleanup_envelope["proof"][
+            "database_reconciliation"
+        ]
+        cleanup_reconciliation["attestation_sha256"] = cleanup_sha256
+        cleanup_reconciliation["attestation_audit_sha256"] = cleanup_sha256
+        rehash(cleanup_envelope)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_path = self._write_production_v2_fixture(
+                root,
+                envelope=cleanup_envelope,
+                observation_bytes=cleanup_bytes,
+            )
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "cleanup contract",
+            ):
+                RECOVER.load_orphaned_rollback_proof(DEPLOY, str(proof_path))
+
     def _run_recovery_with_proof(
         self,
         *,
         discovered_owner: str,
         status: dict[str, Any] | None,
-        proof_owner: str = "c99-prod-failed-1234",
+        proof_owner: str = "c99-prod-failed-1234-1",
     ) -> tuple[mock.Mock, mock.Mock, mock.Mock]:
         args = types.SimpleNamespace(
             allowed_deploy_hosts="",
@@ -730,7 +1825,7 @@ class RecoveryProofTests(unittest.TestCase):
 
     def test_supplied_proof_fails_closed_for_wrong_phase(self) -> None:
         rollback, reconcile, finalize = self._run_recovery_with_proof(
-            discovered_owner="c99-prod-failed-1234",
+            discovered_owner="c99-prod-failed-1234-1",
             status={
                 "lock_owned": True,
                 "phase": "failed",

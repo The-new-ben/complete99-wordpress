@@ -240,6 +240,16 @@ class NetworkDeployError(DeployError):
     """A transport failure where no trusted HTTP response was received."""
 
 
+def reject_duplicate_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject ambiguous JSON objects before deployment state is trusted."""
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
 def package_upload_ceiling(package_size: int) -> int:
     """Return a bounded bridge ceiling that safely contains the exact package."""
 
@@ -438,9 +448,26 @@ class Client:
     @staticmethod
     def _parse_json_response(raw: bytes) -> Any:
         try:
-            return json.loads(raw.decode("utf-8")) if raw else {}
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            return {"non_json_response": True, "length": len(raw)}
+            return (
+                json.loads(
+                    raw.decode("utf-8"),
+                    object_pairs_hook=reject_duplicate_json_object,
+                )
+                if raw
+                else {}
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+            try:
+                stripped = raw.decode("utf-8").lstrip().lower()
+            except UnicodeDecodeError:
+                stripped = ""
+            if stripped.startswith("<html") or stripped.startswith("<!doctype html"):
+                return {
+                    "html_response": True,
+                    "non_json_response": True,
+                    "length": len(raw),
+                }
+            return {"invalid_json_response": True, "length": len(raw)}
 
     def _bounded_public_read(
         self,
@@ -580,7 +607,7 @@ class Client:
             and alternate_path is not None
             and status == 403
             and isinstance(parsed, dict)
-            and parsed.get("non_json_response") is True
+            and parsed.get("html_response") is True
         ):
             status, raw = self._request_transport_with_safe_retries(
                 method,
@@ -593,9 +620,16 @@ class Client:
             if not (
                 status == 403
                 and isinstance(parsed, dict)
-                and parsed.get("non_json_response") is True
+                and parsed.get("html_response") is True
             ):
                 self.use_query_rest_transport = True
+        if (
+            isinstance(parsed, dict)
+            and parsed.get("invalid_json_response") is True
+        ):
+            raise DeployError(
+                f"Deployment request {method} {path} returned invalid JSON"
+            )
         if status not in expected:
             raw_code = (
                 str(parsed.get("code", "http_error"))
@@ -794,13 +828,15 @@ class Client:
         )
         if len(raw) > 1024 * 1024:
             raise DeployError("Public JSON verification exceeded the size ceiling")
-        try:
-            parsed: Any = json.loads(raw.decode("utf-8")) if raw else {}
-        except (UnicodeDecodeError, json.JSONDecodeError):
-            parsed = {"non_json_response": True, "length": len(raw)}
+        parsed = self._parse_json_response(raw)
         if status not in expected:
             code = parsed.get("code", "http_error") if isinstance(parsed, dict) else "http_error"
             raise DeployError(f"Public GET {path} failed with HTTP {status} ({code})")
+        if isinstance(parsed, dict) and (
+            parsed.get("invalid_json_response") is True
+            or parsed.get("non_json_response") is True
+        ):
+            raise DeployError(f"Public GET {path} returned invalid JSON")
         return status, parsed
 
 
@@ -1754,6 +1790,8 @@ def validate_orphaned_rollback_live_state(
     """Validate immutable release identity before observation or reconciliation."""
     failed = proof.get("failed_run", {})
     prior = proof.get("prior_run", {})
+    reconciliation = proof.get("database_reconciliation")
+    proof_is_v2 = isinstance(reconciliation, dict)
     reviewed_candidate_bindings = {
         "expected_sha256": failed.get("artifact_sha256"),
         "expected_version": failed.get("candidate_version"),
@@ -1764,10 +1802,20 @@ def validate_orphaned_rollback_live_state(
     }
     for key, reviewed_value in reviewed_candidate_bindings.items():
         observed_value = status.get(key)
+        identity_is_unavailable = observed_value is None or observed_value == ""
+        orphaned_state_is_absent = (
+            status.get("phase") == "rolling_back"
+            and status.get("state_exists") is False
+        )
         if (
-            observed_value is not None
-            and observed_value != ""
-            and observed_value != reviewed_value
+            observed_value != reviewed_value
+            and not (
+                identity_is_unavailable
+                and (
+                    not proof_is_v2
+                    or orphaned_state_is_absent
+                )
+            )
         ):
             raise DeployError(
                 f"Orphaned rollback failed-run identity does not match {key}"
@@ -1791,6 +1839,29 @@ def validate_orphaned_rollback_live_state(
         raise DeployError(
             "Orphaned rollback live state does not match the reviewed audit proof"
         )
+    if proof_is_v2:
+        current_deployment = status.get("current_deployment")
+        expected_current_fingerprint = (
+            reconciliation.get("observed_database_fingerprint")
+            if current_deployment == failed.get("deployment_id")
+            else reconciliation.get("expected_reconciled_database_fingerprint")
+        )
+        if (
+            status.get("database_fingerprint") != expected_current_fingerprint
+            or status.get("projected_deployment_id")
+            != prior.get("deployment_id")
+            or status.get("projected_database_fingerprint")
+            != reconciliation.get("expected_reconciled_database_fingerprint")
+            or status.get("database_manifest")
+            != reconciliation.get("preserved_manifest")
+            or status.get("database_manifest_sha256")
+            != reconciliation.get("preserved_manifest_sha256")
+            or status.get("database_storage")
+            != reconciliation.get("transactional_storage")
+        ):
+            raise DeployError(
+                "Orphaned rollback live database state does not match the reviewed v2 attestation"
+            )
     return failed, prior
 
 
@@ -1918,6 +1989,87 @@ def observe_orphaned_rollback(
     }
 
 
+def validate_v2_reconciliation_response(
+    response: dict[str, Any],
+    reconciliation: dict[str, Any],
+) -> None:
+    """Reject any mutation response that is not the exact reviewed v2 receipt."""
+    receipt_sha256 = response.get("receipt_sha256")
+    evidence_exists = response.get("evidence_directory_exists")
+    evidence_sha256 = response.get("evidence_directory_sha256")
+    marker_corrected = response.get("marker_corrected")
+    marker_rows_affected = response.get("marker_rows_affected")
+    marker_transition = response.get("marker_transition")
+    if (
+        response.get("reconciled") is not True
+        or response.get("phase") != "committed"
+        or response.get("lock_retained") is not True
+        or response.get("receipt_schema")
+        != "complete99-orphaned-rollback-receipt/v2"
+        or type(receipt_sha256) is not str
+        or re.fullmatch(r"[a-f0-9]{64}", receipt_sha256) is None
+        or type(evidence_exists) is not bool
+        or type(evidence_sha256) is not str
+        or (
+            evidence_exists
+            and re.fullmatch(r"[a-f0-9]{64}", evidence_sha256) is None
+        )
+        or (not evidence_exists and evidence_sha256 != "")
+        or type(marker_corrected) is not bool
+        or type(marker_rows_affected) is not int
+        or marker_rows_affected not in {0, 1}
+        or marker_transition not in {"corrected", "already-correct"}
+        or (marker_rows_affected == 1) != (marker_transition == "corrected")
+        or marker_corrected is not (marker_rows_affected == 1)
+        or response.get("historical_baseline_database_fingerprint")
+        != reconciliation["baseline_database_fingerprint"]
+        or response.get("observed_database_fingerprint")
+        != reconciliation["observed_database_fingerprint"]
+        or response.get("reconciled_database_fingerprint")
+        != reconciliation["expected_reconciled_database_fingerprint"]
+        or response.get("preserved_manifest_sha256")
+        != reconciliation["preserved_manifest_sha256"]
+    ):
+        raise DeployError(
+            "Orphaned rollback v2 mutation response did not confirm the reviewed receipt"
+        )
+
+
+def v2_reconciliation_response_from_status(
+    status: dict[str, Any],
+) -> dict[str, Any]:
+    """Project the durable lock receipt into the v2 mutation response shape."""
+    marker_rows_affected = status.get("orphaned_marker_rows_affected")
+    return {
+        "reconciled": status.get("phase") == "committed",
+        "phase": status.get("phase"),
+        "lock_retained": status.get("lock_owned"),
+        "receipt_schema": status.get("orphaned_recovery_receipt_schema"),
+        "receipt_sha256": status.get("orphaned_recovery_receipt_sha256"),
+        "evidence_directory_exists": status.get(
+            "orphaned_recovery_evidence_exists"
+        ),
+        "evidence_directory_sha256": status.get(
+            "orphaned_recovery_evidence_sha256"
+        ),
+        "marker_corrected": marker_rows_affected == 1,
+        "marker_rows_affected": marker_rows_affected,
+        "marker_transition": status.get("orphaned_marker_transition"),
+        "historical_baseline_database_fingerprint": status.get(
+            "orphaned_historical_baseline_database_fingerprint"
+        ),
+        "observed_database_fingerprint": status.get(
+            "orphaned_observed_database_fingerprint"
+        ),
+        "reconciled_database_fingerprint": status.get(
+            "committed_expected_database_fingerprint"
+        ),
+        "preserved_manifest_sha256": status.get(
+            "orphaned_preserved_manifest_sha256"
+        ),
+    }
+
+
 def reconcile_orphaned_rollback(
     client: Client,
     token: str,
@@ -1932,34 +2084,137 @@ def reconcile_orphaned_rollback(
         status,
         proof,
     )
-    response = bridge_call(
-        client,
-        "reconcile-orphaned-rollback",
-        token,
-        deployment_id,
-        proof_sha256=proof_sha256,
-        expected_observed_deployment=failed["deployment_id"],
-        expected_prior_deployment=prior["deployment_id"],
-        expected_prior_version=prior["version"],
-        expected_prior_database_version=prior["database_version"],
-        expected_prior_active=prior["active"],
-        expected_prior_plugin_sha256=prior["plugin_sha256"],
-        expected_baseline_database_fingerprint=prior["database_fingerprint"],
-        expected_prior_robots_exists=prior["robots_exists"],
-        expected_prior_robots_sha256=prior["robots_sha256"],
-        expected_sync_configured=prior["sync_configured"],
-        reviewed_proof=proof,
+    reconciliation = proof.get("database_reconciliation")
+    proof_is_v2 = isinstance(reconciliation, dict)
+    expected_receipt_schema = (
+        "complete99-orphaned-rollback-receipt/v2"
+        if proof_is_v2
+        else "complete99-orphaned-rollback-receipt/v1"
     )
+    request_fields: dict[str, Any] = {
+        "proof_sha256": proof_sha256,
+        "expected_observed_deployment": failed["deployment_id"],
+        "expected_prior_deployment": prior["deployment_id"],
+        "expected_prior_version": prior["version"],
+        "expected_prior_database_version": prior["database_version"],
+        "expected_prior_active": prior["active"],
+        "expected_prior_plugin_sha256": prior["plugin_sha256"],
+        "expected_baseline_database_fingerprint": prior["database_fingerprint"],
+        "expected_prior_robots_exists": prior["robots_exists"],
+        "expected_prior_robots_sha256": prior["robots_sha256"],
+        "expected_sync_configured": prior["sync_configured"],
+        "reviewed_proof": proof,
+    }
+    if proof_is_v2:
+        request_fields.update(
+            {
+                "expected_observed_database_fingerprint": reconciliation[
+                    "observed_database_fingerprint"
+                ],
+                "expected_reconciled_database_fingerprint": reconciliation[
+                    "expected_reconciled_database_fingerprint"
+                ],
+                "expected_preserved_manifest_sha256": reconciliation[
+                    "preserved_manifest_sha256"
+                ],
+                "expected_attestation_sha256": reconciliation[
+                    "attestation_sha256"
+                ],
+                "expected_attestation_run_id": reconciliation[
+                    "attestation_run_id"
+                ],
+            }
+        )
+    response_recovered = False
+    committed: dict[str, Any] | None = None
+    mutation_error: DeployError | None = None
+    response: dict[str, Any] = {}
+    try:
+        response = bridge_call(
+            client,
+            "reconcile-orphaned-rollback",
+            token,
+            deployment_id,
+            **request_fields,
+        )
+        if proof_is_v2:
+            validate_v2_reconciliation_response(response, reconciliation)
+    except DeployError as error:
+        if not proof_is_v2:
+            raise
+        mutation_error = error
+
+    if proof_is_v2:
+        try:
+            committed = bridge_call(
+                client,
+                "status",
+                token,
+                deployment_id,
+                projected_deployment_id=prior["deployment_id"],
+            )
+        except DeployError:
+            if mutation_error is not None:
+                raise mutation_error
+            raise
+        try:
+            if (
+                committed.get("phase") != "committed"
+                or committed.get("state_exists") is not False
+                or committed.get("lock_owned") is not True
+                or committed.get("orphaned_recovery_proof_sha256")
+                != proof_sha256
+            ):
+                raise DeployError(
+                    "Orphaned rollback durable status did not confirm the reviewed proof"
+                )
+            authoritative_response = v2_reconciliation_response_from_status(
+                committed
+            )
+            validate_v2_reconciliation_response(
+                authoritative_response,
+                reconciliation,
+            )
+        except DeployError:
+            if mutation_error is not None:
+                raise mutation_error
+            raise
+        response_recovered = mutation_error is not None or any(
+            response.get(key) != value
+            for key, value in authoritative_response.items()
+        )
+        response = authoritative_response
     if (
-        not response.get("reconciled")
+        response.get("reconciled") is not True
         or response.get("phase") != "committed"
-        or not response.get("lock_retained")
-        or not re.fullmatch(
+        or response.get("lock_retained") is not True
+        or (
+            proof_is_v2
+            and response.get("receipt_schema") != expected_receipt_schema
+        )
+        or re.fullmatch(
             r"[a-f0-9]{64}", str(response.get("receipt_sha256", ""))
         )
+        is None
     ):
         raise DeployError("Orphaned rollback terminal receipt was not confirmed")
-    committed = poll_deployment_status(client, token, deployment_id)
+    if committed is None:
+        committed = (
+            bridge_call(
+                client,
+                "status",
+                token,
+                deployment_id,
+                projected_deployment_id=prior["deployment_id"],
+            )
+            if proof_is_v2
+            else poll_deployment_status(client, token, deployment_id)
+        )
+    expected_database_fingerprint = (
+        str(reconciliation["expected_reconciled_database_fingerprint"])
+        if proof_is_v2
+        else str(prior["database_fingerprint"])
+    )
     expected_receipt = {
         "committed_outcome": "rolled_back",
         "committed_expected_active": bool(prior["active"]),
@@ -1967,33 +2222,155 @@ def reconcile_orphaned_rollback(
         "committed_expected_version": str(prior["version"]),
         "committed_expected_deployment": str(prior["deployment_id"]),
         "committed_expected_plugin_sha256": str(prior["plugin_sha256"]),
-        "committed_expected_database_fingerprint": str(
-            prior["database_fingerprint"]
-        ),
+        "committed_expected_database_fingerprint": expected_database_fingerprint,
         "committed_expected_robots_exists": bool(prior["robots_exists"]),
         "committed_expected_robots_sha256": str(prior["robots_sha256"]),
         "committed_expected_sync_configured": bool(prior["sync_configured"]),
         "orphaned_recovery_proof_sha256": proof_sha256,
         "orphaned_recovery_receipt_sha256": str(response["receipt_sha256"]),
     }
-    if committed.get("phase") != "committed" or committed.get("state_exists"):
+    if (
+        committed.get("phase") != "committed"
+        or committed.get("state_exists") is not False
+        or committed.get("lock_owned") is not True
+    ):
         raise DeployError("Orphaned rollback terminal phase was not durable")
     for key, value in expected_receipt.items():
         if committed.get(key) != value:
             raise DeployError(f"Orphaned rollback receipt failed for {key}")
-    return {
-        "evidence_directory_exists": bool(
-            response.get("evidence_directory_exists")
-        ),
-        "evidence_directory_sha256": str(
-            response.get("evidence_directory_sha256", "")
-        ),
+    evidence_directory_exists = response.get("evidence_directory_exists")
+    evidence_directory_sha256 = str(
+        response.get("evidence_directory_sha256", "")
+    )
+    marker_corrected = response.get("marker_corrected")
+    if (
+        type(evidence_directory_exists) is not bool
+        or type(marker_corrected) is not bool
+        or (
+            evidence_directory_exists
+            and re.fullmatch(r"[a-f0-9]{64}", evidence_directory_sha256) is None
+        )
+        or (not evidence_directory_exists and evidence_directory_sha256)
+    ):
+        raise DeployError("Orphaned rollback evidence receipt is invalid")
+    result = {
+        "evidence_directory_exists": evidence_directory_exists,
+        "evidence_directory_sha256": evidence_directory_sha256,
         "lock_retained": True,
-        "marker_corrected": bool(response.get("marker_corrected")),
+        "marker_corrected": marker_corrected,
         "phase": "committed",
         "proof_sha256": proof_sha256,
         "receipt_sha256": str(response["receipt_sha256"]),
     }
+    if proof_is_v2:
+        result.update(
+            {
+                "receipt_schema": expected_receipt_schema,
+                "response_recovered": response_recovered,
+            }
+        )
+        marker_rows_affected = response.get("marker_rows_affected")
+        marker_transition = response.get("marker_transition")
+        if (
+            type(marker_rows_affected) is not int
+            or marker_rows_affected not in {0, 1}
+            or marker_transition
+            not in {"corrected", "already-correct"}
+            or (marker_rows_affected == 1) != (marker_transition == "corrected")
+            or marker_corrected is not (marker_rows_affected == 1)
+            or response.get("historical_baseline_database_fingerprint")
+            != reconciliation["baseline_database_fingerprint"]
+            or response.get("observed_database_fingerprint")
+            != reconciliation["observed_database_fingerprint"]
+            or response.get("reconciled_database_fingerprint")
+            != reconciliation["expected_reconciled_database_fingerprint"]
+            or response.get("preserved_manifest_sha256")
+            != reconciliation["preserved_manifest_sha256"]
+        ):
+            raise DeployError(
+                "Orphaned rollback v2 receipt did not preserve the reviewed state"
+            )
+        expected_v2_lock = {
+            "expected_sha256": failed["artifact_sha256"],
+            "expected_version": failed["candidate_version"],
+            "installed_plugin_sha256": failed["candidate_plugin_sha256"],
+            "post_install_database_fingerprint": failed[
+                "candidate_database_fingerprint"
+            ],
+            "orphaned_reconciliation_mode": reconciliation["mode"],
+            "orphaned_prior_proof_sha256": reconciliation[
+                "prior_proof_sha256"
+            ],
+            "orphaned_attestation_run_id": reconciliation[
+                "attestation_run_id"
+            ],
+            "orphaned_attestation_sha256": reconciliation[
+                "attestation_sha256"
+            ],
+            "orphaned_attestation_audit_sha256": reconciliation[
+                "attestation_audit_sha256"
+            ],
+            "orphaned_attestation_source_commit": reconciliation[
+                "attestation_source_commit"
+            ],
+            "orphaned_recovery_receipt_schema": expected_receipt_schema,
+            "orphaned_historical_baseline_database_fingerprint": reconciliation[
+                "baseline_database_fingerprint"
+            ],
+            "orphaned_observed_database_fingerprint": reconciliation[
+                "observed_database_fingerprint"
+            ],
+            "orphaned_preserved_manifest_sha256": reconciliation[
+                "preserved_manifest_sha256"
+            ],
+            "orphaned_marker_rows_affected": marker_rows_affected,
+            "orphaned_marker_transition": marker_transition,
+        }
+        for key, value in expected_v2_lock.items():
+            if committed.get(key) != value:
+                raise DeployError(f"Orphaned rollback v2 lock failed for {key}")
+        if (
+            committed.get("current_deployment") != prior["deployment_id"]
+            or committed.get("database_fingerprint")
+            != reconciliation["expected_reconciled_database_fingerprint"]
+            or committed.get("database_manifest_sha256")
+            != reconciliation["preserved_manifest_sha256"]
+            or committed.get("orphaned_observed_deployment")
+            != failed["deployment_id"]
+            or committed.get("orphaned_reconciled_from") != "rolling_back"
+        ):
+            raise DeployError(
+                "Orphaned rollback v2 committed state differs from the reviewed projection"
+            )
+        result.update(
+            {
+                "attestation_audit_sha256": reconciliation[
+                    "attestation_audit_sha256"
+                ],
+                "attestation_run_id": reconciliation["attestation_run_id"],
+                "attestation_sha256": reconciliation["attestation_sha256"],
+                "attestation_source_commit": reconciliation[
+                    "attestation_source_commit"
+                ],
+                "historical_baseline_database_fingerprint": reconciliation[
+                    "baseline_database_fingerprint"
+                ],
+                "mode": reconciliation["mode"],
+                "marker_rows_affected": marker_rows_affected,
+                "marker_transition": marker_transition,
+                "observed_database_fingerprint": reconciliation[
+                    "observed_database_fingerprint"
+                ],
+                "preserved_manifest_sha256": reconciliation[
+                    "preserved_manifest_sha256"
+                ],
+                "prior_proof_sha256": reconciliation["prior_proof_sha256"],
+                "reconciled_database_fingerprint": reconciliation[
+                    "expected_reconciled_database_fingerprint"
+                ],
+            }
+        )
+    return result
 
 
 def expected_managed_robots(client: Client) -> bytes:
@@ -2169,37 +2546,49 @@ def verify_plugin_absent(client: Client) -> dict[str, Any]:
     return {"plugin_absent": True, "health_route_404": True}
 
 
+def validate_finalize_response(response: dict[str, Any]) -> None:
+    """Require the exact boolean finalization receipt before trusting cleanup."""
+    if (
+        response.get("finalized") is not True
+        or response.get("lock_released") is not True
+        or response.get("state_removed") is not True
+        or not isinstance(response.get("cache_purge", {}), dict)
+    ):
+        raise DeployError("Deployment backup finalization was not confirmed")
+
+
 def finalize_deployment(client: Client, token: str, deployment_id: str) -> dict[str, Any]:
     recovered = False
     try:
         response = bridge_call(client, "finalize", token, deployment_id)
+        validate_finalize_response(response)
     except DeployError as first_error:
         recovered = True
         try:
             response = bridge_call(client, "finalize", token, deployment_id)
+            validate_finalize_response(response)
         except DeployError:
             status = poll_deployment_status(client, token, deployment_id)
-            if not status.get("state_exists") and not status.get("lock_owned"):
+            if (
+                status.get("state_exists") is False
+                and status.get("lock_owned") is False
+            ):
                 response = {
                     "cache_purge": {"response_recovered": True},
                     "finalized": True,
                     "lock_released": True,
                     "state_removed": True,
                 }
-            elif status.get("phase") in {"committed", "cleanup_failed"} or not status.get(
-                "state_exists"
-            ):
+            elif status.get("phase") in {
+                "committed",
+                "cleanup_failed",
+            } or status.get("state_exists") is False:
                 raise FinalizeCommittedError(
                     "Deployment committed but backup/lock cleanup remains unresolved"
                 ) from first_error
             else:
                 raise first_error
-    if (
-        not response.get("finalized")
-        or not response.get("lock_released")
-        or not response.get("state_removed")
-    ):
-        raise DeployError("Deployment backup finalization was not confirmed")
+    validate_finalize_response(response)
     return {
         "cache_purge": response.get("cache_purge", {}),
         "finalized": True,
