@@ -715,6 +715,202 @@ def interrupted_observation_audit() -> tuple[
     return audit, failed, prior, {**recovery_identity, **context}
 
 
+def interrupted_database_mismatch_audit() -> tuple[
+    dict[str, object], dict[str, object], dict[str, object], dict[str, object]
+]:
+    failed, prior, database, recovery_identity = interrupted_identities()
+    current_manifest = copy.deepcopy(database["manifest"])
+    current_manifest["posts_sha256"] = "d" * 64
+    current_manifest_sha256 = VALIDATOR.canonical_json_sha256(current_manifest)
+    current_fingerprint = "e" * 64
+    safe_status = {
+        "adopted_forward_no_rollback": False,
+        "baseline_database_fingerprint": failed["baseline_database_fingerprint"],
+        "baseline_database_journal_valid": True,
+        "baseline_sync_configured": True,
+        "baseline_sync_secret_existed": True,
+        "current_active": True,
+        "current_database_version": failed["version"],
+        "current_deployment": failed["deployment_id"],
+        "current_plugin_main_exists": True,
+        "current_plugin_sha256": failed["installed_plugin_sha256"],
+        "current_robots_sha256": prior["robots_sha256"],
+        "current_sync_configured": True,
+        "current_target_dir_exists": True,
+        "current_version": failed["version"],
+        "database_fingerprint": current_fingerprint,
+        "database_fingerprint_available": True,
+        "database_manifest": current_manifest,
+        "database_manifest_sha256": current_manifest_sha256,
+        "database_restored": False,
+        "database_storage": database["storage"],
+        "deployment_id": failed["deployment_id"],
+        "expected_sha256": failed["artifact_sha256"],
+        "expected_version": failed["version"],
+        "had_plugin": True,
+        "installed_plugin_sha256": failed["installed_plugin_sha256"],
+        "interrupted_forward_candidate": False,
+        "interrupted_forward_database_manifest_sha256": "",
+        "interrupted_forward_proof_sha256": "",
+        "lock_owned": True,
+        "migration_failed": False,
+        "migration_invariants_valid": True,
+        "no_rollback_artifacts": True,
+        "phase": "installing",
+        "post_install_database_fingerprint": recovery_identity[
+            "database_fingerprint"
+        ],
+        "prior_active": True,
+        "prior_deployment": prior["deployment_id"],
+        "prior_plugin_main_exists": True,
+        "prior_plugin_sha256": prior["plugin_sha256"],
+        "prior_target_dir_exists": True,
+        "prior_version": prior["version"],
+        "process_lock_available": True,
+        "recovery_ready": True,
+        "robots_applied": True,
+        "robots_managed_sha256": prior["robots_sha256"],
+        "robots_prior_exists": True,
+        "robots_prior_sha256": prior["robots_sha256"],
+        "robots_restored": False,
+        "runtime_loaded": True,
+        "runtime_version": failed["version"],
+        "state_exists": True,
+    }
+    receipt = {
+        "database_fingerprint": current_fingerprint,
+        "database_identity_changed": True,
+        "database_manifest": current_manifest,
+        "database_manifest_sha256": current_manifest_sha256,
+        "database_storage": database["storage"],
+        "historical_database_fingerprint": recovery_identity[
+            "database_fingerprint"
+        ],
+        "historical_database_manifest_sha256": recovery_identity[
+            "database_manifest_sha256"
+        ],
+        "mismatches": list(VALIDATOR.INTERRUPTED_FORWARD_DATABASE_MISMATCHES),
+        "proof_consumed": False,
+        "safe_status": safe_status,
+        "safe_status_sha256": VALIDATOR.canonical_json_sha256(safe_status),
+        "schema": "complete99-interrupted-forward-observation/v2",
+    }
+    proof_path = f"docs/recovery-proofs/{failed['deployment_id']}.json"
+    proof_sha256 = "c" * 64
+    probe_id = "c99-recovery-probe-40000000003-1"
+    audit = {
+        **interrupted_common(str(failed["deployment_id"])),
+        **interrupted_health_home_robots(failed, prior),
+        "commit": "b" * 40,
+        "decision": "observe_interrupted_forward_database_mismatch",
+        "discovery": interrupted_discovery(str(failed["deployment_id"]), probe_id),
+        "interrupted_forward_observation": receipt,
+        "interrupted_forward_proof": {
+            "path": proof_path,
+            "proof_sha256": proof_sha256,
+            "schema": "complete99-interrupted-forward-proof/v1",
+        },
+        "proof_consumed": False,
+        "result": "interrupted_forward_database_mismatch_observed",
+    }
+    context = {
+        "current_database_fingerprint": current_fingerprint,
+        "current_database_manifest": current_manifest,
+        "current_database_manifest_sha256": current_manifest_sha256,
+        "current_database_storage": database["storage"],
+        "probe_id": probe_id,
+        "proof_path": proof_path,
+        "proof_sha256": proof_sha256,
+        "recovery_identity": recovery_identity,
+    }
+    return audit, failed, prior, context
+
+
+def write_interrupted_database_mismatch_proofs(
+    repository_root: Path,
+) -> tuple[Path, Path, dict[str, object], dict[str, str]]:
+    audit, failed_base, prior_base, context = interrupted_database_mismatch_audit()
+    observations = repository_root / "docs" / "recovery-proofs" / "observations"
+    observations.mkdir(parents=True)
+
+    source_paths: list[str] = []
+    source_digests: list[str] = []
+    for name in ("c99-failed-deploy", "c99-failed-recovery", "c99-prior-deploy"):
+        path = observations / f"{name}.json"
+        path.write_text("{}", encoding="utf-8")
+        source_paths.append(path.relative_to(repository_root).as_posix())
+        source_digests.append(hashlib.sha256(path.read_bytes()).hexdigest())
+
+    failed = {
+        **failed_base,
+        "deploy_audit_path": source_paths[0],
+        "deploy_audit_sha256": source_digests[0],
+        "recovery_audit_path": source_paths[1],
+        "recovery_audit_sha256": source_digests[1],
+    }
+    prior = {
+        **prior_base,
+        "deploy_audit_path": source_paths[2],
+        "deploy_audit_sha256": source_digests[2],
+    }
+    base_proof = {"failed_run": failed, "prior_run": prior}
+    base_proof_sha256 = VALIDATOR.canonical_json_sha256(base_proof)
+    proof_root = repository_root / "docs" / "recovery-proofs"
+    historical_path = proof_root / f"{failed['deployment_id']}.json"
+    historical_path.write_text(
+        json.dumps(
+            {
+                "proof": base_proof,
+                "proof_sha256": base_proof_sha256,
+                "schema": "complete99-interrupted-forward-proof/v1",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    audit["interrupted_forward_proof"]["proof_sha256"] = base_proof_sha256
+    observation_path = observations / "c99-database-mismatch-observation.json"
+    observation_path.write_text(json.dumps(audit), encoding="utf-8")
+    observation_sha256 = hashlib.sha256(observation_path.read_bytes()).hexdigest()
+    adoption = {
+        "observation_audit_path": observation_path.relative_to(
+            repository_root
+        ).as_posix(),
+        "observation_audit_sha256": observation_sha256,
+        "observation_commit": audit["commit"],
+        "observation_proof_sha256": base_proof_sha256,
+        "observation_run_id": 40000000003,
+        "observed_database_fingerprint": context[
+            "current_database_fingerprint"
+        ],
+        "observed_database_manifest": context["current_database_manifest"],
+        "observed_database_manifest_sha256": context[
+            "current_database_manifest_sha256"
+        ],
+        "observed_database_storage": context["current_database_storage"],
+        "observed_deployment_id": failed["deployment_id"],
+        "observed_plugin_sha256": failed["installed_plugin_sha256"],
+        "observed_robots_sha256": prior["robots_sha256"],
+        "observed_version": failed["version"],
+        "schema": "complete99-interrupted-forward-adoption/v2",
+        "target_artifact_sha256": failed["artifact_sha256"],
+        "target_installed_plugin_sha256": failed["installed_plugin_sha256"],
+    }
+    proof = {**base_proof, "forward_adoption": adoption}
+    v2_path = proof_root / f"{failed['deployment_id']}-v2.json"
+    v2_path.write_text(
+        json.dumps(
+            {
+                "proof": proof,
+                "proof_sha256": VALIDATOR.canonical_json_sha256(proof),
+                "schema": "complete99-interrupted-forward-proof/v2",
+            }
+        ),
+        encoding="utf-8",
+    )
+    return v2_path, observation_path, audit, context["recovery_identity"]
+
+
 def interrupted_already_finalized_audit(
     *,
     include_stale_probe: bool = False,
@@ -894,6 +1090,350 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                 mutate(changed)
                 with self.assertRaisesRegex(VALIDATOR.AuditValidationError, message):
                     validate(changed)
+
+    def test_database_mismatch_observation_is_exact_unconsumed_evidence(self) -> None:
+        audit, failed, prior, context = interrupted_database_mismatch_audit()
+
+        def validate(value: dict[str, object]) -> None:
+            VALIDATOR.validate_interrupted_database_mismatch_observation_audit(
+                value,
+                failed,
+                prior,
+                context["recovery_identity"],
+                str(context["proof_path"]),
+                str(context["proof_sha256"]),
+                str(context["probe_id"]),
+                expected_commit="b" * 40,
+            )
+
+        validate(audit)
+        for label, mutate, message in (
+            (
+                "fingerprint did not drift",
+                lambda value: value["interrupted_forward_observation"][
+                    "safe_status"
+                ].__setitem__(
+                    "database_fingerprint",
+                    context["recovery_identity"]["database_fingerprint"],
+                ),
+                "both reviewed database identities|identity changed",
+            ),
+            (
+                "manifest did not drift",
+                lambda value: value["interrupted_forward_observation"][
+                    "safe_status"
+                ].__setitem__(
+                    "database_manifest_sha256",
+                    context["recovery_identity"]["database_manifest_sha256"],
+                ),
+                "manifest|both reviewed database identities",
+            ),
+            (
+                "candidate",
+                lambda value: value["interrupted_forward_observation"][
+                    "safe_status"
+                ].__setitem__("interrupted_forward_candidate", True),
+                "both reviewed database identities",
+            ),
+            (
+                "prior identity",
+                lambda value: value["interrupted_forward_observation"][
+                    "safe_status"
+                ].__setitem__("prior_plugin_sha256", "0" * 64),
+                "both reviewed database identities",
+            ),
+            (
+                "unsafe lineage",
+                lambda value: value["interrupted_forward_observation"][
+                    "safe_status"
+                ].__setitem__(
+                    "post_install_database_fingerprint", "secret-like-value"
+                ),
+                "both reviewed database identities",
+            ),
+            (
+                "mismatch list",
+                lambda value: value["interrupted_forward_observation"].__setitem__(
+                    "mismatches", ["database_fingerprint"]
+                ),
+                "receipt schema",
+            ),
+            (
+                "proof consumed",
+                lambda value: value.__setitem__("proof_consumed", True),
+                "audit schema",
+            ),
+            (
+                "result",
+                lambda value: value.__setitem__(
+                    "result", "interrupted_forward_observed"
+                ),
+                "audit schema",
+            ),
+            (
+                "commit",
+                lambda value: value.__setitem__("commit", "d" * 40),
+                "commit",
+            ),
+            (
+                "probe run",
+                lambda value: value["discovery"].__setitem__(
+                    "probe_id", "c99-recovery-probe-40000000004-1"
+                ),
+                "discovery identity",
+            ),
+            (
+                "proof path",
+                lambda value: value["interrupted_forward_proof"].__setitem__(
+                    "path", "docs/recovery-proofs/other.json"
+                ),
+                "proof path or digest",
+            ),
+            (
+                "proof SHA",
+                lambda value: value["interrupted_forward_proof"].__setitem__(
+                    "proof_sha256", "0" * 64
+                ),
+                "proof path or digest",
+            ),
+            (
+                "receipt schema",
+                lambda value: value["interrupted_forward_observation"].__setitem__(
+                    "schema", "complete99-interrupted-forward-observation/v1"
+                ),
+                "receipt schema",
+            ),
+            (
+                "safe status digest",
+                lambda value: value["interrupted_forward_observation"].__setitem__(
+                    "safe_status_sha256", "0" * 64
+                ),
+                "receipt identity",
+            ),
+            (
+                "health",
+                lambda value: value["health"].__setitem__(
+                    "deployment_id", "c99-prod-other-40000000002-1"
+                ),
+                "health",
+            ),
+            (
+                "cleanup",
+                lambda value: value["cleanup"].__setitem__("route_404", False),
+                "cleanup",
+            ),
+        ):
+            with self.subTest(label=label):
+                changed = copy.deepcopy(audit)
+                mutate(changed)
+                with self.assertRaisesRegex(
+                    VALIDATOR.AuditValidationError,
+                    message,
+                ):
+                    validate(changed)
+
+        non_database_mutations = {
+            "deployment_id": "c99-prod-other-40000000002-1",
+            "phase": "installed",
+            "state_exists": False,
+            "lock_owned": False,
+            "recovery_ready": False,
+            "process_lock_available": False,
+            "expected_sha256": "0" * 64,
+            "expected_version": "1.17.0",
+            "installed_plugin_sha256": "0" * 64,
+            "current_target_dir_exists": False,
+            "current_plugin_main_exists": False,
+            "current_plugin_sha256": "0" * 64,
+            "current_active": False,
+            "current_version": "1.17.0",
+            "runtime_loaded": False,
+            "runtime_version": "1.17.0",
+            "migration_failed": True,
+            "migration_invariants_valid": False,
+            "no_rollback_artifacts": False,
+            "database_restored": True,
+            "baseline_database_journal_valid": False,
+            "baseline_sync_secret_existed": False,
+            "baseline_sync_configured": False,
+            "current_deployment": "c99-prod-other-40000000002-1",
+            "current_database_version": "1.17.0",
+            "baseline_database_fingerprint": "0" * 64,
+            "current_sync_configured": False,
+            "database_fingerprint_available": False,
+            "had_plugin": False,
+            "prior_target_dir_exists": False,
+            "prior_plugin_main_exists": False,
+            "prior_plugin_sha256": "0" * 64,
+            "prior_version": "1.16.0",
+            "prior_active": False,
+            "prior_deployment": "c99-prod-other-40000000001-1",
+            "robots_applied": False,
+            "robots_restored": True,
+            "robots_prior_exists": False,
+            "robots_prior_sha256": "0" * 64,
+            "robots_managed_sha256": "0" * 64,
+            "current_robots_sha256": "0" * 64,
+            "adopted_forward_no_rollback": True,
+            "interrupted_forward_candidate": True,
+            "interrupted_forward_proof_sha256": "0" * 64,
+            "interrupted_forward_database_manifest_sha256": "0" * 64,
+            "post_install_database_fingerprint": "secret-like-value",
+        }
+        for field, replacement in non_database_mutations.items():
+            with self.subTest(independent_non_database_field=field):
+                changed = copy.deepcopy(audit)
+                changed["interrupted_forward_observation"]["safe_status"][
+                    field
+                ] = replacement
+                with self.assertRaises(VALIDATOR.AuditValidationError):
+                    validate(changed)
+
+        loaded = {
+            "path": context["proof_path"],
+            "proof": {"failed_run": failed, "prior_run": prior},
+            "proof_sha256": context["proof_sha256"],
+            "recovery_identity": context["recovery_identity"],
+            "schema": "complete99-interrupted-forward-proof/v1",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            audit_root = Path(temporary)
+            audit_path = write_audit(audit_root, audit)
+            summary = json.dumps(
+                {
+                    "audit": str(audit_path),
+                    "deployment_id": failed["deployment_id"],
+                    "proof_consumed": False,
+                    "result": "interrupted_forward_database_mismatch_observed",
+                }
+            )
+            with mock.patch.object(
+                VALIDATOR,
+                "load_interrupted_forward_proof",
+                return_value=loaded,
+            ), mock.patch.object(
+                VALIDATOR,
+                "validate_interrupted_forward_dist",
+            ):
+                result = VALIDATOR.validate_recovery_audit(
+                    summary,
+                    "",
+                    audit_root,
+                    str(context["probe_id"]),
+                    interrupted_forward_proof_path="proof.json",
+                    expect_interrupted_forward=True,
+                    expect_observation=True,
+                    dist=Path("plugin-dist"),
+                )
+        self.assertFalse(result["proof_consumed"])
+        self.assertTrue(result["proof_observed"])
+
+    def test_adoption_v2_loader_alone_can_bind_reviewed_database_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            v2_path, observation_path, _, recovery_identity = (
+                write_interrupted_database_mismatch_proofs(repository_root)
+            )
+            original_v2 = v2_path.read_bytes()
+            original_observation = observation_path.read_bytes()
+
+            def load() -> dict[str, object]:
+                with mock.patch.object(
+                    VALIDATOR,
+                    "validate_interrupted_source_audits",
+                    return_value=recovery_identity,
+                ):
+                    return VALIDATOR.load_interrupted_forward_proof(
+                        str(v2_path),
+                        repository_root,
+                    )
+
+            loaded = load()
+            self.assertEqual(
+                "complete99-interrupted-forward-adoption/v2",
+                loaded["proof"]["forward_adoption"]["schema"],
+            )
+
+            def rewrite_v2(mutate: Callable[[dict[str, object]], None]) -> None:
+                envelope = json.loads(original_v2)
+                mutate(envelope)
+                envelope["proof_sha256"] = VALIDATOR.canonical_json_sha256(
+                    envelope["proof"]
+                )
+                v2_path.write_text(json.dumps(envelope), encoding="utf-8")
+
+            cases = (
+                (
+                    "v1 adoption cannot bind drift",
+                    lambda envelope: envelope["proof"]["forward_adoption"].__setitem__(
+                        "schema", "complete99-interrupted-forward-adoption/v1"
+                    ),
+                    "adoption identity",
+                ),
+                (
+                    "v2 adoption requires fingerprint drift",
+                    lambda envelope: envelope["proof"]["forward_adoption"].__setitem__(
+                        "observed_database_fingerprint",
+                        recovery_identity["database_fingerprint"],
+                    ),
+                    "adoption identity",
+                ),
+                (
+                    "v2 adoption requires manifest drift",
+                    lambda envelope: envelope["proof"]["forward_adoption"].__setitem__(
+                        "observed_database_manifest_sha256",
+                        recovery_identity["database_manifest_sha256"],
+                    ),
+                    "adoption identity",
+                ),
+                (
+                    "observation digest",
+                    lambda envelope: envelope["proof"]["forward_adoption"].__setitem__(
+                        "observation_audit_sha256", "0" * 64
+                    ),
+                    "digest does not match",
+                ),
+            )
+            for label, mutate, message in cases:
+                with self.subTest(label=label):
+                    v2_path.write_bytes(original_v2)
+                    observation_path.write_bytes(original_observation)
+                    rewrite_v2(mutate)
+                    with self.assertRaisesRegex(
+                        VALIDATOR.AuditValidationError,
+                        message,
+                    ):
+                        load()
+
+            v2_path.write_bytes(original_v2)
+            tampered_observation = json.loads(original_observation)
+            tampered_observation["proof_consumed"] = True
+            observation_path.write_text(
+                json.dumps(tampered_observation),
+                encoding="utf-8",
+            )
+            envelope = json.loads(original_v2)
+            envelope["proof"]["forward_adoption"][
+                "observation_audit_sha256"
+            ] = hashlib.sha256(observation_path.read_bytes()).hexdigest()
+            envelope["proof_sha256"] = VALIDATOR.canonical_json_sha256(
+                envelope["proof"]
+            )
+            v2_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "audit schema",
+            ):
+                load()
+
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "direct reviewed JSON|proof schema",
+            ):
+                VALIDATOR.load_interrupted_forward_proof(
+                    str(observation_path),
+                    repository_root,
+                )
 
     def test_interrupted_recovery_binds_adoption_finalize_and_cleanup(self) -> None:
         failed, prior, database, recovery_identity = interrupted_identities()
