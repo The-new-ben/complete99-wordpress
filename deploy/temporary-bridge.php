@@ -36,6 +36,23 @@ add_action(
 			return true;
 		};
 
+		$canonicalize_json_value = null;
+		$canonicalize_json_value = static function ( $value ) use ( &$canonicalize_json_value ) {
+			if ( ! is_array( $value ) ) {
+				return $value;
+			}
+			$is_list = empty( $value ) || array_keys( $value ) === range( 0, count( $value ) - 1 );
+			if ( $is_list ) {
+				return array_map( $canonicalize_json_value, $value );
+			}
+			ksort( $value, SORT_STRING );
+			$canonical = array();
+			foreach ( $value as $key => $entry ) {
+				$canonical[ $key ] = $canonicalize_json_value( $entry );
+			}
+			return $canonical;
+		};
+
 		$bootstrap_filesystem = static function () {
 			require_once ABSPATH . 'wp-admin/includes/file.php';
 			if ( 'direct' !== get_filesystem_method() ) {
@@ -288,6 +305,42 @@ add_action(
 				return new WP_Error( 'c99_deploy_state_commit', 'Deployment state could not be committed atomically.', array( 'status' => 500 ) );
 			}
 			return true;
+		};
+
+		$protect_recovery_evidence_root = static function ( $root ) {
+			global $wp_filesystem;
+			if ( is_link( $root ) ) {
+				return new WP_Error( 'c99_orphaned_receipt_root_symlink', 'The orphaned rollback evidence root is unsafe.', array( 'status' => 409 ) );
+			}
+			if ( ! $wp_filesystem->is_dir( $root ) && ! $wp_filesystem->mkdir( $root, FS_CHMOD_DIR ) ) {
+				return new WP_Error( 'c99_orphaned_receipt_root', 'The orphaned rollback evidence root could not be created.', array( 'status' => 500 ) );
+			}
+			if ( is_link( $root ) || ! $wp_filesystem->is_dir( $root ) ) {
+				return new WP_Error( 'c99_orphaned_receipt_root_unsafe', 'The orphaned rollback evidence root is unsafe.', array( 'status' => 409 ) );
+			}
+			$guard_files = array(
+				'index.php'  => "<?php\n// Silence is golden.\n",
+				'.htaccess'  => "Require all denied\nDeny from all\n",
+				'web.config' => "<?xml version=\"1.0\" encoding=\"UTF-8\"?><configuration><system.webServer><security><authorization><remove users=\"*\" roles=\"\" verbs=\"\"/><add accessType=\"Deny\" users=\"*\"/></authorization></security></system.webServer></configuration>\n",
+			);
+			foreach ( $guard_files as $guard_name => $guard_contents ) {
+				$guard_path = trailingslashit( $root ) . $guard_name;
+				if (
+					is_link( $guard_path )
+					|| is_dir( $guard_path )
+					|| ! $wp_filesystem->put_contents( $guard_path, $guard_contents, FS_CHMOD_FILE )
+				) {
+					return new WP_Error( 'c99_orphaned_receipt_guard', 'The orphaned rollback evidence root could not be protected.', array( 'status' => 500 ) );
+				}
+				$guard_readback = $wp_filesystem->get_contents( $guard_path );
+				if ( ! is_string( $guard_readback ) || ! hash_equals( hash( 'sha256', $guard_contents ), hash( 'sha256', $guard_readback ) ) ) {
+					return new WP_Error( 'c99_orphaned_receipt_guard_readback', 'The orphaned rollback evidence guard failed readback.', array( 'status' => 500 ) );
+				}
+			}
+			return array(
+				'protected' => true,
+				'guards'    => array_keys( $guard_files ),
+			);
 		};
 
 		$heartbeat_state = static function ( $state_dir, $deployment_id, $phase = '' ) use ( $heartbeat_lock ) {
@@ -1282,29 +1335,27 @@ add_action(
 					}
 					require_once ABSPATH . 'wp-admin/includes/plugin.php';
 					$current = file_exists( $plugin_path ) ? get_plugin_data( $plugin_path, false, false ) : array();
-					$current_active = is_plugin_active( $config['plugin_file'] );
-					$current_deployment = (string) $wpdb->get_var(
-						$wpdb->prepare(
-							"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
-							'complete99_last_deployment_id'
-						)
-					);
+					$database_snapshot = $capture_database_state();
+					$database_json = is_wp_error( $database_snapshot ) ? false : wp_json_encode( $database_snapshot );
+					$active_plugins_row = is_array( $database_snapshot ) ? ( $database_snapshot['options']['active_plugins'] ?? null ) : null;
+					$active_plugins = is_array( $active_plugins_row )
+						? maybe_unserialize( (string) ( $active_plugins_row['option_value'] ?? '' ) )
+						: array();
+					$current_active = is_array( $active_plugins ) && in_array( $config['plugin_file'], $active_plugins, true );
+					$deployment_row = is_array( $database_snapshot ) ? ( $database_snapshot['options']['complete99_last_deployment_id'] ?? null ) : null;
+					$database_version_row = is_array( $database_snapshot ) ? ( $database_snapshot['options']['complete99_platform_version'] ?? null ) : null;
+					$current_deployment = is_array( $deployment_row ) ? (string) ( $deployment_row['option_value'] ?? '' ) : '';
+					$current_database_version = is_array( $database_version_row ) ? (string) ( $database_version_row['option_value'] ?? '' ) : '';
 					if ( '' === $current_deployment && $current_active && defined( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID' ) ) {
 						$current_deployment = (string) COMPLETE99_PLATFORM_DEPLOYMENT_ID;
 					}
-					$current_database_version = (string) $wpdb->get_var(
-						$wpdb->prepare(
-							"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
-							'complete99_platform_version'
-						)
-					);
-					$database_snapshot = $capture_database_state();
-					$database_json = is_wp_error( $database_snapshot ) ? false : wp_json_encode( $database_snapshot );
 					$robots_path = $managed_robots_path();
 					if ( is_wp_error( $robots_path ) ) {
 						return $robots_path;
 					}
-					$current_robots_sha256 = file_exists( $robots_path ) ? (string) @hash_file( 'sha256', $robots_path ) : '';
+					$current_robots_sha256 = file_exists( $robots_path ) && ! is_link( $robots_path ) && ! is_dir( $robots_path )
+						? (string) @hash_file( 'sha256', $robots_path )
+						: '';
 					$phase = (string) ( $state['phase'] ?? ( $lock_owned ? ( $lock['phase'] ?? 'locked' ) : 'finalized' ) );
 					$lock_updated_at = (int) ( $lock['updated_at'] ?? $lock['started_at'] ?? 0 );
 					$lock_age = $lock_owned && 0 < $lock_updated_at ? max( 0, time() - $lock_updated_at ) : 0;
@@ -1366,8 +1417,16 @@ add_action(
 						'committed_expected_version'=> (string) ( $state['committed_expected_version'] ?? $lock['committed_expected_version'] ?? '' ),
 						'committed_expected_deployment'=> (string) ( $state['committed_expected_deployment'] ?? $lock['committed_expected_deployment'] ?? '' ),
 						'committed_expected_plugin_sha256'=> (string) ( $state['committed_expected_plugin_sha256'] ?? $lock['committed_expected_plugin_sha256'] ?? '' ),
+						'committed_expected_database_fingerprint'=> (string) ( $state['committed_expected_database_fingerprint'] ?? $lock['committed_expected_database_fingerprint'] ?? '' ),
 						'committed_expected_robots_exists'=> (bool) ( $state['committed_expected_robots_exists'] ?? $lock['committed_expected_robots_exists'] ?? false ),
 						'committed_expected_robots_sha256'=> (string) ( $state['committed_expected_robots_sha256'] ?? $lock['committed_expected_robots_sha256'] ?? '' ),
+						'committed_expected_sync_configured'=> (bool) ( $state['committed_expected_sync_configured'] ?? $lock['committed_expected_sync_configured'] ?? false ),
+						'orphaned_recovery_proof_sha256'=> (string) ( $lock['orphaned_recovery_proof_sha256'] ?? '' ),
+						'orphaned_recovery_receipt_sha256'=> (string) ( $lock['orphaned_recovery_receipt_sha256'] ?? '' ),
+						'orphaned_recovery_evidence_exists'=> (bool) ( $lock['orphaned_recovery_evidence_exists'] ?? false ),
+						'orphaned_recovery_evidence_sha256'=> (string) ( $lock['orphaned_recovery_evidence_sha256'] ?? '' ),
+						'orphaned_reconciled_from'=> (string) ( $lock['orphaned_reconciled_from'] ?? '' ),
+						'orphaned_observed_deployment'=> (string) ( $lock['orphaned_observed_deployment'] ?? '' ),
 						'temp_removed'     => ! empty( $state['temp_removed'] ),
 						'had_plugin'       => ! empty( $state['had_plugin'] ),
 						'prior_target_dir_exists' => ! empty( $state['prior_target_dir_exists'] ),
@@ -3188,11 +3247,500 @@ add_action(
 
 		register_rest_route(
 			'complete99-deploy/v1',
+			$route_prefix . '/reconcile-orphaned-rollback',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $permission,
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $claim_lock, $heartbeat_lock, $acquire_process_lock, $release_process_lock, $directory_sha256, $capture_database_state, $managed_robots_path, $purge_caches, $write_state_file, $protect_recovery_evidence_root, $verify_transactional_storage, $canonicalize_json_value ) {
+					global $wpdb, $wp_filesystem;
+					$filesystem = $bootstrap_filesystem();
+					if ( is_wp_error( $filesystem ) ) {
+						return $filesystem;
+					}
+					$site_identity = $verify_site_identity();
+					if ( is_wp_error( $site_identity ) ) {
+						return $site_identity;
+					}
+					$deployment_id = sanitize_text_field( (string) $request->get_param( 'deployment_id' ) );
+					$proof_sha256 = strtolower( sanitize_text_field( (string) $request->get_param( 'proof_sha256' ) ) );
+					$observed_deployment = sanitize_text_field( (string) $request->get_param( 'expected_observed_deployment' ) );
+					$prior_deployment = sanitize_text_field( (string) $request->get_param( 'expected_prior_deployment' ) );
+					$prior_version = sanitize_text_field( (string) $request->get_param( 'expected_prior_version' ) );
+					$prior_database_version = sanitize_text_field( (string) $request->get_param( 'expected_prior_database_version' ) );
+					$prior_active = rest_sanitize_boolean( $request->get_param( 'expected_prior_active' ) );
+					$prior_plugin_sha256 = strtolower( sanitize_text_field( (string) $request->get_param( 'expected_prior_plugin_sha256' ) ) );
+					$baseline_database_fingerprint = strtolower( sanitize_text_field( (string) $request->get_param( 'expected_baseline_database_fingerprint' ) ) );
+					$prior_robots_exists = rest_sanitize_boolean( $request->get_param( 'expected_prior_robots_exists' ) );
+					$prior_robots_sha256 = strtolower( sanitize_text_field( (string) $request->get_param( 'expected_prior_robots_sha256' ) ) );
+					$sync_configured = rest_sanitize_boolean( $request->get_param( 'expected_sync_configured' ) );
+					$reviewed_proof = $request->get_param( 'reviewed_proof' );
+					$failed_proof = is_array( $reviewed_proof ) ? ( $reviewed_proof['failed_run'] ?? null ) : null;
+					$prior_proof = is_array( $reviewed_proof ) ? ( $reviewed_proof['prior_run'] ?? null ) : null;
+					$has_exact_keys = static function ( $record, $expected_keys ) {
+						if ( ! is_array( $record ) ) {
+							return false;
+						}
+						$actual_keys = array_keys( $record );
+						sort( $actual_keys, SORT_STRING );
+						sort( $expected_keys, SORT_STRING );
+						return $actual_keys === $expected_keys;
+					};
+					$proof_shape_valid = $has_exact_keys( $reviewed_proof, array( 'failed_run', 'prior_run' ) )
+						&& $has_exact_keys(
+							$failed_proof,
+							array( 'artifact_sha256', 'audit_sha256', 'candidate_database_fingerprint', 'candidate_plugin_sha256', 'candidate_version', 'commit', 'deployment_id', 'run_id' )
+						)
+						&& $has_exact_keys(
+							$prior_proof,
+							array( 'active', 'audit_sha256', 'commit', 'database_fingerprint', 'database_version', 'deployment_id', 'plugin_sha256', 'robots_exists', 'robots_sha256', 'run_id', 'sync_configured', 'version' )
+						);
+					$canonical_proof_json = $proof_shape_valid
+						? wp_json_encode( $canonicalize_json_value( $reviewed_proof ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+						: false;
+					$canonical_proof_sha256 = false === $canonical_proof_json ? '' : hash( 'sha256', $canonical_proof_json );
+					$proof_string_types_valid = $proof_shape_valid;
+					foreach ( array( 'artifact_sha256', 'audit_sha256', 'candidate_database_fingerprint', 'candidate_plugin_sha256', 'candidate_version', 'commit', 'deployment_id' ) as $proof_key ) {
+						$proof_string_types_valid = is_string( $failed_proof[ $proof_key ] ?? null ) && $proof_string_types_valid;
+					}
+					foreach ( array( 'audit_sha256', 'commit', 'database_fingerprint', 'database_version', 'deployment_id', 'plugin_sha256', 'robots_sha256', 'version' ) as $proof_key ) {
+						$proof_string_types_valid = is_string( $prior_proof[ $proof_key ] ?? null ) && $proof_string_types_valid;
+					}
+					if (
+						$config['deployment_id'] !== $deployment_id
+						|| ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id )
+						|| ! str_starts_with( $deployment_id, 'c99-' )
+						|| $deployment_id !== $observed_deployment
+						|| ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $prior_deployment )
+						|| ! str_starts_with( $prior_deployment, 'c99-' )
+						|| $deployment_id === $prior_deployment
+						|| ! preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', $prior_version )
+						|| $prior_version !== $prior_database_version
+						|| ! $prior_active
+						|| ! $prior_robots_exists
+						|| ! $sync_configured
+						|| ! preg_match( '/^[a-f0-9]{64}$/', $proof_sha256 )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', $prior_plugin_sha256 )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', $baseline_database_fingerprint )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', $prior_robots_sha256 )
+						|| ! $proof_shape_valid
+						|| ! $proof_string_types_valid
+						|| ! is_int( $failed_proof['run_id'] ?? null )
+						|| 0 >= (int) ( $failed_proof['run_id'] ?? 0 )
+						|| ! is_int( $prior_proof['run_id'] ?? null )
+						|| 0 >= (int) ( $prior_proof['run_id'] ?? 0 )
+						|| (int) ( $failed_proof['run_id'] ?? 0 ) === (int) ( $prior_proof['run_id'] ?? 0 )
+						|| ! preg_match( '/^[a-f0-9]{40}$/', (string) ( $failed_proof['commit'] ?? '' ) )
+						|| ! preg_match( '/^[a-f0-9]{40}$/', (string) ( $prior_proof['commit'] ?? '' ) )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $failed_proof['artifact_sha256'] ?? '' ) )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $failed_proof['audit_sha256'] ?? '' ) )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $failed_proof['candidate_database_fingerprint'] ?? '' ) )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $failed_proof['candidate_plugin_sha256'] ?? '' ) )
+						|| ! preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $failed_proof['candidate_version'] ?? '' ) )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $prior_proof['audit_sha256'] ?? '' ) )
+						|| $deployment_id !== (string) ( $failed_proof['deployment_id'] ?? '' )
+						|| $prior_deployment !== (string) ( $prior_proof['deployment_id'] ?? '' )
+						|| ! str_starts_with( (string) ( $failed_proof['deployment_id'] ?? '' ), 'c99-' )
+						|| ! str_starts_with( (string) ( $prior_proof['deployment_id'] ?? '' ), 'c99-' )
+						|| (string) ( $failed_proof['deployment_id'] ?? '' ) === (string) ( $prior_proof['deployment_id'] ?? '' )
+						|| ! str_contains( (string) ( $failed_proof['deployment_id'] ?? '' ), '-' . (string) ( $failed_proof['run_id'] ?? '' ) . '-' )
+						|| ! str_contains( (string) ( $prior_proof['deployment_id'] ?? '' ), '-' . (string) ( $prior_proof['run_id'] ?? '' ) . '-' )
+						|| $prior_version !== (string) ( $prior_proof['version'] ?? '' )
+						|| $prior_database_version !== (string) ( $prior_proof['database_version'] ?? '' )
+						|| true !== ( $prior_proof['active'] ?? null )
+						|| true !== ( $prior_proof['robots_exists'] ?? null )
+						|| true !== ( $prior_proof['sync_configured'] ?? null )
+						|| $prior_plugin_sha256 !== (string) ( $prior_proof['plugin_sha256'] ?? '' )
+						|| $baseline_database_fingerprint !== (string) ( $prior_proof['database_fingerprint'] ?? '' )
+						|| $prior_robots_sha256 !== (string) ( $prior_proof['robots_sha256'] ?? '' )
+						|| (string) ( $failed_proof['candidate_version'] ?? '' ) === (string) ( $prior_proof['version'] ?? '' )
+						|| (string) ( $failed_proof['candidate_plugin_sha256'] ?? '' ) === (string) ( $prior_proof['plugin_sha256'] ?? '' )
+						|| (string) ( $failed_proof['candidate_database_fingerprint'] ?? '' ) === (string) ( $prior_proof['database_fingerprint'] ?? '' )
+						|| ! hash_equals( $proof_sha256, $canonical_proof_sha256 )
+					) {
+						return new WP_Error( 'c99_orphaned_proof_invalid', 'The orphaned rollback proof is invalid.', array( 'status' => 400 ) );
+					}
+					$process_lock = $acquire_process_lock();
+					if ( is_wp_error( $process_lock ) ) {
+						return $process_lock;
+					}
+					try {
+						$state_dir = $state_directory( $deployment_id );
+						$state_file = trailingslashit( $state_dir ) . 'state.json';
+						$receipt_root = trailingslashit( WP_CONTENT_DIR ) . '.complete99-deploy-recovery-evidence';
+						$receipt_dir = trailingslashit( $receipt_root ) . substr( hash( 'sha256', $deployment_id ), 0, 32 );
+						$receipt_file = trailingslashit( $receipt_dir ) . 'orphan-recovery-receipt.json';
+						if ( is_link( $state_dir ) || is_link( $receipt_root ) || is_link( $receipt_dir ) || is_link( $receipt_file ) || is_dir( $receipt_file ) ) {
+							return new WP_Error( 'c99_orphaned_recovery_path_unsafe', 'Orphaned rollback reconciliation found an unsafe recovery path.', array( 'status' => 409 ) );
+						}
+						if ( $wp_filesystem->exists( $state_file ) ) {
+							return new WP_Error( 'c99_orphaned_state_present', 'Orphaned rollback reconciliation refuses a present state journal.', array( 'status' => 409 ) );
+						}
+						$lock = $read_lock( true );
+						if (
+							$deployment_id !== (string) ( $lock['deployment_id'] ?? '' )
+							|| 'rolling_back' !== (string) ( $lock['phase'] ?? '' )
+						) {
+							return new WP_Error( 'c99_orphaned_lock_state', 'The orphaned rollback lock is not in the reviewed phase.', array( 'status' => 409 ) );
+						}
+						$lease = $claim_lock(
+							$deployment_id,
+							array( 'rolling_back' ),
+							'rolling_back',
+							false,
+							true
+						);
+						if ( is_wp_error( $lease ) ) {
+							return $lease;
+						}
+						$storage = $verify_transactional_storage();
+						if ( is_wp_error( $storage ) ) {
+							return $storage;
+						}
+						$database_class = strtolower( get_class( $wpdb ) );
+						$database_type = defined( 'DB_ENGINE' ) ? strtolower( (string) DB_ENGINE ) : '';
+						$database_is_sqlite = $config['local_test'] && ( 'sqlite' === $database_type || str_contains( $database_class, 'sqlite' ) );
+						$database_is_mysql = ! $database_is_sqlite && isset( $wpdb->is_mysql ) && true === $wpdb->is_mysql;
+						if ( ! $database_is_mysql && ! $database_is_sqlite ) {
+							return new WP_Error( 'c99_orphaned_marker_driver', 'The orphaned rollback marker transaction driver is unsupported.', array( 'status' => 409 ) );
+						}
+						$marker_cas_transaction = static function ( $expected, $replacement, $operation ) use ( $wpdb, $database_is_mysql ) {
+							$error_prefix = 'c99_orphaned_' . ( 'compensation' === $operation ? 'compensation' : 'marker' );
+							$rollback_transaction = static function () use ( $wpdb ) {
+								$wpdb->last_error = '';
+								$rolled_back = $wpdb->query( 'ROLLBACK' );
+								return false !== $rolled_back && '' === (string) $wpdb->last_error;
+							};
+							$begin_sql = $database_is_mysql ? 'START TRANSACTION' : 'BEGIN IMMEDIATE TRANSACTION';
+							$wpdb->last_error = '';
+							$started = $wpdb->query( $begin_sql );
+							if ( false === $started || '' !== (string) $wpdb->last_error ) {
+								return new WP_Error(
+									$error_prefix . '_begin',
+									'The orphaned rollback marker transaction could not start.',
+									array( 'status' => 500 )
+								);
+							}
+							$select_sql = "SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1";
+							if ( $database_is_mysql ) {
+								$select_sql .= ' FOR UPDATE';
+							}
+							$wpdb->last_error = '';
+							$locked_marker = $wpdb->get_var(
+								$wpdb->prepare( $select_sql, 'complete99_last_deployment_id' )
+							);
+							if (
+								'' !== (string) $wpdb->last_error
+								|| ! is_string( $locked_marker )
+								|| ! hash_equals( $expected, $locked_marker )
+							) {
+								$rolled_back = $rollback_transaction();
+								return new WP_Error(
+									$error_prefix . '_race',
+									'The deployment marker changed during orphaned rollback reconciliation.',
+									array( 'status' => 409, 'rollback_confirmed' => $rolled_back )
+								);
+							}
+							$exact_value = $database_is_mysql
+								? 'BINARY option_value = BINARY %s'
+								: 'option_value = %s COLLATE BINARY';
+							$wpdb->last_error = '';
+							$updated = $wpdb->query(
+								$wpdb->prepare(
+									"UPDATE {$wpdb->options} SET option_value = %s WHERE option_name = %s AND {$exact_value}",
+									$replacement,
+									'complete99_last_deployment_id',
+									$expected
+								)
+							);
+							if ( 1 !== (int) $updated || '' !== (string) $wpdb->last_error ) {
+								$rolled_back = $rollback_transaction();
+								return new WP_Error(
+									$error_prefix . '_cas',
+									'The orphaned rollback marker compare-and-swap failed.',
+									array(
+										'status'             => 409,
+										'rollback_confirmed' => $rolled_back,
+									)
+								);
+							}
+							$wpdb->last_error = '';
+							$committed = $wpdb->query( 'COMMIT' );
+							$commit_error = (string) $wpdb->last_error;
+							if ( false === $committed || '' !== $commit_error ) {
+								$rolled_back = $rollback_transaction();
+								wp_cache_delete( 'complete99_last_deployment_id', 'options' );
+								return new WP_Error(
+									$error_prefix . '_commit',
+									'The orphaned rollback marker transaction could not commit.',
+									array(
+										'status'             => 500,
+										'rollback_confirmed' => $rolled_back,
+									)
+								);
+							}
+							wp_cache_delete( 'complete99_last_deployment_id', 'options' );
+							$wpdb->last_error = '';
+							$readback = $wpdb->get_var(
+								$wpdb->prepare(
+									"SELECT option_value FROM {$wpdb->options} WHERE option_name = %s LIMIT 1",
+									'complete99_last_deployment_id'
+								)
+							);
+							if (
+								'' !== (string) $wpdb->last_error
+								|| ! is_string( $readback )
+								|| ! hash_equals( $replacement, $readback )
+							) {
+								return new WP_Error(
+									$error_prefix . '_readback',
+									'The orphaned rollback marker transaction failed authoritative readback.',
+									array( 'status' => 500 )
+								);
+							}
+							return true;
+						};
+						require_once ABSPATH . 'wp-admin/includes/plugin.php';
+						$target_dir = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
+						$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . $config['plugin_file'];
+						$swap_suffix = substr( hash( 'sha256', $deployment_id ), 0, 20 );
+						$restore_stage = trailingslashit( WP_PLUGIN_DIR ) . '.complete99-restore-' . $swap_suffix;
+						$displaced_dir = trailingslashit( WP_PLUGIN_DIR ) . '.complete99-displaced-' . $swap_suffix;
+						if (
+							! $wp_filesystem->is_dir( $target_dir )
+							|| ! $wp_filesystem->exists( $plugin_path )
+							|| $wp_filesystem->exists( $restore_stage )
+							|| $wp_filesystem->exists( $displaced_dir )
+						) {
+							return new WP_Error( 'c99_orphaned_filesystem_state', 'Orphaned rollback reconciliation found an unsafe plugin filesystem state.', array( 'status' => 409 ) );
+						}
+						$current = get_plugin_data( $plugin_path, false, false );
+						$current_plugin_sha256 = $directory_sha256( $target_dir );
+						$current_snapshot = $capture_database_state();
+						$current_json = is_wp_error( $current_snapshot ) ? false : wp_json_encode( $current_snapshot );
+						$current_fingerprint = false === $current_json ? '' : hash( 'sha256', $current_json );
+						$active_plugins_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['active_plugins'] ?? null ) : null;
+						$database_version_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['complete99_platform_version'] ?? null ) : null;
+						$deployment_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['complete99_last_deployment_id'] ?? null ) : null;
+						$active_plugins = is_array( $active_plugins_row )
+							? maybe_unserialize( (string) ( $active_plugins_row['option_value'] ?? '' ) )
+							: array();
+						$current_active = is_array( $active_plugins ) && in_array( $config['plugin_file'], $active_plugins, true );
+						$current_database_version = is_array( $database_version_row ) ? (string) ( $database_version_row['option_value'] ?? '' ) : '';
+						$current_deployment = is_array( $deployment_row ) ? (string) ( $deployment_row['option_value'] ?? '' ) : '';
+						if (
+							is_wp_error( $current_snapshot )
+							|| false === $current_json
+							|| ! is_array( $active_plugins_row )
+							|| ! is_array( $active_plugins )
+							|| ! is_array( $database_version_row )
+							|| ! is_array( $deployment_row )
+							|| empty( $current_snapshot['sync_secret_configured'] )
+							|| ! in_array( $current_deployment, array( $observed_deployment, $prior_deployment ), true )
+						) {
+							return new WP_Error( 'c99_orphaned_database_state', 'Orphaned rollback reconciliation found an invalid database state.', array( 'status' => 409 ) );
+						}
+						if (
+							is_wp_error( $current_plugin_sha256 )
+							|| ! $current_active
+							|| $prior_version !== (string) ( $current['Version'] ?? '' )
+							|| ! hash_equals( $prior_plugin_sha256, (string) $current_plugin_sha256 )
+							|| $prior_database_version !== $current_database_version
+						) {
+							return new WP_Error( 'c99_orphaned_plugin_identity', 'Orphaned rollback reconciliation did not find the exact prior plugin identity.', array( 'status' => 409 ) );
+						}
+						$robots_path = $managed_robots_path();
+						if ( is_wp_error( $robots_path ) ) {
+							return $robots_path;
+						}
+						if ( is_link( $robots_path ) || is_dir( $robots_path ) || ! file_exists( $robots_path ) ) {
+							return new WP_Error( 'c99_orphaned_robots_unsafe', 'Orphaned rollback reconciliation found an unsafe robots.txt target.', array( 'status' => 409 ) );
+						}
+						$current_robots_sha256 = (string) @hash_file( 'sha256', $robots_path );
+						if ( ! hash_equals( $prior_robots_sha256, $current_robots_sha256 ) ) {
+							return new WP_Error( 'c99_orphaned_robots_identity', 'Orphaned rollback reconciliation did not find the exact prior robots.txt identity.', array( 'status' => 409 ) );
+						}
+						$canonical_snapshot = $current_snapshot;
+						$canonical_snapshot['options']['complete99_last_deployment_id']['option_value'] = $prior_deployment;
+						$canonical_json = wp_json_encode( $canonical_snapshot );
+						$canonical_fingerprint = false === $canonical_json ? '' : hash( 'sha256', $canonical_json );
+						if ( ! hash_equals( $baseline_database_fingerprint, $canonical_fingerprint ) ) {
+							return new WP_Error( 'c99_orphaned_database_proof', 'The database differs from the reviewed baseline beyond the deployment marker.', array( 'status' => 409 ) );
+						}
+						$marker_corrected = false;
+						if ( $observed_deployment === $current_deployment ) {
+							$lease = $heartbeat_lock(
+								$deployment_id,
+								(string) ( $lease['owner_id'] ?? '' ),
+								(int) ( $lease['fence'] ?? 0 ),
+								'rolling_back'
+							);
+							if ( is_wp_error( $lease ) ) {
+								return $lease;
+							}
+							$corrected = $marker_cas_transaction( $observed_deployment, $prior_deployment, 'marker' );
+							if ( is_wp_error( $corrected ) ) {
+								return $corrected;
+							}
+							$marker_corrected = true;
+						} elseif ( ! hash_equals( $baseline_database_fingerprint, $current_fingerprint ) ) {
+							return new WP_Error( 'c99_orphaned_marker_readback', 'The prior deployment marker does not match the reviewed database baseline.', array( 'status' => 409 ) );
+						}
+						$reconciled_snapshot = $capture_database_state();
+						$reconciled_json = is_wp_error( $reconciled_snapshot ) ? false : wp_json_encode( $reconciled_snapshot );
+						$reconciled_fingerprint = false === $reconciled_json ? '' : hash( 'sha256', $reconciled_json );
+						if ( ! hash_equals( $baseline_database_fingerprint, $reconciled_fingerprint ) ) {
+							if ( $marker_corrected ) {
+								$lease = $heartbeat_lock(
+									$deployment_id,
+									(string) ( $lease['owner_id'] ?? '' ),
+									(int) ( $lease['fence'] ?? 0 ),
+									'rolling_back'
+								);
+								if ( is_wp_error( $lease ) ) {
+									return $lease;
+								}
+								$compensated = $marker_cas_transaction( $prior_deployment, $observed_deployment, 'compensation' );
+								if ( is_wp_error( $compensated ) ) {
+									return $compensated;
+								}
+							}
+							return new WP_Error(
+								'c99_orphaned_database_readback',
+								'The corrected database did not match the reviewed rollback baseline.',
+								array( 'status' => 500, 'marker_compensated' => $marker_corrected )
+							);
+						}
+						$cache_purge = $purge_caches();
+						if ( is_wp_error( $cache_purge ) ) {
+							return $cache_purge;
+						}
+						if ( is_link( $state_dir ) ) {
+							return new WP_Error( 'c99_orphaned_evidence_symlink', 'The orphaned rollback evidence directory is unsafe.', array( 'status' => 409 ) );
+						}
+						$evidence_directory_exists = $wp_filesystem->is_dir( $state_dir );
+						$evidence_directory_sha256 = '';
+						if ( $evidence_directory_exists ) {
+							$evidence_directory_sha256 = $directory_sha256( $state_dir );
+							if ( is_wp_error( $evidence_directory_sha256 ) ) {
+								return $evidence_directory_sha256;
+							}
+						}
+						$receipt = array(
+							'schema'                         => 'complete99-orphaned-rollback-receipt/v1',
+							'deployment_id'                  => $deployment_id,
+							'proof_sha256'                   => $proof_sha256,
+							'observed_deployment'            => $observed_deployment,
+							'prior_deployment'               => $prior_deployment,
+							'prior_version'                  => $prior_version,
+							'prior_plugin_sha256'            => $prior_plugin_sha256,
+							'baseline_database_fingerprint'  => $baseline_database_fingerprint,
+							'prior_robots_sha256'            => $prior_robots_sha256,
+							'evidence_directory_exists'      => $evidence_directory_exists,
+							'evidence_directory_sha256'      => (string) $evidence_directory_sha256,
+						);
+						$receipt_json = wp_json_encode( $receipt );
+						$receipt_sha256 = false === $receipt_json ? '' : hash( 'sha256', $receipt_json );
+						if ( ! preg_match( '/^[a-f0-9]{64}$/', $receipt_sha256 ) ) {
+							return new WP_Error( 'c99_orphaned_receipt_encode', 'The orphaned rollback receipt could not be encoded.', array( 'status' => 500 ) );
+						}
+						$lease = $heartbeat_lock(
+							$deployment_id,
+							(string) ( $lease['owner_id'] ?? '' ),
+							(int) ( $lease['fence'] ?? 0 ),
+							'rolling_back'
+						);
+						if ( is_wp_error( $lease ) ) {
+							return $lease;
+						}
+						if ( is_link( $receipt_root ) || is_link( $receipt_dir ) || is_link( $receipt_file ) || is_dir( $receipt_file ) ) {
+							return new WP_Error( 'c99_orphaned_receipt_path_unsafe', 'The orphaned rollback receipt path is unsafe.', array( 'status' => 409 ) );
+						}
+						$receipt_root_protection = $protect_recovery_evidence_root( $receipt_root );
+						if ( is_wp_error( $receipt_root_protection ) ) {
+							return $receipt_root_protection;
+						}
+						if ( ! $wp_filesystem->is_dir( $receipt_dir ) && ! $wp_filesystem->mkdir( $receipt_dir, FS_CHMOD_DIR ) ) {
+							return new WP_Error( 'c99_orphaned_receipt_directory', 'The orphaned rollback evidence directory could not be created.', array( 'status' => 500 ) );
+						}
+						if ( is_link( $receipt_dir ) || ! $wp_filesystem->is_dir( $receipt_dir ) || is_link( $receipt_file ) || is_dir( $receipt_file ) ) {
+							return new WP_Error( 'c99_orphaned_receipt_directory_unsafe', 'The orphaned rollback evidence directory is unsafe.', array( 'status' => 409 ) );
+						}
+						if ( $wp_filesystem->exists( $receipt_file ) ) {
+							$stored_receipt = $wp_filesystem->get_contents( $receipt_file );
+							if ( ! is_string( $stored_receipt ) || ! hash_equals( $receipt_sha256, hash( 'sha256', $stored_receipt ) ) ) {
+								return new WP_Error( 'c99_orphaned_receipt_conflict', 'The durable orphaned rollback receipt conflicts with the reviewed proof.', array( 'status' => 409 ) );
+							}
+						} else {
+							$lease = $heartbeat_lock(
+								$deployment_id,
+								(string) ( $lease['owner_id'] ?? '' ),
+								(int) ( $lease['fence'] ?? 0 ),
+								'rolling_back'
+							);
+							if ( is_wp_error( $lease ) ) {
+								return $lease;
+							}
+							$written = $write_state_file( $receipt_file, $receipt );
+							if ( is_wp_error( $written ) ) {
+								return $written;
+							}
+						}
+						$receipt_readback = $wp_filesystem->get_contents( $receipt_file );
+						if ( ! is_string( $receipt_readback ) || ! hash_equals( $receipt_sha256, hash( 'sha256', $receipt_readback ) ) ) {
+							return new WP_Error( 'c99_orphaned_receipt_readback', 'The durable orphaned rollback receipt failed readback.', array( 'status' => 500 ) );
+						}
+						$terminal = $heartbeat_lock(
+							$deployment_id,
+							(string) ( $lease['owner_id'] ?? '' ),
+							(int) ( $lease['fence'] ?? 0 ),
+							'committed',
+							array(
+								'committed_outcome'                         => 'rolled_back',
+								'committed_expected_active'                 => true,
+								'committed_expected_absent'                 => false,
+								'committed_expected_version'                => $prior_version,
+								'committed_expected_deployment'             => $prior_deployment,
+								'committed_expected_plugin_sha256'          => $prior_plugin_sha256,
+								'committed_expected_database_fingerprint'   => $baseline_database_fingerprint,
+								'committed_expected_robots_exists'          => true,
+								'committed_expected_robots_sha256'          => $prior_robots_sha256,
+								'committed_expected_sync_configured'        => true,
+								'orphaned_recovery_proof_sha256'            => $proof_sha256,
+								'orphaned_recovery_receipt_sha256'          => $receipt_sha256,
+								'orphaned_recovery_evidence_exists'         => $evidence_directory_exists,
+								'orphaned_recovery_evidence_sha256'         => (string) $evidence_directory_sha256,
+								'orphaned_reconciled_from'                  => 'rolling_back',
+								'orphaned_observed_deployment'              => $observed_deployment,
+							)
+						);
+						if ( is_wp_error( $terminal ) ) {
+							return $terminal;
+						}
+						return array(
+							'reconciled'                  => true,
+							'phase'                       => 'committed',
+							'lock_retained'               => true,
+							'marker_corrected'            => $marker_corrected,
+							'receipt_sha256'              => $receipt_sha256,
+							'evidence_directory_exists'   => $evidence_directory_exists,
+							'evidence_directory_sha256'   => (string) $evidence_directory_sha256,
+							'cache_purge'                 => $cache_purge,
+							'site_identity'               => $site_identity,
+						);
+					} finally {
+						$release_process_lock( $process_lock );
+					}
+				},
+			)
+		);
+
+		register_rest_route(
+			'complete99-deploy/v1',
 			$route_prefix . '/finalize',
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state, $directory_sha256, $protect_recovery_evidence_root ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -3231,7 +3779,30 @@ add_action(
 					}
 					$phase = $state_exists ? (string) ( $state['phase'] ?? '' ) : (string) ( $lock['phase'] ?? '' );
 					$owner_changed = $lock_owner !== (string) ( $lock['owner_id'] ?? '' );
-					$require_stale = ( 'locked' === $phase ) || ( 'reserved' === $phase && $owner_changed ) || ( 'committing' === $phase && $owner_changed );
+					$orphaned_marker_present = false;
+					foreach (
+						array(
+							'orphaned_recovery_proof_sha256',
+							'orphaned_recovery_receipt_sha256',
+							'orphaned_recovery_evidence_exists',
+							'orphaned_recovery_evidence_sha256',
+							'orphaned_reconciled_from',
+							'orphaned_observed_deployment',
+						) as $orphaned_marker_key
+					) {
+						$orphaned_marker_present = array_key_exists( $orphaned_marker_key, $lock ) || $orphaned_marker_present;
+					}
+					if (
+						$orphaned_marker_present
+						&& ( $state_exists || ! in_array( $phase, array( 'committed', 'cleanup_failed' ), true ) )
+					) {
+						return new WP_Error( 'c99_finalize_orphaned_marker_state', 'Finalization found orphaned rollback markers outside a valid terminal lock.', array( 'status' => 409 ) );
+					}
+					$orphaned_recovery = ! $state_exists && $orphaned_marker_present;
+					$require_stale = ( 'locked' === $phase )
+						|| ( 'reserved' === $phase && $owner_changed )
+						|| ( 'committing' === $phase && $owner_changed )
+						|| ( $orphaned_recovery && $owner_changed );
 					$lease = $claim_lock(
 						$deployment_id,
 						array( 'reserved', 'locked', 'installed', 'rolled_back', 'commit_failed', 'committing', 'committed', 'cleanup_failed' ),
@@ -3251,6 +3822,7 @@ add_action(
 					}
 					$lock = $lease;
 					$lock_owned = true;
+					$preserve_orphaned_evidence = false;
 					$cache_purge = array( 'already_purged' => false );
 					if ( $state_exists ) {
 						if ( in_array( $phase, array( 'installed', 'rolled_back', 'commit_failed', 'committing' ), true ) ) {
@@ -3423,6 +3995,135 @@ add_action(
 					} elseif ( $lock_owned && 'locked' === (string) ( $lock['phase'] ?? '' ) ) {
 						$cache_purge = array( 'unstarted_recovery' => true );
 					} elseif ( $lock_owned && in_array( (string) ( $lock['phase'] ?? '' ), array( 'committed', 'cleanup_failed' ), true ) ) {
+						if ( $orphaned_recovery ) {
+							require_once ABSPATH . 'wp-admin/includes/plugin.php';
+							$target_dir = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
+							$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . $config['plugin_file'];
+							$swap_suffix = substr( hash( 'sha256', $deployment_id ), 0, 20 );
+							$restore_stage = trailingslashit( WP_PLUGIN_DIR ) . '.complete99-restore-' . $swap_suffix;
+							$displaced_dir = trailingslashit( WP_PLUGIN_DIR ) . '.complete99-displaced-' . $swap_suffix;
+							$expected_version = (string) ( $lock['committed_expected_version'] ?? '' );
+							$expected_deployment = (string) ( $lock['committed_expected_deployment'] ?? '' );
+							$expected_plugin_sha256 = (string) ( $lock['committed_expected_plugin_sha256'] ?? '' );
+							$expected_database_fingerprint = (string) ( $lock['committed_expected_database_fingerprint'] ?? '' );
+							$expected_robots_sha256 = (string) ( $lock['committed_expected_robots_sha256'] ?? '' );
+							$expected_receipt_sha256 = (string) ( $lock['orphaned_recovery_receipt_sha256'] ?? '' );
+							$expected_evidence_exists = true === ( $lock['orphaned_recovery_evidence_exists'] ?? null );
+							$expected_evidence_sha256 = (string) ( $lock['orphaned_recovery_evidence_sha256'] ?? '' );
+							$plugin_paths_safe = ! is_link( $target_dir ) && ! is_link( $plugin_path );
+							$current = $plugin_paths_safe && $wp_filesystem->exists( $plugin_path ) ? get_plugin_data( $plugin_path, false, false ) : array();
+							$current_plugin_sha256 = $wp_filesystem->is_dir( $target_dir ) ? $directory_sha256( $target_dir ) : '';
+							$current_snapshot = $capture_database_state();
+							$current_json = is_wp_error( $current_snapshot ) ? false : wp_json_encode( $current_snapshot );
+							$current_database_fingerprint = false === $current_json ? '' : hash( 'sha256', $current_json );
+							$active_plugins_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['active_plugins'] ?? null ) : null;
+							$database_version_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['complete99_platform_version'] ?? null ) : null;
+							$deployment_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['complete99_last_deployment_id'] ?? null ) : null;
+							$active_plugins = is_array( $active_plugins_row )
+								? maybe_unserialize( (string) ( $active_plugins_row['option_value'] ?? '' ) )
+								: array();
+							$current_active = is_array( $active_plugins ) && in_array( $config['plugin_file'], $active_plugins, true );
+							$current_database_version = is_array( $database_version_row ) ? (string) ( $database_version_row['option_value'] ?? '' ) : '';
+							$current_deployment = is_array( $deployment_row ) ? (string) ( $deployment_row['option_value'] ?? '' ) : '';
+							$robots_path = $managed_robots_path();
+							if ( is_wp_error( $robots_path ) ) {
+								return $robots_path;
+							}
+							if ( is_link( $robots_path ) || is_dir( $robots_path ) || ! file_exists( $robots_path ) ) {
+								return new WP_Error( 'c99_finalize_orphaned_robots_unsafe', 'Finalization found an unsafe orphaned rollback robots.txt target.', array( 'status' => 409 ) );
+							}
+							$current_robots_sha256 = (string) @hash_file( 'sha256', $robots_path );
+							if ( is_link( $state_dir ) ) {
+								return new WP_Error( 'c99_finalize_orphaned_evidence_unsafe', 'Finalization found an unsafe orphaned rollback evidence directory.', array( 'status' => 409 ) );
+							}
+							$current_evidence_exists = $wp_filesystem->is_dir( $state_dir );
+							$current_evidence_sha256 = '';
+							if ( $current_evidence_exists ) {
+								$current_evidence_sha256 = $directory_sha256( $state_dir );
+								if ( is_wp_error( $current_evidence_sha256 ) ) {
+									return $current_evidence_sha256;
+								}
+							}
+							$receipt_root = trailingslashit( WP_CONTENT_DIR ) . '.complete99-deploy-recovery-evidence';
+							$receipt_dir = trailingslashit( $receipt_root ) . substr( hash( 'sha256', $deployment_id ), 0, 32 );
+							$receipt_file = trailingslashit( $receipt_dir ) . 'orphan-recovery-receipt.json';
+							$receipt_root_protection = $protect_recovery_evidence_root( $receipt_root );
+							if ( is_wp_error( $receipt_root_protection ) ) {
+								return $receipt_root_protection;
+							}
+							if (
+								is_link( $receipt_root )
+								|| is_link( $receipt_dir )
+								|| is_link( $receipt_file )
+								|| ! $wp_filesystem->is_dir( $receipt_root )
+								|| ! $wp_filesystem->is_dir( $receipt_dir )
+								|| is_dir( $receipt_file )
+							) {
+								return new WP_Error( 'c99_finalize_orphaned_receipt_path', 'Finalization found an unsafe orphaned rollback receipt path.', array( 'status' => 409 ) );
+							}
+							$receipt_contents = $wp_filesystem->exists( $receipt_file ) ? $wp_filesystem->get_contents( $receipt_file ) : false;
+							$receipt_record = is_string( $receipt_contents ) ? json_decode( $receipt_contents, true ) : null;
+							$receipt_keys = is_array( $receipt_record ) ? array_keys( $receipt_record ) : array();
+							$expected_receipt_keys = array( 'baseline_database_fingerprint', 'deployment_id', 'evidence_directory_exists', 'evidence_directory_sha256', 'observed_deployment', 'prior_deployment', 'prior_plugin_sha256', 'prior_robots_sha256', 'prior_version', 'proof_sha256', 'schema' );
+							sort( $receipt_keys, SORT_STRING );
+							sort( $expected_receipt_keys, SORT_STRING );
+							$receipt_identity_valid = $receipt_keys === $expected_receipt_keys
+								&& 'complete99-orphaned-rollback-receipt/v1' === (string) ( $receipt_record['schema'] ?? '' )
+								&& $deployment_id === (string) ( $receipt_record['deployment_id'] ?? '' )
+								&& (string) ( $lock['orphaned_recovery_proof_sha256'] ?? '' ) === (string) ( $receipt_record['proof_sha256'] ?? '' )
+								&& $deployment_id === (string) ( $receipt_record['observed_deployment'] ?? '' )
+								&& $expected_deployment === (string) ( $receipt_record['prior_deployment'] ?? '' )
+								&& $expected_version === (string) ( $receipt_record['prior_version'] ?? '' )
+								&& $expected_plugin_sha256 === (string) ( $receipt_record['prior_plugin_sha256'] ?? '' )
+								&& $expected_database_fingerprint === (string) ( $receipt_record['baseline_database_fingerprint'] ?? '' )
+								&& $expected_robots_sha256 === (string) ( $receipt_record['prior_robots_sha256'] ?? '' )
+								&& $expected_evidence_exists === ( $receipt_record['evidence_directory_exists'] ?? null )
+								&& $expected_evidence_sha256 === (string) ( $receipt_record['evidence_directory_sha256'] ?? '' );
+							$identity_valid = 'rolled_back' === (string) ( $lock['committed_outcome'] ?? '' )
+								&& true === ( $lock['committed_expected_active'] ?? null )
+								&& false === ( $lock['committed_expected_absent'] ?? null )
+								&& true === ( $lock['committed_expected_robots_exists'] ?? null )
+								&& true === ( $lock['committed_expected_sync_configured'] ?? null )
+								&& is_bool( $lock['orphaned_recovery_evidence_exists'] ?? null )
+								&& 'rolling_back' === (string) ( $lock['orphaned_reconciled_from'] ?? '' )
+								&& $deployment_id === (string) ( $lock['orphaned_observed_deployment'] ?? '' )
+								&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $lock['orphaned_recovery_proof_sha256'] ?? '' ) )
+								&& preg_match( '/^[a-f0-9]{64}$/', $expected_receipt_sha256 )
+								&& preg_match( '/^[a-f0-9]{64}$/', $expected_plugin_sha256 )
+								&& preg_match( '/^[a-f0-9]{64}$/', $expected_database_fingerprint )
+								&& preg_match( '/^[a-f0-9]{64}$/', $expected_robots_sha256 )
+								&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', $expected_version )
+								&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $expected_deployment )
+								&& $plugin_paths_safe
+								&& $wp_filesystem->is_dir( $target_dir )
+								&& $wp_filesystem->exists( $plugin_path )
+								&& ! is_wp_error( $current_plugin_sha256 )
+								&& $current_active
+								&& $expected_version === (string) ( $current['Version'] ?? '' )
+								&& $expected_version === $current_database_version
+								&& $expected_deployment === $current_deployment
+								&& hash_equals( $expected_plugin_sha256, (string) $current_plugin_sha256 )
+								&& ! is_wp_error( $current_snapshot )
+								&& is_array( $current_snapshot )
+								&& is_array( $active_plugins_row )
+								&& is_array( $active_plugins )
+								&& is_array( $database_version_row )
+								&& is_array( $deployment_row )
+								&& ! empty( $current_snapshot['sync_secret_configured'] )
+								&& hash_equals( $expected_database_fingerprint, $current_database_fingerprint )
+								&& hash_equals( $expected_robots_sha256, $current_robots_sha256 )
+								&& $expected_evidence_exists === $current_evidence_exists
+								&& ( $expected_evidence_exists ? hash_equals( $expected_evidence_sha256, (string) $current_evidence_sha256 ) : '' === $expected_evidence_sha256 )
+								&& is_string( $receipt_contents )
+								&& hash_equals( $expected_receipt_sha256, hash( 'sha256', $receipt_contents ) )
+								&& $receipt_identity_valid
+								&& ! $wp_filesystem->exists( $restore_stage )
+								&& ! $wp_filesystem->exists( $displaced_dir );
+							if ( ! $identity_valid ) {
+								return new WP_Error( 'c99_finalize_orphaned_receipt_identity', 'Finalization could not revalidate the durable orphaned rollback receipt.', array( 'status' => 409 ) );
+							}
+							$preserve_orphaned_evidence = true;
+						}
 						$cache_purge = array( 'already_purged' => true );
 					} elseif ( $lock_owned ) {
 						return new WP_Error(
@@ -3463,7 +4164,9 @@ add_action(
 						}
 						$lease = $owned;
 					}
-					$removed = ! $wp_filesystem->exists( $state_dir ) || $wp_filesystem->delete( $state_dir, true );
+					$removed = $preserve_orphaned_evidence
+						? ! $wp_filesystem->exists( $state_file )
+						: ( ! $wp_filesystem->exists( $state_dir ) || $wp_filesystem->delete( $state_dir, true ) );
 					if ( ! $removed ) {
 						if ( $wp_filesystem->exists( $state_file ) ) {
 							$set_state_phase( $state_dir, $deployment_id, 'cleanup_failed' );
@@ -3481,7 +4184,8 @@ add_action(
 						'finalized'   => true,
 						'idempotent'  => ! $lock_owned,
 						'lock_released'=> true,
-						'state_removed'=> ! $wp_filesystem->exists( $state_dir ),
+						'state_removed'=> ! $wp_filesystem->exists( $state_file ) && ( $preserve_orphaned_evidence || ! $wp_filesystem->exists( $state_dir ) ),
+						'evidence_preserved'=> $preserve_orphaned_evidence,
 						'cache_purge' => $cache_purge,
 					);
 					} finally {
