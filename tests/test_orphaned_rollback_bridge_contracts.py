@@ -16,7 +16,7 @@ class OrphanedRollbackBridgeContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.bridge = BRIDGE_PATH.read_text(encoding="utf-8")
         cls.status = cls.bridge.split("$route_prefix . '/status'", 1)[1].split(
-            "$route_prefix . '/prepare'", 1
+            "$route_prefix . '/stabilize'", 1
         )[0]
         cls.reconcile = cls.bridge.split(
             "$route_prefix . '/reconcile-orphaned-rollback'", 1
@@ -160,6 +160,53 @@ class OrphanedRollbackBridgeContractTests(unittest.TestCase):
         self.assertIn("$current_deployment", strict_finalize)
         self.assertNotIn("is_plugin_active(", strict_finalize)
         self.assertNotIn("get_option(", strict_finalize)
+
+    def test_database_observation_is_consistent_redacted_and_marker_neutral(self) -> None:
+        manifest_helper = self.bridge.split(
+            "$database_snapshot_manifest = static function", 1
+        )[1].split("$encrypt_database_state = static function", 1)[0]
+        self.assertIn(
+            "unset( $options_without_deployment_marker['complete99_last_deployment_id'] )",
+            manifest_helper,
+        )
+        for component in (
+            "options_without_deployment_marker",
+            "posts",
+            "postmeta",
+            "seed_ids",
+            "evaluation_ids",
+        ):
+            self.assertIn(component, manifest_helper)
+        self.assertIn("$canonicalize_json_value( $component )", manifest_helper)
+        self.assertIn("'manifest_sha256' => hash( 'sha256'", manifest_helper)
+        self.assertNotIn("option_value' =>", manifest_helper)
+        self.assertNotIn("post_content' =>", manifest_helper)
+        self.assertNotIn("meta_value' =>", manifest_helper)
+
+        consistent_capture = self.bridge.split(
+            "$capture_database_state_consistent = static function", 1
+        )[1].split("$database_snapshot_manifest = static function", 1)[0]
+        self.assertIn(
+            "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ",
+            consistent_capture,
+        )
+        self.assertIn("START TRANSACTION WITH CONSISTENT SNAPSHOT", consistent_capture)
+        self.assertIn("$capture_database_state()", consistent_capture)
+        self.assertIn("ROLLBACK", consistent_capture)
+        self.assertIn("COMMIT", consistent_capture)
+
+        self.assertIn("projected_deployment_id", self.status)
+        self.assertIn("projected_database_fingerprint", self.status)
+        self.assertIn("database_manifest_sha256", self.status)
+        self.assertIn("$verify_transactional_storage()", self.status)
+        self.assertIn("'database_storage'=> $database_storage", self.status)
+        self.assertLess(
+            self.status.index("$verify_transactional_storage()"),
+            self.status.index("$capture_database_state_consistent()"),
+        )
+        self.assertIn("$capture_database_state_consistent()", self.status)
+        self.assertNotIn("UPDATE ", self.status)
+        self.assertIn("$capture_database_state_consistent()", self.reconcile)
 
     def test_receipt_is_parsed_and_evidence_is_preserved(self) -> None:
         self.assertIn("json_decode( $receipt_contents, true )", self.finalize)

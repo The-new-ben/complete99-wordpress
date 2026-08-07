@@ -719,8 +719,10 @@ add_action(
 					);
 				}
 			}
+			$engines = array_values( array_unique( $found ) );
+			sort( $engines, SORT_STRING );
 			return array(
-				'engine' => implode( ',', array_values( array_unique( $found ) ) ),
+				'engine' => implode( ',', $engines ),
 				'tables' => count( $found ),
 			);
 		};
@@ -903,6 +905,88 @@ add_action(
 				'evaluation_ids'=> $evaluation_ids,
 				'sync_secret_existed'=> $sync_secret_existed,
 				'sync_secret_configured'=> $sync_secret_configured,
+			);
+		};
+
+		$capture_database_state_consistent = static function () use ( $capture_database_state, $config ) {
+			global $wpdb;
+			$database_class = strtolower( get_class( $wpdb ) );
+			$database_type = defined( 'DB_ENGINE' ) ? strtolower( (string) DB_ENGINE ) : '';
+			if ( $config['local_test'] && ( 'sqlite' === $database_type || str_contains( $database_class, 'sqlite' ) ) ) {
+				return $capture_database_state();
+			}
+			if ( ! isset( $wpdb->is_mysql ) || true !== $wpdb->is_mysql ) {
+				return new WP_Error( 'c99_db_observation_driver', 'The database observation driver is unsupported.', array( 'status' => 409 ) );
+			}
+			$wpdb->last_error = '';
+			$isolation = $wpdb->query( 'SET TRANSACTION ISOLATION LEVEL REPEATABLE READ' );
+			if ( false === $isolation || '' !== (string) $wpdb->last_error ) {
+				return new WP_Error( 'c99_db_observation_isolation', 'The database observation could not require repeatable-read isolation.', array( 'status' => 500 ) );
+			}
+			$wpdb->last_error = '';
+			$started = $wpdb->query( 'START TRANSACTION WITH CONSISTENT SNAPSHOT' );
+			if ( false === $started || '' !== (string) $wpdb->last_error ) {
+				return new WP_Error( 'c99_db_observation_begin', 'The consistent database observation could not start.', array( 'status' => 500 ) );
+			}
+			$snapshot = $capture_database_state();
+			if ( is_wp_error( $snapshot ) ) {
+				$wpdb->query( 'ROLLBACK' );
+				return $snapshot;
+			}
+			$wpdb->last_error = '';
+			$committed = $wpdb->query( 'COMMIT' );
+			if ( false === $committed || '' !== (string) $wpdb->last_error ) {
+				$wpdb->query( 'ROLLBACK' );
+				return new WP_Error( 'c99_db_observation_commit', 'The consistent database observation could not finish.', array( 'status' => 500 ) );
+			}
+			return $snapshot;
+		};
+
+		$database_snapshot_manifest = static function ( $snapshot ) use ( $canonicalize_json_value ) {
+			if ( ! is_array( $snapshot ) ) {
+				return new WP_Error( 'c99_db_manifest_snapshot', 'The database observation snapshot is invalid.', array( 'status' => 500 ) );
+			}
+			$options_without_deployment_marker = $snapshot['options'] ?? null;
+			if ( ! is_array( $options_without_deployment_marker ) ) {
+				return new WP_Error( 'c99_db_manifest_component', 'The database observation options component is invalid.', array( 'status' => 500 ) );
+			}
+			unset( $options_without_deployment_marker['complete99_last_deployment_id'] );
+			$components = array(
+				'options_without_deployment_marker' => $options_without_deployment_marker,
+				'posts'                             => $snapshot['posts'] ?? null,
+				'postmeta'                          => $snapshot['postmeta'] ?? null,
+				'seed_ids'                          => $snapshot['seed_ids'] ?? null,
+				'evaluation_ids'                    => $snapshot['evaluation_ids'] ?? null,
+			);
+			$manifest = array(
+				'schema'                 => 'complete99-database-snapshot-manifest/v1',
+				'sync_secret_existed'    => true === ( $snapshot['sync_secret_existed'] ?? null ),
+				'sync_secret_configured' => true === ( $snapshot['sync_secret_configured'] ?? null ),
+			);
+			foreach ( $components as $component_name => $component ) {
+				if ( ! is_array( $component ) ) {
+					return new WP_Error( 'c99_db_manifest_component', 'A database observation component is invalid.', array( 'status' => 500, 'component' => $component_name ) );
+				}
+				$encoded = wp_json_encode(
+					$canonicalize_json_value( $component ),
+					JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+				);
+				if ( false === $encoded ) {
+					return new WP_Error( 'c99_db_manifest_encode', 'A database observation component could not be encoded.', array( 'status' => 500, 'component' => $component_name ) );
+				}
+				$manifest[ $component_name . '_count' ]  = count( $component );
+				$manifest[ $component_name . '_sha256' ] = hash( 'sha256', $encoded );
+			}
+			$manifest_json = wp_json_encode(
+				$canonicalize_json_value( $manifest ),
+				JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+			);
+			if ( false === $manifest_json ) {
+				return new WP_Error( 'c99_db_manifest_encode', 'The database observation manifest could not be encoded.', array( 'status' => 500 ) );
+			}
+			return array(
+				'manifest'        => $manifest,
+				'manifest_sha256' => hash( 'sha256', $manifest_json ),
 			);
 		};
 
@@ -1301,7 +1385,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $capture_database_state, $managed_robots_path ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $managed_robots_path ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -1335,8 +1419,40 @@ add_action(
 					}
 					require_once ABSPATH . 'wp-admin/includes/plugin.php';
 					$current = file_exists( $plugin_path ) ? get_plugin_data( $plugin_path, false, false ) : array();
-					$database_snapshot = $capture_database_state();
+					$projected_deployment_id = sanitize_text_field( (string) $request->get_param( 'projected_deployment_id' ) );
+					$database_storage = array();
+					if ( '' !== $projected_deployment_id ) {
+						$database_storage = $verify_transactional_storage();
+						if ( is_wp_error( $database_storage ) ) {
+							return $database_storage;
+						}
+					}
+					$database_snapshot = '' === $projected_deployment_id
+						? $capture_database_state()
+						: $capture_database_state_consistent();
 					$database_json = is_wp_error( $database_snapshot ) ? false : wp_json_encode( $database_snapshot );
+					$database_fingerprint = false === $database_json ? '' : hash( 'sha256', $database_json );
+					$database_manifest_record = is_wp_error( $database_snapshot )
+						? $database_snapshot
+						: $database_snapshot_manifest( $database_snapshot );
+					$projected_database_fingerprint = '';
+					if ( '' !== $projected_deployment_id ) {
+						if (
+							! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $projected_deployment_id )
+							|| ! str_starts_with( $projected_deployment_id, 'c99-' )
+							|| ! is_array( $database_snapshot )
+							|| ! is_array( $database_snapshot['options']['complete99_last_deployment_id'] ?? null )
+						) {
+							return new WP_Error( 'c99_status_projection', 'The requested database observation projection is invalid.', array( 'status' => 400 ) );
+						}
+						$projected_snapshot = $database_snapshot;
+						$projected_snapshot['options']['complete99_last_deployment_id']['option_value'] = $projected_deployment_id;
+						$projected_json = wp_json_encode( $projected_snapshot );
+						if ( false === $projected_json ) {
+							return new WP_Error( 'c99_status_projection_encode', 'The database observation projection could not be encoded.', array( 'status' => 500 ) );
+						}
+						$projected_database_fingerprint = hash( 'sha256', $projected_json );
+					}
 					$active_plugins_row = is_array( $database_snapshot ) ? ( $database_snapshot['options']['active_plugins'] ?? null ) : null;
 					$active_plugins = is_array( $active_plugins_row )
 						? maybe_unserialize( (string) ( $active_plugins_row['option_value'] ?? '' ) )
@@ -1445,8 +1561,13 @@ add_action(
 						'database_restored' => ! empty( $state['database_restored'] ),
 						'baseline_database_fingerprint'=> (string) ( $state['database_fingerprint'] ?? '' ),
 						'post_install_database_fingerprint'=> (string) ( $state['post_install_database_fingerprint'] ?? '' ),
-						'database_fingerprint'=> false === $database_json ? '' : hash( 'sha256', $database_json ),
+						'database_fingerprint'=> $database_fingerprint,
 						'database_fingerprint_available'=> false !== $database_json,
+						'database_manifest'=> is_array( $database_manifest_record ) ? ( $database_manifest_record['manifest'] ?? array() ) : array(),
+						'database_manifest_sha256'=> is_array( $database_manifest_record ) ? (string) ( $database_manifest_record['manifest_sha256'] ?? '' ) : '',
+						'database_storage'=> $database_storage,
+						'projected_deployment_id'=> $projected_deployment_id,
+						'projected_database_fingerprint'=> $projected_database_fingerprint,
 						'current_sync_configured'=> is_array( $database_snapshot ) && ! empty( $database_snapshot['sync_secret_configured'] ),
 						'sync_configuration_pending'=> ! empty( $state['sync_configuration_pending'] ),
 						'sync_configuration_checkpointed'=> ! empty( $state['sync_configuration_checkpointed'] ),
@@ -3251,7 +3372,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $claim_lock, $heartbeat_lock, $acquire_process_lock, $release_process_lock, $directory_sha256, $capture_database_state, $managed_robots_path, $purge_caches, $write_state_file, $protect_recovery_evidence_root, $verify_transactional_storage, $canonicalize_json_value ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $claim_lock, $heartbeat_lock, $acquire_process_lock, $release_process_lock, $directory_sha256, $capture_database_state_consistent, $managed_robots_path, $purge_caches, $write_state_file, $protect_recovery_evidence_root, $verify_transactional_storage, $canonicalize_json_value ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -3515,7 +3636,7 @@ add_action(
 						}
 						$current = get_plugin_data( $plugin_path, false, false );
 						$current_plugin_sha256 = $directory_sha256( $target_dir );
-						$current_snapshot = $capture_database_state();
+						$current_snapshot = $capture_database_state_consistent();
 						$current_json = is_wp_error( $current_snapshot ) ? false : wp_json_encode( $current_snapshot );
 						$current_fingerprint = false === $current_json ? '' : hash( 'sha256', $current_json );
 						$active_plugins_row = is_array( $current_snapshot ) ? ( $current_snapshot['options']['active_plugins'] ?? null ) : null;
@@ -3585,7 +3706,7 @@ add_action(
 						} elseif ( ! hash_equals( $baseline_database_fingerprint, $current_fingerprint ) ) {
 							return new WP_Error( 'c99_orphaned_marker_readback', 'The prior deployment marker does not match the reviewed database baseline.', array( 'status' => 409 ) );
 						}
-						$reconciled_snapshot = $capture_database_state();
+						$reconciled_snapshot = $capture_database_state_consistent();
 						$reconciled_json = is_wp_error( $reconciled_snapshot ) ? false : wp_json_encode( $reconciled_snapshot );
 						$reconciled_fingerprint = false === $reconciled_json ? '' : hash( 'sha256', $reconciled_json );
 						if ( ! hash_equals( $baseline_database_fingerprint, $reconciled_fingerprint ) ) {

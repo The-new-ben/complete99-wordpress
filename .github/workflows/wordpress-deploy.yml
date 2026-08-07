@@ -18,6 +18,11 @@ on:
         required: false
         default: ''
         type: string
+      orphaned_rollback_observe_only:
+        description: Capture a reviewed, non-secret orphaned rollback database observation without deployment
+        required: true
+        default: false
+        type: boolean
 permissions:
   actions: read
   contents: read
@@ -170,13 +175,20 @@ jobs:
         run: |
           $releaseDir = Join-Path $env:RUNNER_TEMP "complete99-verified-release-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           $bootstrapArgs = @()
+          $observationArgs = @()
+          $validationArgs = @()
           if ("${{ github.event_name }}" -eq "workflow_dispatch" -and "${{ inputs.bootstrap_code_snippets }}" -eq "true") {
             $bootstrapArgs += "--bootstrap-code-snippets"
+          }
+          if ("${{ inputs.orphaned_rollback_observe_only }}" -eq "true") {
+            $observationArgs += "--observe-orphaned-rollback"
+            $validationArgs += "--expect-observation"
           }
           $probeId = "c99-recovery-probe-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           $recoveryOutput = @(& python scripts/recover-wordpress.py `
             --discover `
             --probe-id $probeId `
+            @observationArgs `
             @bootstrapArgs)
           $recoveryExitCode = $LASTEXITCODE
           if ($recoveryExitCode -ne 0) { exit $recoveryExitCode }
@@ -188,8 +200,12 @@ jobs:
           Write-Output $recoverySummary
           $env:COMPLETE99_RECOVERY_SUMMARY_JSON = $recoverySummary
           & python scripts/validate-recovery-audit.py `
-            --expected-probe-id $probeId
+            --expected-probe-id $probeId `
+            @validationArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ("${{ inputs.orphaned_rollback_observe_only }}" -eq "true") {
+            exit 0
+          }
 
           $dryId = "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           & python scripts/deploy-wordpress.py `
@@ -219,6 +235,7 @@ jobs:
 
       - name: Deploy the exact CI artifact with independent verification
         id: production_deploy
+        if: inputs.orphaned_rollback_observe_only != true
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
@@ -282,6 +299,7 @@ jobs:
 
       - name: Install pinned WooCommerce and materialize the live catalog
         id: commerce
+        if: inputs.orphaned_rollback_observe_only != true
         continue-on-error: true
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
@@ -319,6 +337,7 @@ jobs:
           COMPLETE99_RECOVERY_OUTCOME: ${{ steps.recovery.outcome }}
           COMPLETE99_COMMERCE_OUTCOME: ${{ steps.commerce.outcome }}
           COMPLETE99_COMMERCE_RECOVERY_OUTCOME: ${{ steps.commerce_recovery.outcome }}
+          COMPLETE99_OBSERVATION_ONLY: ${{ inputs.orphaned_rollback_observe_only }}
         shell: powershell
         run: |
           & python scripts/validate-recovery-audit.py `

@@ -17,6 +17,7 @@ DIGEST = re.compile(r"[a-f0-9]{64}")
 COMMIT = re.compile(r"[a-f0-9]{40}")
 VERSION = re.compile(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?")
 DEPLOYMENT_ID = re.compile(r"c99-[A-Za-z0-9._-]{4,92}")
+UTC_TIMESTAMP = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z")
 GENERIC_RECOVERY_DECISIONS = {
     "already_finalized",
     "finish_committed_cleanup",
@@ -84,6 +85,58 @@ def validate_cleanup(value: Any, label: str) -> None:
     }
     for key, expected in required.items():
         require(cleanup.get(key) is expected, f"{label} failed for {key}")
+
+
+def validate_observation_cleanup(value: Any, label: str) -> None:
+    cleanup = require_mapping(value, label)
+    require(
+        set(cleanup)
+        == {
+            "removed_ids",
+            "route_404",
+            "row_absence_verified",
+            "snippet_active",
+            "snippet_deleted",
+        },
+        f"{label} fields are invalid",
+    )
+    validate_cleanup(cleanup, label)
+    removed_ids = cleanup.get("removed_ids")
+    require(
+        isinstance(removed_ids, list)
+        and all(type(value) is int and value > 0 for value in removed_ids)
+        and removed_ids == sorted(set(removed_ids)),
+        f"{label} removed IDs are invalid",
+    )
+
+
+def validate_bootstrap_cleanup(value: Any, label: str) -> None:
+    cleanup = require_mapping(value, label)
+    require(
+        set(cleanup)
+        == {
+            "exact_name",
+            "known_id",
+            "known_id_matched",
+            "removed_ids",
+            "row_absence_verified",
+        },
+        f"{label} fields are invalid",
+    )
+    require(
+        cleanup.get("exact_name") == "c99-deploy-bootstrap"
+        and cleanup.get("known_id") == 5
+        and type(cleanup.get("known_id_matched")) is bool
+        and cleanup.get("row_absence_verified") is True,
+        f"{label} identity is invalid",
+    )
+    removed_ids = cleanup.get("removed_ids")
+    require(
+        isinstance(removed_ids, list)
+        and all(type(value) is int and value > 0 for value in removed_ids)
+        and removed_ids == sorted(set(removed_ids)),
+        f"{label} removed IDs are invalid",
+    )
 
 
 def validate_finalize(value: Any, label: str) -> None:
@@ -207,6 +260,339 @@ def load_reviewed_proof(
     require_digest(prior.get("database_fingerprint"), "Prior database fingerprint")
     require_digest(prior.get("robots_sha256"), "Prior robots.txt")
     return path, proof, proof_sha256
+
+
+def validate_database_manifest(value: Any, digest: Any, label: str) -> None:
+    manifest = require_mapping(value, label)
+    components = (
+        "options_without_deployment_marker",
+        "posts",
+        "postmeta",
+        "seed_ids",
+        "evaluation_ids",
+    )
+    expected_keys = {
+        "schema",
+        "sync_secret_existed",
+        "sync_secret_configured",
+    }
+    for component in components:
+        expected_keys.add(f"{component}_count")
+        expected_keys.add(f"{component}_sha256")
+    require(set(manifest) == expected_keys, f"{label} fields are invalid")
+    require(
+        manifest.get("schema") == "complete99-database-snapshot-manifest/v1",
+        f"{label} schema is invalid",
+    )
+    require(
+        manifest.get("sync_secret_existed") is True
+        and manifest.get("sync_secret_configured") is True,
+        f"{label} sync identity is invalid",
+    )
+    for component in components:
+        count = manifest.get(f"{component}_count")
+        require(
+            type(count) is int and count >= 0,
+            f"{label} count is invalid for {component}",
+        )
+        require_digest(
+            manifest.get(f"{component}_sha256"),
+            f"{label} {component}",
+        )
+    canonical = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    require(
+        require_digest(digest, f"{label} digest")
+        == hashlib.sha256(canonical).hexdigest(),
+        f"{label} digest does not match",
+    )
+
+
+def validate_database_storage(value: Any, label: str) -> None:
+    storage = require_mapping(value, label)
+    require(set(storage) == {"engine", "tables"}, f"{label} fields are invalid")
+    require(
+        storage.get("engine") in {"INNODB", "XTRADB", "INNODB,XTRADB"}
+        and storage.get("tables") == 3,
+        f"{label} is not fully transactional",
+    )
+
+
+def validate_orphaned_observation_audit(
+    audit: dict[str, Any],
+    proof_path: Path,
+    proof: dict[str, Any],
+    proof_sha256: str,
+    repository_root: Path,
+    expected_probe_id: str,
+) -> None:
+    failed = require_mapping(proof.get("failed_run"), "Failed-run proof")
+    prior = require_mapping(proof.get("prior_run"), "Prior-run proof")
+    expected_deployment_id = failed.get("deployment_id")
+    require(
+        audit.get("deployment_id") == expected_deployment_id,
+        "Observation audit does not belong to the proof's failed deployment",
+    )
+    require(
+        set(audit)
+        == {
+            "bootstrap_cleanup",
+            "bridge_site_identity",
+            "cleanup",
+            "decision",
+            "deployment_id",
+            "discovery",
+            "finished_at",
+            "identity",
+            "initial_status",
+            "local_test",
+            "orphaned_rollback_observation",
+            "orphaned_rollback_proof",
+            "result",
+            "started_at",
+        },
+        "Observation audit contains unexpected or missing fields",
+    )
+    require(audit.get("local_test") is False, "Observation audit is not production-only")
+    for key in ("started_at", "finished_at"):
+        value = audit.get(key)
+        require(
+            type(value) is str and UTC_TIMESTAMP.fullmatch(value) is not None,
+            f"Observation audit {key} is invalid",
+        )
+    identity = require_mapping(audit.get("identity"), "Observation identity")
+    require(
+        set(identity) == {"id", "roles", "site_identity"}
+        and type(identity.get("id")) is int
+        and identity.get("id") > 0
+        and isinstance(identity.get("roles"), list)
+        and all(type(role) is str and role for role in identity["roles"]),
+        "Observation authentication identity is invalid",
+    )
+    rest_identity = require_mapping(
+        identity.get("site_identity"),
+        "Observation REST identity",
+    )
+    require(
+        set(rest_identity) == {"home", "url"}
+        and all(
+            type(rest_identity.get(key)) is str and rest_identity.get(key)
+            for key in ("home", "url")
+        ),
+        "Observation REST identity is invalid",
+    )
+    bridge_identity = require_mapping(
+        audit.get("bridge_site_identity"),
+        "Observation bridge identity",
+    )
+    require(
+        set(bridge_identity) == {"home_host", "rest_host", "siteurl_host"}
+        and all(
+            type(bridge_identity.get(key)) is str and bridge_identity.get(key)
+            for key in ("home_host", "rest_host", "siteurl_host")
+        ),
+        "Observation bridge identity is invalid",
+    )
+    validate_bootstrap_cleanup(
+        audit.get("bootstrap_cleanup"),
+        "Observation bootstrap cleanup",
+    )
+    require(
+        audit.get("result") == "orphaned-rollback-observed"
+        and audit.get("decision") == "observe_orphaned_rollback",
+        "Observation audit used the wrong terminal path",
+    )
+    require(
+        "orphaned_rollback_reconciliation" not in audit
+        and "reconciled_status" not in audit
+        and "finalize" not in audit,
+        "Observation audit crossed a recovery mutation path",
+    )
+    discovery = require_mapping(audit.get("discovery"), "Observation discovery")
+    require(
+        set(discovery)
+        == {
+            "bootstrap_cleanup",
+            "cleanup",
+            "owner_deployment_id",
+            "owner_phase",
+            "probe_id",
+            "result",
+        },
+        "Observation discovery fields are invalid",
+    )
+    require(
+        discovery.get("result") == "owner-discovered"
+        and discovery.get("owner_deployment_id") == expected_deployment_id,
+        "Observation did not find the proof's exact lock owner",
+    )
+    require(
+        discovery.get("probe_id") == expected_probe_id
+        and discovery.get("owner_phase") == "rolling_back",
+        "Observation discovery identity is invalid",
+    )
+    validate_bootstrap_cleanup(
+        discovery.get("bootstrap_cleanup"),
+        "Observation discovery bootstrap cleanup",
+    )
+    validate_observation_cleanup(
+        discovery.get("cleanup"),
+        "Observation discovery cleanup",
+    )
+    expected_path = proof_path.relative_to(repository_root.resolve()).as_posix()
+    proof_record = require_mapping(
+        audit.get("orphaned_rollback_proof"),
+        "Observation proof audit",
+    )
+    require(
+        set(proof_record) == {"path", "proof_sha256"},
+        "Observation proof audit fields are invalid",
+    )
+    require(proof_record.get("path") == expected_path, "Observation proof path changed")
+    require(
+        proof_record.get("proof_sha256") == proof_sha256,
+        "Observation used a different proof digest",
+    )
+    initial_status = require_mapping(audit.get("initial_status"), "Observation status")
+    require(
+        set(initial_status)
+        == {
+            "database_fingerprint",
+            "database_manifest_sha256",
+            "database_storage",
+            "lock_owned",
+            "phase",
+            "process_lock_available",
+            "projected_database_fingerprint",
+            "projected_deployment_id",
+            "recovery_ready",
+            "state_exists",
+        },
+        "Observation status fields are invalid",
+    )
+    require(
+        initial_status.get("phase") == "rolling_back"
+        and initial_status.get("state_exists") is False
+        and initial_status.get("lock_owned") is True
+        and initial_status.get("recovery_ready") is True
+        and initial_status.get("process_lock_available") is True,
+        "Observation did not inspect the exact stale rolling_back state",
+    )
+    observation = require_mapping(
+        audit.get("orphaned_rollback_observation"),
+        "Orphaned rollback observation",
+    )
+    expected_observation_keys = {
+        "schema",
+        "deployment_id",
+        "proof_sha256",
+        "phase",
+        "state_exists",
+        "lock_owned",
+        "recovery_ready",
+        "process_lock_available",
+        "current_version",
+        "current_database_version",
+        "current_active",
+        "current_plugin_sha256",
+        "current_deployment",
+        "current_database_fingerprint",
+        "projected_deployment_id",
+        "projected_database_fingerprint",
+        "historical_baseline_database_fingerprint",
+        "historical_baseline_matches_projection",
+        "current_sync_configured",
+        "current_robots_sha256",
+        "database_manifest",
+        "database_manifest_sha256",
+        "database_storage",
+        "failed_candidate_database_fingerprint",
+    }
+    require(
+        set(observation) == expected_observation_keys,
+        "Orphaned rollback observation fields are invalid",
+    )
+    expected_identity = {
+        "schema": "complete99-orphaned-rollback-observation/v1",
+        "deployment_id": expected_deployment_id,
+        "proof_sha256": proof_sha256,
+        "phase": "rolling_back",
+        "state_exists": False,
+        "lock_owned": True,
+        "recovery_ready": True,
+        "process_lock_available": True,
+        "current_version": prior.get("version"),
+        "current_database_version": prior.get("database_version"),
+        "current_active": prior.get("active"),
+        "current_plugin_sha256": prior.get("plugin_sha256"),
+        "projected_deployment_id": prior.get("deployment_id"),
+        "historical_baseline_database_fingerprint": prior.get(
+            "database_fingerprint"
+        ),
+        "current_sync_configured": prior.get("sync_configured"),
+        "current_robots_sha256": prior.get("robots_sha256"),
+        "failed_candidate_database_fingerprint": failed.get(
+            "candidate_database_fingerprint"
+        ),
+    }
+    for key, expected in expected_identity.items():
+        require(observation.get(key) == expected, f"Observation identity failed for {key}")
+    require(
+        observation.get("current_deployment")
+        in {failed.get("deployment_id"), prior.get("deployment_id")},
+        "Observation found an unreviewed deployment marker",
+    )
+    for key in (
+        "current_database_fingerprint",
+        "projected_database_fingerprint",
+        "historical_baseline_database_fingerprint",
+    ):
+        require_digest(observation.get(key), f"Observation {key}")
+    require(
+        type(observation.get("historical_baseline_matches_projection")) is bool,
+        "Observation baseline comparison is invalid",
+    )
+    require(
+        observation.get("historical_baseline_matches_projection")
+        is (
+            observation.get("projected_database_fingerprint")
+            == observation.get("historical_baseline_database_fingerprint")
+        ),
+        "Observation baseline comparison does not match its fingerprints",
+    )
+    validate_database_manifest(
+        observation.get("database_manifest"),
+        observation.get("database_manifest_sha256"),
+        "Observation database manifest",
+    )
+    validate_database_storage(
+        observation.get("database_storage"),
+        "Observation database storage",
+    )
+    require(
+        initial_status.get("database_fingerprint")
+        == observation.get("current_database_fingerprint")
+        and initial_status.get("projected_deployment_id")
+        == observation.get("projected_deployment_id")
+        and initial_status.get("projected_database_fingerprint")
+        == observation.get("projected_database_fingerprint")
+        and initial_status.get("database_manifest_sha256")
+        == observation.get("database_manifest_sha256"),
+        "Observation status and attestation differ",
+    )
+    require(
+        initial_status.get("database_storage")
+        == observation.get("database_storage"),
+        "Observation status storage and attestation differ",
+    )
+    validate_observation_cleanup(
+        audit.get("cleanup"),
+        "Observation bridge cleanup",
+    )
 
 
 def validate_no_owner_audit(
@@ -447,6 +833,7 @@ def validate_recovery_audit(
     expected_probe_id: str,
     *,
     repository_root: Path = ROOT,
+    expect_observation: bool = False,
 ) -> dict[str, Any]:
     require(
         DEPLOYMENT_ID.fullmatch(expected_probe_id) is not None,
@@ -460,10 +847,12 @@ def validate_recovery_audit(
         and DEPLOYMENT_ID.fullmatch(deployment_id) is not None,
         "Recovery summary deployment ID is invalid",
     )
-    require(
-        type(result) is str and result in {"no-recovery-needed", "recovered"},
-        "Recovery summary result is invalid",
+    allowed_results = (
+        {"orphaned-rollback-observed"}
+        if expect_observation
+        else {"no-recovery-needed", "recovered"}
     )
+    require(type(result) is str and result in allowed_results, "Recovery summary result is invalid")
 
     expected_audit = (audit_root.resolve() / f"{deployment_id}.json").resolve()
     reported_value = summary.get("audit")
@@ -481,19 +870,40 @@ def validate_recovery_audit(
             proof_path,
             repository_root.resolve(),
         )
+        if expect_observation:
+            require(
+                result == "orphaned-rollback-observed",
+                "Reviewed proof did not produce an orphaned rollback observation",
+            )
+        else:
+            require(
+                result == "recovered",
+                "Reviewed proof was supplied but the exact failed deployment was not recovered",
+            )
         failed = require_mapping(proof.get("failed_run"), "Failed-run proof")
         require(
-            deployment_id == failed.get("deployment_id") and result == "recovered",
-            "Reviewed proof was supplied but the exact failed deployment was not recovered",
+            deployment_id == failed.get("deployment_id"),
+            "Reviewed proof was used for the wrong failed deployment",
         )
-        validate_orphaned_proof_audit(
-            audit,
-            reviewed_path,
-            proof,
-            proof_sha256,
-            repository_root.resolve(),
-        )
-        proof_consumed = True
+        if expect_observation:
+            validate_orphaned_observation_audit(
+                audit,
+                reviewed_path,
+                proof,
+                proof_sha256,
+                repository_root.resolve(),
+                expected_probe_id,
+            )
+            proof_consumed = False
+        else:
+            validate_orphaned_proof_audit(
+                audit,
+                reviewed_path,
+                proof,
+                proof_sha256,
+                repository_root.resolve(),
+            )
+            proof_consumed = True
     elif result == "no-recovery-needed":
         validate_no_owner_audit(audit, deployment_id, expected_probe_id)
         proof_consumed = False
@@ -505,12 +915,15 @@ def validate_recovery_audit(
         validate_cleanup(audit.get("cleanup"), "Preflight recovery bridge cleanup")
         proof_consumed = False
 
-    return {
+    validated = {
         "deployment_id": deployment_id,
         "proof_consumed": proof_consumed,
         "result": result,
         "validated": True,
     }
+    if expect_observation:
+        validated["proof_observed"] = True
+    return validated
 
 
 def read_exact_stage_audit(
@@ -643,6 +1056,7 @@ def validate_stage_outcomes(
     deploy_audit_root: Path,
     recovery_audit_root: Path,
     commerce_audit_root: Path,
+    observation_only: bool = False,
 ) -> dict[str, Any]:
     outcomes = {"success", "failure", "cancelled", "skipped"}
     for value, label in (
@@ -679,6 +1093,38 @@ def validate_stage_outcomes(
         production_id,
         "Production recovery",
     )
+
+    if observation_only:
+        require(preflight_outcome == "success", "Observation preflight did not succeed")
+        require(dry_audit is None, "Observation-only run created a dry-run audit")
+        require(
+            production_outcome == "skipped"
+            and mutation_outcome == "skipped"
+            and recovery_outcome == "skipped"
+            and commerce_outcome == "skipped"
+            and commerce_recovery_outcome == "skipped"
+            and mutation_started == "",
+            "Observation-only run crossed the platform mutation path",
+        )
+        require(
+            production_audit is None and recovery_audit is None,
+            "Observation-only run created a platform mutation audit",
+        )
+        commerce = validate_commerce_outcomes(
+            platform_succeeded=False,
+            commerce_outcome=commerce_outcome,
+            commerce_recovery_outcome=commerce_recovery_outcome,
+            commerce_id=commerce_id,
+            commerce_audit_root=commerce_audit_root,
+        )
+        return {
+            **commerce,
+            "observation_only": True,
+            "preflight_outcome": preflight_outcome,
+            "production_outcome": production_outcome,
+            "recovery_outcome": recovery_outcome,
+            "validated": True,
+        }
 
     if preflight_outcome == "success":
         passed_dry_run = require_stage_result(dry_audit, "dry-run-passed", "dry-run")
@@ -797,6 +1243,7 @@ def validate_stage_outcomes(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stage-outcomes", action="store_true")
+    parser.add_argument("--expect-observation", action="store_true")
     parser.add_argument(
         "--summary-json",
         default=os.environ.get("COMPLETE99_RECOVERY_SUMMARY_JSON", ""),
@@ -815,6 +1262,10 @@ def main() -> int:
     args = parser.parse_args()
     if args.stage_outcomes:
         result = validate_stage_outcomes(
+            observation_only=os.environ.get(
+                "COMPLETE99_OBSERVATION_ONLY", ""
+            ).lower()
+            == "true",
             preflight_outcome=os.environ.get("COMPLETE99_PREFLIGHT_OUTCOME", ""),
             production_outcome=os.environ.get("COMPLETE99_PRODUCTION_OUTCOME", ""),
             mutation_outcome=os.environ.get("COMPLETE99_MUTATION_OUTCOME", ""),
@@ -840,6 +1291,7 @@ def main() -> int:
             args.proof,
             args.audit_root,
             args.expected_probe_id,
+            expect_observation=args.expect_observation,
         )
     print(json.dumps(result, sort_keys=True))
     return 0
