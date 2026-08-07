@@ -113,10 +113,10 @@ digests and validation gates when records move into partitioned database storage
 and persistent caches. WordPress and WooCommerce remain the authority through
 that storage transition.
 
-Release 1.14.0 uses culinary-commerce registry version 8 bound to
-culinary-science registry version 14. The version change adds no product
-identity or effective channel offer. Six Lebanese retail listings remain dated,
-private science observations and cannot become an Israeli price, supplier,
+Release 1.15.0 uses culinary-commerce registry version 9 bound to
+culinary-science registry version 15. The version change adds no product
+identity or effective channel offer. The Iraqi tranche contains no price or
+retail observation. Its 96 identities cannot become an Israeli price, supplier,
 stock record, offer or import path.
 
 ## Private Entity Studio
@@ -154,10 +154,10 @@ the active POS projection. Only the exact explicit value `public` is eligible
 for public source-market projection. Missing, malformed and unknown values
 remain private. Payment remains disabled and no role is installed or assigned.
 
-Release 1.14.0 extends Entity Studio to 425 subjects: 369 science identities
+Release 1.15.0 extends Entity Studio to 521 subjects: 465 science identities
 plus the same 56 product identities. Price-basis coverage remains 56 of 56: 36
-unchanged public WooCommerce prices and 20 private planning prices. The 82 new
-Lebanese science identities are private, `noindex`, reference-only subjects and
+unchanged public WooCommerce prices and 20 private planning prices. The 96 new
+Iraqi science identities are private, `noindex`, reference-only subjects and
 do not add a product code, channel offer, stock, supplier, landed-cost or margin
 record. There are zero new active or draft offers. Payment remains disabled and
 no role is installed or assigned.
@@ -185,6 +185,31 @@ three restaurants, one compliance rule and six retail listings. Every Lebanese
 identity has `editorial_draft`, `noindex_private`, `private_preview` and
 `reference_only` boundaries. Across all cuisines, the public graph remains 23
 science entities resolving through 18 canonical page owners per language.
+
+At release 1.15.0, the cumulative registry contains 465 entities. The Iraqi
+module contributes 96 private identities: one cuisine, 16 topic hubs, 32
+dishes, four preparations, 12 ingredients, eight techniques, ten traditions,
+five culinary institutions, three markets, two restaurants, one compliance
+rule and two guides. Every Iraqi identity has `editorial_draft`,
+`noindex_private`, `private_preview` and `reference_only` boundaries. The
+public graph remains 23 science entities across 18 canonical page owners per
+language.
+
+## Iraq research and trade boundary
+
+The Iraqi foundation is an editorial research graph, not a commerce or
+procurement source. It keeps Baghdad, Mosul and Ninewa, Basra and the Shatt
+al-Arab, the Middle Euphrates, the southern marshes, Iraqi Kurdistan, Kirkuk and
+Diyala as distinct source-scoped paths. Iraqi Jewish, Kurdish, Marsh Arab and
+family records remain within their documented community scope. Shared regional
+dish families are linked for comparison without being merged or assigned an
+exclusive national origin.
+
+Every Iraqi identity references the central private
+`compliance-iraq-trade-israel-2026` rule. The rule records the current
+fail-closed trade boundary and permits no supplier contact, sample, payment,
+third-country workaround, availability claim or ordering path without current
+written official authorization. It is an operating control, not legal advice.
 
 ## Lebanon research and trade boundary
 

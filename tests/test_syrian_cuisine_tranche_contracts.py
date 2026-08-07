@@ -363,7 +363,7 @@ def _one_relation(entity: dict, relation_type: str, target_id: str) -> dict:
 def test_full_syrian_foundation_inventory_is_exact(
     registry: dict, syrian_entities: dict[str, dict]
 ) -> None:
-    assert registry["version"] == "culinary-science-2026.08.07.v14"
+    assert registry["version"] == "culinary-science-2026.08.07.v15"
     assert len(syrian_entities) == 196
     by_type: dict[str, set[str]] = {}
     for entity in syrian_entities.values():

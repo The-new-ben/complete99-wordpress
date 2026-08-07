@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-07 18:30:00"
+RELEASE_LAST_UPDATED = "2026-08-07 20:15:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,14 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the bilingual culinary-science registry to 465 entities and Entity Studio to 521 subjects: 465 science identities plus 56 product identities.</li>"
+                "<li>Added a 96-identity private Iraqi regional and community foundation with 32 dishes, 16 regional or topic hubs, 12 ingredients, eight techniques, ten traditions, four preparations, institutions, markets, restaurants, guides and one central trade-compliance rule.</li>"
+                "<li>Kept Baghdad, Mosul and Ninewa, Basra and the Shatt al-Arab, the Middle Euphrates, the southern marshes, Iraqi Kurdistan, Kirkuk and Diyala within their sourced regional boundaries, while preserving Jewish, Kurdish, Marsh Arab and family records within their documented community scope.</li>"
+                "<li>Kept kubba, dolma, biryani, qeema, tannour, turshi, basturma, kebab, kofta and sayadiyah as shared regional families, linked sabich and amba to existing identities, and gated fish, rice, offal, fermented foods, dairy, date syrup, open fire and wild-plant handling with explicit safety controls.</li>"
+                "<li>Preserved the exact 36-product public WooCommerce store, 23 public science entities, 18 public page owners, prices, stock, cart, disabled payment state and no-role boundary unchanged. All 96 Iraqi identities remain private, noindex and reference-only.</li>"
+                "</ul>"
+                "<h4>1.14.0</h4>"
                 "<ul>"
                 "<li>Expanded the bilingual culinary-science registry to 369 entities and Entity Studio to 425 subjects: 369 science identities plus 56 product identities.</li>"
                 "<li>Added an 82-entity private Lebanese regional foundation with 27 dishes, 13 regional or topic hubs, eight ingredients, five techniques, nine traditions, institutions, markets, restaurants, six dated retail observations and one central trade-compliance rule.</li>"

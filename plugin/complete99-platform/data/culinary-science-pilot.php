@@ -2309,6 +2309,45 @@ $c99_private_cuisine_lookup = array_replace(
 	array_fill_keys( $c99_lebanese_foundations_module['private_entity_ids'], true )
 );
 
+$c99_iraqi_foundations_module = require __DIR__ . '/culinary-science/cuisines/iraqi-foundations.php';
+foreach ( $c99_iraqi_foundations_module['sources'] as $iraqi_source_id => $iraqi_source ) {
+	if ( isset( $sources[ $iraqi_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Iraqi foundations source ID: ' . $iraqi_source_id );
+	}
+	$sources[ $iraqi_source_id ] = $iraqi_source;
+}
+$entities = array_merge( $entities, $c99_iraqi_foundations_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_iraqi_foundations_module['private_entity_ids'], true )
+);
+
+$c99_iraqi_regional_depth_module = require __DIR__ . '/culinary-science/cuisines/iraqi-regional-depth.php';
+foreach ( $c99_iraqi_regional_depth_module['sources'] as $iraqi_depth_source_id => $iraqi_depth_source ) {
+	if ( isset( $sources[ $iraqi_depth_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Iraqi regional-depth source ID: ' . $iraqi_depth_source_id );
+	}
+	$sources[ $iraqi_depth_source_id ] = $iraqi_depth_source;
+}
+$entities = array_merge( $entities, $c99_iraqi_regional_depth_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_iraqi_regional_depth_module['private_entity_ids'], true )
+);
+
+$c99_iraqi_community_module = require __DIR__ . '/culinary-science/cuisines/iraqi-community-institutions.php';
+foreach ( $c99_iraqi_community_module['sources'] as $iraqi_community_source_id => $iraqi_community_source ) {
+	if ( isset( $sources[ $iraqi_community_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Iraqi community source ID: ' . $iraqi_community_source_id );
+	}
+	$sources[ $iraqi_community_source_id ] = $iraqi_community_source;
+}
+$entities = array_merge( $entities, $c99_iraqi_community_module['entities'] );
+$c99_private_cuisine_lookup = array_replace(
+	$c99_private_cuisine_lookup,
+	array_fill_keys( $c99_iraqi_community_module['private_entity_ids'], true )
+);
+
 /*
  * SEO architecture is computed from one explicit parent map. The same chain
  * drives canonical paths, breadcrumbs, expected child coverage and the public
@@ -2400,6 +2439,7 @@ $clusters_by_root = array(
 	'cuisine-japanese-washoku' => 'cluster-japanese-washoku',
 	'cuisine-syrian-regional' => 'cluster-syrian-regional-cuisine',
 	'cuisine-lebanese-regional' => 'cluster-lebanese-regional-cuisine',
+	'cuisine-iraqi-regional' => 'cluster-iraqi-regional-cuisine',
 	'hub-global-culinary-institutions' => 'cluster-global-culinary-institutions',
 );
 $profile_types = array( 'culinary_institution', 'restaurant', 'market', 'equipment_shop', 'producer', 'supplier' );
@@ -2901,7 +2941,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'culinary-science-2026.08.07.v14',
+	'version'       => 'culinary-science-2026.08.07.v15',
 	'generated_at'  => '2026-08-07',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',
