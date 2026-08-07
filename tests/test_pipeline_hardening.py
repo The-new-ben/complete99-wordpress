@@ -1577,6 +1577,12 @@ class PipelineHardeningTests(unittest.TestCase):
         )
         self.assertIn("COMPLETE99_RECOVERY_SUMMARY_JSON", preflight)
         self.assertIn("--expected-probe-id $probeId", preflight)
+        self.assertIn("--observe-orphaned-rollback", preflight)
+        self.assertIn("--expect-observation", preflight)
+        self.assertIn(
+            'if ("${{ inputs.orphaned_rollback_observe_only }}" -eq "true")',
+            preflight,
+        )
 
         production = workflow.split(
             "- name: Deploy the exact CI artifact with independent verification",
@@ -1587,6 +1593,10 @@ class PipelineHardeningTests(unittest.TestCase):
         )[0]
         self.assertIn("--mutation-marker $mutationMarker", production)
         self.assertIn("--rollback-exercise", production)
+        self.assertIn(
+            "if: inputs.orphaned_rollback_observe_only != true",
+            production,
+        )
         self.assertIn(
             "COMPLETE99_WORDPRESS_SYNC_SECRET: "
             "${{ secrets.COMPLETE99_WORDPRESS_SYNC_SECRET }}",
@@ -1634,6 +1644,7 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertIn("COMPLETE99_RECOVERY_OUTCOME", stage_audit)
         self.assertIn("COMPLETE99_COMMERCE_OUTCOME", stage_audit)
         self.assertIn("COMPLETE99_COMMERCE_RECOVERY_OUTCOME", stage_audit)
+        self.assertIn("COMPLETE99_OBSERVATION_ONLY", stage_audit)
         self.assertIn("--dry-run-id", stage_audit)
         self.assertIn("--production-id", stage_audit)
         self.assertIn("--commerce-id", stage_audit)
@@ -1737,13 +1748,19 @@ class PipelineHardeningTests(unittest.TestCase):
             "orphaned_rollback_proof:", 1
         )[0]
         recovery_proof_input = workflow.split("orphaned_rollback_proof:", 1)[1].split(
-            "permissions:", 1
+            "orphaned_rollback_observe_only:", 1
         )[0]
+        observation_input = workflow.split(
+            "orphaned_rollback_observe_only:", 1
+        )[1].split("permissions:", 1)[0]
         self.assertIn("default: true", rollback_input)
         self.assertIn("default: true", bootstrap_input)
         self.assertIn("required: false", recovery_proof_input)
         self.assertIn("default: ''", recovery_proof_input)
         self.assertIn("type: string", recovery_proof_input)
+        self.assertIn("required: true", observation_input)
+        self.assertIn("default: false", observation_input)
+        self.assertIn("type: boolean", observation_input)
         rollback_guard = workflow.split(
             "- name: Require the 1.3.1 rollback and identical-artifact redeploy exercise",
             1,

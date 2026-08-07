@@ -93,6 +93,33 @@ def proof_record(proof: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def database_manifest() -> tuple[dict[str, Any], str]:
+    manifest: dict[str, Any] = {
+        "schema": "complete99-database-snapshot-manifest/v1",
+        "sync_secret_existed": True,
+        "sync_secret_configured": True,
+    }
+    for index, component in enumerate(
+        (
+            "options_without_deployment_marker",
+            "posts",
+            "postmeta",
+            "seed_ids",
+            "evaluation_ids",
+        ),
+        start=1,
+    ):
+        manifest[f"{component}_count"] = index
+        manifest[f"{component}_sha256"] = format(index, "x") * 64
+    canonical = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return manifest, hashlib.sha256(canonical).hexdigest()
+
+
 class _Response:
     def __init__(self, url: str, body: bytes = b"{}", status: int = 200) -> None:
         self.url = url
@@ -413,6 +440,97 @@ class CompletedRollbackTests(unittest.TestCase):
             },
             audit["completed_rollback_recovery"],
         )
+
+
+class OrphanObservationTests(unittest.TestCase):
+    def status(self) -> dict[str, Any]:
+        proof = valid_proof()
+        manifest, manifest_sha256 = database_manifest()
+        return {
+            "phase": "rolling_back",
+            "state_exists": False,
+            "lock_owned": True,
+            "recovery_ready": True,
+            "process_lock_available": True,
+            "current_version": proof["prior_run"]["version"],
+            "current_database_version": proof["prior_run"]["database_version"],
+            "current_active": True,
+            "current_plugin_sha256": proof["prior_run"]["plugin_sha256"],
+            "current_sync_configured": True,
+            "current_robots_sha256": proof["prior_run"]["robots_sha256"],
+            "current_deployment": proof["failed_run"]["deployment_id"],
+            "database_fingerprint": "b" * 64,
+            "projected_deployment_id": proof["prior_run"]["deployment_id"],
+            "projected_database_fingerprint": "c" * 64,
+            "database_manifest": manifest,
+            "database_manifest_sha256": manifest_sha256,
+            "database_storage": {"engine": "INNODB", "tables": 3},
+        }
+
+    def test_observation_is_non_secret_strict_and_mutation_free(self) -> None:
+        proof = valid_proof()
+        observed = DEPLOY.observe_orphaned_rollback(
+            proof["failed_run"]["deployment_id"],
+            self.status(),
+            proof,
+            "d" * 64,
+        )
+        self.assertEqual(
+            "complete99-orphaned-rollback-observation/v1",
+            observed["schema"],
+        )
+        self.assertEqual("b" * 64, observed["current_database_fingerprint"])
+        self.assertEqual("c" * 64, observed["projected_database_fingerprint"])
+        self.assertFalse(observed["historical_baseline_matches_projection"])
+        serialized = json.dumps(observed, sort_keys=True)
+        for forbidden in ("option_value", "post_content", "meta_value", "user_roles"):
+            self.assertNotIn(forbidden, serialized)
+
+    def test_observation_rejects_extra_manifest_fields_and_stale_identity(self) -> None:
+        proof = valid_proof()
+        extra = self.status()
+        extra["database_manifest"] = dict(extra["database_manifest"])
+        extra["database_manifest"]["unexpected"] = True
+        with self.assertRaisesRegex(DEPLOY.DeployError, "manifest is invalid"):
+            DEPLOY.observe_orphaned_rollback(
+                proof["failed_run"]["deployment_id"],
+                extra,
+                proof,
+                "d" * 64,
+            )
+
+        stale = self.status()
+        stale["current_plugin_sha256"] = "f" * 64
+        with self.assertRaisesRegex(DEPLOY.DeployError, "live state"):
+            DEPLOY.observe_orphaned_rollback(
+                proof["failed_run"]["deployment_id"],
+                stale,
+                proof,
+                "d" * 64,
+            )
+
+        mistyped = self.status()
+        mistyped["process_lock_available"] = "true"
+        with self.assertRaisesRegex(DEPLOY.DeployError, "live state"):
+            DEPLOY.observe_orphaned_rollback(
+                proof["failed_run"]["deployment_id"],
+                mistyped,
+                proof,
+                "d" * 64,
+            )
+
+        nontransactional = self.status()
+        nontransactional["database_storage"] = {
+            "engine": "MYISAM",
+            "tables": 3,
+        }
+        with self.assertRaisesRegex(DEPLOY.DeployError, "not transactional"):
+            DEPLOY.observe_orphaned_rollback(
+                proof["failed_run"]["deployment_id"],
+                nontransactional,
+                proof,
+                "d" * 64,
+            )
 
 
 class RecoveryProofTests(unittest.TestCase):

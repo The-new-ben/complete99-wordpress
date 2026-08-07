@@ -50,6 +50,20 @@ def cleanup_record() -> dict[str, object]:
     }
 
 
+def observation_cleanup_record() -> dict[str, object]:
+    return {**cleanup_record(), "removed_ids": []}
+
+
+def bootstrap_cleanup_record() -> dict[str, object]:
+    return {
+        "exact_name": "c99-deploy-bootstrap",
+        "known_id": 5,
+        "known_id_matched": False,
+        "removed_ids": [],
+        "row_absence_verified": True,
+    }
+
+
 def finalize_record() -> dict[str, object]:
     return {
         "finalized": True,
@@ -196,6 +210,112 @@ def orphaned_receipt_resume_audit(proof_digest: str) -> dict[str, object]:
     return audit
 
 
+def database_manifest() -> tuple[dict[str, object], str]:
+    manifest: dict[str, object] = {
+        "schema": "complete99-database-snapshot-manifest/v1",
+        "sync_secret_existed": True,
+        "sync_secret_configured": True,
+    }
+    for index, component in enumerate(
+        (
+            "options_without_deployment_marker",
+            "posts",
+            "postmeta",
+            "seed_ids",
+            "evaluation_ids",
+        ),
+        start=1,
+    ):
+        manifest[f"{component}_count"] = index
+        manifest[f"{component}_sha256"] = format(index, "x") * 64
+    canonical = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return manifest, hashlib.sha256(canonical).hexdigest()
+
+
+def orphaned_observation_audit(proof_digest: str) -> dict[str, object]:
+    manifest, manifest_sha256 = database_manifest()
+    current_database = "7" * 64
+    projected_database = "8" * 64
+    return {
+        "bootstrap_cleanup": bootstrap_cleanup_record(),
+        "bridge_site_identity": {
+            "home_host": "complete99.co.il",
+            "rest_host": "complete99.co.il",
+            "siteurl_host": "complete99.co.il",
+        },
+        "deployment_id": FAILED_ID,
+        "decision": "observe_orphaned_rollback",
+        "discovery": {
+            "bootstrap_cleanup": bootstrap_cleanup_record(),
+            "probe_id": PROBE_ID,
+            "owner_deployment_id": FAILED_ID,
+            "owner_phase": "rolling_back",
+            "result": "owner-discovered",
+            "cleanup": observation_cleanup_record(),
+        },
+        "finished_at": "2026-08-07T12:00:01Z",
+        "identity": {
+            "id": 1,
+            "roles": ["administrator"],
+            "site_identity": {
+                "home": "https://complete99.co.il",
+                "url": "https://complete99.co.il",
+            },
+        },
+        "initial_status": {
+            "phase": "rolling_back",
+            "state_exists": False,
+            "lock_owned": True,
+            "recovery_ready": True,
+            "process_lock_available": True,
+            "database_fingerprint": current_database,
+            "projected_deployment_id": PRIOR_ID,
+            "projected_database_fingerprint": projected_database,
+            "database_manifest_sha256": manifest_sha256,
+            "database_storage": {"engine": "INNODB", "tables": 3},
+        },
+        "local_test": False,
+        "orphaned_rollback_proof": {
+            "path": f"docs/recovery-proofs/{FAILED_ID}.json",
+            "proof_sha256": proof_digest,
+        },
+        "orphaned_rollback_observation": {
+            "schema": "complete99-orphaned-rollback-observation/v1",
+            "deployment_id": FAILED_ID,
+            "proof_sha256": proof_digest,
+            "phase": "rolling_back",
+            "state_exists": False,
+            "lock_owned": True,
+            "recovery_ready": True,
+            "process_lock_available": True,
+            "current_version": "1.16.0",
+            "current_database_version": "1.16.0",
+            "current_active": True,
+            "current_plugin_sha256": PLUGIN_SHA,
+            "current_deployment": FAILED_ID,
+            "current_database_fingerprint": current_database,
+            "projected_deployment_id": PRIOR_ID,
+            "projected_database_fingerprint": projected_database,
+            "historical_baseline_database_fingerprint": DATABASE_SHA,
+            "historical_baseline_matches_projection": False,
+            "current_sync_configured": True,
+            "current_robots_sha256": ROBOTS_SHA,
+            "database_manifest": manifest,
+            "database_manifest_sha256": manifest_sha256,
+            "database_storage": {"engine": "INNODB", "tables": 3},
+            "failed_candidate_database_fingerprint": "2" * 64,
+        },
+        "cleanup": observation_cleanup_record(),
+        "result": "orphaned-rollback-observed",
+        "started_at": "2026-08-07T12:00:00Z",
+    }
+
+
 def write_audit(audit_root: Path, audit: dict[str, object]) -> Path:
     audit_root.mkdir(parents=True, exist_ok=True)
     path = audit_root / f"{audit['deployment_id']}.json"
@@ -210,6 +330,8 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
         audit_root: Path,
         audit: dict[str, object],
         proof_path: str,
+        *,
+        expect_observation: bool = False,
     ) -> dict[str, object]:
         audit_path = write_audit(audit_root, audit)
         summary = json.dumps(
@@ -225,6 +347,7 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             audit_root,
             PROBE_ID,
             repository_root=repository_root,
+            expect_observation=expect_observation,
         )
 
     def test_exact_orphaned_recovery_proof_and_audit_pass(self) -> None:
@@ -259,6 +382,125 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             )
         self.assertTrue(result["proof_consumed"])
         self.assertEqual("recovered", result["result"])
+
+    def test_exact_orphaned_observation_passes_without_consuming_proof(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, _, proof_digest = write_reviewed_proof(repository_root)
+            result = self.validate(
+                repository_root,
+                repository_root / "recovery-audit",
+                orphaned_observation_audit(proof_digest),
+                str(proof_path.relative_to(repository_root)),
+                expect_observation=True,
+            )
+        self.assertEqual(
+            {
+                "deployment_id": FAILED_ID,
+                "proof_consumed": False,
+                "proof_observed": True,
+                "result": "orphaned-rollback-observed",
+                "validated": True,
+            },
+            result,
+        )
+
+    def test_observation_rejects_manifest_tampering_and_mutation_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            proof_path, _, proof_digest = write_reviewed_proof(repository_root)
+            proof_argument = str(proof_path.relative_to(repository_root))
+            audit_root = repository_root / "recovery-audit"
+
+            tampered = orphaned_observation_audit(proof_digest)
+            tampered["orphaned_rollback_observation"]["database_manifest"][
+                "posts_count"
+            ] = 99
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "digest does not match",
+            ):
+                self.validate(
+                    repository_root,
+                    audit_root,
+                    tampered,
+                    proof_argument,
+                    expect_observation=True,
+                )
+
+            mutated = orphaned_observation_audit(proof_digest)
+            mutated["finalize"] = finalize_record()
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "unexpected or missing fields",
+            ):
+                self.validate(
+                    repository_root,
+                    audit_root,
+                    mutated,
+                    proof_argument,
+                    expect_observation=True,
+                )
+
+            false_comparison = orphaned_observation_audit(proof_digest)
+            false_comparison["orphaned_rollback_observation"][
+                "historical_baseline_matches_projection"
+            ] = True
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "does not match its fingerprints",
+            ):
+                self.validate(
+                    repository_root,
+                    audit_root,
+                    false_comparison,
+                    proof_argument,
+                    expect_observation=True,
+                )
+
+            extra_field = orphaned_observation_audit(proof_digest)
+            extra_field["rollback"] = {"raw": "must-not-be-certified"}
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "unexpected or missing fields",
+            ):
+                self.validate(
+                    repository_root,
+                    audit_root,
+                    extra_field,
+                    proof_argument,
+                    expect_observation=True,
+                )
+
+            local = orphaned_observation_audit(proof_digest)
+            local["local_test"] = True
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "not production-only",
+            ):
+                self.validate(
+                    repository_root,
+                    audit_root,
+                    local,
+                    proof_argument,
+                    expect_observation=True,
+                )
+
+            nontransactional = orphaned_observation_audit(proof_digest)
+            nontransactional["orphaned_rollback_observation"][
+                "database_storage"
+            ]["engine"] = "MYISAM"
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "not fully transactional",
+            ):
+                self.validate(
+                    repository_root,
+                    audit_root,
+                    nontransactional,
+                    proof_argument,
+                    expect_observation=True,
+                )
 
     def test_orphaned_proof_requires_exactly_one_consumption_shape(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -724,6 +966,60 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                 "production recovery audit is missing",
             ):
                 VALIDATOR.validate_stage_outcomes(**missing_recovery)
+
+    def test_observation_stage_matrix_requires_every_mutation_stage_skipped(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            arguments = {
+                "observation_only": True,
+                "preflight_outcome": "success",
+                "production_outcome": "skipped",
+                "mutation_outcome": "skipped",
+                "mutation_started": "",
+                "recovery_outcome": "skipped",
+                "commerce_outcome": "skipped",
+                "commerce_recovery_outcome": "skipped",
+                "dry_run_id": "c99-dry-40000000000-1",
+                "production_id": "c99-prod-40000000000-1",
+                "commerce_id": "c99-commerce-40000000000-1",
+                "deploy_audit_root": root / "deploy-audit",
+                "recovery_audit_root": root / "recovery-audit",
+                "commerce_audit_root": root / "commerce-audit",
+            }
+            result = VALIDATOR.validate_stage_outcomes(**arguments)
+            self.assertTrue(result["observation_only"])
+
+            crossed = dict(arguments)
+            crossed["production_outcome"] = "success"
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "crossed the platform mutation path",
+            ):
+                VALIDATOR.validate_stage_outcomes(**crossed)
+
+            for field in (
+                "production_outcome",
+                "mutation_outcome",
+                "recovery_outcome",
+                "commerce_outcome",
+                "commerce_recovery_outcome",
+            ):
+                with self.subTest(cancelled_field=field):
+                    cancelled = dict(arguments)
+                    cancelled[field] = "cancelled"
+                    with self.assertRaisesRegex(
+                        VALIDATOR.AuditValidationError,
+                        "crossed the platform mutation path",
+                    ):
+                        VALIDATOR.validate_stage_outcomes(**cancelled)
+
+            marker = dict(arguments)
+            marker["mutation_started"] = "false"
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "crossed the platform mutation path",
+            ):
+                VALIDATOR.validate_stage_outcomes(**marker)
 
 
 if __name__ == "__main__":

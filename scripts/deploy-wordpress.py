@@ -1256,10 +1256,11 @@ def bridge_call(client: Client, action: str, token: str, deployment_id: str, **f
     payload = {"token": token, "deployment_id": deployment_id}
     payload.update(fields)
     route_id = urllib.parse.quote(deployment_id, safe="")
-    attempts = PUBLIC_READ_ATTEMPTS if action == "status" else 1
+    read_only_actions = {"status"}
+    attempts = PUBLIC_READ_ATTEMPTS if action in read_only_actions else 1
     for attempt in range(attempts):
         try:
-            if action == "status" and isinstance(client, Client):
+            if action in read_only_actions and isinstance(client, Client):
                 _, response = client.request(
                     "POST",
                     f"/wp-json/complete99-deploy/v1/{route_id}/{action}",
@@ -1745,15 +1746,12 @@ def verify_rollback_integrity(
     }
 
 
-def reconcile_orphaned_rollback(
-    client: Client,
-    token: str,
+def validate_orphaned_rollback_live_state(
     deployment_id: str,
     status: dict[str, Any],
     proof: dict[str, Any],
-    proof_sha256: str,
-) -> dict[str, Any]:
-    """Create a durable terminal rollback receipt from reviewed audit proof."""
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Validate immutable release identity before observation or reconciliation."""
     failed = proof.get("failed_run", {})
     prior = proof.get("prior_run", {})
     reviewed_candidate_bindings = {
@@ -1766,16 +1764,20 @@ def reconcile_orphaned_rollback(
     }
     for key, reviewed_value in reviewed_candidate_bindings.items():
         observed_value = status.get(key)
-        if observed_value not in {None, ""} and observed_value != reviewed_value:
+        if (
+            observed_value is not None
+            and observed_value != ""
+            and observed_value != reviewed_value
+        ):
             raise DeployError(
                 f"Orphaned rollback failed-run identity does not match {key}"
             )
     if (
         status.get("phase") != "rolling_back"
-        or status.get("state_exists")
-        or not status.get("lock_owned")
-        or not status.get("recovery_ready")
-        or not status.get("process_lock_available")
+        or status.get("state_exists") is not False
+        or status.get("lock_owned") is not True
+        or status.get("recovery_ready") is not True
+        or status.get("process_lock_available") is not True
         or deployment_id != failed.get("deployment_id")
         or status.get("current_version") != prior.get("version")
         or status.get("current_database_version") != prior.get("database_version")
@@ -1789,6 +1791,147 @@ def reconcile_orphaned_rollback(
         raise DeployError(
             "Orphaned rollback live state does not match the reviewed audit proof"
         )
+    return failed, prior
+
+
+def observe_orphaned_rollback(
+    deployment_id: str,
+    status: dict[str, Any],
+    proof: dict[str, Any],
+    proof_sha256: str,
+) -> dict[str, Any]:
+    """Return a non-secret, mutation-free current-state attestation."""
+    failed, prior = validate_orphaned_rollback_live_state(
+        deployment_id,
+        status,
+        proof,
+    )
+    manifest = status.get("database_manifest")
+    expected_manifest_keys = {
+        "schema",
+        "sync_secret_existed",
+        "sync_secret_configured",
+        "options_without_deployment_marker_count",
+        "options_without_deployment_marker_sha256",
+        "posts_count",
+        "posts_sha256",
+        "postmeta_count",
+        "postmeta_sha256",
+        "seed_ids_count",
+        "seed_ids_sha256",
+        "evaluation_ids_count",
+        "evaluation_ids_sha256",
+    }
+    if not isinstance(manifest, dict) or set(manifest) != expected_manifest_keys:
+        raise DeployError("Orphaned rollback database manifest is invalid")
+    if manifest.get("schema") != "complete99-database-snapshot-manifest/v1":
+        raise DeployError("Orphaned rollback database manifest schema is invalid")
+    if (
+        manifest.get("sync_secret_existed") is not True
+        or manifest.get("sync_secret_configured") is not True
+    ):
+        raise DeployError("Orphaned rollback database manifest lost sync identity")
+    for component in (
+        "options_without_deployment_marker",
+        "posts",
+        "postmeta",
+        "seed_ids",
+        "evaluation_ids",
+    ):
+        count = manifest.get(f"{component}_count")
+        digest = manifest.get(f"{component}_sha256")
+        if type(count) is not int or count < 0:
+            raise DeployError(
+                f"Orphaned rollback database manifest count is invalid for {component}"
+            )
+        if not isinstance(digest, str) or re.fullmatch(r"[a-f0-9]{64}", digest) is None:
+            raise DeployError(
+                f"Orphaned rollback database manifest digest is invalid for {component}"
+            )
+    current_fingerprint = status.get("database_fingerprint")
+    projected_fingerprint = status.get("projected_database_fingerprint")
+    manifest_sha256 = status.get("database_manifest_sha256")
+    database_storage = status.get("database_storage")
+    if (
+        status.get("projected_deployment_id") != prior.get("deployment_id")
+        or not isinstance(current_fingerprint, str)
+        or re.fullmatch(r"[a-f0-9]{64}", current_fingerprint) is None
+        or not isinstance(projected_fingerprint, str)
+        or re.fullmatch(r"[a-f0-9]{64}", projected_fingerprint) is None
+        or not isinstance(manifest_sha256, str)
+        or re.fullmatch(r"[a-f0-9]{64}", manifest_sha256) is None
+    ):
+        raise DeployError("Orphaned rollback database observation is incomplete")
+    if (
+        not isinstance(database_storage, dict)
+        or set(database_storage) != {"engine", "tables"}
+        or database_storage.get("engine")
+        not in {"INNODB", "XTRADB", "INNODB,XTRADB"}
+        or database_storage.get("tables") != 3
+    ):
+        raise DeployError(
+            "Orphaned rollback database observation storage is not transactional"
+        )
+    canonical_manifest = json.dumps(
+        manifest,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    if not secrets.compare_digest(
+        manifest_sha256,
+        hashlib.sha256(canonical_manifest).hexdigest(),
+    ):
+        raise DeployError("Orphaned rollback database manifest digest does not match")
+    return {
+        "schema": "complete99-orphaned-rollback-observation/v1",
+        "deployment_id": deployment_id,
+        "proof_sha256": proof_sha256,
+        "phase": "rolling_back",
+        "state_exists": False,
+        "lock_owned": True,
+        "recovery_ready": True,
+        "process_lock_available": True,
+        "current_version": str(status.get("current_version", "")),
+        "current_database_version": str(
+            status.get("current_database_version", "")
+        ),
+        "current_active": bool(status.get("current_active")),
+        "current_plugin_sha256": str(status.get("current_plugin_sha256", "")),
+        "current_deployment": str(status.get("current_deployment", "")),
+        "current_database_fingerprint": current_fingerprint,
+        "projected_deployment_id": str(prior["deployment_id"]),
+        "projected_database_fingerprint": projected_fingerprint,
+        "historical_baseline_database_fingerprint": str(
+            prior["database_fingerprint"]
+        ),
+        "historical_baseline_matches_projection": projected_fingerprint
+        == prior["database_fingerprint"],
+        "current_sync_configured": bool(status.get("current_sync_configured")),
+        "current_robots_sha256": str(status.get("current_robots_sha256", "")),
+        "database_manifest": manifest,
+        "database_manifest_sha256": manifest_sha256,
+        "database_storage": database_storage,
+        "failed_candidate_database_fingerprint": str(
+            failed["candidate_database_fingerprint"]
+        ),
+    }
+
+
+def reconcile_orphaned_rollback(
+    client: Client,
+    token: str,
+    deployment_id: str,
+    status: dict[str, Any],
+    proof: dict[str, Any],
+    proof_sha256: str,
+) -> dict[str, Any]:
+    """Create a durable terminal rollback receipt from reviewed audit proof."""
+    failed, prior = validate_orphaned_rollback_live_state(
+        deployment_id,
+        status,
+        proof,
+    )
     response = bridge_call(
         client,
         "reconcile-orphaned-rollback",

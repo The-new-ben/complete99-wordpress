@@ -966,6 +966,10 @@ class WooCommerceMaterializationPipelineTests(unittest.TestCase):
         commerce_block = workflow[commerce:audit]
         self.assertIn("scripts/materialize-woocommerce.py", commerce_block)
         self.assertIn("continue-on-error: true", commerce_block)
+        self.assertIn(
+            "if: inputs.orphaned_rollback_observe_only != true",
+            commerce_block,
+        )
         self.assertIn("--recover-bridge", commerce_block)
         self.assertIn("id: commerce_recovery", commerce_block)
         self.assertIn("--commerce-id", commerce_block)

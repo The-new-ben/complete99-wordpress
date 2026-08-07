@@ -18,6 +18,10 @@ ROOT = Path(__file__).resolve().parents[1]
 DEPLOYER_PATH = Path(__file__).with_name("deploy-wordpress.py")
 
 
+class ObservationComplete(RuntimeError):
+    """Internal control flow after a mutation-free orphan observation."""
+
+
 def reject_duplicate_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -391,11 +395,17 @@ def main() -> int:
         "--orphaned-rollback-proof",
         default=os.environ.get("COMPLETE99_ORPHANED_ROLLBACK_PROOF", ""),
     )
+    parser.add_argument("--observe-orphaned-rollback", action="store_true")
     args = parser.parse_args()
+    observe_only = bool(getattr(args, "observe_orphaned_rollback", False))
     orphaned_proof = load_orphaned_rollback_proof(
         deployer,
         str(args.orphaned_rollback_proof),
     )
+    if observe_only and (not args.discover or orphaned_proof is None):
+        raise deployer.DeployError(
+            "Orphaned rollback observation requires --discover and a reviewed proof"
+        )
     app_password = os.environ.get("WP_APP_PASSWORD", "")
     if not args.base_url or not args.user or not app_password:
         raise deployer.DeployError(
@@ -520,8 +530,17 @@ def main() -> int:
             token,
             args.deployment_id,
         )
+        status_fields: dict[str, Any] = {}
+        if observe_only and orphaned_proof is not None:
+            status_fields["projected_deployment_id"] = orphaned_proof["proof"][
+                "prior_run"
+            ]["deployment_id"]
         status = deployer.bridge_call(
-            client, "status", token, args.deployment_id
+            client,
+            "status",
+            token,
+            args.deployment_id,
+            **status_fields,
         )
         if (
             status.get("phase")
@@ -538,6 +557,14 @@ def main() -> int:
             status = deployer.poll_deployment_status(
                 client, token, args.deployment_id
             )
+            if status_fields:
+                status = deployer.bridge_call(
+                    client,
+                    "status",
+                    token,
+                    args.deployment_id,
+                    **status_fields,
+                )
         audit["bridge_site_identity"] = deployer.verify_bridge_site_identity(
             status,
             target_host,
@@ -547,6 +574,20 @@ def main() -> int:
             "state_exists": bool(status.get("state_exists")),
             "lock_owned": bool(status.get("lock_owned")),
             "recovery_ready": bool(status.get("recovery_ready")),
+            "process_lock_available": bool(
+                status.get("process_lock_available")
+            ),
+            "database_fingerprint": status.get("database_fingerprint", ""),
+            "projected_deployment_id": status.get(
+                "projected_deployment_id", ""
+            ),
+            "projected_database_fingerprint": status.get(
+                "projected_database_fingerprint", ""
+            ),
+            "database_manifest_sha256": status.get(
+                "database_manifest_sha256", ""
+            ),
+            "database_storage": status.get("database_storage", {}),
         }
 
         exact_orphaned_lock = (
@@ -630,6 +671,23 @@ def main() -> int:
                         "orphaned_recovery_evidence_sha256", ""
                     ),
                 }
+
+        if observe_only:
+            if not exact_orphaned_lock or orphaned_proof is None:
+                raise deployer.DeployError(
+                    "Orphaned rollback observation requires the exact stale rolling_back state"
+                )
+            audit["orphaned_rollback_observation"] = (
+                deployer.observe_orphaned_rollback(
+                    args.deployment_id,
+                    status,
+                    orphaned_proof["proof"],
+                    orphaned_proof["proof_sha256"],
+                )
+            )
+            audit["decision"] = "observe_orphaned_rollback"
+            audit["result"] = "orphaned-rollback-observed"
+            raise ObservationComplete()
 
         if exact_orphaned_lock:
             if orphaned_proof is None:
@@ -876,6 +934,8 @@ def main() -> int:
                 "rollback_interrupted_mutation",
             )
         audit["result"] = "recovered"
+    except ObservationComplete:
+        pass
     except Exception as error:
         primary_error = error
         audit["result"] = "failed"
