@@ -118,6 +118,11 @@ class ReviewLabContracts(unittest.TestCase):
         self.assertIn("בדיקות הקבלה", source)
         self.assertNotIn("\u2014", source)
 
+    def test_group_order_review_link_matches_the_public_proposal_route(self):
+        source = REVIEW.read_text(encoding="utf-8")
+        self.assertIn("home_url( '/request-proposal/' )", source)
+        self.assertNotIn("/request-a-proposal/", source)
+
     def test_product_commerce_rendering_uses_precomputed_indexes(self):
         source = REVIEW.read_text(encoding="utf-8")
         product_loop_marker = "<?php foreach ( $graph_products as $graph_product ) : ?>"

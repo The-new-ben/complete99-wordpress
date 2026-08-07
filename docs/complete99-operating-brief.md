@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
-Last updated: 2026-08-06
-Status: source release target 1.11.0, with 12 dishes, 36 unchanged public products, 17 private draft planning offers and 22 public Japanese science entities across 17 page owners per language
+Last updated: 2026-08-07
+Status: source release target 1.12.0, with 12 dishes, 36 unchanged public products, 20 private planning prices and 23 public science entities across 18 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -177,7 +177,7 @@ errors.
 
 ## 7. Infrastructure without imposed roles
 
-Release 1.11.0 creates contracts and checks, not worker assignments.
+Release 1.12.0 creates contracts and checks, not worker assignments.
 
 - The private Entity Studio is an administrator-only WordPress tool backed by
   the existing culinary-science, authorized catalog and commerce registries.
@@ -226,9 +226,11 @@ the exact 36-product catalog, classic cart and local-pickup continuation. The
 electronic checkout remains closed until the payment-specific evidence below
 passes:
 
-Release 1.11.0 does not change that public catalog, cart or route surface. It
-retains the five 1.10.0 plans, adds 12 private Japanese premium-market plans and
-keeps all 17 private draft offers inactive. Payment remains disabled.
+Release 1.12.0 does not change that public catalog, cart or route surface. It
+keeps all 17 earlier private draft offers inactive and adds three private Syrian
+planning-price observations without creating a WooCommerce product, channel
+offer, stock record or supplier claim. The result is 36 live prices and 20
+private planning prices across 56 product identities. Payment remains disabled.
 
 - merchant identity and contact details;
 - payment provider and live-account verification;
@@ -278,6 +280,18 @@ Israel conversions and ILS planning prices are documented in
 `docs/japanese-premium-market-tranche-2026-08-06.md`. Every new candidate stays
 private, held, at planning stock zero and outside WooCommerce until exact
 supplier, landed-cost, compliance, media and acceptance gates pass.
+
+Release 1.12.0 extends coverage to all 56 product identities. Three Syrian
+ingredient observations provide private planning prices only. They remain held,
+have no WooCommerce product code, channel offer, stock, supplier, landed-cost or
+margin claim, and cannot enter the public store or active POS projection. The
+cumulative science registry contains 200 entities and Entity Studio resolves
+256 subjects: 200 science identities plus 56 product identities. The Syrian
+module contains 109 entities: 106 culinary entities, including 46 ingredient
+entities, plus the three private held market observations. One safe Syrian
+consumer gateway is `noindex,follow`, the
+other 108 Syrian entities remain private, and the public science graph contains
+23 entities across 18 canonical page owners per language.
 
 ## 9. Integrations and future hardware
 

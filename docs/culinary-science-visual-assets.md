@@ -2,21 +2,26 @@
 
 ## Scope and provenance
 
-This register covers thirteen visual assets for the culinary
-science pilot. OpenAI's built-in image generation tool created the source PNG
-files for Complete99 on 2026-08-06. The original generated PNG bytes are
-preserved in the plugin. Each project PNG has the same SHA256 digest as its
-corresponding generated source.
+This register covers twenty visual assets for the culinary science program.
+OpenAI's built-in image generation tool created sixteen source PNG files for
+Complete99 on 2026-08-06. The original generated PNG bytes are preserved in the
+plugin. Four additional Syrian ingredient studies are documented editorial
+crops derived from the generated Syrian pantry composition.
 
 ImageMagick 7.1.2 Q16-HDRI produced the delivery derivatives. WebP files use
-quality 88 with encoding method 6. AVIF files use quality 70. Every artifact is
-1536 by 1024 pixels, 8-bit sRGB. No resize or crop was applied.
+quality 88 with encoding method 6. The first thirteen AVIF sets use quality 70;
+the seven Syrian sets use quality 60. Every delivered artifact is 1536 by 1024
+pixels, 8-bit sRGB. The four Syrian ingredient PNGs were cropped from the
+Syrian pantry source and normalized to the common delivery canvas.
 
-Public-use status for all thirteen assets is `project-generated`. All thirteen
-entities passed the current public projection gate and are approved for use as
-editorial visuals on their matching Complete99 culinary science pages. The
-ichiban dashi source is reused from the earlier pilot without regeneration and
-is newly public in release 1.5.0. None of these images is
+Public-use status for the original thirteen assets is `project-generated`.
+Those thirteen entities passed the current public projection gate and are
+approved for use as editorial visuals on their matching Complete99 culinary
+science pages. The Syrian regional tasting table is approved for the noindex
+Syrian cuisine gateway; the other six Syrian assets remain held for private
+editorial review until their matching entities pass the public projection gate. The ichiban
+dashi source is reused from the earlier pilot without regeneration and was
+made public in release 1.5.0. None of these images is
 documentary evidence of a supplier, package, SKU, stock level, certification,
 laboratory measurement, or health outcome.
 
@@ -49,6 +54,13 @@ All project artifacts are under:
 | Katsuobushi | `exec-562a63db-fdd5-4757-be3b-6020bd2e9d41.png` | `c99-science-katsuobushi-v01` | Culinary studio study of a whole smoked bonito block, shaved curls, and the shaving tool | Project-generated, approved for matching editorial page |
 | Ichiban dashi | `exec-d25a8ee3-da63-470e-9a25-c3c8c26f1fbd.png` | `c99-science-ichiban-dashi-v01` | Culinary studio study of clear first-extraction dashi with kombu and katsuobushi context | Existing project-generated source, approved for matching editorial page in 1.5.0 |
 | Glutamate and IMP umami synergy | `exec-7bf4b49a-e6bb-49d7-a714-79eee12e5c4e.png` | `c99-science-umami-synergy-glutamate-imp-v01` | Editorial visualization linking representative molecular models with kombu, katsuobushi and dashi | Project-generated, approved for matching editorial page |
+| Syrian pantry foundations | `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-syrian-pantry-foundations-v01` | Syrian pantry study with grains, souring agents, pepper, dairy, nuts, pulses and olive oil | Project-generated, held for private editorial review |
+| Syrian regional tasting table | `exec-fd973e1d-087b-453b-9666-6905552e163e.png` | `c99-science-syrian-regional-table-v01` | Regional table showing distinct cooked-food groupings without presenting one dish as all Syrian cuisine | Project-generated, approved for the noindex Syrian cuisine gateway |
+| Syrian cooking methods | `exec-25e74796-e0d9-464d-b807-4078d27c3411.png` | `c99-science-syrian-cooking-methods-v01` | Editorial kitchen study of stuffing, bulgur forming, yogurt-sauce control, charring and onion browning | Project-generated, held for private editorial review |
+| Aleppo-style pepper | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-aleppo-pepper-v01` | Focused editorial crop of the red-pepper component | Project-generated derivative, held for private editorial review |
+| Pomegranate molasses | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-pomegranate-molasses-v01` | Focused editorial crop of the dark pomegranate-molasses component | Project-generated derivative, held for private editorial review |
+| Freekeh | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-freekeh-v01` | Focused editorial crop of roasted green wheat | Project-generated derivative, held for private editorial review |
+| Sumac | Crop from `exec-e675a852-62d1-4d49-b491-f12f763512bc.png` | `c99-science-sumac-v01` | Focused editorial crop of ground sumac | Project-generated derivative, held for private editorial review |
 
 ## Release 1.5.0 alt and prompt register
 
@@ -99,6 +111,53 @@ current public alt is `איצ׳יבאן דאשי צלול בכלי זכוכית 
 Hebrew and `Clear ichiban dashi in a glass vessel beside kombu and
 katsuobushi` in English.
 
+## Syrian pilot alt and prompt register
+
+The Syrian assets are editorial illustrations. Their alt text describes what
+is visible and does not claim a supplier, exact cultivar, origin, recipe result
+or laboratory measurement.
+
+| Project basename | Hebrew alt | English alt |
+|---|---|---|
+| `c99-science-syrian-pantry-foundations-v01` | חומרי יסוד מן המזווה הסורי ובהם דגנים, קטניות, פלפל אדום, סומאק, מולסת רימונים, אגוזים, יוגורט ושמן זית | Syrian pantry foundations with grains, pulses, red pepper, sumac, pomegranate molasses, nuts, yogurt and olive oil |
+| `c99-science-syrian-regional-table-v01` | שולחן טעימות סורי עם קבוצות נפרדות של קובה, עלי גפן, דג, אורז, חציל, יוגורט ולחם | Syrian regional tasting table with separate groupings of kibbeh, grape leaves, fish, rice, aubergine, yogurt and bread |
+| `c99-science-syrian-cooking-methods-v01` | כלי וחומרי גלם להדגמת מילוי עלי גפן, עיצוב קובה, בישול רוטב יוגורט, חריכת חציל והשחמת בצל | Tools and ingredients illustrating grape-leaf stuffing, kibbeh forming, yogurt-sauce cooking, aubergine charring and onion browning |
+| `c99-science-aleppo-pepper-v01` | פלפל אדום טחון בקערת קרמיקה מתוך איור המזווה הסורי | Ground red pepper in a ceramic bowl from the Syrian pantry illustration |
+| `c99-science-pomegranate-molasses-v01` | מולסת רימונים כהה בכלי זכוכית מתוך איור המזווה הסורי | Dark pomegranate molasses in a glass vessel from the Syrian pantry illustration |
+| `c99-science-freekeh-v01` | גרגרי פריקה ירוקים קלויים בקערה מתוך איור המזווה הסורי | Roasted green freekeh grains in a bowl from the Syrian pantry illustration |
+| `c99-science-sumac-v01` | סומאק טחון בגוון אדום עמוק בקערה מתוך איור המזווה הסורי | Deep-red ground sumac in a bowl from the Syrian pantry illustration |
+
+Syrian pantry foundations generation brief:
+
+```text
+Commercial culinary museum still life of Syrian pantry foundations, with separate unbranded vessels of bulgur, freekeh, chickpeas, lentils, Aleppo-style red pepper, sumac, pomegranate molasses, tamarind, walnuts, pistachios, yogurt, olive oil and dried dairy ingredients. Warm natural side light, accurate food textures, neutral stone surface, premium editorial photography, no text, labels, logos, people or national symbols, 3:2 landscape composition.
+```
+
+Syrian regional tasting table generation brief:
+
+```text
+Museum-grade overhead culinary editorial photograph of a Syrian regional tasting table. Show distinct cooked-food groupings inspired by Aleppo, Damascus, Homs, Hama, the Syrian coast, Jazira, the Euphrates, Suwayda and Hauran, including fully cooked kibbeh forms, grape leaves, fish with browned-onion rice, aubergine and tahini, yogurt-based dishes, grains and flatbread. Each grouping remains visually separate. Refined tableware, daylight, no text, labels, logos, flags or stereotypes, 3:2 landscape composition.
+```
+
+Syrian cooking methods generation brief:
+
+```text
+Premium culinary studio composition showing Syrian cooking methods as one coherent workstation: stuffing grape leaves, forming a thin cooked-meat kibbeh shell, controlling a yogurt sauce with a thermometer, charring aubergine and browning onion for rice. Hands absent, ingredients and safe tools arranged clearly, restrained natural light, accurate textures, no raw-meat consumption scene, no text, logos or brand packaging, 3:2 landscape composition.
+```
+
+The four focused ingredient studies use exact crops from the pantry source.
+Their transformation instruction is:
+
+```text
+Crop the named ingredient from the generated Syrian pantry composition, retain the original pixels within the crop, and normalize the crop to the 1536 by 1024 delivery canvas without adding, removing or regenerating food content.
+```
+
+All seven Syrian sets use this negative brief:
+
+```text
+No text, no logos, no certification seals, no invented supplier packaging, no watermarks, no flags, no decorative ethnic stereotypes, no laboratory claims and no unsafe raw-meat serving.
+```
+
 ## Artifact integrity register
 
 | File | Format | Dimensions | Bytes | SHA256 |
@@ -142,12 +201,35 @@ katsuobushi` in English.
 | `c99-science-umami-synergy-glutamate-imp-v01.png` | PNG | 1536x1024 | 2,419,166 | `37f0feebd4be1e67e549f04b8de62d6f62a0f8bbd337d22f295b606dbd4aed40` |
 | `c99-science-umami-synergy-glutamate-imp-v01.webp` | WebP | 1536x1024 | 175,826 | `cff653805e2e90b3ee4d565cdfdd21c8ac4e13782441860bd81a98516d1c7cd5` |
 | `c99-science-umami-synergy-glutamate-imp-v01.avif` | AVIF | 1536x1024 | 143,835 | `2823d4f7ad334c0be2dd8494e4544115d6d13ab91d560514ed17f78d977e0d14` |
+| `c99-science-syrian-pantry-foundations-v01.png` | PNG | 1536x1024 | 2,705,641 | `4f5dd0fb44cbf87a1ad0e7fa21bdb0c9034fb75cc825ecff5a9b9d6f666a8c20` |
+| `c99-science-syrian-pantry-foundations-v01.webp` | WebP | 1536x1024 | 302,712 | `5ace3d023ee89903ab6145e4bebcbeacf4a2e8b0c1e166d6e33e520cf7beab98` |
+| `c99-science-syrian-pantry-foundations-v01.avif` | AVIF | 1536x1024 | 140,591 | `d5de1971678bf5a261b6d843e6c786166886eff5a7bff5f54683291e789e7d11` |
+| `c99-science-syrian-regional-table-v01.png` | PNG | 1536x1024 | 3,000,191 | `afb83ffeca43f78d99284ebefab8eba36358a2316d9ca162f8c6d537aa922d3c` |
+| `c99-science-syrian-regional-table-v01.webp` | WebP | 1536x1024 | 413,414 | `4abfb4b819c5b8df9e555656ee56fd0328b09870fbdb8142dadc9cc769b8e7de` |
+| `c99-science-syrian-regional-table-v01.avif` | AVIF | 1536x1024 | 189,877 | `7aaae837032abe67c346890e0c6cf0a9223e7b197737a1ffd78aaae495a6cdb9` |
+| `c99-science-syrian-cooking-methods-v01.png` | PNG | 1536x1024 | 2,773,158 | `d2b006cc83eb802f13861f6c2500f1002fbf4fd64fda7616ed4334351be282b3` |
+| `c99-science-syrian-cooking-methods-v01.webp` | WebP | 1536x1024 | 285,458 | `67e78a4c3ab3ad89718e22b7438c9465d532aa249b88393f69048be08d5cd719` |
+| `c99-science-syrian-cooking-methods-v01.avif` | AVIF | 1536x1024 | 137,059 | `96be7c1d63ed6929f9b22351e58b88d95554deeac78bdf59bd97ce0850f61fee` |
+| `c99-science-aleppo-pepper-v01.png` | PNG | 1536x1024 | 1,536,212 | `c7cad03f689565c94653db9cd8a0922eefee1858ee623730f16f77026842bfc4` |
+| `c99-science-aleppo-pepper-v01.webp` | WebP | 1536x1024 | 122,494 | `b5594b2a2a64e07f3b2869d0e6a82702df54be5d0262563d49c498e967adcbd8` |
+| `c99-science-aleppo-pepper-v01.avif` | AVIF | 1536x1024 | 62,773 | `a318aa5d7dbeba50bb5afb8e6025f032f86693c326ec291ee0143f242877fa0c` |
+| `c99-science-pomegranate-molasses-v01.png` | PNG | 1536x1024 | 1,276,972 | `a372e4421ab6840bba01027c1c037dc429dbaebd2acd62759928e513a20fbce2` |
+| `c99-science-pomegranate-molasses-v01.webp` | WebP | 1536x1024 | 77,366 | `31686ea44cc89e209268020df058da0045c42583521530d3e79dea974f4bc350` |
+| `c99-science-pomegranate-molasses-v01.avif` | AVIF | 1536x1024 | 39,782 | `e58d100db4069797cf9e0802e1d63544ed450077db08910545fffdc925d8f391` |
+| `c99-science-freekeh-v01.png` | PNG | 1536x1024 | 1,963,467 | `bfe0ebbf424ee77b028cec744fe68c8917ed17c911853a838d806a550b9d8262` |
+| `c99-science-freekeh-v01.webp` | WebP | 1536x1024 | 193,126 | `df4a2d1833892d138eadad0a43541b1169eb392295019573d2adcbaeee4ef0db` |
+| `c99-science-freekeh-v01.avif` | AVIF | 1536x1024 | 101,745 | `36c9534d4fb5803d3cf0b8d62cd53789b8607a83377ba38040baa854dea76354` |
+| `c99-science-sumac-v01.png` | PNG | 1536x1024 | 1,720,085 | `8d715c25037aae9311e0b99f2b68b2d66f614ba990892cf836a4623e3914b68b` |
+| `c99-science-sumac-v01.webp` | WebP | 1536x1024 | 156,078 | `e7a3ce7683eb9e21cba5957e008e5711bad8b60157cc4b906d48eaa975a782da` |
+| `c99-science-sumac-v01.avif` | AVIF | 1536x1024 | 79,487 | `0fafd9b1d217e7fdf379bfef575482953e0753bde7b10260d93c7bf008ff29bf` |
 
 ## Validation record
 
-- All 39 artifacts decode successfully with ImageMagick.
-- Format signatures resolve as thirteen PNG, thirteen WebP, and thirteen AVIF files.
+- All 60 artifacts listed in this register decode successfully with ImageMagick.
+- The registered format signatures resolve as twenty PNG, twenty WebP, and
+  twenty AVIF files.
 - Every decoded artifact reports 1536 by 1024 pixels, 8-bit sRGB.
-- Each retained project PNG is byte-identical to its generated source according
-  to SHA256.
+- Each of the sixteen retained source-composition PNGs is byte-identical to its
+  generated source according to SHA256. The four ingredient PNGs are documented
+  crops whose own hashes appear in this register.
 - No existing file was overwritten during import or conversion.

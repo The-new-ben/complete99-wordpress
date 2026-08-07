@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.11.0
+Release target: Complete99 Platform 1.12.0
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.11.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.11.0 and its versioned package URL.
+- The public update manifest matches version 1.12.0 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -43,19 +43,25 @@ Release target: Complete99 Platform 1.11.0
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
-- The thirty-four bilingual culinary-science routes resolve from 22 public
-  entities through 17 canonical page owners per language,
+- The thirty-six bilingual culinary-science routes resolve from 23 public
+  entities through 18 canonical page owners per language,
   emit canonical and hreflang metadata, remain `noindex,follow`, and are absent
   from the museum sitemap provider until their separate index gate is approved.
 - Public museum responses cannot expose visual prompts, supplier terms, landed
   cost, margins, connector state, approval identities or private workflow data.
 - Entity Studio remains private, requires `manage_options`, creates no role,
   exposes no public route and cannot delete dossier records or revisions.
-- Entity Studio subject identity covers all 41 product identities: 36 current
-  public WooCommerce products and five private draft planning offers.
-- The five planning offers remain draft, create zero new active offers, do not
-  write WooCommerce price or stock, and remain absent from the active POS
-  projection.
+- Entity Studio resolves exactly 256 subjects: 200 science identities plus 56
+  product identities. Price-basis coverage is 56 of 56, comprising 36 current
+  public WooCommerce prices and 20 private planning prices.
+- The 17 earlier planning offers remain draft. The three Syrian product
+  identities are private held market observations only and create no new offer,
+  WooCommerce price, stock, supplier claim or active POS row.
+- The Syrian module contains exactly 109 entities: 106 culinary entities,
+  including 46 ingredient entities and six preparation entities, plus three
+  private held market observations.
+  One safe consumer gateway is
+  `noindex,follow`; the other 108 Syrian entities remain private.
 - Entity Studio records reject stale revisions, stale subject-scoped source
   digests, corrupt history links, mismatched subject identity and failed write
   readback.
@@ -126,13 +132,17 @@ Release target: Complete99 Platform 1.11.0
 - WooCommerce 10.9.4 is installed from the pinned official package and the
   full installed tree matches the expected digest.
 - The public store contains exactly 36 owner-authorized catalog products and is indexable.
-- Release 1.11.0 preserves all 36 public products unchanged and adds no active
-  public or POS offer.
+- Release 1.12.0 preserves all 36 public products unchanged and adds no public,
+  private or POS offer, stock, supplier claim, payment activation or role
+  assignment.
 - The 12 new Japanese premium-market candidates remain private
   `research_candidate` records with planning stock zero, blank WooCommerce
   product codes, held projection and one held draft offer each.
-- Entity Studio reports exactly 144 subjects, 53 product identities, 36 live
-  prices, 17 private planning prices and 53 of 53 price-basis coverage.
+- Entity Studio reports exactly 256 subjects, 56 product identities, 36 live
+  prices, 20 private planning prices and 56 of 56 price-basis coverage.
+- The three Syrian planning-price observations remain private and held, with no
+  WooCommerce product code, channel offer, stock, supplier, landed-cost or
+  margin claim.
 - Public source-market projection emits only exact explicit `public` variants.
   Missing, malformed, unknown and `held` values emit no public row.
 - Release 1.9.0 adds exactly four owner-authorized offers to the previous

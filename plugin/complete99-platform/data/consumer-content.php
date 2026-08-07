@@ -939,8 +939,8 @@ return array(
 	'store' => array(
 		'title'   => array( 'he' => 'המזווה של קומפלט 99', 'en' => 'The Complete99 pantry' ),
 		'excerpt' => array(
-			'he' => '30 מוצרי מזווה וחומרי גלם עם תמונה, מחיר, כמות נטו, רכיבים, אלרגנים, מלאי והוספה לסל.',
-			'en' => 'Shop 30 pantry goods and ingredients with an image, price, net quantity, ingredients, allergens, stock and add-to-cart.',
+			'he' => 'מוצרי מזווה וחומרי גלם עם תמונה, מחיר, כמות נטו, רכיבים, אלרגנים, מלאי והוספה לסל.',
+			'en' => 'Shop pantry goods and ingredients with an image, price, net quantity, ingredients, allergens, stock and add-to-cart.',
 		),
 		'content' => array(
 			'he' => $c99_consumer_page(
@@ -957,7 +957,7 @@ return array(
 						'איך הסל עובד',
 						array(
 							'אפשר להוסיף מוצרים, לשנות כמויות ולהסיר פריטים. המחיר והמלאי נבדקים שוב לפני אישור ההזמנה.',
-							'סליקה אלקטרונית תיפתח לאחר חיבור ספק הסליקה. עד אז ממשיכים מהסל לשיחה עם קומפלט 99 לבדיקת זמינות ולאישור ההזמנה.',
+							'אפשר להכין סל באתר ולסיים את האישור בשיחה עם צוות קומפלט 99, לאחר בדיקת המחיר והמלאי.',
 						)
 					),
 					array(
@@ -982,7 +982,7 @@ return array(
 						'How the cart works',
 						array(
 							'Add products, change quantities and remove items. Price and stock are checked again before the order is confirmed.',
-							'Electronic payment will open after the payment provider is connected. Until then, continue from the cart to a Complete99 call for availability and order confirmation.',
+							'Build your pantry basket on the site and complete confirmation by phone with the Complete99 team after price and stock are checked.',
 						)
 					),
 					array(
@@ -1011,7 +1011,7 @@ return array(
 						'מידע שנוצר בזמן גלישה',
 						array(
 							'ספקי האחסון והאבטחה עשויים לעבד כתובת רשת, זמן ביקור, העמוד שנפתח, סוג דפדפן ואירועי אבטחה. המידע משמש להפעלת האתר, לאבחון תקלה ולהגנה מפני שימוש לרעה.',
-							'סל המזווה עשוי לשמור מזהי מוצר, כמויות, שפה ומידע טכני הדרוש לשמירת הסל בין עמודים. בשלב חיבור ספק הסליקה לא נאספים בסל פרטי כרטיס תשלום.',
+							'סל המזווה עשוי לשמור מזהי מוצר, כמויות, שפה ומידע טכני הדרוש לשמירת הסל בין עמודים. אין להזין בסל פרטי כרטיס תשלום.',
 							'אין לשלוח דרך ערוץ ציבורי מידע רפואי, צילום תעודה, סיסמה או פרטים שאינם נחוצים לשאלה או להזמנה.',
 						)
 					),
@@ -1025,7 +1025,7 @@ return array(
 					array(
 						'סל המזווה ושירות Wolt',
 						array(
-							'מוצרי המזווה מתווספים לסל באתר. עד לחיבור ספק הסליקה, אישור ההזמנה נעשה בשיחה עם קומפלט 99 והסל משמש להכנת רשימת המוצרים והכמויות.',
+							'מוצרי המזווה מתווספים לסל באתר. האישור נעשה בשיחה עם צוות קומפלט 99 לאחר בדיקת המחיר, המלאי ואופן הקבלה, והסל משמש להכנת רשימת המוצרים והכמויות.',
 							'מנות מוכנות מזמינים דרך Wolt. לאחר מעבר ל-Wolt, החשבון, התשלום, המשלוח והפרטיות כפופים לתנאים ולמדיניות של Wolt. קישור חיצוני אינו מעביר אלינו אוטומטית את פרטי החשבון או התשלום שלכם.',
 						)
 					),
@@ -1050,7 +1050,7 @@ return array(
 						'Information created during a visit',
 						array(
 							'Hosting and security providers may process a network address, visit time, requested page, browser type and security events. This information is used to operate the site, diagnose faults and protect it from misuse.',
-							'The pantry cart may store product identifiers, quantities, language and technical data needed to keep the cart between pages. Card payment details are not collected in the cart while the payment provider is being connected.',
+							'The pantry cart may store product identifiers, quantities, language and technical data needed to keep the cart between pages. Do not enter card details in the cart.',
 							'Do not send medical information, an identity document, a password or information that is not needed for your question or order through a public channel.',
 						)
 					),
@@ -1064,7 +1064,7 @@ return array(
 					array(
 						'The pantry cart and Wolt',
 						array(
-							'Pantry goods are added to the cart on this site. Until the payment provider is connected, order confirmation takes place in a call with Complete99 and the cart prepares the product and quantity list.',
+							'Pantry goods are added to the cart on this site. Confirmation takes place by phone with the Complete99 team after price, stock and fulfilment are checked, and the cart prepares the product and quantity list.',
 							'Prepared dishes are ordered through Wolt. After you continue to Wolt, account data, payment, delivery and privacy are governed by Wolt terms and policy. Opening that external link does not automatically give Complete99 your account or payment details.',
 						)
 					),
@@ -1118,8 +1118,8 @@ return array(
 					array(
 						'חנות המזווה',
 						array(
-							'המזווה מציג 36 מוצרי קולינריה עם תמונה, מחיר, מפרט שמתאים לסוג המוצר ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
-							'לאחר הכנת הסל, האישור הסופי נעשה בשיחה עם קומפלט 99 לאחר בדיקת המלאי ותנאי הקבלה.',
+							'המזווה מציג מוצרי קולינריה עם תמונה, מחיר, מפרט שמתאים לסוג המוצר ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
+							'לאחר הכנת הסל, צוות קומפלט 99 מאשר בשיחה את המלאי, אופן הקבלה והסכום הסופי.',
 						)
 					),
 					array(
@@ -1157,8 +1157,8 @@ return array(
 					array(
 						'The pantry shop',
 						array(
-							'The pantry presents 36 culinary products with an image, price, type-specific details and stock. Products can be added to the cart, quantities changed and items removed.',
-							'After the cart is prepared, final confirmation takes place in a call with Complete99 after stock and fulfilment are checked.',
+							'The pantry presents culinary products with an image, price, type-specific details and stock. Products can be added to the cart, quantities changed and items removed.',
+							'After the basket is prepared, the Complete99 team confirms stock, the fulfilment method and the final amount by phone.',
 						)
 					),
 					array(

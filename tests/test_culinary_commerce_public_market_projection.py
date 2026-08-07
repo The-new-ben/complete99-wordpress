@@ -78,6 +78,9 @@ $result = array(
     'wasabi_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-fresh-wasabi', 'en'),
     'yuzu_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-kito-yuzu', 'en'),
     'yakinori_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-yakinori', 'en'),
+    'syrian_freekeh_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-syrian-freekeh', 'en'),
+    'syrian_pomegranate_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-syrian-pomegranate-molasses', 'en'),
+    'syrian_sumac_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-syrian-sumac', 'en'),
     'hub_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('hub-japanese-ingredients', 'en'),
     'missing_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('ingredient-not-present', 'en'),
     'invalid_en' => Complete99_Culinary_Commerce::public_market_context_for_science_entity('../private', 'en'),
@@ -177,6 +180,9 @@ def test_projection_policy_is_explicit_and_fail_closed(projection):
 
 def test_projection_fails_closed_for_unlinked_or_invalid_entity(projection):
     assert projection["yakinori_en"] == []
+    assert projection["syrian_freekeh_en"] == []
+    assert projection["syrian_pomegranate_en"] == []
+    assert projection["syrian_sumac_en"] == []
     assert projection["hub_en"] == []
     assert projection["missing_en"] == []
     assert projection["invalid_en"] == []

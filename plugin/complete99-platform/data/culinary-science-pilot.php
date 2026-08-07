@@ -221,12 +221,12 @@ $c99_entity = static function ( $config ) use ( $c99_text, $c99_profiles ) {
 		'compliance'    => $compliance,
 		'trust'         => array(
 			'attribution_state'    => isset( $config['attribution_state'] ) ? $config['attribution_state'] : 'pending_named_review',
-			'research_method'      => $c99_text( 'כל עובדה נשמרת בנפרד עם סוג ראיה, מקור, תאריך והיקף. ערך ספרותי אינו מוצג כמדידת מוצר או אצווה.', 'Each fact is stored with an evidence class, source, date and scope. A literature value is not presented as a product or lot measurement.' ),
+			'research_method'      => $c99_text( 'לכל טענה מרכזית מצורף מקור שאפשר לפתוח ולקרוא. אנחנו מבדילים בין מה שהמקור מוכיח לבין מה שעדיין דורש בדיקה.', 'Every central claim links to a source you can open and read. We distinguish what the source supports from what still needs checking.' ),
 			'user_purpose'         => $config['primary_intent'],
 			'commercial_purpose'   => $c99_text( 'העמוד מסביר את הנושא ויכול לקשר להצעה מסחרית רק לאחר אימות מוצר, ספק, מחיר וזמינות.', 'The page explains the topic and may link to a commercial offer only after product, supplier, price and availability verification.' ),
 			'correction_path'      => $c99_text( '/contact/', '/en/contact/' ),
 			'substantive_updated_at' => '2026-08-05',
-			'next_review_trigger'  => $c99_text( 'עדכון מקור, שינוי תקן, שינוי סטטוס מוסדי, תצפית מחיר חדשה או תיקון מבוסס מפעילים בדיקה מחודשת.', 'A source update, standard change, institutional status change, new price observation or substantiated correction triggers review.' ),
+			'next_review_trigger'  => $c99_text( 'מצאתם פרט שדורש תיקון? שלחו לנו את המקור דרך עמוד יצירת הקשר, ונבדוק ונעדכן.', 'Found a detail that needs correction? Send us the source through the contact page and we will check and update it.' ),
 		),
 		'review'        => array(
 			'status'               => $review,
@@ -741,12 +741,12 @@ $c99_topic_hub = static function ( $id, $slug, $name, $summary, $keyword, $sourc
 		'seo_group' => 'topics',
 		'page_role' => $page_role,
 		'intent_classes' => $intent_classes,
-		'primary_intent' => $c99_text( 'למצוא ולהבין את ' . $name['he'] . ' לפי נושאים וישויות', 'Explore and understand ' . $name['en'] . ' by topic and entity' ),
+		'primary_intent' => $c99_text( 'ללמוד על ' . $name['he'] . ' ולבחור מה לקרוא או להכין בהמשך', 'Learn about ' . $name['en'] . ' and choose what to read or prepare next' ),
 		'primary_keyword' => $keyword,
 		'secondary_keywords' => array( 'he' => array( $name['he'] ), 'en' => array( $name['en'] ) ),
 		'schema_type' => 'CollectionPage',
 		'facts' => array(
-			$c99_fact( $fact_id, 'structural', 'המדור מרכז נושאים קשורים ומוביל ביניהם באמצעות הקשר קולינרי ברור.', 'This section groups related subjects and connects them through clear culinary context.', 'editorial_inference', 'entity', $source_ids ),
+			$c99_fact( $fact_id, 'structural', 'במדור הזה אפשר לעבור בין הסברים, חומרי גלם, שיטות וכלים הקשורים לנושא.', 'Use this section to move among explanations, ingredients, methods and tools related to the subject.', 'editorial_inference', 'entity', $source_ids ),
 		),
 		'profiles' => $c99_profiles( array(
 			'structural' => $c99_profile( 'source_backed', 'המדור עוזר לעבור מן התמונה הרחבה אל מנות, חומרי גלם, כלים ושיטות קשורים, תוך שמירה על ההקשר של כל נושא.', 'This section helps readers move from the broader picture to related dishes, ingredients, tools and methods while preserving each topic context.', array( $fact_id ) ),
@@ -771,7 +771,7 @@ $entities[] = $c99_topic_hub(
 	'hub-japanese-techniques',
 	'japanese-culinary-techniques',
 	$c99_text( 'טכניקות בישול יפניות', 'Japanese culinary techniques' ),
-	$c99_text( 'מרכז הטכניקות ממפה הכנה, חיתוך, מיצוי, כבישה, בישול והתססה לפי חומר, זמן, טמפרטורה, כלי ותוצאה רצויה.', 'The technique hub maps preparation, cutting, extraction, curing, cooking and fermentation by material, time, temperature, tool and intended result.' ),
+	$c99_text( 'גלו כיצד חיתוך, מיצוי, כבישה, בישול והתססה יפניים משנים חומרי גלם, ואיך זמן, טמפרטורה וכלי מתאים משפיעים על התוצאה.', 'Learn how Japanese cutting, extraction, curing, cooking and fermentation change ingredients, and how time, temperature and the right tool shape the result.' ),
 	$c99_text( 'טכניקות בישול יפניות', 'Japanese cooking techniques' ),
 	array( 'maff-edomae', 'maff-fermented-foods' )
 );
@@ -790,7 +790,7 @@ $entities[] = $c99_topic_hub(
 	'hub-japanese-food-science',
 	'japanese-food-science',
 	$c99_text( 'מדע המזון היפני', 'Japanese food science' ),
-	$c99_text( 'מרכז המדע מחבר מולקולות טעם, אנזימים, תגובות, מבנה חומר ומדידות להקשר קולינרי מוגדר, בלי להפוך ממצא ספרותי למפרט מוצר.', 'The science hub connects flavor molecules, enzymes, reactions, material structure and measurements to a defined culinary context without turning literature into a product specification.' ),
+	$c99_text( 'גלו למה דאשי מרגיש עמוק, כיצד אנזימים פועלים בקוג׳י ואיך זמן, טמפרטורה ומבנה חומר משנים טעם ומרקם.', 'Discover why dashi tastes deep, how enzymes work in koji and how time, temperature and food structure change flavor and texture.' ),
 	$c99_text( 'מדע המזון היפני', 'Japanese food science' ),
 	array( 'umami-receptor-2009', 'wasabi-itc-2023' )
 );
@@ -798,7 +798,7 @@ $entities[] = $c99_topic_hub(
 	'hub-japanese-equipment',
 	'japanese-professional-equipment',
 	$c99_text( 'כלי מטבח יפניים להכנה מדויקת', 'Japanese culinary tools for precise preparation' ),
-	$c99_text( 'מרכז הכלים עוזר לבחור כלי יפני לפי הפעולה הקולינרית, החומר, המידה, התחזוקה ומפרט הדגם, ומחבר כל כלי לחומרי הגלם ולטכניקות המתאימים לו.', 'The tools hub helps culinary consumers choose a Japanese tool by preparation task, material, size, care and model specification, then connects each tool to suitable ingredients and techniques.' ),
+	$c99_text( 'מצאו את הכלי היפני שמתאים לעבודה: משווים שימוש, חומר, גודל ותחזוקה, ורואים אילו חומרי גלם ושיטות מתאימים לכל כלי.', 'Find the Japanese tool that fits the task. Compare use, material, size and care, then see which ingredients and methods suit each tool.' ),
 	$c99_text( 'כלי מטבח יפניים', 'Japanese culinary tools' ),
 	array( 'kappabashi-official', 'yamamoto-haganezame-spec' ),
 	'cuisine-japanese-washoku',
@@ -912,7 +912,7 @@ $entities[] = $c99_entity(
 	array(
 		'id' => 'preparation-ichiban-dashi', 'type' => 'preparation', 'slug' => 'ichiban-dashi', 'parent_id' => 'cuisine-japanese-washoku',
 		'name' => $c99_text( 'איצ׳יבאן דאשי', 'Ichiban dashi' ),
-		'summary' => $c99_text( 'איצ׳יבאן דאשי הוא ציר ראשון המבוסס בדרך כלל על קומבו וקצואובושי. המערכת מפרידה בין זהות חומרי הגלם, תנאי המיצוי והקשר המחקרי של גלוטמט ו-IMP, כדי לא להפוך יחס ניסויי אחד למתכון אוניברסלי.', 'Ichiban dashi is a first stock commonly based on kombu and katsuobushi. The system separates ingredient identity, extraction conditions and the research context of glutamate and IMP so one experimental ratio is not treated as a universal recipe.' ),
+		'summary' => $c99_text( 'איצ׳יבאן דאשי הוא ציר ראשון המבוסס בדרך כלל על קומבו וקצואובושי. כאן לומדים מה תורם כל מרכיב, כיצד זמן וטמפרטורה משנים את המיצוי, ולמה גלוטמט ו-IMP מחזקים יחד את תחושת האומאמי. היחס המדויק תלוי בחומרי הגלם ובתוצאה הרצויה.', 'Ichiban dashi is a first stock commonly based on kombu and katsuobushi. Learn what each ingredient contributes, how time and temperature change extraction, and why glutamate and IMP strengthen umami together. The exact ratio depends on the ingredients and the result you want.' ),
 		'seo_group' => 'techniques', 'primary_intent' => $c99_text( 'להבין דאשי, אומאמי ומיצוי', 'Understand dashi, umami and extraction' ),
 		'primary_keyword' => $c99_text( 'איצ׳יבאן דאשי', 'ichiban dashi' ),
 		'secondary_keywords' => array( 'he' => array( 'קומבו וקצואובושי', 'סינרגיית אומאמי' ), 'en' => array( 'kombu katsuobushi stock', 'umami synergy' ) ),
@@ -1119,7 +1119,7 @@ $entities[] = $c99_entity(
 	array(
 		'id' => 'ingredient-kioke-shoyu', 'type' => 'ingredient', 'slug' => 'kioke-shoyu', 'parent_id' => 'cuisine-japanese-washoku',
 		'name' => $c99_text( 'שויו מותסס בקיוקה', 'Kioke-fermented shoyu' ),
-		'summary' => $c99_text( 'שויו בקיוקה הוא רוטב סויה שתהליך התסיסה או היישון שלו כולל חבית עץ מסורתית. המונח קיוקה אינו מוכיח לבדו גיל, pH, מליחות, מקור או דרגת איכות; כל נתון מסחרי חייב להגיע מתווית, מפרט ספק או COA של המוצר.', 'Kioke shoyu is soy sauce whose fermentation or maturation includes a traditional wooden barrel. The word kioke alone does not prove age, pH, salinity, origin or grade; every commercial value must come from the product label, supplier specification or COA.' ),
+		'summary' => $c99_text( 'שויו בקיוקה הוא רוטב סויה שתהליך ההתססה או ההבשלה שלו כולל חבית עץ מסורתית. המילה קיוקה אינה מוכיחה לבדה גיל, pH, מליחות, מקור או דרגת איכות, ולכן בודקים כל פרט על תווית המוצר ובמסמכי האצווה.', 'Kioke shoyu is soy sauce whose fermentation or maturation includes a traditional wooden barrel. The word kioke alone does not prove age, pH, salinity, origin or grade, so each detail must be checked on the product label and lot documents.' ),
 		'seo_group' => 'ingredients', 'primary_intent' => $c99_text( 'להבין שויו בקיוקה, התססה ואיכות', 'Understand kioke shoyu, fermentation and quality' ),
 		'primary_keyword' => $c99_text( 'שויו קיוקה', 'kioke shoyu' ),
 		'secondary_keywords' => array( 'he' => array( 'סויה בחבית עץ', 'שויו הונג׳וזו' ), 'en' => array( 'wood barrel soy sauce', 'honjozo shoyu' ) ),
@@ -1624,7 +1624,7 @@ $entities[] = $c99_entity( array(
 $entities[] = $c99_entity( array(
 	'id' => 'equipment-wasabi-grater', 'type' => 'equipment', 'slug' => 'wasabi-grater', 'parent_id' => 'cuisine-japanese-washoku',
 	'name' => $c99_text( 'מגררת וואסבי', 'Wasabi grater' ),
-	'summary' => $c99_text( 'מגררת וואסבי היא כלי ליצירת משחה דקה מקנה שורש טרי. חומר המשטח, צפיפות השיניים, גודל, קשיחות, תחזוקה ומברשת איסוף הם שדות מפרט נפרדים. כלי פלדת Hagane-zame אינו עור כריש ויש לתארו לפי חומר היצרן בפועל.', 'A wasabi grater produces a fine paste from a fresh rhizome. Surface material, tooth density, size, rigidity, care and collection brush are separate specifications. A steel Hagane-zame tool is not sharkskin and must be described by its actual maker material.' ),
+		'summary' => $c99_text( 'מגררת וואסבי יוצרת משחה דקה מקנה שורש טרי. משווים בין כלים לפי חומר המשטח, צפיפות השיניים, גודל, קשיחות, תחזוקה ומברשת האיסוף. Hagane-zame מפלדת אל-חלד אינו עור כריש, ולכן חשוב לבדוק את חומר הדגם שבוחרים.', 'A wasabi grater produces a fine paste from a fresh rhizome. Compare tools by surface material, tooth density, size, rigidity, care and collection brush. A stainless-steel Hagane-zame tool is not sharkskin, so check the material of the model you choose.' ),
 	'seo_group' => 'equipment', 'primary_intent' => $c99_text( 'לבחור מגררת וואסבי טרי', 'Choose a fresh wasabi grater' ), 'primary_keyword' => $c99_text( 'מגררת וואסבי', 'wasabi grater' ),
 	'secondary_keywords' => array( 'he' => array( 'אורושי לוואסבי', 'Hagane-zame' ), 'en' => array( 'oroshi wasabi tool', 'Hagane-zame grater' ) ), 'schema_type' => 'DefinedTerm',
 	'facts' => array(
@@ -2273,6 +2273,16 @@ $c99_foundations_lab_module = require __DIR__ . '/culinary-science/collections/j
 $entities[]                  = $c99_foundations_lab_module['entity'];
 $collections                 = array( $c99_foundations_lab_module['collection'] );
 
+$c99_syrian_foundations_module = require __DIR__ . '/culinary-science/cuisines/syrian-foundations.php';
+foreach ( $c99_syrian_foundations_module['sources'] as $syrian_source_id => $syrian_source ) {
+	if ( isset( $sources[ $syrian_source_id ] ) ) {
+		throw new RuntimeException( 'Duplicate Syrian foundations source ID: ' . $syrian_source_id );
+	}
+	$sources[ $syrian_source_id ] = $syrian_source;
+}
+$entities = array_merge( $entities, $c99_syrian_foundations_module['entities'] );
+$c99_syrian_private_lookup = array_fill_keys( $c99_syrian_foundations_module['private_entity_ids'], true );
+
 /*
  * SEO architecture is computed from one explicit parent map. The same chain
  * drives canonical paths, breadcrumbs, expected child coverage and the public
@@ -2362,6 +2372,7 @@ foreach ( $entities as $entity_offset => $entity ) {
 $clusters_by_root = array(
 	'museum-culinary-science' => 'cluster-culinary-science-museum',
 	'cuisine-japanese-washoku' => 'cluster-japanese-washoku',
+	'cuisine-syrian-regional' => 'cluster-syrian-regional-cuisine',
 	'hub-global-culinary-institutions' => 'cluster-global-culinary-institutions',
 );
 $profile_types = array( 'culinary_institution', 'restaurant', 'market', 'equipment_shop', 'producer', 'supplier' );
@@ -2461,6 +2472,7 @@ $canonical_overrides = array(
 	'guide-japanese-markets' => $c99_text( '/knowledge/japanese-culinary-markets/', '/en/knowledge/japanese-culinary-markets/' ),
 	'standard-jas-shoyu-1703' => $c99_text( '/knowledge/jas-1703-shoyu-standard/', '/en/knowledge/jas-1703-shoyu-standard/' ),
 );
+$canonical_overrides = array_replace( $canonical_overrides, $c99_syrian_foundations_module['canonical_overrides'] );
 
 $section_owner_map = array(
 	'hub-japanese-dishes' => 'cuisine-japanese-washoku',
@@ -2490,7 +2502,7 @@ foreach ( $entities as &$entity ) {
 	if ( isset( $canonical_overrides[ $entity['id'] ] ) ) {
 		$entity['seo']['canonical_path'] = $canonical_overrides[ $entity['id'] ];
 	}
-	$entity['seo']['route_mode'] = in_array( $entity['type'], $private_route_types, true ) ? 'private' : 'standalone';
+	$entity['seo']['route_mode'] = in_array( $entity['type'], $private_route_types, true ) || isset( $c99_syrian_private_lookup[ $entity['id'] ] ) ? 'private' : 'standalone';
 	$entity['seo']['owner_entity_id'] = $entity['id'];
 	$entity['seo']['section_id'] = '';
 	if ( isset( $section_owner_map[ $entity['id'] ] ) ) {
@@ -2618,14 +2630,16 @@ foreach ( $entities as &$entity ) {
 unset( $entity );
 
 /*
- * Public Japanese museum pilot. The complete graph remains intact for private
- * editorial work, while every public semantic edge is explicitly allowlisted.
+ * Public culinary museum preview. The complete graph remains intact for
+ * private editorial work, while every public semantic edge is explicitly
+ * allowlisted.
  * Visibility and search indexing stay separate, so reviewed preview pages can
  * be evaluated before long-form index approval.
  */
 $public_pilot_ids = array(
 	'museum-culinary-science',
 	'cuisine-japanese-washoku',
+	'cuisine-syrian-regional',
 	'hub-japanese-foundations-lab',
 	'hub-japanese-equipment',
 	'hub-japanese-ingredients',
@@ -2649,8 +2663,9 @@ $public_pilot_ids = array(
 );
 $public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
 $public_semantic_allowlists = array(
-	'museum-culinary-science' => array( 'cuisine-japanese-washoku' ),
+	'museum-culinary-science' => array( 'cuisine-japanese-washoku', 'cuisine-syrian-regional' ),
 	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-foundations-lab', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'guide-wasabi-aitc', 'equipment-wasabi-grater' ),
+	'cuisine-syrian-regional' => array( 'museum-culinary-science' ),
 	'hub-japanese-foundations-lab' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'guide-umami-synergy', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'preparation-ichiban-dashi', 'equipment-wasabi-grater' ),
 	'hub-japanese-equipment' => array( 'cuisine-japanese-washoku', 'equipment-wasabi-grater', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'guide-wasabi-aitc' ),
 	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
@@ -2675,6 +2690,7 @@ $public_semantic_allowlists = array(
 $public_asset_receipts = array(
 	'museum-culinary-science' => 'sha256:ee2441315d9c03074bbe88bba7408e66e06323a4906d1c5310574028d970f18b',
 	'cuisine-japanese-washoku' => 'sha256:98558d16ea7975b78ba7b925ea2a4b3a7dc0f6158a42e94855f30f73f7fa644c',
+	'cuisine-syrian-regional' => 'sha256:4abfb4b819c5b8df9e555656ee56fd0328b09870fbdb8142dadc9cc769b8e7de',
 	'hub-japanese-foundations-lab' => 'sha256:8dcc708e53538ed4a0044d3cd79704f1d9e02ff01142b8f5f486192e3595e180',
 	'hub-japanese-ingredients' => 'sha256:76cc7ecfebd4eac9ecb9ed6a670cee097941a99637fbc2446b00eb7692848e10',
 	'ingredient-kombu' => 'sha256:046d2ba7f392efa8076afc3acae177604e27cbe77ef3d8c626fc2974abe8ac4e',
@@ -2696,6 +2712,56 @@ $public_asset_receipts = array(
 	'molecule-allyl-isothiocyanate' => 'sha256:87fdf5927fd72ba282e97d72c948d87213f02fbdef2dd4a13ce607f042084ae6',
 	'equipment-wasabi-grater' => 'sha256:be0f4f831f58efc4ab6b6c74fa1979aaa4797bf9e4f1be51a19b2afe6d9a1757',
 );
+
+$syrian_root_offset = $entity_offsets['cuisine-syrian-regional'];
+$syrian_root_name = $c99_text(
+	'המטבח הסורי: מנות, אזורים ומסורות',
+	'Syrian cuisine: dishes, regions and traditions'
+);
+$syrian_root_summary = $c99_text(
+	'מגלים את המטבח הסורי דרך מנות, חומרי גלם, אזורים ושיטות הכנה. חאלב, דמשק, חומס, חמה, החוף, הג׳זירה, הפרת, א-סווידא וחוראן מוצגים כל אחד בהקשר שלו, לצד מסורות יהודיות, ארמניות, כורדיות ודרוזיות. בחרו מה לאכול, מה לקנות, מה ללמוד ואיזה סיפור לקרוא.',
+	'Explore Syrian cuisine through dishes, ingredients, regions and cooking methods. Aleppo, Damascus, Homs, Hama, the coast, Jazira, the Euphrates, Suwayda and Hauran each keep their own context, alongside Jewish, Armenian, Kurdish and Druze foodways. Choose what to eat, what to buy, what to learn or which story to read.'
+);
+$entities[ $syrian_root_offset ]['name'] = $syrian_root_name;
+$entities[ $syrian_root_offset ]['summary'] = $syrian_root_summary;
+$entities[ $syrian_root_offset ]['seo']['route_mode'] = 'standalone';
+$entities[ $syrian_root_offset ]['seo']['primary_intent'] = $c99_text( 'לגלות מנות, חומרי גלם ומסורות מן המטבח הסורי לפי אזור וקהילה', 'Explore Syrian dishes, ingredients and traditions by region and community' );
+$entities[ $syrian_root_offset ]['seo']['primary_keyword'] = $c99_text( 'המטבח הסורי', 'Syrian cuisine' );
+$entities[ $syrian_root_offset ]['seo']['query_variants'] = array(
+	'he' => array( 'המטבח הסורי', 'המטבח הסורי לפי אזורים וקהילות' ),
+	'en' => array( 'Syrian cuisine', 'Syrian cuisine by region and community' ),
+);
+$entities[ $syrian_root_offset ]['seo']['term_variants'] = array(
+	'he' => array( 'המטבח הסורי: מנות, אזורים ומסורות', 'המטבח הסורי האזורי' ),
+	'en' => array( 'Syrian cuisine: dishes, regions and traditions', 'Syrian Regional Cuisine' ),
+);
+$entities[ $syrian_root_offset ]['seo']['title'] = $c99_text( 'המטבח הסורי: מנות, אזורים ומסורות | Complete99', 'Syrian cuisine: dishes, regions and traditions | Complete99' );
+$entities[ $syrian_root_offset ]['seo']['h1'] = $c99_text( 'המטבח הסורי, מהמטבח הביתי ועד שולחן החג', 'Syrian cuisine, from home cooking to the celebration table' );
+$entities[ $syrian_root_offset ]['seo']['meta_description'] = $c99_text( 'מדריך למטבח הסורי לפי חאלב, דמשק, חומס, חמה, החוף, הג׳זירה, הפרת, א-סווידא וחוראן, עם מנות, מרכיבים, מסורות ומקורות.', 'A guide to Syrian cuisine across Aleppo, Damascus, Homs, Hama, the coast, Jazira, the Euphrates, Suwayda and Hauran, with dishes, ingredients, foodways and sources.' );
+$entities[ $syrian_root_offset ]['seo']['opening'] = $syrian_root_summary;
+$entities[ $syrian_root_offset ]['facts'][0]['statement'] = $c99_text(
+	'מקורות אזוריים מתארים מטבח שמשתנה בין ערים, החוף, המזרח והדרום. לכן כדאי לקרוא כל מנה בתוך המקום, הקהילה והמשפחה שתיעדו אותה, ולא לחפש נוסחה סורית אחת.',
+	'Regional sources describe a cuisine that changes across cities, the coast, the east and the south. Read each dish within the place, community and family that documented it rather than looking for one uniform Syrian formula.'
+);
+$entities[ $syrian_root_offset ]['facts'][0]['public_safe'] = true;
+$entities[ $syrian_root_offset ]['facts'][1]['statement'] = $c99_text(
+	'מקורות מוסדיים מאנו, הסמית׳סוניאן ואוניברסיטת סאסקס מתעדים בנפרד מסורות יהודיות מחלב ומדמשק, מסורות ארמניות, מסורות כורדיות מאפרין ומסורות דרוזיות מא-סווידא. Complete99 מציג כל אחת בהיקף המתועד שלה, ואף אחת אינה מוצגת כתחליף למטבח הסורי כולו.',
+	'Institutional sources from ANU, the Smithsonian and the University of Sussex separately document Aleppan and Damascene Jewish foodways, Armenian foodways, Kurdish Afrin foodways and Druze Suwayda foodways. Complete99 presents each within that documented scope; none is presented as a substitute for Syrian cuisine as a whole.'
+);
+$entities[ $syrian_root_offset ]['facts'][1]['public_safe'] = false;
+$entities[ $syrian_root_offset ]['profiles']['cultural']['summary'] = $c99_text( 'הסיפורים והמנות מוצגים לפי המקור האזורי או הקהילתי שתיעד אותם.', 'Stories and dishes are presented within the regional or community source that documented them.' );
+$entities[ $syrian_root_offset ]['profiles']['structural']['summary'] = $c99_text( 'החלוקה לאזורים ולקהילות עוזרת לראות הבדלים בלי למחוק את התמונה הסורית הרחבה.', 'Regional and community paths make differences visible without erasing the wider Syrian picture.' );
+$entities[ $syrian_root_offset ]['trust']['research_method'] = $c99_text(
+	'לכל טענה מרכזית מצורף מקור שאפשר לפתוח ולקרוא. כאשר מקור מתאר משפחה, קהילה או אזור מסוים, ההסבר נשאר בגבולות האלה.',
+	'Every central claim links to a source you can open and read. When a source describes one family, community or region, the explanation stays within that boundary.'
+);
+$entities[ $syrian_root_offset ]['trust']['next_review_trigger'] = $c99_text(
+	'מצאתם פרט שדורש תיקון? שלחו לנו את המקור דרך עמוד יצירת הקשר, ונבדוק ונעדכן.',
+	'Found a detail that needs correction? Send us the source through the contact page and we will check and update it.'
+);
+$entities[ $syrian_root_offset ]['taxonomy']['public_category_path'] = array( 'culinary-museum', 'syrian-culinary-science', 'cuisines' );
+$entities[ $syrian_root_offset ]['taxonomy']['public_attribute_keys'] = array( 'pa_region', 'pa_community' );
+$entities[ $syrian_root_offset ]['taxonomy']['public_tags'] = array( 'syrian-cuisine', 'syria-national', 'syrian-multi-community' );
 
 $ingredient_hub_offset = $entity_offsets['hub-japanese-ingredients'];
 $entities[ $ingredient_hub_offset ]['facts'][0]['statement'] = $c99_text(
@@ -2728,17 +2794,17 @@ $entities[ $equipment_hub_offset ]['facts'][0]['public_safe'] = true;
 $public_meta_descriptions = array(
 	'hub-japanese-foundations-lab' => $c99_text( 'יסודות המטבח היפני במסלול אחד: חומרי גלם, מדע הטעם, טכניקות הכנה וכלים מקצועיים, עם קישורים ישירים לכל מדריך ודף מרכיב.', 'Japanese culinary foundations in one path: ingredients, flavor science, preparation techniques and professional tools, with direct links to every guide and ingredient page.' ),
 	'hub-japanese-food-science' => $c99_text( 'מדע המזון היפני: אומאמי, גלוטמט, IMP, קוג׳י, התססה, דאשי ומדידות, עם מקורות וקשרים למנות ולחומרי גלם.', 'Japanese food science: umami, glutamate, IMP, koji, fermentation, dashi and measurements, with sources and links to ingredients and dishes.' ),
-	'hub-japanese-techniques' => $c99_text( 'טכניקות בישול יפניות: דאשי, אורז, חיתוך, קוג׳י והתססה במפת ידע שמפרידה חומר, זמן, טמפרטורה, כלי ותוצאה.', 'Japanese culinary techniques: dashi, rice, cutting, koji and fermentation in a knowledge map separating material, time, temperature, tool and result.' ),
-	'hub-japanese-equipment' => $c99_text( 'כלי מטבח יפניים להכנה מדויקת: בחירה לפי פעולה, חומר, מידה, תחזוקה ומפרט דגם, עם קישורים לחומרי גלם ולטכניקות מתאימות.', 'Japanese culinary tools for precise preparation: choose by task, material, size, care and model specification, with links to suitable ingredients and techniques.' ),
+	'hub-japanese-techniques' => $c99_text( 'טכניקות בישול יפניות לדאשי, אורז, חיתוך, קוג׳י והתססה: מה עושים, באיזה כלי משתמשים ואיך זמן וטמפרטורה משנים את התוצאה.', 'Japanese techniques for dashi, rice, cutting, koji and fermentation: what to do, which tool to use and how time and temperature change the result.' ),
+	'hub-japanese-equipment' => $c99_text( 'כלי מטבח יפניים להכנה מדויקת: השוו שימוש, חומר, גודל ותחזוקה, והמשיכו לחומרי הגלם ולטכניקות המתאימים.', 'Japanese culinary tools for precise preparation: compare use, material, size and care, then continue to matching ingredients and techniques.' ),
 	'ingredient-kome-koji' => $c99_text( 'קומה קוג׳י מיובש: תפקיד האנזימים, ההבדל מתרבית tane-koji, אחסון בקירור, שימושים בהתססה, מחיר מקור וקישור למוצר 500 גרם.', 'Dried kome koji: enzyme function, the boundary from tane-koji starter, refrigerated storage, fermentation uses, source-market price and the 500 g product.' ),
 	'ingredient-koji-starter-culture' => $c99_text( 'תרבית קוג׳י Chouhaku-kin אבקתית: שימוש למיסו ושיו קוג׳י, מינון יצרן, אחסון בקירור, מדע התהליך וקישור לשקית 20 גרם.', 'Chouhaku-kin powdered koji starter: use for miso and shio-koji, maker dose, refrigeration, process science and the 20 g sachet.' ),
-	'ingredient-koshihikari-rice' => $c99_text( 'אורז קושיהיקארי מאוזו, טויאמה: מקור, זן, איכות בישול, גבולות מפרט האצווה, מחיר מקור וקישור לאריזת 2 ק״ג.', 'Uozu, Toyama Koshihikari rice: origin, cultivar, cooking-quality boundaries, lot specification, source-market price and the 2 kg pack.' ),
+	'ingredient-koshihikari-rice' => $c99_text( 'אורז קושיהיקארי מאוזו, טויאמה: איך המקור והזן קשורים לבישול, אילו פרטים בודקים על האריזה, מחיר מקור וקישור לאריזת 2 ק״ג.', 'Uozu, Toyama Koshihikari rice: how origin and cultivar relate to cooking, which pack details to check, a source-market price and the 2 kg pack.' ),
 	'ingredient-fresh-dutch-wasabi' => $c99_text( 'וואסבי טרי בגידול הולנדי, 50 עד 60 גרם: מקור חממה, מדע AITC, אחסון בקירור, כלי גרירה, מחיר מקור וקישור למוצר.', 'Dutch-grown fresh wasabi, 50 to 60 g: greenhouse origin, AITC science, refrigeration, grating tools, source-market price and the product.' ),
 	'preparation-ichiban-dashi' => $c99_text( 'איצ׳יבאן דאשי מקומבו וקצואובושי: עקרונות מיצוי, סינרגיית גלוטמט ו-IMP, אלרגן דגים וקישורים לחומרי הגלם.', 'Ichiban dashi from kombu and katsuobushi: extraction principles, glutamate and IMP synergy, fish allergen context and ingredient links.' ),
 	'ingredient-hon-mirin' => $c99_text( 'מהו הון מירין יפני: אורז דביק, קוג׳י, סכריפיקציה, הבשלה, אלכוהול וההבדל מתיבול בסגנון מירין, עם מקורות.', 'What Japanese hon mirin is: glutinous rice, koji, saccharification, maturation, alcohol and the boundary from mirin-style seasoning, with sources.' ),
 	'guide-umami-synergy' => $c99_text( 'סינרגיית אומאמי בין גלוטמט ל-IMP: מנגנון T1R1/T1R3, ההבדל בין מחקר למדידת מוצר וקשרים לדאשי, קומבו וקצואובושי.', 'Glutamate and IMP umami synergy: the T1R1/T1R3 mechanism, research versus product measurement, and links to dashi, kombu and katsuobushi.' ),
 	'guide-wasabi-aitc' => $c99_text( 'AITC וחריפות וואסבי טרי: המערכת האנזימטית, שונות בין זנים ועונות, והקשר בין קנה השורש, המולקולה וכלי הגרירה.', 'AITC and fresh wasabi pungency: the enzyme system, genetic and seasonal variation, and links among the rhizome, molecule and grating tool.' ),
-	'equipment-wasabi-grater' => $c99_text( 'מדריך מגררת וואסבי: תפקיד הכלי, חומר, מידות ומפרטי דגם, עם קישור לוואסבי טרי ולמדע החריפות.', 'Wasabi grater guide: tool purpose, material, dimensions and model specifications, linked to fresh wasabi and pungency science.' ),
+	'equipment-wasabi-grater' => $c99_text( 'מדריך לבחירת מגררת וואסבי לפי חומר, גודל ותחזוקה, עם קישור לוואסבי טרי ולהסבר על החריפות.', 'Choose a wasabi grater by material, size and care, with links to fresh wasabi and an explanation of pungency.' ),
 );
 foreach ( $public_meta_descriptions as $public_meta_entity_id => $public_meta_description ) {
 	$entities[ $entity_offsets[ $public_meta_entity_id ] ]['seo']['meta_description'] = $public_meta_description;
@@ -2808,7 +2874,7 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 
 return array(
 	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'japanese-pilot-2026.08.06.v11',
+	'version'       => 'culinary-science-2026.08.06.v12',
 	'generated_at'  => '2026-08-06',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',
@@ -2827,7 +2893,7 @@ return array(
 		'asset_states' => array( 'spec_ready', 'original_photography_required', 'rights_review_required', 'approved' ),
 		'rights_states' => array( 'pending', 'cleared_owned', 'cleared_generated', 'cleared_licensed', 'restricted' ),
 		'source_types' => array( 'official_government', 'official_organization', 'peer_reviewed_paper', 'conference_proceeding', 'official_standard', 'official_business', 'official_market_listing', 'regulatory_guidance' ),
-		'allowed_attributes' => array( 'pa_origin', 'pa_species', 'pa_cultivar', 'pa_processing_method', 'pa_fermentation_method', 'pa_vessel', 'pa_flavor_profile', 'pa_allergens', 'pa_storage_type', 'pa_material', 'pa_steel', 'pa_handedness', 'pa_quality_grade', 'pa_market', 'pa_institution_type', 'pa_equipment_required' ),
+		'allowed_attributes' => array( 'pa_origin', 'pa_species', 'pa_cultivar', 'pa_processing_method', 'pa_fermentation_method', 'pa_vessel', 'pa_flavor_profile', 'pa_allergens', 'pa_storage_type', 'pa_material', 'pa_steel', 'pa_handedness', 'pa_quality_grade', 'pa_market', 'pa_institution_type', 'pa_equipment_required', 'pa_region', 'pa_community' ),
 		'attribution_states' => array( 'pending_named_review', 'organization_editorial_process', 'named_expert_reviewed' ),
 		'confidence_levels' => array( 'pending', 'reviewed', 'verified' ),
 		'revenue_models' => array( 'retail_product', 'prepared_food_sale', 'curated_bundle', 'content_to_commerce', 'education', 'lead_generation', 'market_intelligence' ),

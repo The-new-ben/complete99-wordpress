@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-06 21:50:30"
+RELEASE_LAST_UPDATED = "2026-08-07 03:23:20"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -215,6 +215,13 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Expanded the source-bound bilingual culinary-science registry to 200 entities and Entity Studio to 256 subjects: 200 science identities plus 56 product identities, with 36 live WooCommerce prices and 20 private planning prices.</li>"
+                "<li>Added a 109-entity Syrian regional foundation: 106 culinary entities, including 46 ingredient entities and six preparation entities, plus three private held market observations, with one safe noindex consumer gateway and 108 private entities.</li>"
+                "<li>Expanded the noindex public science preview to 23 entities across 18 canonical page owners per language and corrected Japanese public language to answer consumer food, cooking, buying and learning intent.</li>"
+                "<li>Preserved the exact 36-product public store and added no WooCommerce offers, stock, supplier claims, payment activation or role assignments. The three Syrian market observations remain private and held.</li>"
+                "</ul>"
+                "<h4>1.11.0</h4>"
                 "<ul>"
                 "<li>Added 12 source-bound Japanese premium pantry and professional-tool candidates, eight knowledge subjects, five draft bundles and nine draft merchandising relationships.</li>"
                 "<li>Expanded Entity Studio to 144 subjects and 53 product identities with 36 live WooCommerce prices, 17 private planning prices and complete 53 of 53 price-basis coverage.</li>"

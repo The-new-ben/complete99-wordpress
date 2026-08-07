@@ -342,6 +342,8 @@ unset( $public_market_listing );
 
 $c99_japanese_premium_commerce = require __DIR__ . '/culinary-commerce/japanese-premium-market-tranche.php';
 $listings = array_merge( $listings, $c99_japanese_premium_commerce['listings'] );
+$c99_syrian_market_commerce = require __DIR__ . '/culinary-commerce/syrian-market-tranche.php';
+$listings = array_merge( $listings, $c99_syrian_market_commerce['listings'] );
 
 $products = array();
 $variants = array();
@@ -354,6 +356,10 @@ foreach ( $listings as $listing ) {
 	$variant_id = 'variant-' . $listing['key'];
 	$sku_id = 'sku-' . $listing['key'];
 	$artifact_id = 'evidence-' . $listing['key'] . '-20260806';
+	$internal_code_prefix = isset( $listing['internal_code_prefix'] ) ? $listing['internal_code_prefix'] : 'JP';
+	$captured_at = isset( $listing['captured_at'] ) ? $listing['captured_at'] : '2026-08-06T00:50:31+03:00';
+	$observed_at = isset( $listing['observed_at'] ) ? $listing['observed_at'] : '2026-08-06T00:50:31+03:00';
+	$capture_method = isset( $listing['capture_method'] ) ? $listing['capture_method'] : 'live-retail-page-manual-review';
 
 	$products[] = array(
 		'id'                  => $product_id,
@@ -385,7 +391,7 @@ foreach ( $listings as $listing ) {
 	$skus[] = array(
 		'id'                  => $sku_id,
 		'variant_id'          => $variant_id,
-		'internal_code'       => 'C99-JP-' . strtoupper( str_replace( '-', '_', $listing['key'] ) ),
+		'internal_code'       => 'C99-' . $internal_code_prefix . '-' . strtoupper( str_replace( '-', '_', $listing['key'] ) ),
 		'woo_product_code'    => '',
 		'external_ids'        => array(
 			array(
@@ -404,8 +410,8 @@ foreach ( $listings as $listing ) {
 		'id'                      => $artifact_id,
 		'source_id'               => $listing['source_id'],
 		'source_url'              => $listing['source_url'],
-		'captured_at'             => '2026-08-06T00:50:31+03:00',
-		'capture_method'          => 'live-retail-page-manual-review',
+		'captured_at'             => $captured_at,
+		'capture_method'          => $capture_method,
 		'claim_locator'           => $listing['claim_locator'],
 		'snapshot_digest'         => '',
 		'snapshot_uri'            => '',
@@ -425,7 +431,7 @@ foreach ( $listings as $listing ) {
 		'tax_state'            => $listing['tax_state'],
 		'shipping_state'       => $listing['shipping_state'],
 		'availability_state'   => $listing['availability_state'],
-		'observed_at'          => '2026-08-06T00:50:31+03:00',
+		'observed_at'          => $observed_at,
 		'evidence_artifact_id' => $artifact_id,
 		'source_entity_id'     => $listing['listing_entity_id'],
 		'normalization'        => array(
@@ -515,9 +521,9 @@ foreach ( $c99_japanese_premium_commerce['offer_configs'] as $premium_offer_conf
 
 return array(
 	'schema'                     => 'complete99-culinary-commerce-registry/v2',
-	'version'                    => 'japanese-commerce-pilot-2026.08.06.v5',
+	'version'                    => 'culinary-commerce-2026.08.06.v6',
 	'generated_at'               => '2026-08-06',
-	'knowledge_registry_version' => 'japanese-pilot-2026.08.06.v11',
+	'knowledge_registry_version' => 'culinary-science-2026.08.06.v12',
 	'controlled_vocabulary'      => array(
 		'product_states'           => array( 'research_candidate', 'verified_product', 'active', 'retired' ),
 		'variant_states'           => array( 'research_candidate', 'verified_variant', 'active', 'retired' ),
@@ -544,7 +550,7 @@ return array(
 		'customer_segments'        => array( 'consumer', 'professional_kitchen', 'institutional_buyer' ),
 		'channel_states'           => array( 'configured_no_offers', 'contract_required', 'active', 'disabled' ),
 		'cost_line_states'         => array( 'estimated', 'source_observed', 'supplier_quoted', 'verified' ),
-		'sku_compliance_states'    => array( 'cleared', 'import_label_review_required', 'fish_allergen_import_review_required', 'alcohol_age_license_import_review_required', 'allergen_import_label_review_required', 'cold_chain_phytosanitary_review_required', 'food_contact_material_review_required', 'food_contact_and_handling_review_required' ),
+		'sku_compliance_states'    => array( 'cleared', 'import_label_review_required', 'fish_allergen_import_review_required', 'alcohol_age_license_import_review_required', 'allergen_import_label_review_required', 'cold_chain_phytosanitary_review_required', 'food_contact_material_review_required', 'food_contact_and_handling_review_required', 'gluten_label_review_required', 'ingredient_label_review_required', 'historical_source_allergen_review_required' ),
 		'price_bases'              => array( 'gross_tax_inclusive', 'tax_exclusive', 'net_revenue' ),
 		'integration_consumer_states' => array( 'contract_required', 'active', 'disabled' ),
 	),
@@ -578,7 +584,7 @@ return array(
 		array( 'id' => 'market-jp-source', 'label' => $c99_commerce_text( 'שוק מקור יפן', 'Japan source market' ), 'country_id' => 'country-jp', 'currency_id' => 'currency-jpy', 'locale_ids' => array( 'locale-ja-jp' ), 'tax_zone_ids' => array( 'tax-zone-jp-observation' ), 'seller_of_record_id' => '', 'fulfillment_region_ids' => array(), 'purpose' => 'source_price_observation', 'state' => 'source_observation' ),
 		array( 'id' => 'market-us-source', 'label' => $c99_commerce_text( 'שוק מקור ארצות הברית', 'United States source market' ), 'country_id' => 'country-us', 'currency_id' => 'currency-usd', 'locale_ids' => array( 'locale-en-us' ), 'tax_zone_ids' => array( 'tax-zone-us-observation' ), 'seller_of_record_id' => '', 'fulfillment_region_ids' => array(), 'purpose' => 'source_price_observation', 'state' => 'source_observation' ),
 		array( 'id' => 'market-gb-source', 'label' => $c99_commerce_text( 'שוק מקור בריטניה', 'United Kingdom source market' ), 'country_id' => 'country-gb', 'currency_id' => 'currency-gbp', 'locale_ids' => array( 'locale-en-gb' ), 'tax_zone_ids' => array( 'tax-zone-gb-observation' ), 'seller_of_record_id' => '', 'fulfillment_region_ids' => array(), 'purpose' => 'source_price_observation', 'state' => 'source_observation' ),
-	), $c99_japanese_premium_commerce['markets'] ),
+	), $c99_japanese_premium_commerce['markets'], $c99_syrian_market_commerce['markets'] ),
 	'channels'                   => array(
 		array( 'id' => 'channel-woo-web-il', 'label' => $c99_commerce_text( 'חנות WooCommerce באתר', 'WooCommerce web store' ), 'channel_type' => 'web', 'market_ids' => array( 'market-il-launch' ), 'catalog_authority' => 'woocommerce', 'price_authority' => 'woocommerce', 'inventory_authority' => 'woocommerce', 'order_authority' => 'woocommerce', 'hierarchy_depth' => 6, 'connector_profile_id' => 'connector-woocommerce-internal', 'state' => 'configured_no_offers' ),
 		array( 'id' => 'channel-myshop-kiosk-il', 'label' => $c99_commerce_text( 'קיוסק מגע MyShop', 'MyShop touch kiosk' ), 'channel_type' => 'kiosk', 'market_ids' => array( 'market-il-launch' ), 'catalog_authority' => 'woocommerce', 'price_authority' => 'woocommerce', 'inventory_authority' => 'woocommerce', 'order_authority' => 'woocommerce', 'hierarchy_depth' => 2, 'connector_profile_id' => 'connector-myshop-contract-pending', 'state' => 'contract_required' ),
@@ -591,7 +597,7 @@ return array(
 		array( 'id' => 'seller-yamaroku-direct', 'name' => $c99_commerce_text( 'יאמארוקו סויה', 'Yamaroku Soy Sauce' ), 'seller_type' => 'producer_retailer', 'country_id' => 'country-jp', 'science_entity_id' => 'producer-yamaroku-shoyu', 'legal_identity_state' => 'listing_named', 'source_ids' => array( 'yamaroku-product-listing-2026' ), 'status' => 'market_source_only' ),
 		array( 'id' => 'seller-wasabi-company-gb', 'name' => $c99_commerce_text( 'דה וואסבי קומפני', 'The Wasabi Company' ), 'seller_type' => 'retailer', 'country_id' => 'country-gb', 'science_entity_id' => '', 'legal_identity_state' => 'listing_named', 'source_ids' => array( 'fresh-japanese-wasabi-250g-listing-2026', 'hagane-zame-large-listing-2026' ), 'status' => 'market_source_only' ),
 		array( 'id' => 'seller-ogon-no-mura', 'name' => $c99_commerce_text( 'אוגון נו מורה', 'Ogon no Mura' ), 'seller_type' => 'producer_retailer', 'country_id' => 'country-jp', 'science_entity_id' => '', 'legal_identity_state' => 'listing_named', 'source_ids' => array( 'kito-yuzu-juice-100ml-listing-2026', 'kito-yuzu-juice-720ml-listing-2026' ), 'status' => 'market_source_only' ),
-	), $c99_japanese_premium_commerce['sellers'] ),
+	), $c99_japanese_premium_commerce['sellers'], $c99_syrian_market_commerce['sellers'] ),
 	'brands'                     => array_merge( array(
 		array( 'id' => 'brand-fukumitsuya', 'name' => $c99_commerce_text( 'פוקומיצויה', 'Fukumitsuya' ), 'owner_seller_id' => '', 'identity_state' => 'listing_named', 'source_ids' => array( 'fukumitsuya-hon-mirin-3y-listing-2026', 'fukumitsuya-hon-mirin-10y-listing-2026' ) ),
 		array( 'id' => 'brand-yamaroku', 'name' => $c99_commerce_text( 'יאמארוקו', 'Yamaroku' ), 'owner_seller_id' => 'seller-yamaroku-direct', 'identity_state' => 'listing_named', 'source_ids' => array( 'yamaroku-product-listing-2026' ) ),

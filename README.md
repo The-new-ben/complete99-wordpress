@@ -11,19 +11,29 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.11.0`. Production truth comes
+The source tree targets Complete99 Platform `1.12.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.11.0 adds a private, source-bound Japanese premium-market tranche:
+Release 1.12.0 expands the bilingual culinary-science registry to 200 entities
+and Entity Studio to 256 subjects: 200 science identities plus all 56 known
+product identities. Price-basis coverage is 56 of 56, comprising 36 unchanged
+live WooCommerce prices and 20 private planning prices. The Syrian foundation
+contains 109 entities: 106 culinary identities, including 46 ingredient entities,
+plus three private held market observations. One safe Syrian consumer gateway
+is public and `noindex,follow`;
+the other 108 Syrian entities remain private. The release creates no new
+WooCommerce offer, stock, supplier claim, payment activation or role assignment.
+It also rewrites the public Japanese science language around what a visitor can
+eat, cook, buy and learn instead of exposing registry or construction language.
+
+Release 1.11.0 added a private, source-bound Japanese premium-market tranche:
 12 exact pantry and professional-tool candidates, eight knowledge subjects,
-five draft bundles and nine draft merchandising relationships. Entity Studio
-now resolves 144 subjects and all 53 known product identities: 36 unchanged
-public WooCommerce prices and 17 private planning prices. All 12 new candidates
-remain held with planning stock zero, no WooCommerce product code and no active
-offer. Public source-market projection accepts only the exact explicit value
-`public`; missing, malformed, unknown and `held` values remain private. The
-public store, routes, live stock, POS behavior and payment state do not change.
+five draft bundles and nine draft merchandising relationships. Its 12 new
+candidates remain held with planning stock zero, no WooCommerce product code
+and no active offer. Public source-market projection accepts only the exact
+explicit value `public`; missing, malformed, unknown and `held` values remain
+private.
 
 Release 1.10.0 adds an administrator-only Entity Studio inside WordPress for
 modular culinary, scientific and commercial dossiers. It covers all 41 known
@@ -43,9 +53,9 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The current 1.11.0 Japanese culinary-science registry contains 91 bounded
-entities. Twenty-two public entities are projected through 17 canonical page
-owners per language, for 34 distinct Hebrew and English routes. Shared page
+The current 1.12.0 culinary-science registry contains 200 bounded entities.
+Twenty-three public entities are projected through 18 canonical page owners per
+language, for 36 distinct Hebrew and English routes. Shared page
 ownership prevents closely related entities from competing for the same search
 intent. The current pages remain `noindex,follow` and outside the sitemap until
 the separate long-form editorial and search-intent gate passes.

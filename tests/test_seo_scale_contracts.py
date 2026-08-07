@@ -100,12 +100,21 @@ echo json_encode($selected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
             )
         ).lower()
         for marker in (
-            "30 מוצרי מזווה וחומרי גלם",
-            "shop 30 pantry goods and ingredients",
+            "מוצרי מזווה וחומרי גלם",
+            "shop pantry goods and ingredients",
             "add products, change quantities and remove items",
-            "electronic payment will open after the payment provider is connected",
+            "complete confirmation by phone with the complete99 team",
         ):
             self.assertIn(marker, store_public)
+        for stale in (
+            "30 מוצרי מזווה",
+            "shop 30 pantry goods",
+            "36 מוצרי קולינריה",
+            "36 culinary products",
+            "ספק הסליקה",
+            "payment provider",
+        ):
+            self.assertNotIn(stale, store_public)
         for key in set(HUBS) - {"store"}:
             self.assertTrue(records[key]["index_eligible"])
             self.assertEqual("editorial_review", records[key]["verification"])
@@ -138,6 +147,55 @@ echo json_encode($selected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
                 f"/en{hebrew_path}",
                 grouped[key]["en"]["canonical_path"],
             )
+        self.assertEqual(
+            "/request-proposal/",
+            grouped["proposal"]["he"]["canonical_path"],
+        )
+        self.assertEqual(
+            "/en/request-proposal/",
+            grouped["proposal"]["en"]["canonical_path"],
+        )
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required to evaluate launch records")
+    def test_proposal_keyword_owner_matches_the_published_launch_slug(self) -> None:
+        launch_path = json.dumps(LAUNCH.as_posix())
+        script = f"""
+define('ABSPATH', __DIR__);
+$records = require {launch_path};
+foreach ($records as $record) {{
+    if ('proposal' === $record['key']) {{
+        echo json_encode($record['slug'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        break;
+    }}
+}}
+"""
+        completed = subprocess.run(
+            ["php", "-r", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        slugs = json.loads(completed.stdout)
+
+        with KEYWORDS.open(encoding="utf-8", newline="") as handle:
+            owners = {
+                row["language"]: row
+                for row in csv.DictReader(handle)
+                if "proposal" == row["translation_key"]
+            }
+        self.assertEqual(
+            f"/{slugs['he']}/",
+            owners["he"]["canonical_path"],
+        )
+        self.assertEqual(
+            f"/en/{slugs['en']}/",
+            owners["en"]["canonical_path"],
+        )
 
     def test_managed_identity_translation_and_sitemap_gates_are_wired(self) -> None:
         content = CONTENT.read_text(encoding="utf-8")
