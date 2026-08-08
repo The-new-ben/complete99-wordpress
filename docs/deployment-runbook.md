@@ -93,7 +93,7 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.18.0, require the Entity Studio contracts to prove private
+3. For release 1.18.1, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
@@ -275,7 +275,39 @@ earlier probe-finalize response was lost, the next run waits for that unstarted
 probe lease, releases only its exact state-free reservation, and repeats the full
 attestation under a new probe.
 
-## Release 1.18.0 live verification
+## Release 1.18.1 live verification
+
+Before installation:
+
+1. Confirm the artifact, manifest and deployment marker all report `1.18.1`.
+2. Confirm the package changes no product seed, price, stock, supplier,
+   WooCommerce materialization contract or payment gateway state.
+3. Confirm the shelf contract uses twelve products per page and one validated
+   allowlist for `product-type` and `product-page`.
+4. Confirm every first-party product continuation uses the central page-aware
+   product URL helper.
+5. Confirm the schema graph emits only the current shelf page products and
+   filtered states are `noindex,follow`.
+
+After installation and cache purge:
+
+1. Verify anonymous health returns version `1.18.1`, deployment ID
+   `c99-wp-1.18.1` and the expected database version.
+2. Verify Hebrew and English unfiltered stores expose three pages of twelve
+   unique products with no omission or duplicate.
+3. Verify the Japanese pantry filter exposes exactly nine products through
+   server-rendered links and survives reload and language switching.
+4. Verify a page-two product continuation focuses its exact stable anchor and
+   add-to-cart returns to page two with cart feedback.
+5. Verify canonical, hreflang, robots and Product schema match each tested
+   state, and filtered utility states remain `noindex,follow`.
+6. Run Chrome at 1440 by 1000 and 390 by 844. Require the first card inside the
+   initial viewport, 44 by 44 controls, no horizontal overflow, no broken image
+   and no first-party console warning or error.
+7. Confirm the exact 36 products, prices, stock, cart and disabled payment state
+   remain unchanged, then prove bridge deletion, row absence and route 404.
+
+## Preserved release 1.18.0 live verification
 
 Before installation:
 
@@ -450,7 +482,7 @@ A production release is complete only when the non-secret audit JSON shows:
   with 672 science identities, 56 product identities and 728 Entity Studio
   subjects;
 - exact 56 of 56 product price-basis coverage, comprising 36 live prices and 20
-  private planning prices, with zero active or draft offer added by 1.18.0;
+  private planning prices, with zero active or draft offer added by 1.18.1;
 - exact 282-identity Syrian type counts, including the 86 new private identities
   and four exact held records, with no price, product, offer, supplier, stock or
   public projection;

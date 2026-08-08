@@ -1895,9 +1895,14 @@ final class Complete99_Culinary_Science {
 		if ( true === $entity['commerce']['public_offer_allowed'] && '' !== $entity['commerce']['woo_product_code'] ) {
 			$product_code = $entity['commerce']['woo_product_code'];
 			$store_path   = 'en' === $lang ? '/en/store/' : '/store/';
+			if ( class_exists( 'Complete99_Commerce' ) && method_exists( 'Complete99_Commerce', 'storefront_product_url' ) ) {
+				$store_path = Complete99_Commerce::storefront_product_url( $product_code, $lang, 'all' );
+			} else {
+				$store_path .= '#c99-product-code-' . preg_replace( '/[^a-z0-9-]/', '', $product_code );
+			}
 			$offer = array(
 				'product_code' => $product_code,
-				'store_path'   => $store_path . '#c99-product-code-' . preg_replace( '/[^a-z0-9-]/', '', $product_code ),
+				'store_path'   => $store_path,
 				'label'        => 'he' === $lang ? 'למוצר במזווה' : 'View in the pantry',
 			);
 		}

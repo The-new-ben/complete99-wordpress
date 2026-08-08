@@ -126,7 +126,7 @@ class Complete99ContractTests(unittest.TestCase):
             )
         )
         changelog = manifest["sections"]["changelog"]
-        self.assertTrue(changelog.startswith("<h4>1.18.0</h4>"))
+        self.assertIn("<h4>1.18.0</h4>", changelog)
         self.assertIn("from 24 to 27 entities", changelog)
         self.assertIn("19 canonical page owners", changelog)
         self.assertIn("38 bilingual routes", changelog)
@@ -184,6 +184,24 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("23 entities across 18 canonical page owners per language", changelog)
         self.assertIn("added no WooCommerce offers, stock, supplier claims", changelog)
         self.assertIn("payment activation or role assignments", changelog)
+
+    def test_release_1_18_1_manifest_describes_scalable_store_and_preserves_1_18(self) -> None:
+        manifest = json.loads(
+            (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        changelog = manifest["sections"]["changelog"]
+        self.assertTrue(changelog.startswith("<h4>1.18.1</h4>"))
+        self.assertIn("twelve products per page", changelog)
+        self.assertIn("work without JavaScript", changelog)
+        self.assertIn("accessible expandable panels", changelog)
+        self.assertIn("page-aware product links", changelog)
+        self.assertIn("canonical links, hreflang, robots and Product structured data", changelog)
+        self.assertIn("exact 36 WooCommerce products", changelog)
+        self.assertIn("disabled payment state", changelog)
+        self.assertIn("<h4>1.18.0</h4>", changelog)
+        self.assertIn("dashi extraction", changelog)
 
     def test_all_required_content_types_exist(self) -> None:
         text = (PLUGIN / "includes" / "class-complete99-content.php").read_text(encoding="utf-8")

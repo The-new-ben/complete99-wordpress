@@ -11,9 +11,19 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.18.0`. Production truth comes
+The source tree targets Complete99 Platform `1.18.1`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.18.1 turns the 36-product bilingual pantry into a shelf that can grow
+without becoming one endless page. It renders twelve products at a time, uses
+real server-side filter and pagination links, keeps price, stock, add-to-cart
+and the main culinary continuation visible, and places detailed specifications
+inside accessible expandable panels. Product links from dishes, ingredients,
+science and museum pages resolve to the exact shelf page. Canonical, hreflang,
+robots and Product schema follow the same validated page state. This patch
+changes presentation and discovery only. It adds no product, price, stock,
+supplier, payment gateway or checkout activation.
 
 Release 1.18.0 deepens the existing bilingual classical-dashi journey without
 creating a competing page or an unverified offer. Dashi extraction now appears
@@ -137,7 +147,7 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The current 1.18.0 culinary-science registry contains 672 bounded entities. The
+The 1.18.1 release retains the culinary-science registry at 672 bounded entities. The
 Syrian graph contains 282 identities, the Lebanese graph contains 203 and the
 Iraqi graph contains 96. All 121 new Lebanese identities, the other 81
 Lebanese foundation identities, and all 96 Iraqi identities are

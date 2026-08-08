@@ -83,6 +83,8 @@ final class Complete99_Commerce {
 	const LEGAL_MAX_AGE      = 31536000;
 	const VERIFIED_ORDER_HE  = 'https://wolt.com/he/isr/tel-aviv/restaurant/sabich-complete';
 	const VERIFIED_ORDER_EN  = 'https://wolt.com/en/isr/tel-aviv/restaurant/sabich-complete';
+	const STOREFRONT_PAGE_SIZE        = 12;
+	const STOREFRONT_LEGACY_MAP_LIMIT = 100;
 
 	private static $evaluating_readiness = false;
 	private static $email_locale_switches = array();
@@ -1642,6 +1644,192 @@ final class Complete99_Commerce {
 		}
 		$products = self::approved_products();
 		return $products['valid_ids'];
+	}
+
+	/**
+	 * Public storefront facets. These values are the only accepted URL filter states.
+	 *
+	 * @return array<string,string>
+	 */
+	public static function storefront_filter_options() {
+		return array(
+			'all'             => 'all',
+			'pantry'          => 'pantry',
+			'japanese-pantry' => 'japanese-pantry',
+			'fresh-produce'   => 'fresh-produce',
+			'chilled-frozen'  => 'chilled-frozen',
+			'bakery'          => 'bakery',
+			'equipment'       => 'equipment',
+			'regulated'       => 'regulated',
+		);
+	}
+
+	/**
+	 * Read and bound the storefront state from the public query string.
+	 *
+	 * @return array{product_type:string,product_page:int,query_is_valid:bool,query_is_canonical:bool}
+	 */
+	public static function storefront_listing_state() {
+		$query_keys = array_map( 'strval', array_keys( $_GET ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$unexpected_query_keys = array_diff( $query_keys, array( 'product-type', 'product-page' ) );
+		$has_filter = isset( $_GET['product-type'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$raw_filter = $has_filter && is_scalar( $_GET['product-type'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			? wp_unslash( (string) $_GET['product-type'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			: '';
+		$filter     = sanitize_key( $raw_filter );
+		$filter_ok  = ! $has_filter || ( $raw_filter === $filter && isset( self::storefront_filter_options()[ $filter ] ) );
+		if ( ! $filter_ok ) {
+			$filter = 'all';
+		} elseif ( ! $has_filter ) {
+			$filter = 'all';
+		}
+
+		$has_page = isset( $_GET['product-page'] ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$raw_page = $has_page && is_scalar( $_GET['product-page'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			? wp_unslash( (string) $_GET['product-page'] ) // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			: '';
+		$page_ok  = ! $has_page || 1 === preg_match( '/^[1-9][0-9]*$/', $raw_page );
+		$page     = $page_ok && $has_page ? intval( $raw_page ) : 1;
+		$page_ok  = $page_ok && 0 < $page;
+		$canonical = empty( $unexpected_query_keys )
+			&& $filter_ok
+			&& $page_ok
+			&& ( ! $has_filter || 'all' !== $filter )
+			&& ( ! $has_page || 1 !== $page );
+
+		return array(
+			'product_type'       => $filter,
+			'product_page'       => 0 < $page ? $page : 1,
+			'query_is_valid'     => $filter_ok && $page_ok,
+			'query_is_canonical' => $canonical,
+		);
+	}
+
+	/**
+	 * Return one deterministic, server-rendered storefront page.
+	 *
+	 * @param string|null $product_type Allowlisted product facet, or null for the URL state.
+	 * @param int|null    $product_page Requested one-based page, or null for the URL state.
+	 * @return array<string,mixed>
+	 */
+	public static function storefront_listing( $product_type = null, $product_page = null ) {
+		$state = self::storefront_listing_state();
+		$uses_query_state = null === $product_type && null === $product_page;
+		$filter = null === $product_type ? $state['product_type'] : sanitize_key( (string) $product_type );
+		$explicit_filter_valid = isset( self::storefront_filter_options()[ $filter ] );
+		if ( ! isset( self::storefront_filter_options()[ $filter ] ) ) {
+			$filter = 'all';
+		}
+		$page = null === $product_page ? $state['product_page'] : intval( $product_page );
+		$explicit_page_valid = 0 < $page;
+		$page = max( 1, $page );
+		$requested_page = $page;
+
+		$all_product_ids = array_values( array_map( 'absint', self::storefront_product_ids() ) );
+		$matching_ids    = array();
+		foreach ( $all_product_ids as $product_id ) {
+			$facets = array_values(
+				array_unique(
+					array_filter(
+						array_map(
+							'sanitize_key',
+							preg_split( '/\s+/', trim( (string) get_post_meta( $product_id, '_complete99_live_catalog_facet', true ) ) ) ?: array()
+						)
+					)
+				)
+			);
+			if ( 'all' === $filter || in_array( $filter, $facets, true ) ) {
+				$matching_ids[] = $product_id;
+			}
+		}
+
+		$total       = count( $matching_ids );
+		$total_pages = max( 1, (int) ceil( $total / self::STOREFRONT_PAGE_SIZE ) );
+		$page        = min( $page, $total_pages );
+		$offset      = ( $page - 1 ) * self::STOREFRONT_PAGE_SIZE;
+		$product_ids = array_slice( $matching_ids, $offset, self::STOREFRONT_PAGE_SIZE );
+
+		return array(
+			'product_type'        => $filter,
+			'product_page'        => $page,
+			'per_page'            => self::STOREFRONT_PAGE_SIZE,
+			'total_products'      => $total,
+			'total_pages'         => $total_pages,
+			'product_ids'         => $product_ids,
+			'all_product_ids'     => $all_product_ids,
+			'matching_product_ids' => $matching_ids,
+			'first_product_number' => $total ? $offset + 1 : 0,
+			'last_product_number' => $total ? min( $offset + count( $product_ids ), $total ) : 0,
+			'query_is_valid'      => $uses_query_state
+				? ( $state['query_is_valid'] && $requested_page <= $total_pages )
+				: ( $explicit_filter_valid && $explicit_page_valid && $requested_page <= $total_pages ),
+			'query_is_canonical'  => $uses_query_state
+				? ( $state['query_is_canonical'] && $requested_page <= $total_pages )
+				: ( $explicit_filter_valid && $explicit_page_valid && $requested_page <= $total_pages ),
+		);
+	}
+
+	/**
+	 * Build a stable storefront URL for one allowlisted filter and page.
+	 */
+	public static function storefront_url( $lang, $filter = 'all', $page = 1, $fragment = '' ) {
+		$lang   = 'en' === $lang ? 'en' : 'he';
+		$filter = sanitize_key( (string) $filter );
+		if ( ! isset( self::storefront_filter_options()[ $filter ] ) ) {
+			$filter = 'all';
+		}
+		$page = intval( $page );
+		$page = 0 < $page ? $page : 1;
+		$args = array();
+		if ( 'all' !== $filter ) {
+			$args['product-type'] = $filter;
+		}
+		if ( 1 < $page ) {
+			$args['product-page'] = $page;
+		}
+		$url = Complete99_Content::route_url( 'store', $lang );
+		if ( ! empty( $args ) ) {
+			$url = add_query_arg( $args, $url );
+		}
+		$fragment = sanitize_html_class( ltrim( (string) $fragment, '#' ) );
+		return '' === $fragment ? $url : $url . '#' . $fragment;
+	}
+
+	/**
+	 * Resolve a product to the server-rendered page that contains its card.
+	 */
+	public static function storefront_product_url( $product_code, $lang, $filter = 'all' ) {
+		$product_code = sanitize_key( (string) $product_code );
+		$filter       = sanitize_key( (string) $filter );
+		if ( '' === $product_code ) {
+			return self::storefront_url( $lang );
+		}
+
+		$product_id = 0;
+		foreach ( self::storefront_product_ids() as $candidate_id ) {
+			$candidate_code = sanitize_key( (string) get_post_meta( $candidate_id, '_complete99_catalog_product_code', true ) );
+			if ( '' !== $candidate_code && hash_equals( $candidate_code, $product_code ) ) {
+				$product_id = absint( $candidate_id );
+				break;
+			}
+		}
+		if ( ! $product_id ) {
+			return self::storefront_url( $lang );
+		}
+
+		$listing = self::storefront_listing( $filter, 1 );
+		$position = array_search( $product_id, $listing['matching_product_ids'], true );
+		if ( false === $position ) {
+			$listing  = self::storefront_listing( 'all', 1 );
+			$position = array_search( $product_id, $listing['matching_product_ids'], true );
+		}
+		$page = false === $position ? 1 : (int) floor( $position / self::STOREFRONT_PAGE_SIZE ) + 1;
+		return self::storefront_url(
+			$lang,
+			$listing['product_type'],
+			$page,
+			'c99-product-code-' . sanitize_html_class( $product_code )
+		);
 	}
 
 	private static function page_contains_commerce_surface( $post_id, $surface ) {

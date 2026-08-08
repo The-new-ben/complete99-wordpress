@@ -22,6 +22,20 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def copy_historical_1_18_dist(destination: Path) -> Path:
+    source = ROOT / "plugin-dist"
+    destination.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        source / "complete99-platform-1.18.0.zip",
+        destination / "complete99-platform-1.18.0.zip",
+    )
+    shutil.copy2(
+        source / "complete99-platform-1.18.0-integrity.json",
+        destination / "complete99-platform-integrity.json",
+    )
+    return destination
+
+
 def load_module(name: str, path: Path) -> Any:
     spec = importlib.util.spec_from_file_location(name, path)
     assert spec and spec.loader
@@ -2087,11 +2101,12 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             "c86ebc2ce56ce6d66c9046fa3b7285754c3c38c68bb05b8f1a91748cc038e311",
             loaded["proof_sha256"],
         )
-        package = RECOVER.validate_interrupted_forward_dist(
-            DEPLOY,
-            ROOT / "plugin-dist",
-            loaded,
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            package = RECOVER.validate_interrupted_forward_dist(
+                DEPLOY,
+                copy_historical_1_18_dist(Path(directory)),
+                loaded,
+            )
         self.assertEqual("1.18.0", package["version"])
         self.assertEqual(
             "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
@@ -2134,11 +2149,12 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
         self.assertTrue(receipt["diagnostic_only"])
         self.assertFalse(receipt["recovery_authority"])
         self.assertFalse(receipt["proof_consumed"])
-        package = RECOVER.validate_interrupted_forward_dist(
-            DEPLOY,
-            ROOT / "plugin-dist",
-            loaded,
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            package = RECOVER.validate_interrupted_forward_dist(
+                DEPLOY,
+                copy_historical_1_18_dist(Path(directory)),
+                loaded,
+            )
         self.assertEqual("1.18.0", package["version"])
         self.assertEqual(
             "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",

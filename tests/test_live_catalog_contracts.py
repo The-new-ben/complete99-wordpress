@@ -432,11 +432,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_18_0(self) -> None:
+    def test_release_version_is_exact_1_18_1(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.18\.0$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.18.0' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.18.0' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.18\.1$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.18.1' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.18.1' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -756,18 +756,17 @@ echo wp_json_encode(array(
         )[1].split("private static function render_related_store_products", 1)[0]
         self.assertIn('id="<?php echo esc_attr( $ingredient ); ?>"', ingredient_index)
         self.assertIn("sanitize_html_class", ingredient_index)
-        self.assertIn("self::route( 'store', $lang ) . '#c99-product-code-'", ingredient_index)
+        self.assertIn("Complete99_Commerce::storefront_product_url(", ingredient_index)
         self.assertIn("self::route( 'ingredients', $lang ) . '#'", product_card)
-        self.assertIn(
-            'id="c99-product-code-<?php echo esc_attr( sanitize_html_class( $product_code ) ); ?>"',
-            product_card,
-        )
+        self.assertIn("$product_fragment= 'c99-product-code-' . sanitize_html_class( $product_code )", product_card)
+        self.assertIn('id="<?php echo esc_attr( $product_fragment ); ?>"', product_card)
         self.assertIn('data-c99-product-id="<?php echo esc_attr( $product_id ); ?>"', product_card)
         self.assertIn('tabindex="-1"', product_card)
         self.assertIn(".c99-store-product-card:target", self.css)
         self.assertNotIn("c99-store-product-stable-anchor", product_card)
         self.assertNotIn("'#c99-product-' . absint( $product_id )", self.consumer)
         self.assertNotIn("'#c99-product-' . absint( $product_id )", self.frontend)
+        self.assertNotIn("self::route( 'store', $lang ) . '#c99-product-code-'", self.consumer)
         self.assertIn("render_live_ingredient_index( $lang )", self.consumer)
 
         relation_validation = self.live_catalog.split(
@@ -1242,7 +1241,7 @@ echo wp_json_encode(array(
 
     def test_store_filters_badges_and_controls_are_accessible_and_safe(self) -> None:
         filters = self.consumer.split("private static function render_store_filters", 1)[1].split(
-            "private static function render_store_product_card", 1
+            "private static function render_store_pagination", 1
         )[0]
         product_card = self.consumer.split("private static function render_store_product_card", 1)[
             1
@@ -1257,14 +1256,16 @@ echo wp_json_encode(array(
         self.assertEqual(SAFE_STORE_FILTERS, filter_codes)
         self.assertEqual(SAFE_STORE_FILTERS - {"all"}, mapped_facets)
         for marker in (
-            'role="group"',
-            'aria-live="polite"',
-            'aria-atomic="true"',
-            'aria-pressed="<?php echo',
-            "data-c99-product-filter-button",
+            '<nav class="c99-product-filter"',
+            "array_keys( Complete99_Commerce::storefront_filter_options() )",
+            "Complete99_Commerce::storefront_url(",
+            "data-c99-product-filter-link",
+            'aria-current="page"',
         ):
             self.assertIn(marker, filters)
-        self.assertIn('data-c99-product-facets="<?php echo esc_attr( $facet ); ?>"', product_card)
+        self.assertNotIn("<button", filters)
+        self.assertNotIn("data-c99-product-filter-button", filters)
+        self.assertNotIn("aria-pressed", filters)
         badge_block = product_card.split('<div class="c99-store-product-badges">', 1)[1].split(
             "</div>", 1
         )[0]
@@ -1273,22 +1274,18 @@ echo wp_json_encode(array(
         for unsupported_badge in ("vegan", "vegetarian", "gluten-free", "kosher", "healthy", "medical"):
             self.assertNotIn(unsupported_badge, badge_block.lower())
 
-        store_script = self.script.split("[data-c99-product-filter]", 1)[1].split(
-            "[data-c99-dish-filter]", 1
-        )[0]
-        self.assertIn("button.setAttribute('aria-pressed', selected ? 'true' : 'false')", store_script)
-        self.assertIn("card.hidden = !visibleCard", store_script)
-        self.assertIn("count.textContent", store_script)
-        filter_button_css = re.search(r"\.c99-product-filter-buttons button\s*\{([^}]*)\}", self.css)
-        self.assertIsNotNone(filter_button_css)
-        self.assertRegex(filter_button_css.group(1), r"min-height:\s*44px")
+        self.assertNotIn("data-c99-product-filter-button", self.script)
+        self.assertNotIn(".c99-store-product-card[hidden]", self.css)
+        filter_link_css = re.search(r"\.c99-product-filter-buttons a\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(filter_link_css)
+        self.assertRegex(filter_link_css.group(1), r"min-height:\s*44px")
         cart_feedback_css = re.search(r"\.c99-store-cart-feedback a\s*\{([^}]*)\}", self.css)
         self.assertIsNotNone(cart_feedback_css)
         self.assertRegex(cart_feedback_css.group(1), r"min-width:\s*44px")
         self.assertRegex(cart_feedback_css.group(1), r"min-height:\s*44px")
-        hidden_card_css = re.search(r"\.c99-store-product-card\[hidden\]\s*\{([^}]*)\}", self.css)
-        self.assertIsNotNone(hidden_card_css)
-        self.assertRegex(hidden_card_css.group(1), r"display:\s*none\s*!important")
+        details = re.search(r"\.c99-store-product-details(?:\s*>\s*|\s+)summary\s*\{([^}]*)\}", self.css)
+        self.assertIsNotNone(details)
+        self.assertRegex(details.group(1), r"min-height:\s*44px")
 
     def test_public_images_render_normally_with_zero_archive_caption_copy(self) -> None:
         public_renderers = "\n".join((self.consumer, self.frontend))

@@ -195,6 +195,12 @@ class WP_Error {{
 function is_wp_error($value) {{ return $value instanceof WP_Error; }}
 function wp_json_encode($value, $flags = 0) {{ return json_encode($value, $flags); }}
 function home_url($path = '') {{ return 'https://complete99.test' . $path; }}
+class Complete99_Commerce {{
+    public static function storefront_product_url($product_code, $lang, $filter = 'all') {{
+        $prefix = 'en' === $lang ? '/en/store/' : '/store/';
+        return $prefix . '?product-page=2#c99-product-code-' . $product_code;
+    }}
+}}
 require '{_php_path(SCIENCE_CLASS)}';
 $registry = require '{_php_path(SCIENCE_DATA)}';
 $paths = array(
@@ -528,7 +534,7 @@ def test_public_projections_expose_only_approved_safe_offer_references(
         assert offer["product_code"] == expected_code
         store_prefix = "/en/store/" if language == "en" else "/store/"
         assert offer["store_path"] == (
-            f"{store_prefix}#c99-product-code-{expected_code}"
+            f"{store_prefix}?product-page=2#c99-product-code-{expected_code}"
         )
         assert offer["label"].strip()
 

@@ -381,6 +381,9 @@ class Complete99_Commerce {{
         global $c99_offer_mode;
         return 'catalog_not_ready' !== $c99_offer_mode;
     }}
+    public static function storefront_product_url($product_code, $lang, $filter = 'all') {{
+        return 'https://complete99.example/en/store/?product-page=3#c99-product-code-' . $product_code;
+    }}
 }}
 class C99_Test_Product {{
     public function get_price_html() {{ return '<span>₪89.00</span>'; }}
@@ -501,7 +504,7 @@ echo json_encode(array(
         self.assertIn("₪89.00", result["valid"])
         self.assertIn("In stock", result["valid"])
         self.assertIn(
-            "https://complete99.example/en/store/"
+            "https://complete99.example/en/store/?product-page=3"
             "#c99-product-code-product-rishiri-kombu-100g",
             result["valid"],
         )

@@ -266,6 +266,9 @@ class Complete99_Content {
     public static function is_complete99_post($post_id) {
         return true;
     }
+    public static function translation_group_for_post($post_id) {
+        return 'about';
+    }
 }
 
 class Complete99_Commerce {
