@@ -87,6 +87,39 @@ authorized adoption contract. Public health, homepage and robots acceptance,
 both bridge cleanup proofs, independent audit validation and immediate
 observation-only workflow exit remain mandatory for a successful v3 capture.
 
+### Reviewed diagnostic observation 31229946737
+
+The observation-only run `31229946737` completed successfully from source
+commit `86c2b36db508ce3498efd8829f161147ffb923e1`. Its exact audit is preserved
+unchanged at
+`docs/recovery-proofs/observations/c99-prod-31217684760-1-run-31229946737.json`.
+The audit SHA-256 is
+`e253c43e8822a8ddc6340206fae216690ed644a0fd524ca45dd56960293fb2a8` and
+the safe-status SHA-256 is
+`55d9b71b3f71058e35d0929cbbd3cd68973088e87a75383dd6e90c6838edc33b`.
+
+The receipt identifies exactly three mismatches:
+
+1. `interrupted_forward_candidate` is false because the robots checkpoint is
+   incomplete.
+2. `robots_applied` is false in the interrupted deployment state.
+3. `robots_managed_sha256` is empty in that state.
+
+The public robots file is not different. Its current SHA-256, its reviewed
+prior SHA-256 and the independently generated managed-content SHA-256 are all
+`b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e`.
+The database fingerprint and manifest remain exactly the reviewed values,
+transactional storage is `INNODB` across three tables, and every plugin,
+runtime, migration, journal, lock, sync, prior-release and rollback-artifact
+predicate is exact. Both temporary bridge rows were deleted and both routes
+returned 404. The receipt records `diagnostic_only: true`,
+`recovery_authority: false` and `proof_consumed: false`.
+
+This evidence does not authorize recovery. A later contract must bind these
+exact audit bytes and exactly these three mismatches, reverify the current
+robots bytes and every unchanged invariant, and only then repair the missing
+robots checkpoint during proof-gated forward adoption.
+
 The mismatch path is rejected unless both database identities changed,
 `interrupted_forward_candidate` is false for that reason alone, and the
 plugin, runtime, migration invariants, baseline journal, prior plugin and
