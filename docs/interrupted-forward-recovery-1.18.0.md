@@ -235,3 +235,53 @@ Recovery is complete only when all of the following are true:
    disabled payment state.
 8. Hebrew and English Chrome acceptance passes on the affected museum,
    knowledge and store routes.
+
+## Completed recovery, 2026-08-08
+
+The reviewed recovery-only workflow completed successfully:
+<https://github.com/The-new-ben/complete99-wordpress/actions/runs/31231930426>.
+It ran from exact main commit
+`4ae02e5039337b5fdb70ef9c8483f55ccd0f94f6`, after PR 62 and the
+same-commit CI run had both passed.
+
+The recovery audit records `result: recovered` and
+`decision: adopt_interrupted_forward`. The adoption started from phase
+`installing`, consumed proof SHA-256
+`bb55df5c5c3ff11780ce21fdfbbc75678547b5a9bc16ca48a86a933e19fdf32d`,
+and retained the exact reviewed plugin, database manifest, database
+fingerprint and robots identities. Finalization reports
+`finalized: true`, `lock_released: true` and `state_removed: true`.
+The temporary recovery bridge row is absent and its route returns 404.
+
+The same run skipped fresh production deployment, passed a new dry-run, reused
+verified WooCommerce 10.9.4, and materialized the exact 36-product catalog.
+The catalog status is strict and ready. Bank transfer, cheque and cash on
+delivery all remained disabled and unchanged.
+
+The repository retains byte-identical copies of all three non-secret audits:
+
+- recovery:
+  `docs/recovery-proofs/observations/c99-prod-31217684760-1-run-31231930426-recovery.json`,
+  SHA-256
+  `8f7985d5ae7814391a93842751b138fcfaa9d545b47423d1d683913ade247840`;
+- commerce:
+  `docs/recovery-proofs/observations/c99-commerce-31231930426-1.json`,
+  SHA-256
+  `5324309ad96e71a574dbce2557359bfb13ecf2ae2d32c58b5dc6900f56367bc4`;
+- dry-run:
+  `docs/recovery-proofs/observations/c99-dry-31231930426-1.json`,
+  SHA-256
+  `2b0f44c611923af617541822af12b5846fd7f50e93d01f08361c0e1d8e70b39a`.
+
+Post-recovery headed-browser acceptance covered Hebrew and English at
+1440 by 1000 and 390 by 844 CSS pixels. It verified the home, museum, store,
+dishes, sabich, kombu, shoyu, ichiban dashi and umami surfaces. The live store
+contained 36 products and 36 ingredient continuations, the Japanese filter
+showed nine products, the dish library showed 12 dishes, and no checked view
+had a broken image, console error, horizontal overflow or interactive target
+below 44 by 44 pixels.
+
+Payment and checkout remain intentionally unavailable until a reviewed payment
+provider configuration is supplied. This successful recovery does not change
+the noindex boundary on culinary-science pages or claim that the broader
+private operating system is complete.

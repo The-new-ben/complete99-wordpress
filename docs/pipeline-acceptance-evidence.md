@@ -1,5 +1,102 @@
 # Pipeline acceptance evidence
 
+## Version 1.18.0 interrupted-forward recovery and commerce acceptance
+
+Date: 2026-08-08
+
+Release: `complete99-platform` 1.18.0
+
+- Production plugin source commit:
+  `cd87bc3fc266e8262f23443ca9c9f4c438c5c47e`
+- Recovery authority commit:
+  `4ae02e5039337b5fdb70ef9c8483f55ccd0f94f6`
+- Recovery authority PR:
+  <https://github.com/The-new-ben/complete99-wordpress/pull/62>
+- Same-commit protected-main CI:
+  <https://github.com/The-new-ben/complete99-wordpress/actions/runs/31231834039>
+- Recovery-only production run:
+  <https://github.com/The-new-ben/complete99-wordpress/actions/runs/31231930426>
+- Release artifact: `complete99-platform-1.18.0.zip`
+- Artifact SHA-256:
+  `6471075a4391c34a573e6c04ccac3b707c005119bd4c618c669a7eb9888d31b0`
+- Packaged-source SHA-256:
+  `3bcc9c6834a0079d74f6d9e7d7b044af4db68937618611dc8480df8765ab7b0b`
+- Installed-plugin SHA-256:
+  `8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc`
+- Artifact size: 31,335,794 bytes
+- Independent archive validation: 353 entries
+
+### Recovery result
+
+The recovery-only workflow authenticated the exact reviewed observation-v3
+receipt under the outer proof-v2 envelope before any live mutation. The
+recovery audit records `result: recovered`,
+`decision: adopt_interrupted_forward`, and
+`adopted_forward_no_rollback: true`. It stabilized the exact active 1.18.0
+release from phase `installing`, repaired only the reviewed robots checkpoint
+fields, and retained the exact reviewed database fingerprint, database
+manifest, transactional storage, plugin tree, runtime and public robots
+identity.
+
+Finalization reports `finalized: true`, `lock_released: true` and
+`state_removed: true`. The temporary bridge was deleted, its row was absent,
+and its route returned 404. A fresh production deployment and the original
+rollback were both skipped.
+
+The non-secret recovery audit is retained at
+`docs/recovery-proofs/observations/c99-prod-31217684760-1-run-31231930426-recovery.json`
+with SHA-256
+`8f7985d5ae7814391a93842751b138fcfaa9d545b47423d1d683913ade247840`.
+
+### Dry-run and WooCommerce result
+
+The same exact-main run passed a new dry-run and then reused independently
+verified WooCommerce 10.9.4. It materialized and read back exactly 36 products
+with exact product-code bindings, prices, initial stock and asset digests. The
+catalog reports `strict: true` and `ready: true`. No orphaned commerce
+bridges remained.
+
+Bank transfer, cheque and cash on delivery were all disabled before and after
+materialization. No payment gateway was enabled. The byte-identical audits are:
+
+- `docs/recovery-proofs/observations/c99-dry-31231930426-1.json`, SHA-256
+  `2b0f44c611923af617541822af12b5846fd7f50e93d01f08361c0e1d8e70b39a`;
+- `docs/recovery-proofs/observations/c99-commerce-31231930426-1.json`,
+  SHA-256
+  `5324309ad96e71a574dbce2557359bfb13ecf2ae2d32c58b5dc6900f56367bc4`.
+
+### Live bilingual acceptance
+
+Post-recovery headed-browser acceptance covered Hebrew and English at
+1440 by 1000 and 390 by 844 CSS pixels. It verified:
+
+- the home, museum, store, dish library and sabich surfaces;
+- kioke shoyu, kombu, ichiban dashi and umami continuation paths;
+- exactly 36 store products, 36 product images, 36 add-to-cart continuations
+  and 36 ingredient continuations;
+- nine visible products after applying the Japanese-pantry filter;
+- 12 visible dishes and three visible pot dishes after applying that filter;
+- an actual session cart containing one product, price, quantity, tax and
+  local pickup;
+- mobile-menu focus return, scroll locking, Escape behavior and keyboard skip
+  links;
+- correct language, direction, canonical and reciprocal hreflang;
+- no broken image, console warning or error, horizontal overflow, or checked
+  interactive target below 44 by 44 pixels.
+
+### Current boundary
+
+The public pantry and cart are live. Checkout redirects to the store and the
+public Store API remains held because no reviewed payment provider is active.
+The health endpoint therefore continues to report
+`culinary_commerce_ready: false` even though the audited 36-product catalog
+is materialized and its custom public storefront is working.
+
+Culinary-science pages remain intentionally `noindex, follow` until their
+separate editorial, kitchen-test and indexability gates are complete. This
+acceptance also does not claim that the broader private operations system,
+worker workflows or payment processing are complete.
+
 ## Version 1.2.1 production acceptance
 
 Date: 2026-07-29

@@ -1,0 +1,242 @@
+{
+  "adopted_forward_no_rollback": true,
+  "bootstrap_cleanup": {
+    "exact_name": "c99-deploy-bootstrap",
+    "known_id": 5,
+    "known_id_matched": false,
+    "removed_ids": [],
+    "row_absence_verified": true
+  },
+  "bridge_site_identity": {
+    "home_host": "complete99.co.il",
+    "rest_host": "complete99.co.il",
+    "siteurl_host": "complete99.co.il"
+  },
+  "cleanup": {
+    "removed_ids": [
+      188
+    ],
+    "route_404": true,
+    "row_absence_verified": true,
+    "snippet_active": false,
+    "snippet_deleted": true
+  },
+  "decision": "adopt_interrupted_forward",
+  "deployment_id": "c99-prod-31217684760-1",
+  "discovery": {
+    "bootstrap_cleanup": {
+      "exact_name": "c99-deploy-bootstrap",
+      "known_id": 5,
+      "known_id_matched": false,
+      "removed_ids": [],
+      "row_absence_verified": true
+    },
+    "cleanup": {
+      "removed_ids": [
+        187
+      ],
+      "route_404": true,
+      "row_absence_verified": true,
+      "snippet_active": false,
+      "snippet_deleted": true
+    },
+    "owner_deployment_id": "c99-prod-31217684760-1",
+    "owner_phase": "installing",
+    "probe_id": "c99-recovery-probe-31231930426-1",
+    "result": "owner-discovered"
+  },
+  "finalize": {
+    "cache_purge": {
+      "ezcache_detected": false,
+      "object_cache_flushed": true
+    },
+    "finalized": true,
+    "lock_released": true,
+    "response_recovered": false,
+    "state_removed": true
+  },
+  "finished_at": "2026-08-08T01:09:51Z",
+  "health": {
+    "component": "complete99-platform",
+    "database_version": "1.18.0",
+    "deployment_id": "c99-prod-31217684760-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.18.0"
+  },
+  "identity": {
+    "id": 1,
+    "roles": [
+      "administrator"
+    ],
+    "site_identity": {
+      "home": "https://complete99.co.il",
+      "url": "https://complete99.co.il"
+    }
+  },
+  "interrupted_forward_adoption": {
+    "receipt": {
+      "adopted_forward_no_rollback": true,
+      "cache_purge": {
+        "deferred_to_finalize": true
+      },
+      "database_manifest": {
+        "evaluation_ids_count": 72,
+        "evaluation_ids_sha256": "9e68465010fd0a9c345ad8937e093bdbc72b41ac5b624dd9f32924aa2d7d787b",
+        "options_without_deployment_marker_count": 9,
+        "options_without_deployment_marker_sha256": "adfb706577e597104466a3cf3b82716683bf55337b79c0a6c5af9d66e1a01af0",
+        "postmeta_count": 3012,
+        "postmeta_sha256": "8e01562dc7875bb0ab2d00a657f7a60f6f66eda38f9d1398ba36b11bc2fa273f",
+        "posts_count": 371,
+        "posts_sha256": "e96c32490b7ec8047d9fe7108da2b33668eb115217408c7b5c85ddff3f25da00",
+        "schema": "complete99-database-snapshot-manifest/v1",
+        "seed_ids_count": 78,
+        "seed_ids_sha256": "00455cb67da773d904bd01979070c5fcc07fd82acdc5adaf07df60d9e8e99eba",
+        "sync_secret_configured": true,
+        "sync_secret_existed": true
+      },
+      "database_manifest_sha256": "3dd22e12eb14581b6820f27265f88623c12ecf4595c12c45d42a02f494674374",
+      "database_storage": {
+        "engine": "INNODB",
+        "tables": 3
+      },
+      "database_version": "1.18.0",
+      "deployment_id": "c99-prod-31217684760-1",
+      "idempotent": false,
+      "installed_plugin_sha256": "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
+      "interrupted_forward_proof_sha256": "bb55df5c5c3ff11780ce21fdfbbc75678547b5a9bc16ca48a86a933e19fdf32d",
+      "post_install_database_fingerprint": "4976f887006e5432140fcfa9a0fb6c1dcfadc1ec8f94f7a7f181d316e33e04ff",
+      "stabilized": true,
+      "stabilized_from_phase": "installing",
+      "version": "1.18.0"
+    },
+    "status": {
+      "adopted_forward_no_rollback": true,
+      "database_fingerprint": "4976f887006e5432140fcfa9a0fb6c1dcfadc1ec8f94f7a7f181d316e33e04ff",
+      "database_manifest_sha256": "3dd22e12eb14581b6820f27265f88623c12ecf4595c12c45d42a02f494674374",
+      "deployment_id": "c99-prod-31217684760-1",
+      "installed_plugin_sha256": "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
+      "interrupted_forward_proof_sha256": "bb55df5c5c3ff11780ce21fdfbbc75678547b5a9bc16ca48a86a933e19fdf32d",
+      "phase": "installed",
+      "state_exists": true,
+      "version": "1.18.0"
+    }
+  },
+  "interrupted_forward_proof": {
+    "path": "docs/recovery-proofs/c99-prod-31217684760-1-v2.json",
+    "proof_sha256": "bb55df5c5c3ff11780ce21fdfbbc75678547b5a9bc16ca48a86a933e19fdf32d",
+    "schema": "complete99-interrupted-forward-proof/v2"
+  },
+  "local_test": false,
+  "pre_adoption_health": {
+    "component": "complete99-platform",
+    "database_version": "1.18.0",
+    "deployment_id": "c99-prod-31217684760-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.18.0"
+  },
+  "pre_adoption_observation": {
+    "diagnostic_only": true,
+    "mismatches": [
+      "interrupted_forward_candidate",
+      "robots_applied",
+      "robots_managed_sha256"
+    ],
+    "proof_consumed": false,
+    "recovery_authority": false,
+    "safe_status": {
+      "adopted_forward_no_rollback": false,
+      "baseline_database_fingerprint": "a20aaab75137c773bf9176fa88826553c6c67ca490a597e5704ac1541425f9a6",
+      "baseline_database_journal_valid": true,
+      "baseline_sync_configured": true,
+      "baseline_sync_secret_existed": true,
+      "current_active": true,
+      "current_database_version": "1.18.0",
+      "current_deployment": "c99-prod-31217684760-1",
+      "current_plugin_main_exists": true,
+      "current_plugin_sha256": "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
+      "current_robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "current_sync_configured": true,
+      "current_target_dir_exists": true,
+      "current_version": "1.18.0",
+      "database_fingerprint": "4976f887006e5432140fcfa9a0fb6c1dcfadc1ec8f94f7a7f181d316e33e04ff",
+      "database_fingerprint_available": true,
+      "database_manifest": {
+        "evaluation_ids_count": 72,
+        "evaluation_ids_sha256": "9e68465010fd0a9c345ad8937e093bdbc72b41ac5b624dd9f32924aa2d7d787b",
+        "options_without_deployment_marker_count": 9,
+        "options_without_deployment_marker_sha256": "adfb706577e597104466a3cf3b82716683bf55337b79c0a6c5af9d66e1a01af0",
+        "postmeta_count": 3012,
+        "postmeta_sha256": "8e01562dc7875bb0ab2d00a657f7a60f6f66eda38f9d1398ba36b11bc2fa273f",
+        "posts_count": 371,
+        "posts_sha256": "e96c32490b7ec8047d9fe7108da2b33668eb115217408c7b5c85ddff3f25da00",
+        "schema": "complete99-database-snapshot-manifest/v1",
+        "seed_ids_count": 78,
+        "seed_ids_sha256": "00455cb67da773d904bd01979070c5fcc07fd82acdc5adaf07df60d9e8e99eba",
+        "sync_secret_configured": true,
+        "sync_secret_existed": true
+      },
+      "database_manifest_sha256": "3dd22e12eb14581b6820f27265f88623c12ecf4595c12c45d42a02f494674374",
+      "database_restored": false,
+      "database_storage": {
+        "engine": "INNODB",
+        "tables": 3
+      },
+      "deployment_id": "c99-prod-31217684760-1",
+      "expected_sha256": "6471075a4391c34a573e6c04ccac3b707c005119bd4c618c669a7eb9888d31b0",
+      "expected_version": "1.18.0",
+      "had_plugin": true,
+      "installed_plugin_sha256": "",
+      "interrupted_forward_candidate": false,
+      "interrupted_forward_database_manifest_sha256": "",
+      "interrupted_forward_proof_sha256": "",
+      "lock_owned": true,
+      "migration_failed": false,
+      "migration_invariants_valid": true,
+      "no_rollback_artifacts": true,
+      "phase": "installing",
+      "post_install_database_fingerprint": "",
+      "prior_active": true,
+      "prior_deployment": "c99-prod-31195579412-1",
+      "prior_plugin_main_exists": true,
+      "prior_plugin_sha256": "0838d8a1ce28cb0d5dbda2c42771d6a496bdff4b802e4935ff4421519ae4ed40",
+      "prior_target_dir_exists": true,
+      "prior_version": "1.17.0",
+      "process_lock_available": true,
+      "recovery_ready": true,
+      "robots_applied": false,
+      "robots_managed_sha256": "",
+      "robots_prior_exists": true,
+      "robots_prior_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "robots_restored": false,
+      "runtime_loaded": true,
+      "runtime_version": "1.18.0",
+      "state_exists": true
+    },
+    "safe_status_sha256": "55d9b71b3f71058e35d0929cbbd3cd68973088e87a75383dd6e90c6838edc33b",
+    "schema": "complete99-interrupted-forward-observation/v3"
+  },
+  "pre_adoption_rendered_home": {
+    "body_sha256": "bd07d8b5753ceb806e80ac6792d01e4b68129bf822401b8cbc4c9031bf4af59d",
+    "deployment_id": "c99-prod-31217684760-1",
+    "exact_path": "/",
+    "version": "1.18.0"
+  },
+  "pre_adoption_robots": {
+    "sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "status": 200
+  },
+  "rendered_home": {
+    "body_sha256": "bd07d8b5753ceb806e80ac6792d01e4b68129bf822401b8cbc4c9031bf4af59d",
+    "deployment_id": "c99-prod-31217684760-1",
+    "exact_path": "/",
+    "version": "1.18.0"
+  },
+  "result": "recovered",
+  "robots": {
+    "sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "status": 200
+  },
+  "started_at": "2026-08-08T01:09:20Z"
+}

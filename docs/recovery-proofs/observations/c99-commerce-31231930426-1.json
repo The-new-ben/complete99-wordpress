@@ -1,0 +1,267 @@
+{
+  "all_run_recovery": {
+    "orphan_count": 0,
+    "prefix": "tmp-complete99-deploy-c99-commerce-",
+    "removed": []
+  },
+  "catalog": {
+    "apply": {
+      "asset_digest": "0ad7d2f16c2b67f15245c3c2eb2490a81a8098e0643d5e4e3459d79c10b89040",
+      "bindings_digest": "c94acdf60a7c7b74660b050e99297b83e8f7777d709270c0d5a345dc789fbd1a",
+      "configuration_digest": "b310c4ce42c78df14946bd73d593b0dee1ac116ed41565e5a6645aae98d3884e",
+      "deployment_id": "c99-commerce-31231930426-1",
+      "initial_stock_digest": "dc49905309b644740e5f213888c21dcf705b87e474a3106a898340008ec77854",
+      "mode": "apply",
+      "mutation_id": "903ae2c8-a82d-49ee-9dd1-93017fa2d355",
+      "page_cache_purge": {
+        "attempts": 1,
+        "litespeed": {
+          "listener_detected": false,
+          "signal_sent": true
+        },
+        "upress": {
+          "detected": false,
+          "request_completed": false
+        }
+      },
+      "price_digest": "d609fb7cc4043db2956912e7d1e2617857f9afaabbdedc7a2ff63e5f10611cfa",
+      "product_count": 36,
+      "product_ids": {
+        "product-amba-500g": 764,
+        "product-aubergine-1kg": 770,
+        "product-beef-shank-1kg": 804,
+        "product-beetroot-1kg": 786,
+        "product-breadcrumbs-500g": 794,
+        "product-bulgur-fine-500g": 788,
+        "product-chicken-breast-1kg": 792,
+        "product-chicken-liver-1kg": 812,
+        "product-chickpeas-dry-500g": 784,
+        "product-couscous-1kg": 790,
+        "product-cucumber-1kg": 778,
+        "product-eggs-l-12": 772,
+        "product-fresh-japanese-wasabi-250g": 882,
+        "product-fresh-wasabi-50-60g": 920,
+        "product-ground-beef-1kg": 796,
+        "product-hagane-zame-large": 884,
+        "product-hawayej-soup-100g": 806,
+        "product-hishiroku-chouhaku-kin-20g": 918,
+        "product-hishiroku-dried-rice-koji-500g": 916,
+        "product-honkarebushi-200g": 832,
+        "product-hot-sauce-60ml": 766,
+        "product-kito-yuzu-juice-100ml": 860,
+        "product-koshihikari-uozu-2kg": 914,
+        "product-olive-oil-750ml": 808,
+        "product-onion-dry-1kg": 780,
+        "product-parsley-100g": 782,
+        "product-pickles-brine-320g": 810,
+        "product-pita-12x50g": 768,
+        "product-potato-white-1kg": 774,
+        "product-rice-persian-1kg": 802,
+        "product-rishiri-kombu-100g": 830,
+        "product-tahini-500g": 762,
+        "product-tilapia-fillet-1kg": 798,
+        "product-tomato-1kg": 776,
+        "product-tomato-sauce-400g": 800,
+        "product-yamaroku-tsurubishio-500ml": 858
+      },
+      "ready": true,
+      "registry_digest": "d382939a7dc9ca2b451bf67edb74ee641f82194506a6ece9842e364cab1b8cde",
+      "relation_digest": "7867bbef59ea19995e9c9e485174eac7b377580b0c1337f26239bc3102215981",
+      "schema": "complete99-live-catalog-status/v1",
+      "write_performed": true
+    },
+    "dry_run": {
+      "asset_digest": "0ad7d2f16c2b67f15245c3c2eb2490a81a8098e0643d5e4e3459d79c10b89040",
+      "mode": "dry_run",
+      "price_digest": "d609fb7cc4043db2956912e7d1e2617857f9afaabbdedc7a2ff63e5f10611cfa",
+      "product_count": 36,
+      "registry_digest": "d382939a7dc9ca2b451bf67edb74ee641f82194506a6ece9842e364cab1b8cde",
+      "relation_digest": "7867bbef59ea19995e9c9e485174eac7b377580b0c1337f26239bc3102215981",
+      "schema": "complete99-live-catalog-status/v1",
+      "write_performed": false
+    },
+    "status": {
+      "bindings_digest": "c94acdf60a7c7b74660b050e99297b83e8f7777d709270c0d5a345dc789fbd1a",
+      "deployment_id": "c99-commerce-31231930426-1",
+      "initial_stock_digest": "dc49905309b644740e5f213888c21dcf705b87e474a3106a898340008ec77854",
+      "materialized_at": "2026-08-08T01:10:40+00:00",
+      "mutation_id": "903ae2c8-a82d-49ee-9dd1-93017fa2d355",
+      "product_count": 36,
+      "product_ids": {
+        "product-amba-500g": 764,
+        "product-aubergine-1kg": 770,
+        "product-beef-shank-1kg": 804,
+        "product-beetroot-1kg": 786,
+        "product-breadcrumbs-500g": 794,
+        "product-bulgur-fine-500g": 788,
+        "product-chicken-breast-1kg": 792,
+        "product-chicken-liver-1kg": 812,
+        "product-chickpeas-dry-500g": 784,
+        "product-couscous-1kg": 790,
+        "product-cucumber-1kg": 778,
+        "product-eggs-l-12": 772,
+        "product-fresh-japanese-wasabi-250g": 882,
+        "product-fresh-wasabi-50-60g": 920,
+        "product-ground-beef-1kg": 796,
+        "product-hagane-zame-large": 884,
+        "product-hawayej-soup-100g": 806,
+        "product-hishiroku-chouhaku-kin-20g": 918,
+        "product-hishiroku-dried-rice-koji-500g": 916,
+        "product-honkarebushi-200g": 832,
+        "product-hot-sauce-60ml": 766,
+        "product-kito-yuzu-juice-100ml": 860,
+        "product-koshihikari-uozu-2kg": 914,
+        "product-olive-oil-750ml": 808,
+        "product-onion-dry-1kg": 780,
+        "product-parsley-100g": 782,
+        "product-pickles-brine-320g": 810,
+        "product-pita-12x50g": 768,
+        "product-potato-white-1kg": 774,
+        "product-rice-persian-1kg": 802,
+        "product-rishiri-kombu-100g": 830,
+        "product-tahini-500g": 762,
+        "product-tilapia-fillet-1kg": 798,
+        "product-tomato-1kg": 776,
+        "product-tomato-sauce-400g": 800,
+        "product-yamaroku-tsurubishio-500ml": 858
+      },
+      "ready": true,
+      "schema": "complete99-live-catalog-status/v1",
+      "strict": true
+    }
+  },
+  "cleanup": {
+    "response_recovered": false,
+    "route_404": true,
+    "row_absence_verified": true,
+    "snippet_id": 190
+  },
+  "commit": "4ae02e5039337b5fdb70ef9c8483f55ccd0f94f6",
+  "deployment_id": "c99-commerce-31231930426-1",
+  "expected_product_count": 36,
+  "finished_at": "2026-08-08T01:10:44Z",
+  "gateway_post_apply": {
+    "read_only_verification": true,
+    "snapshot": [
+      {
+        "enabled": false,
+        "id": "bacs"
+      },
+      {
+        "enabled": false,
+        "id": "cheque"
+      },
+      {
+        "enabled": false,
+        "id": "cod"
+      }
+    ],
+    "unchanged": true
+  },
+  "official_package": {
+    "bytes": 20545768,
+    "sha256": "6e58fc3ba9b18d1c9aee6b0227d3c3c09e4fe2c1332823bd2e0ac54ffcff64a9",
+    "url": "https://downloads.wordpress.org/plugin/woocommerce.10.9.4.zip",
+    "version": "10.9.4"
+  },
+  "owner_identity": {
+    "id": 1,
+    "manage_options": true,
+    "roles": [
+      "administrator"
+    ],
+    "site_identity": {
+      "home": "https://complete99.co.il",
+      "url": "https://complete99.co.il"
+    },
+    "update_plugins": true
+  },
+  "precreate_recovery": {
+    "authenticated_rows": [],
+    "exact_name": "tmp-complete99-deploy-c99-commerce-31231930426-1",
+    "removed_ids": [],
+    "route_404": true,
+    "row_absence_verified": true
+  },
+  "result": "verified",
+  "schema": "complete99-woocommerce-materialization-audit/v1",
+  "started_at": "2026-08-08T01:10:11Z",
+  "target": "https://complete99.co.il",
+  "temporary_bridge_source_contract": {
+    "contract": "complete99-woocommerce-bridge-source/v1",
+    "current_template_exact": true,
+    "deployment_id": "c99-commerce-31231930426-1",
+    "hmac_verified": true,
+    "snippet_name": "tmp-complete99-deploy-c99-commerce-31231930426-1",
+    "source_sha256": "d0f9d5d7530452b4dc5c4a74f0848965db94fa593b4d6d5e5903c2bd0e94f598",
+    "target_host": "complete99.co.il"
+  },
+  "temporary_snippet_id": 190,
+  "woocommerce": {
+    "bridge": {
+      "active": true,
+      "header_version": "10.9.4",
+      "install_recovery_marker": {
+        "exists": false,
+        "valid": false
+      },
+      "plugin": "woocommerce/woocommerce.php",
+      "product_post_type": true,
+      "rest_namespace": true,
+      "runtime_loaded": true,
+      "runtime_version": "10.9.4",
+      "tree_bytes": 58583620,
+      "tree_file_count": 6194,
+      "tree_sha256": "420913d80fc318742815b98b7c41cc58a67e686cb72b389e00013c08fd0cca02"
+    },
+    "gateway_configuration": {
+      "configured_count": 0,
+      "inspected_ids": [
+        "bacs",
+        "cheque",
+        "cod"
+      ],
+      "read_only_verification": true,
+      "snapshot": [
+        {
+          "enabled": false,
+          "id": "bacs"
+        },
+        {
+          "enabled": false,
+          "id": "cheque"
+        },
+        {
+          "enabled": false,
+          "id": "cod"
+        }
+      ]
+    },
+    "install_recovery": {
+      "cleanup": {
+        "attempted": false,
+        "verified": false
+      },
+      "marker_cleared": true,
+      "prior_marker": {
+        "exists": false,
+        "valid": false
+      },
+      "target": {
+        "configured": "/home/compfwvw/domains/complete99.co.il/public_html/wp-content/plugins/woocommerce",
+        "resolved": "/home/compfwvw/domains/complete99.co.il/public_html/wp-content/plugins/woocommerce"
+      }
+    },
+    "installation_action": "reuse_verified",
+    "package_sha256": "6e58fc3ba9b18d1c9aee6b0227d3c3c09e4fe2c1332823bd2e0ac54ffcff64a9",
+    "plugin": "woocommerce/woocommerce.php",
+    "rest_available": true,
+    "rest_runtime_version": "10.9.4",
+    "status": "active",
+    "version": "10.9.4"
+  },
+  "woocommerce_package_sha256": "6e58fc3ba9b18d1c9aee6b0227d3c3c09e4fe2c1332823bd2e0ac54ffcff64a9",
+  "woocommerce_package_url": "https://downloads.wordpress.org/plugin/woocommerce.10.9.4.zip",
+  "woocommerce_plugin": "woocommerce/woocommerce.php",
+  "woocommerce_version": "10.9.4"
+}
