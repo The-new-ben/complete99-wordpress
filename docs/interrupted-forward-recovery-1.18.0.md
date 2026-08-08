@@ -115,10 +115,14 @@ predicate is exact. Both temporary bridge rows were deleted and both routes
 returned 404. The receipt records `diagnostic_only: true`,
 `recovery_authority: false` and `proof_consumed: false`.
 
-This evidence does not authorize recovery. A later contract must bind these
-exact audit bytes and exactly these three mismatches, reverify the current
-robots bytes and every unchanged invariant, and only then repair the missing
-robots checkpoint during proof-gated forward adoption.
+This observation receipt does not authorize recovery by itself. The separately
+reviewed proof
+`docs/recovery-proofs/c99-prod-31217684760-1-v2.json` now binds these exact
+audit bytes and exactly these three mismatches. Its outer schema remains
+`complete99-interrupted-forward-proof/v2`; its narrowly scoped authorization is
+`complete99-interrupted-forward-adoption/v3`. The canonical proof SHA-256 is
+`bb55df5c5c3ff11780ce21fdfbbc75678547b5a9bc16ca48a86a933e19fdf32d`.
+No other observation-v3 receipt is recovery authority.
 
 The mismatch path is rejected unless both database identities changed,
 `interrupted_forward_candidate` is false for that reason alone, and the
@@ -140,6 +144,14 @@ v2 that binds the exact observation-v2 path, bytes, commit, run ID, current
 fingerprint, full manifest and storage identity. The historical v1 proof or
 observation-v2 receipt alone can never authorize adoption.
 
+Adoption schema v3 is reserved for this one reviewed robots-checkpoint
+exception. Before any mutation, the recovery client independently rebuilds the
+complete bounded 50-field observation-v3 receipt from live status and requires
+exact JSON equality with the receipt bound by the proof. It then repeats public
+health, homepage and robots checks. Any changed field, missing or additional
+mismatch, changed database/plugin/public-robots identity, or different audit
+bytes rejects recovery before adoption.
+
 ### Step 2: proof-gated forward adoption
 
 After the reviewed v2 proof is merged to `main`, run the workflow with:
@@ -158,6 +170,14 @@ installed tree, version, active state, deployment marker, database version,
 database fingerprint, database manifest, transactional tables, configured
 sync state, migration invariants, robots file, prior rollback journals and the
 absence of rollback or swap artifacts.
+
+No PHP bridge change is required for adoption schema v3: the existing
+stabilization route already verifies the current robots baseline both before
+and after claiming the interrupted lease, then records the missing robots
+checkpoint atomically. No workflow YAML logic change is required either: the
+outer proof remains v2, so the existing `recovery_only` path passes the proof
+to both the recovery client and independent validator, suppresses fresh
+production deployment, and preserves the pre-commerce boundary.
 
 The bridge records `adopted_forward_no_rollback: true` before finalization.
 After that checkpoint, rollback is categorically refused. Recovery can only
@@ -201,8 +221,10 @@ Recovery is complete only when all of the following are true:
 1. The recovery audit result is either `recovered` with decision
    `adopt_interrupted_forward`, or `already-recovered` with decision
    `attest_interrupted_forward_finalized` and the exact v2 attestation receipt.
-2. The adoption receipt and status both contain the exact v2 proof digest,
-   installed plugin digest and reviewed database manifest digest.
+2. The adoption-v3 pre-adoption observation exactly equals the reviewed
+   observation-v3 receipt, and the adoption receipt and status contain the
+   exact outer v2 proof digest, installed plugin digest and reviewed database
+   manifest digest.
 3. Health and rendered-home checks report version and database version 1.18.0
    with deployment `c99-prod-31217684760-1`.
 4. Finalization reports `finalized`, `lock_released` and `state_removed` as

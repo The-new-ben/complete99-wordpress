@@ -1,0 +1,69 @@
+{
+  "schema": "complete99-interrupted-forward-proof/v2",
+  "proof": {
+    "failed_run": {
+      "artifact_sha256": "6471075a4391c34a573e6c04ccac3b707c005119bd4c618c669a7eb9888d31b0",
+      "baseline_database_fingerprint": "a20aaab75137c773bf9176fa88826553c6c67ca490a597e5704ac1541425f9a6",
+      "commit": "cd87bc3fc266e8262f23443ca9c9f4c438c5c47e",
+      "deploy_audit_path": "docs/recovery-proofs/observations/c99-prod-31217684760-1-deploy.json",
+      "deploy_audit_sha256": "ff458e4eb420ff3d2fd3665f0a1773e6b379917a1bedaf0702703a4689402de1",
+      "deployment_id": "c99-prod-31217684760-1",
+      "installed_plugin_sha256": "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
+      "recovery_audit_path": "docs/recovery-proofs/observations/c99-prod-31217684760-1-recovery.json",
+      "recovery_audit_sha256": "db8ab9664dfcbf350e8930c480f692a98ad4f6d7cd2e96e52dc0abd06d9c9239",
+      "run_id": 31217684760,
+      "source_sha256": "3bcc9c6834a0079d74f6d9e7d7b044af4db68937618611dc8480df8765ab7b0b",
+      "version": "1.18.0"
+    },
+    "forward_adoption": {
+      "observation_audit_path": "docs/recovery-proofs/observations/c99-prod-31217684760-1-run-31229946737.json",
+      "observation_audit_sha256": "e253c43e8822a8ddc6340206fae216690ed644a0fd524ca45dd56960293fb2a8",
+      "observation_commit": "86c2b36db508ce3498efd8829f161147ffb923e1",
+      "observation_proof_sha256": "c86ebc2ce56ce6d66c9046fa3b7285754c3c38c68bb05b8f1a91748cc038e311",
+      "observation_run_id": 31229946737,
+      "observed_database_fingerprint": "4976f887006e5432140fcfa9a0fb6c1dcfadc1ec8f94f7a7f181d316e33e04ff",
+      "observed_database_manifest": {
+        "evaluation_ids_count": 72,
+        "evaluation_ids_sha256": "9e68465010fd0a9c345ad8937e093bdbc72b41ac5b624dd9f32924aa2d7d787b",
+        "options_without_deployment_marker_count": 9,
+        "options_without_deployment_marker_sha256": "adfb706577e597104466a3cf3b82716683bf55337b79c0a6c5af9d66e1a01af0",
+        "postmeta_count": 3012,
+        "postmeta_sha256": "8e01562dc7875bb0ab2d00a657f7a60f6f66eda38f9d1398ba36b11bc2fa273f",
+        "posts_count": 371,
+        "posts_sha256": "e96c32490b7ec8047d9fe7108da2b33668eb115217408c7b5c85ddff3f25da00",
+        "schema": "complete99-database-snapshot-manifest/v1",
+        "seed_ids_count": 78,
+        "seed_ids_sha256": "00455cb67da773d904bd01979070c5fcc07fd82acdc5adaf07df60d9e8e99eba",
+        "sync_secret_configured": true,
+        "sync_secret_existed": true
+      },
+      "observed_database_manifest_sha256": "3dd22e12eb14581b6820f27265f88623c12ecf4595c12c45d42a02f494674374",
+      "observed_database_storage": {
+        "engine": "INNODB",
+        "tables": 3
+      },
+      "observed_deployment_id": "c99-prod-31217684760-1",
+      "observed_plugin_sha256": "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
+      "observed_robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "observed_version": "1.18.0",
+      "schema": "complete99-interrupted-forward-adoption/v3",
+      "target_artifact_sha256": "6471075a4391c34a573e6c04ccac3b707c005119bd4c618c669a7eb9888d31b0",
+      "target_installed_plugin_sha256": "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc"
+    },
+    "prior_run": {
+      "active": true,
+      "commit": "28a3a3357cefa341c4d94401b5c09782aed23f2d",
+      "database_fingerprint": "a20aaab75137c773bf9176fa88826553c6c67ca490a597e5704ac1541425f9a6",
+      "database_version": "1.17.0",
+      "deploy_audit_path": "docs/recovery-proofs/observations/c99-prod-31195579412-1-deploy.json",
+      "deploy_audit_sha256": "fd8d4bc38cd13c1cd2b0c82c103f2338c8e27cf3290f50164cb928f0f648594c",
+      "deployment_id": "c99-prod-31195579412-1",
+      "plugin_sha256": "0838d8a1ce28cb0d5dbda2c42771d6a496bdff4b802e4935ff4421519ae4ed40",
+      "robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "run_id": 31195579412,
+      "sync_configured": true,
+      "version": "1.17.0"
+    }
+  },
+  "proof_sha256": "bb55df5c5c3ff11780ce21fdfbbc75678547b5a9bc16ca48a86a933e19fdf32d"
+}
