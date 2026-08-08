@@ -98,6 +98,17 @@ class ChunkedArtifactBridgePHPContracts(unittest.TestCase):
         ):
             self.assertIn(marker, self.stage_section)
 
+    def test_stage_uses_bounded_non_regex_canonical_base64_validation(self) -> None:
+        for marker in (
+            "$encoded_length    = strlen( $encoded )",
+            "$encoded_length > $max_encoded_bytes",
+            "0 !== ( $encoded_length % 4 )",
+            "base64_decode( $encoded, true )",
+            "hash_equals( $encoded, base64_encode( $chunk ) )",
+        ):
+            self.assertIn(marker, self.stage_section)
+        self.assertNotIn("preg_match( '/^(?:[A-Za-z0-9+\\/]", self.stage_section)
+
     def test_final_chunk_proves_whole_archive_and_rejects_links(self) -> None:
         helpers = self._section(
             "$validate_staged_archive = static function",

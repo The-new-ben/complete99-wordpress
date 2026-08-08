@@ -568,11 +568,15 @@ class ChunkedArtifactBridgeSecurityContracts(unittest.TestCase):
             "$config['expected_artifact_sha256']",
             "$config['expected_artifact_size']",
             "$config['stage_chunk_max_bytes']",
+            "$encoded_length > $max_encoded_bytes",
+            "0 !== ( $encoded_length % 4 )",
             "base64_decode( $encoded, true )",
+            "hash_equals( $encoded, base64_encode( $chunk ) )",
             "hash( 'sha256', $chunk )",
             "hash_equals( $chunk_sha",
         ):
             self.assertIn(marker, stage)
+        self.assertNotIn("preg_match( '/^(?:[A-Za-z0-9+\\/]", stage)
         self.assertRegex(stage, r"413|422")
 
     def test_exact_offset_blocks_gap_overlap_and_mismatched_replay(self) -> None:
@@ -765,11 +769,17 @@ class ChunkedArtifactBridgeSecurityContracts(unittest.TestCase):
                     "complete99-platform/assets/runtime.txt",
                     "chunked staging runtime contract\n",
                 )
+                archive.writestr(
+                    "complete99-platform/assets/exact-one-mib-stage.bin",
+                    b"C" * (1024 * 1024 + 4096),
+                    compress_type=zipfile.ZIP_STORED,
+                )
             raw = artifact_path.read_bytes()
             artifact_sha256 = hashlib.sha256(raw).hexdigest()
-            split = len(raw) // 2
-            self.assertGreater(split, 0)
+            split = 1024 * 1024
+            self.assertGreater(len(raw), split)
             self.assertLess(split, len(raw))
+            self.assertLessEqual(len(raw), 2 * 1024 * 1024)
 
             rendered = DEPLOY.render_bridge(
                 "runtime-stage-token",
@@ -959,10 +969,43 @@ $payload_first = $base + array(
     'chunk_base64' => base64_encode($first),
     'final' => false,
 );
+$stage_dir = trailingslashit(WP_CONTENT_DIR) . '.complete99-deploy-staging/' . {json.dumps(self.deployment_id)};
+
+$malformed_payload = $base + array(
+    'offset' => 0,
+    'chunk_sha256' => hash('sha256', 'A'),
+    'chunk_base64' => 'Q!==',
+    'final' => false,
+);
+$malformed_result = c99_call_route('/stage', $malformed_payload);
+c99_expect(is_wp_error($malformed_result), 'malformed base64 was accepted');
+c99_expect('c99_stage_chunk_encoding' === $malformed_result->get_error_code(), 'malformed base64 error mismatch');
+
+$noncanonical_payload = $base + array(
+    'offset' => 0,
+    'chunk_sha256' => hash('sha256', 'A'),
+    'chunk_base64' => 'QR==',
+    'final' => false,
+);
+$noncanonical_result = c99_call_route('/stage', $noncanonical_payload);
+c99_expect(is_wp_error($noncanonical_result), 'noncanonical base64 was accepted');
+c99_expect('c99_stage_chunk_encoding' === $noncanonical_result->get_error_code(), 'noncanonical base64 error mismatch');
+
+$bad_length_payload = $base + array(
+    'offset' => 0,
+    'chunk_sha256' => hash('sha256', 'A'),
+    'chunk_base64' => 'QQ=',
+    'final' => false,
+);
+$bad_length_result = c99_call_route('/stage', $bad_length_payload);
+c99_expect(is_wp_error($bad_length_result), 'non-modulo base64 was accepted');
+c99_expect('c99_stage_chunk_encoding' === $bad_length_result->get_error_code(), 'non-modulo base64 error mismatch');
+c99_expect(!file_exists($stage_dir) && !is_link($stage_dir), 'rejected encoding created staging residue');
 
 c99_reserve();
 $first_receipt = c99_call_route('/stage', $payload_first);
 c99_expect(!is_wp_error($first_receipt), 'first chunk failed');
+c99_expect(1048576 === strlen($first), 'first chunk was not exactly one MiB');
 c99_expect($split === $first_receipt['next_offset'], 'first offset mismatch');
 $replay_receipt = c99_call_route('/stage', $payload_first);
 c99_expect($first_receipt === $replay_receipt, 'identical replay receipt changed');
@@ -979,7 +1022,6 @@ $changed_result = c99_call_route('/stage', $changed_payload);
 c99_expect(is_wp_error($changed_result), 'changed replay was accepted');
 c99_expect('c99_stage_replay_changed' === $changed_result->get_error_code(), 'changed replay error mismatch');
 
-$stage_dir = trailingslashit(WP_CONTENT_DIR) . '.complete99-deploy-staging/' . {json.dumps(self.deployment_id)};
 c99_expect(is_dir($stage_dir), 'partial staging directory missing');
 $finalize = c99_call_route('/finalize', array(
     'token' => 'runtime-stage-token',
@@ -1004,13 +1046,25 @@ c99_expect(!is_wp_error($final_receipt), 'final chunk failed');
 c99_expect(true === $final_receipt['complete'], 'final receipt incomplete');
 c99_expect($expected_size === $final_receipt['total_bytes'], 'final size mismatch');
 c99_expect(hash_equals($expected_sha, $final_receipt['artifact_sha256']), 'final digest mismatch');
+$complete_finalize = c99_call_route('/finalize', array(
+    'token' => 'runtime-stage-token',
+    'deployment_id' => {json.dumps(self.deployment_id)},
+));
+c99_expect(!is_wp_error($complete_finalize), 'complete reserved finalize failed');
+c99_expect(true === $complete_finalize['finalized'], 'complete reserved finalize not confirmed');
+c99_expect(!file_exists($stage_dir) && !is_link($stage_dir), 'complete stage residue remained');
+c99_expect(!isset($GLOBALS['c99_options']['complete99_deploy_lock']), 'complete reserved lock remained');
 
 echo json_encode(array(
+    'malformed_code' => $malformed_result->get_error_code(),
+    'noncanonical_code' => $noncanonical_result->get_error_code(),
+    'bad_length_code' => $bad_length_result->get_error_code(),
     'first_receipt' => $first_receipt,
     'replay_receipt' => $replay_receipt,
     'changed_replay_code' => $changed_result->get_error_code(),
     'finalize' => $finalize,
     'final_receipt' => $final_receipt,
+    'complete_finalize' => $complete_finalize,
 ), JSON_UNESCAPED_SLASHES);
 """
             php_path.write_text(
@@ -1028,6 +1082,18 @@ echo json_encode(array(
             evidence = json.loads(result.stdout)
             self.assertEqual(evidence["first_receipt"], evidence["replay_receipt"])
             self.assertEqual(
+                "c99_stage_chunk_encoding",
+                evidence["malformed_code"],
+            )
+            self.assertEqual(
+                "c99_stage_chunk_encoding",
+                evidence["noncanonical_code"],
+            )
+            self.assertEqual(
+                "c99_stage_chunk_encoding",
+                evidence["bad_length_code"],
+            )
+            self.assertEqual(
                 "c99_stage_replay_changed",
                 evidence["changed_replay_code"],
             )
@@ -1040,10 +1106,14 @@ echo json_encode(array(
                 artifact_sha256,
                 evidence["final_receipt"]["artifact_sha256"],
             )
+            self.assertTrue(evidence["complete_finalize"]["finalized"])
+            self.assertTrue(evidence["complete_finalize"]["lock_released"])
+            self.assertTrue(evidence["complete_finalize"]["state_removed"])
             serialized_evidence = json.dumps(evidence, sort_keys=True)
             self.assertNotIn("runtime-stage-token", serialized_evidence)
             self.assertNotIn("chunk_base64", serialized_evidence)
             self.assertNotIn(base64.b64encode(raw).decode("ascii"), serialized_evidence)
+            self.assertNotIn(base64.b64encode(raw[:split]).decode("ascii"), serialized_evidence)
 
     @unittest.skipUnless(shutil.which("php"), "PHP is required for bridge lint")
     def test_template_and_rendered_staging_bridge_are_valid_php(self) -> None:

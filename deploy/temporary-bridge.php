@@ -3641,10 +3641,11 @@ add_action(
 						return new WP_Error( 'c99_stage_metadata', 'Artifact staging metadata does not match the embedded immutable release.', array( 'status' => 400 ) );
 					}
 					$max_encoded_bytes = 4 * (int) ceil( (int) $config['stage_chunk_max_bytes'] / 3 );
+					$encoded_length    = strlen( $encoded );
 					if (
 						'' === $encoded
-						|| strlen( $encoded ) > $max_encoded_bytes
-						|| ! preg_match( '/^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$/D', $encoded )
+						|| $encoded_length > $max_encoded_bytes
+						|| 0 !== ( $encoded_length % 4 )
 					) {
 						return new WP_Error( 'c99_stage_chunk_encoding', 'The artifact staging chunk is not bounded canonical base64.', array( 'status' => 413 ) );
 					}
@@ -3654,8 +3655,10 @@ add_action(
 						|| '' === $chunk
 						|| strlen( $chunk ) > (int) $config['stage_chunk_max_bytes']
 						|| ! hash_equals( $encoded, base64_encode( $chunk ) )
-						|| ! hash_equals( $chunk_sha, hash( 'sha256', $chunk ) )
 					) {
+						return new WP_Error( 'c99_stage_chunk_encoding', 'The artifact staging chunk is not bounded canonical base64.', array( 'status' => 413 ) );
+					}
+					if ( ! hash_equals( $chunk_sha, hash( 'sha256', $chunk ) ) ) {
 						return new WP_Error( 'c99_stage_chunk_integrity', 'The artifact staging chunk failed size or digest validation.', array( 'status' => 422 ) );
 					}
 					$chunk_size = strlen( $chunk );

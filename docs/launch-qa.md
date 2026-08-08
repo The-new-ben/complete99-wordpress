@@ -19,6 +19,9 @@ Release target: Complete99 Platform 1.18.1
 - The staging route rejects gaps, overlaps, changed replays, malformed base64,
   oversized chunks, incomplete final state, unsafe paths, symbolic links,
   duplicate ZIP entries and expansion beyond its ceiling.
+- A PHP runtime test accepts an exact 1 MiB canonical chunk using bounded
+  non-regex validation, rejects noncanonical encodings and proves cleanup
+  without recording the token or chunk payload.
 - The install route refuses `package_base64`, requires a completed staged
   artifact, and rechecks its exact size and SHA-256 before and after claiming the
   deployment lease.

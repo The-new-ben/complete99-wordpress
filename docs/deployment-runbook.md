@@ -222,6 +222,11 @@ most 1 MiB. Every chunk carries its exact offset and SHA-256. The bridge accepts
 only the next chunk or an identical replay of the last chunk after an ambiguous
 transport loss.
 
+Canonical base64 validation is deliberately non-regex at this boundary. It
+uses the encoded-size ceiling, length modulo four, strict decoding and exact
+re-encoding equality so an exact 1 MiB chunk cannot exhaust the PHP PCRE JIT
+stack.
+
 The bridge embeds the expected artifact SHA-256, exact byte count, release
 version and installed-tree SHA-256. The final chunk must produce the exact whole
 artifact digest and size before `/run` can begin. `/run` accepts only

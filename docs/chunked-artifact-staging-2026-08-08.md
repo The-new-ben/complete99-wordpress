@@ -52,6 +52,23 @@ normal fail-closed rollback. Attempt 2 proved the following restored state:
 The public site therefore remained on the exact healthy 1.18.0 release. The
 1.18.1 consumer shelf was not partially published.
 
+## First staging attempt and exact correction
+
+Production run `31237751794` reached the new staging route, but its first exact
+1 MiB chunk was rejected with `c99_stage_chunk_encoding`. The chunk was valid
+canonical base64. The failure was caused by applying one anchored PCRE pattern
+to the complete encoded chunk, about 1.4 MB, which exhausted the PHP PCRE JIT
+stack. The rejection happened before the chunk write and before `/run`, so it
+did not install or partially publish the candidate.
+
+The bounded correction removes only that whole-string regular expression.
+Canonical validation now requires a nonempty value, the existing encoded-size
+ceiling, a length divisible by four, strict `base64_decode`, a decoded-size
+ceiling and exact equality with `base64_encode` of the decoded bytes. Chunk and
+whole-artifact SHA-256 checks remain unchanged. A PHP runtime test sends an
+exact 1 MiB chunk and separately rejects invalid alphabet, noncanonical pad bits
+and invalid-length encodings without exposing the token or payload in evidence.
+
 ## New bounded transport
 
 The deployment bridge now receives the immutable ZIP before `/run` through a
@@ -98,8 +115,10 @@ deleting an unreviewed path.
 
 1. PHP lint the raw bridge and every default, normal-release and recovery
    rendering.
-2. Prove sequential chunks, exact replay, gap, overlap, changed replay, size,
-   digest, unsafe path, ZIP expansion and incomplete-stage behavior.
+2. Prove an exact 1 MiB chunk without a payload-wide regular expression, plus
+   sequential chunks, exact replay, gap, overlap, changed replay, malformed and
+   noncanonical base64, size, digest, unsafe path, ZIP expansion and
+   incomplete-stage behavior.
 3. Prove `/run` contains no full-package base64 field and cannot run before the
    final complete receipt.
 4. Prove the artifact is unchanged before and after lease claim and that the
