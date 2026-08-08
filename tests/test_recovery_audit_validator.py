@@ -826,6 +826,35 @@ def interrupted_database_mismatch_audit() -> tuple[
     return audit, failed, prior, context
 
 
+def interrupted_mismatch_diagnostic_audit() -> tuple[
+    dict[str, object], dict[str, object], dict[str, object], dict[str, object]
+]:
+    audit, failed, prior, context = interrupted_database_mismatch_audit()
+    _, _, historical_database, recovery_identity = interrupted_identities()
+    safe = audit["interrupted_forward_observation"]["safe_status"]
+    safe["database_manifest"] = historical_database["manifest"]
+    safe["database_manifest_sha256"] = historical_database["manifest_sha256"]
+    mismatches = VALIDATOR.interrupted_status_mismatches(
+        safe,
+        failed,
+        prior,
+        recovery_identity,
+    )
+    audit["decision"] = "observe_interrupted_forward_mismatch_diagnostic"
+    audit["interrupted_forward_observation"] = {
+        "diagnostic_only": True,
+        "mismatches": mismatches,
+        "proof_consumed": False,
+        "recovery_authority": False,
+        "safe_status": safe,
+        "safe_status_sha256": VALIDATOR.canonical_json_sha256(safe),
+        "schema": "complete99-interrupted-forward-observation/v3",
+    }
+    audit["result"] = "interrupted_forward_mismatch_diagnostic_observed"
+    context["recovery_identity"] = recovery_identity
+    return audit, failed, prior, context
+
+
 def write_interrupted_database_mismatch_proofs(
     repository_root: Path,
 ) -> tuple[Path, Path, dict[str, object], dict[str, str]]:
@@ -1328,6 +1357,269 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
         self.assertFalse(result["proof_consumed"])
         self.assertTrue(result["proof_observed"])
 
+    def test_mismatch_diagnostic_is_independent_bounded_evidence_only(self) -> None:
+        audit, failed, prior, context = interrupted_mismatch_diagnostic_audit()
+
+        def validate(value: dict[str, object]) -> None:
+            VALIDATOR.validate_interrupted_mismatch_diagnostic_audit(
+                value,
+                failed,
+                prior,
+                context["recovery_identity"],
+                str(context["proof_path"]),
+                str(context["proof_sha256"]),
+                str(context["probe_id"]),
+                expected_commit="b" * 40,
+            )
+
+        validate(audit)
+        receipt = audit["interrupted_forward_observation"]
+        self.assertEqual(
+            ["database_fingerprint", "interrupted_forward_candidate"],
+            receipt["mismatches"],
+        )
+
+        for phase in (
+            "failed",
+            "installed_pending_cleanup",
+            "installed_pending_stabilization",
+        ):
+            with self.subTest(bounded_bridge_phase=phase):
+                changed = copy.deepcopy(audit)
+                changed_receipt = changed["interrupted_forward_observation"]
+                safe = changed_receipt["safe_status"]
+                safe["phase"] = phase
+                changed_receipt["mismatches"] = (
+                    VALIDATOR.interrupted_status_mismatches(
+                        safe,
+                        failed,
+                        prior,
+                        context["recovery_identity"],
+                    )
+                )
+                changed_receipt["safe_status_sha256"] = (
+                    VALIDATOR.canonical_json_sha256(safe)
+                )
+                validate(changed)
+
+        for label, mutate in (
+            (
+                "proof consumed",
+                lambda value: value.__setitem__("proof_consumed", True),
+            ),
+            (
+                "diagnostic authority",
+                lambda value: value["interrupted_forward_observation"].__setitem__(
+                    "recovery_authority", True
+                ),
+            ),
+            (
+                "diagnostic flag",
+                lambda value: value["interrupted_forward_observation"].__setitem__(
+                    "diagnostic_only", False
+                ),
+            ),
+            (
+                "receipt schema",
+                lambda value: value["interrupted_forward_observation"].__setitem__(
+                    "schema", "complete99-interrupted-forward-observation/v2"
+                ),
+            ),
+            (
+                "mismatch order",
+                lambda value: value["interrupted_forward_observation"].__setitem__(
+                    "mismatches", list(reversed(receipt["mismatches"]))
+                ),
+            ),
+            (
+                "safe digest",
+                lambda value: value["interrupted_forward_observation"].__setitem__(
+                    "safe_status_sha256", "0" * 64
+                ),
+            ),
+            (
+                "result",
+                lambda value: value.__setitem__(
+                    "result", "interrupted_forward_observed"
+                ),
+            ),
+            (
+                "proof path",
+                lambda value: value["interrupted_forward_proof"].__setitem__(
+                    "path", "docs/recovery-proofs/other.json"
+                ),
+            ),
+            (
+                "health",
+                lambda value: value["health"].__setitem__(
+                    "deployment_id", "c99-prod-other-40000000002-1"
+                ),
+            ),
+            (
+                "home",
+                lambda value: value["rendered_home"].__setitem__(
+                    "exact_path", "/en/"
+                ),
+            ),
+            (
+                "robots",
+                lambda value: value["robots"].__setitem__("status", 404),
+            ),
+            (
+                "cleanup",
+                lambda value: value["cleanup"].__setitem__("route_404", False),
+            ),
+        ):
+            with self.subTest(tamper=label):
+                changed = copy.deepcopy(audit)
+                mutate(changed)
+                with self.assertRaises(VALIDATOR.AuditValidationError):
+                    validate(changed)
+
+        reviewed_mutations = {
+            "adopted_forward_no_rollback": True,
+            "baseline_database_fingerprint": "0" * 64,
+            "baseline_database_journal_valid": False,
+            "baseline_sync_configured": False,
+            "baseline_sync_secret_existed": False,
+            "current_active": False,
+            "current_database_version": "1.17.0",
+            "current_deployment": "c99-prod-other-40000000002-1",
+            "current_plugin_main_exists": False,
+            "current_plugin_sha256": "0" * 64,
+            "current_robots_sha256": "0" * 64,
+            "current_sync_configured": False,
+            "current_target_dir_exists": False,
+            "current_version": "1.17.0",
+            "database_fingerprint_available": False,
+            "database_restored": True,
+            "deployment_id": "c99-prod-other-40000000002-1",
+            "expected_sha256": "0" * 64,
+            "expected_version": "1.17.0",
+            "had_plugin": False,
+            "installed_plugin_sha256": "0" * 64,
+            "interrupted_forward_database_manifest_sha256": "0" * 64,
+            "interrupted_forward_proof_sha256": "0" * 64,
+            "lock_owned": False,
+            "migration_failed": True,
+            "migration_invariants_valid": False,
+            "no_rollback_artifacts": False,
+            "phase": "installed",
+            "prior_active": False,
+            "prior_deployment": "c99-prod-other-40000000001-1",
+            "prior_plugin_main_exists": False,
+            "prior_plugin_sha256": "0" * 64,
+            "prior_target_dir_exists": False,
+            "prior_version": "1.16.0",
+            "process_lock_available": False,
+            "recovery_ready": False,
+            "robots_applied": False,
+            "robots_managed_sha256": "0" * 64,
+            "robots_prior_exists": False,
+            "robots_prior_sha256": "0" * 64,
+            "robots_restored": True,
+            "runtime_loaded": False,
+            "runtime_version": "1.17.0",
+            "state_exists": False,
+        }
+        for field, replacement in reviewed_mutations.items():
+            with self.subTest(deterministic_mismatch=field):
+                changed = copy.deepcopy(audit)
+                changed_receipt = changed["interrupted_forward_observation"]
+                changed_receipt["safe_status"][field] = replacement
+                changed_receipt["safe_status_sha256"] = (
+                    VALIDATOR.canonical_json_sha256(changed_receipt["safe_status"])
+                )
+                with self.assertRaisesRegex(
+                    VALIDATOR.AuditValidationError,
+                    "receipt identity",
+                ):
+                    validate(changed)
+
+        unsafe_cases: list[tuple[str, Callable[[dict[str, object]], None]]] = []
+        for field in VALIDATOR.INTERRUPTED_FORWARD_SAFE_BOOLEAN_FIELDS:
+            unsafe_cases.append(
+                (field, lambda value, key=field: value.__setitem__(key, "false"))
+            )
+        for field in VALIDATOR.INTERRUPTED_FORWARD_SAFE_DIGEST_FIELDS:
+            unsafe_cases.append(
+                (field, lambda value, key=field: value.__setitem__(key, "secret"))
+            )
+        for field in VALIDATOR.INTERRUPTED_FORWARD_SAFE_DEPLOYMENT_FIELDS:
+            unsafe_cases.append(
+                (field, lambda value, key=field: value.__setitem__(key, "secret"))
+            )
+        for field in VALIDATOR.INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS:
+            unsafe_cases.append(
+                (field, lambda value, key=field: value.__setitem__(key, "1." * 80 + "0"))
+            )
+        unsafe_cases.extend(
+            (
+                ("phase", lambda value: value.__setitem__("phase", "secret")),
+                (
+                    "manifest count",
+                    lambda value: value["database_manifest"].__setitem__(
+                        "posts_count", 9_223_372_036_854_775_808
+                    ),
+                ),
+            )
+        )
+        for label, mutate in unsafe_cases:
+            with self.subTest(unsafe_field=label):
+                changed = copy.deepcopy(audit)
+                changed_receipt = changed["interrupted_forward_observation"]
+                mutate(changed_receipt["safe_status"])
+                if label == "manifest count":
+                    changed_receipt["safe_status"]["database_manifest_sha256"] = (
+                        VALIDATOR.canonical_json_sha256(
+                            changed_receipt["safe_status"]["database_manifest"]
+                        )
+                    )
+                changed_receipt["safe_status_sha256"] = (
+                    VALIDATOR.canonical_json_sha256(changed_receipt["safe_status"])
+                )
+                with self.assertRaises(VALIDATOR.AuditValidationError):
+                    validate(changed)
+
+        loaded = {
+            "path": context["proof_path"],
+            "proof": {"failed_run": failed, "prior_run": prior},
+            "proof_sha256": context["proof_sha256"],
+            "recovery_identity": context["recovery_identity"],
+            "schema": "complete99-interrupted-forward-proof/v1",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            audit_root = Path(temporary)
+            audit_path = write_audit(audit_root, audit)
+            summary = json.dumps(
+                {
+                    "audit": str(audit_path),
+                    "deployment_id": failed["deployment_id"],
+                    "proof_consumed": False,
+                    "result": "interrupted_forward_mismatch_diagnostic_observed",
+                }
+            )
+            with mock.patch.object(
+                VALIDATOR,
+                "load_interrupted_forward_proof",
+                return_value=loaded,
+            ), mock.patch.object(
+                VALIDATOR,
+                "validate_interrupted_forward_dist",
+            ):
+                result = VALIDATOR.validate_recovery_audit(
+                    summary,
+                    "",
+                    audit_root,
+                    str(context["probe_id"]),
+                    interrupted_forward_proof_path="proof.json",
+                    expect_interrupted_forward=True,
+                    expect_observation=True,
+                    dist=Path("plugin-dist"),
+                )
+        self.assertFalse(result["proof_consumed"])
+        self.assertTrue(result["proof_observed"])
+
     def test_adoption_v2_loader_alone_can_bind_reviewed_database_drift(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository_root = Path(temporary)
@@ -1425,6 +1717,42 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                 "audit schema",
             ):
                 load()
+
+            v2_path.write_bytes(original_v2)
+            diagnostic, _, _, _ = interrupted_mismatch_diagnostic_audit()
+            observation_path.write_text(json.dumps(diagnostic), encoding="utf-8")
+            envelope = json.loads(original_v2)
+            envelope["proof"]["forward_adoption"][
+                "observation_audit_sha256"
+            ] = hashlib.sha256(observation_path.read_bytes()).hexdigest()
+            envelope["proof_sha256"] = VALIDATOR.canonical_json_sha256(
+                envelope["proof"]
+            )
+            v2_path.write_text(json.dumps(envelope), encoding="utf-8")
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "audit schema",
+            ):
+                load()
+
+            direct_receipt = (
+                repository_root
+                / "docs"
+                / "recovery-proofs"
+                / "c99-diagnostic-v3.json"
+            )
+            direct_receipt.write_text(
+                json.dumps(diagnostic["interrupted_forward_observation"]),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                VALIDATOR.AuditValidationError,
+                "proof schema",
+            ):
+                VALIDATOR.load_interrupted_forward_proof(
+                    str(direct_receipt),
+                    repository_root,
+                )
 
             with self.assertRaisesRegex(
                 VALIDATOR.AuditValidationError,

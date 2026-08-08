@@ -14,7 +14,7 @@ import unittest
 import urllib.error
 import urllib.parse
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from unittest import mock
 
 
@@ -2403,6 +2403,223 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
                 loaded,
             )
 
+    def test_mismatch_diagnostic_is_bounded_exact_and_never_authority(self) -> None:
+        loaded = interrupted_forward_loaded(version=1)
+        exact = interrupted_forward_status(loaded)
+        status = copy.deepcopy(exact)
+        status["database_fingerprint"] = "f" * 64
+        status["interrupted_forward_candidate"] = False
+        status["private_option_value"] = "must-never-be-captured"
+
+        receipt = RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+            DEPLOY,
+            status,
+            loaded,
+        )
+        self.assertEqual(
+            "complete99-interrupted-forward-observation/v3",
+            receipt["schema"],
+        )
+        self.assertTrue(receipt["diagnostic_only"])
+        self.assertFalse(receipt["proof_consumed"])
+        self.assertFalse(receipt["recovery_authority"])
+        self.assertEqual(
+            ["database_fingerprint", "interrupted_forward_candidate"],
+            receipt["mismatches"],
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            proof_root = root / "docs" / "recovery-proofs"
+            proof_root.mkdir(parents=True)
+            receipt_path = proof_root / "c99-diagnostic.json"
+            receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+            with mock.patch.object(RECOVER, "ROOT", root), self.assertRaisesRegex(
+                DEPLOY.DeployError,
+                "proof schema",
+            ):
+                RECOVER.load_interrupted_forward_proof(
+                    DEPLOY,
+                    str(receipt_path),
+                )
+        self.assertNotIn("private_option_value", receipt["safe_status"])
+        self.assertEqual(
+            RECOVER.canonical_proof_sha256(receipt["safe_status"]),
+            receipt["safe_status_sha256"],
+        )
+
+        mutations = {
+            "adopted_forward_no_rollback": True,
+            "baseline_database_fingerprint": "0" * 64,
+            "baseline_database_journal_valid": False,
+            "baseline_sync_configured": False,
+            "baseline_sync_secret_existed": False,
+            "current_active": False,
+            "current_database_version": "1.17.0",
+            "current_deployment": "c99-prod-other-2000-1",
+            "current_plugin_main_exists": False,
+            "current_plugin_sha256": "0" * 64,
+            "current_robots_sha256": "0" * 64,
+            "current_sync_configured": False,
+            "current_target_dir_exists": False,
+            "current_version": "1.17.0",
+            "database_fingerprint": "f" * 64,
+            "database_fingerprint_available": False,
+            "database_restored": True,
+            "deployment_id": "c99-prod-other-2000-1",
+            "expected_sha256": "0" * 64,
+            "expected_version": "1.17.0",
+            "had_plugin": False,
+            "installed_plugin_sha256": "0" * 64,
+            "interrupted_forward_candidate": False,
+            "interrupted_forward_database_manifest_sha256": "0" * 64,
+            "interrupted_forward_proof_sha256": "0" * 64,
+            "lock_owned": False,
+            "migration_failed": True,
+            "migration_invariants_valid": False,
+            "no_rollback_artifacts": False,
+            "phase": "installed",
+            "prior_active": False,
+            "prior_deployment": "c99-prod-other-1900-1",
+            "prior_plugin_main_exists": False,
+            "prior_plugin_sha256": "0" * 64,
+            "prior_target_dir_exists": False,
+            "prior_version": "1.16.0",
+            "process_lock_available": False,
+            "recovery_ready": False,
+            "robots_applied": False,
+            "robots_managed_sha256": "0" * 64,
+            "robots_prior_exists": False,
+            "robots_prior_sha256": "0" * 64,
+            "robots_restored": True,
+            "runtime_loaded": False,
+            "runtime_version": "1.17.0",
+            "state_exists": False,
+        }
+        for field, replacement in mutations.items():
+            with self.subTest(reviewed_predicate=field):
+                changed = copy.deepcopy(exact)
+                changed[field] = replacement
+                captured = RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+                    DEPLOY,
+                    changed,
+                    loaded,
+                )
+                self.assertIn(field, captured["mismatches"])
+                self.assertEqual(
+                    sorted(captured["mismatches"]),
+                    captured["mismatches"],
+                )
+
+        manifest_changed = copy.deepcopy(exact)
+        manifest_changed["database_manifest"] = copy.deepcopy(
+            exact["database_manifest"]
+        )
+        manifest_changed["database_manifest"]["posts_sha256"] = "0" * 64
+        manifest_changed["database_manifest_sha256"] = hashlib.sha256(
+            json.dumps(
+                manifest_changed["database_manifest"],
+                ensure_ascii=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+        ).hexdigest()
+        captured = RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+            DEPLOY,
+            manifest_changed,
+            loaded,
+        )
+        self.assertEqual(["database_manifest_sha256"], captured["mismatches"])
+
+        for phase in (
+            "failed",
+            "installed_pending_cleanup",
+            "installed_pending_stabilization",
+        ):
+            with self.subTest(bounded_bridge_phase=phase):
+                phase_changed = copy.deepcopy(exact)
+                phase_changed["phase"] = phase
+                captured = RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+                    DEPLOY,
+                    phase_changed,
+                    loaded,
+                )
+                self.assertEqual(["phase"], captured["mismatches"])
+
+        with self.assertRaisesRegex(DEPLOY.DeployError, "no reviewed mismatch"):
+            RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+                DEPLOY,
+                exact,
+                loaded,
+            )
+
+        paired_database_only = copy.deepcopy(manifest_changed)
+        paired_database_only["database_fingerprint"] = "f" * 64
+        paired_database_only["interrupted_forward_candidate"] = False
+        with self.assertRaisesRegex(DEPLOY.DeployError, "observation v2"):
+            RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+                DEPLOY,
+                paired_database_only,
+                loaded,
+            )
+
+    def test_mismatch_diagnostic_rejects_every_unbounded_safe_field(self) -> None:
+        loaded = interrupted_forward_loaded(version=1)
+        exact = interrupted_forward_status(loaded)
+        exact["interrupted_forward_candidate"] = False
+        unsafe_cases: list[tuple[str, Callable[[dict[str, Any]], None]]] = []
+        for field in RECOVER.INTERRUPTED_FORWARD_SAFE_BOOLEAN_FIELDS:
+            unsafe_cases.append(
+                (field, lambda value, key=field: value.__setitem__(key, "false"))
+            )
+        for field in RECOVER.INTERRUPTED_FORWARD_SAFE_DIGEST_FIELDS:
+            unsafe_cases.append(
+                (field, lambda value, key=field: value.__setitem__(key, "secret"))
+            )
+        for field in RECOVER.INTERRUPTED_FORWARD_SAFE_DEPLOYMENT_FIELDS:
+            unsafe_cases.append(
+                (field, lambda value, key=field: value.__setitem__(key, "secret"))
+            )
+        for field in RECOVER.INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS:
+            unsafe_cases.append(
+                (field, lambda value, key=field: value.__setitem__(key, "1." * 80 + "0"))
+            )
+        unsafe_cases.extend(
+            (
+                ("phase", lambda value: value.__setitem__("phase", "secret")),
+                (
+                    "manifest count",
+                    lambda value: value["database_manifest"].__setitem__(
+                        "posts_count", 9_223_372_036_854_775_808
+                    ),
+                ),
+                (
+                    "storage",
+                    lambda value: value.__setitem__(
+                        "database_storage", {"engine": "MYISAM", "tables": 3}
+                    ),
+                ),
+            )
+        )
+        for label, mutate in unsafe_cases:
+            with self.subTest(unsafe_field=label):
+                changed = copy.deepcopy(exact)
+                mutate(changed)
+                if label == "manifest count":
+                    changed["database_manifest_sha256"] = hashlib.sha256(
+                        json.dumps(
+                            changed["database_manifest"],
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                            sort_keys=True,
+                        ).encode("utf-8")
+                    ).hexdigest()
+                with self.assertRaises(DEPLOY.DeployError):
+                    RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+                        DEPLOY,
+                        changed,
+                        loaded,
+                    )
+
     def test_bridge_markers_bind_v2_proof_and_reviewed_database(self) -> None:
         loaded = interrupted_forward_loaded(version=2)
         fields = RECOVER.interrupted_forward_bridge_fields(loaded)
@@ -3175,6 +3392,92 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             loaded["recovery_identity"],
             adoption,
         )
+
+    def test_mismatch_diagnostic_observation_exits_before_any_mutation(self) -> None:
+        loaded = interrupted_forward_loaded(version=1)
+        status = interrupted_forward_status(loaded)
+        status["database_fingerprint"] = "f" * 64
+        status["interrupted_forward_candidate"] = False
+        fake, adopt, rollback, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=status,
+            observe_only=True,
+        )
+        adopt.assert_not_called()
+        rollback.assert_not_called()
+        fake.finalize_deployment.assert_not_called()
+        fake.verify_health.assert_called_once()
+        fake.verify_rendered_home.assert_called_once()
+        fake.verify_managed_robots.assert_called_once()
+        fake.delete_snippet_and_prove_404.assert_called_once()
+        audit = write_audit.call_args.args[1]
+        self.assertEqual(
+            "interrupted_forward_mismatch_diagnostic_observed",
+            audit["result"],
+        )
+        self.assertEqual(
+            "observe_interrupted_forward_mismatch_diagnostic",
+            audit["decision"],
+        )
+        self.assertFalse(audit["proof_consumed"])
+        receipt = audit["interrupted_forward_observation"]
+        self.assertTrue(receipt["diagnostic_only"])
+        self.assertFalse(receipt["recovery_authority"])
+        self.assertEqual(
+            ["database_fingerprint", "interrupted_forward_candidate"],
+            receipt["mismatches"],
+        )
+        audit["bootstrap_cleanup"] = {
+            "exact_name": "c99-deploy-bootstrap",
+            "known_id": 5,
+            "known_id_matched": False,
+            "removed_ids": [],
+            "row_absence_verified": True,
+        }
+        audit["bridge_site_identity"] = {
+            "home_host": "complete99.co.il",
+            "rest_host": "complete99.co.il",
+            "siteurl_host": "complete99.co.il",
+        }
+        audit["identity"] = {
+            "id": 1,
+            "roles": ["administrator"],
+            "site_identity": {
+                "home": "https://complete99.co.il",
+                "url": "https://complete99.co.il",
+            },
+        }
+        audit["local_test"] = False
+        adoption = {
+            "observation_commit": "d" * 40,
+            "observation_proof_sha256": loaded["proof_sha256"],
+            "observation_run_id": 2100,
+            "observed_database_fingerprint": "f" * 64,
+            "observed_database_manifest": status["database_manifest"],
+            "observed_database_manifest_sha256": status[
+                "database_manifest_sha256"
+            ],
+            "observed_database_storage": status["database_storage"],
+            "observed_deployment_id": loaded["proof"]["failed_run"][
+                "deployment_id"
+            ],
+            "observed_plugin_sha256": loaded["proof"]["failed_run"][
+                "installed_plugin_sha256"
+            ],
+            "observed_robots_sha256": loaded["proof"]["prior_run"][
+                "robots_sha256"
+            ],
+            "observed_version": loaded["proof"]["failed_run"]["version"],
+        }
+        with self.assertRaisesRegex(DEPLOY.DeployError, "audit schema"):
+            RECOVER.validate_interrupted_forward_database_mismatch_observation_audit(
+                DEPLOY,
+                audit,
+                loaded["proof"]["failed_run"],
+                loaded["proof"]["prior_run"],
+                loaded["recovery_identity"],
+                adoption,
+            )
 
     def test_recovery_resumes_durable_adoption_through_idempotent_receipt(self) -> None:
         loaded = interrupted_forward_loaded(version=2)

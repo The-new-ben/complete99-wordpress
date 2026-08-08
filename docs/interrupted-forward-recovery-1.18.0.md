@@ -66,6 +66,27 @@ mismatch list. It contains no database rows, option values, rollback journal,
 filesystem path, lock owner, fence, token or credential. The receipt and audit
 both record `proof_consumed: false`.
 
+If the exact observation-v1 contract fails but the authenticated status still
+has the fixed non-secret field set, bounded deployment/version/digest values,
+a complete self-hashing aggregate manifest and valid transactional storage,
+the run instead records
+`interrupted_forward_mismatch_diagnostic_observed`. Its observation-v3 receipt
+preserves only that typed allowlist, its canonical SHA-256 and the sorted exact
+names of reviewed predicates that differed. It records `diagnostic_only: true`,
+`recovery_authority: false` and `proof_consumed: false`. Arbitrary strings,
+database rows or option values, paths, owners, fences, journals, tokens and
+credentials cannot enter the receipt. Invalid shape remains a hard failure
+without a diagnostic receipt.
+
+Observation-v3 is deliberately distinct from a successful observation-v1 and
+from the paired database-only observation-v2 case. It is review material only:
+neither the receipt nor an audit containing it is accepted by adoption schema
+v1 or v2, and it cannot be supplied as an interrupted-forward proof. A later
+recovery still requires a separately reviewed proof and an explicitly
+authorized adoption contract. Public health, homepage and robots acceptance,
+both bridge cleanup proofs, independent audit validation and immediate
+observation-only workflow exit remain mandatory for a successful v3 capture.
+
 The mismatch path is rejected unless both database identities changed,
 `interrupted_forward_candidate` is false for that reason alone, and the
 plugin, runtime, migration invariants, baseline journal, prior plugin and
