@@ -46,6 +46,8 @@ PUBLIC_READ_RETRYABLE_HTTP = frozenset({502, 503, 504})
 MIN_PACKAGE_UPLOAD_BYTES = 2 * 1024 * 1024
 MAX_PACKAGE_UPLOAD_BYTES = 32 * 1024 * 1024
 PACKAGE_UPLOAD_HEADROOM_BYTES = 64 * 1024
+ARTIFACT_STAGE_CHUNK_BYTES = 1024 * 1024
+ARTIFACT_STAGE_TRANSPORT_ATTEMPTS = 3
 EXPECTED_CATALOG_PRODUCT_COUNT = 36
 CATALOG_PRODUCT_CODES = frozenset(
     {
@@ -984,6 +986,7 @@ def render_bridge(
     allowed_hosts: set[str] | None = None,
     *,
     expected_artifact_sha256: str = "",
+    expected_artifact_size: int = 0,
     expected_plugin_sha256: str = "",
     expected_version: str = "",
     interrupted_forward_proof_sha256: str = "",
@@ -1035,6 +1038,25 @@ def render_bridge(
     for label, value in digest_identities.items():
         if value and re.fullmatch(r"[a-f0-9]{64}", value) is None:
             raise DeployError(f"Temporary bridge {label} identity is invalid")
+    if type(max_bytes) is not int or max_bytes < 1:
+        raise DeployError("Temporary bridge upload ceiling is invalid")
+    if type(expected_artifact_size) is not int or expected_artifact_size < 0:
+        raise DeployError("Temporary bridge expected artifact size is invalid")
+    legacy_recovery_identity = bool(
+        expected_artifact_sha256
+        and 0 == expected_artifact_size
+        and interrupted_forward_proof_sha256
+    )
+    if (
+        (
+            expected_artifact_sha256
+            and expected_artifact_size < 1
+            and not legacy_recovery_identity
+        )
+        or (not expected_artifact_sha256 and 0 != expected_artifact_size)
+        or expected_artifact_size > max_bytes
+    ):
+        raise DeployError("Temporary bridge expected artifact identity is incomplete")
     for label, value in (
         ("expected version", expected_version),
         ("prior version", prior_version),
@@ -1110,6 +1132,7 @@ def render_bridge(
             separators=(",", ":"),
         ),
         "__C99_EXPECTED_ARTIFACT_SHA256__": expected_artifact_sha256,
+        "__C99_EXPECTED_ARTIFACT_SIZE__": str(expected_artifact_size),
         "__C99_EXPECTED_PLUGIN_SHA256__": expected_plugin_sha256,
         "__C99_EXPECTED_VERSION__": expected_version,
         "__C99_INTERRUPTED_FORWARD_PROOF_SHA256__": (
@@ -1490,6 +1513,197 @@ def bridge_call(client: Client, action: str, token: str, deployment_id: str, **f
     return response
 
 
+def verify_stage_receipt(
+    response: dict[str, Any],
+    deployment_id: str,
+    expected_artifact_sha256: str,
+    expected_artifact_size: int,
+    offset: int,
+    chunk_size: int,
+    final: bool,
+) -> dict[str, Any]:
+    """Validate one exact, non-secret receipt from the staging bridge."""
+
+    required_fields = {
+        "deployment_id",
+        "accepted_offset",
+        "next_offset",
+        "total_bytes",
+        "complete",
+        "artifact_sha256",
+    }
+    if not isinstance(response, dict) or set(response) != required_fields:
+        raise DeployError("Artifact staging returned an unexpected receipt schema")
+    if response.get("deployment_id") != deployment_id:
+        raise DeployError("Artifact staging receipt deployment identity mismatch")
+    accepted_offset = response.get("accepted_offset")
+    next_offset = response.get("next_offset")
+    total_bytes = response.get("total_bytes")
+    complete = response.get("complete")
+    artifact_sha256 = response.get("artifact_sha256")
+    if (
+        type(accepted_offset) is not int
+        or type(next_offset) is not int
+        or type(total_bytes) is not int
+        or type(complete) is not bool
+        or not isinstance(artifact_sha256, str)
+    ):
+        raise DeployError("Artifact staging receipt contains invalid value types")
+    expected_next_offset = offset + chunk_size
+    if accepted_offset != offset or next_offset != expected_next_offset:
+        raise DeployError("Artifact staging receipt offset mismatch")
+    if total_bytes != expected_next_offset:
+        raise DeployError("Artifact staging receipt byte count mismatch")
+    if complete is not final:
+        raise DeployError("Artifact staging receipt completion state mismatch")
+    if final:
+        if next_offset != expected_artifact_size:
+            raise DeployError("Completed artifact staging receipt size mismatch")
+        if not secrets.compare_digest(artifact_sha256, expected_artifact_sha256):
+            raise DeployError("Completed artifact staging receipt digest mismatch")
+    elif next_offset >= expected_artifact_size or artifact_sha256 != "":
+        raise DeployError("Incomplete artifact staging receipt is not fail-closed")
+    return response
+
+
+def is_ambiguous_stage_transport_error(error: DeployError) -> bool:
+    """Identify responses that may have been lost after an idempotent chunk write."""
+
+    if isinstance(error, NetworkDeployError):
+        return True
+    return (
+        isinstance(error, HTTPDeployError)
+        and (
+            error.status in PUBLIC_READ_RETRYABLE_HTTP
+            or (
+                error.status == 500
+                and error.code in {"http_error", "internal_server_error"}
+            )
+        )
+    )
+
+
+def stage_artifact_chunk(
+    client: Client,
+    token: str,
+    deployment_id: str,
+    expected_artifact_sha256: str,
+    expected_artifact_size: int,
+    offset: int,
+    chunk: bytes,
+    final: bool,
+) -> dict[str, Any]:
+    """Stage one sequential chunk, retrying only the identical ambiguous write."""
+
+    if (
+        not re.fullmatch(r"[a-f0-9]{64}", expected_artifact_sha256)
+        or type(expected_artifact_size) is not int
+        or expected_artifact_size < 1
+        or type(offset) is not int
+        or offset < 0
+        or not isinstance(chunk, bytes)
+        or not chunk
+        or len(chunk) > ARTIFACT_STAGE_CHUNK_BYTES
+        or type(final) is not bool
+        or offset + len(chunk) > expected_artifact_size
+        or final is not (offset + len(chunk) == expected_artifact_size)
+    ):
+        raise DeployError("Artifact staging chunk input is invalid")
+    fields = {
+        "expected_artifact_sha256": expected_artifact_sha256,
+        "expected_artifact_size": expected_artifact_size,
+        "offset": offset,
+        "chunk_sha256": hashlib.sha256(chunk).hexdigest(),
+        "chunk_base64": base64.b64encode(chunk).decode("ascii"),
+        "final": final,
+    }
+    first_ambiguous_error: DeployError | None = None
+    for attempt in range(ARTIFACT_STAGE_TRANSPORT_ATTEMPTS):
+        try:
+            response = bridge_call(
+                client,
+                "stage",
+                token,
+                deployment_id,
+                **fields,
+            )
+            return verify_stage_receipt(
+                response,
+                deployment_id,
+                expected_artifact_sha256,
+                expected_artifact_size,
+                offset,
+                len(chunk),
+                final,
+            )
+        except (NetworkDeployError, HTTPDeployError) as error:
+            if not is_ambiguous_stage_transport_error(error):
+                raise
+            if first_ambiguous_error is None:
+                first_ambiguous_error = error
+            if attempt + 1 >= ARTIFACT_STAGE_TRANSPORT_ATTEMPTS:
+                raise first_ambiguous_error
+            time.sleep(PUBLIC_READ_RETRY_DELAYS_SECONDS[attempt])
+    raise DeployError("Artifact staging transport retry budget was exhausted")
+
+
+def stage_artifact(
+    client: Client,
+    token: str,
+    deployment_id: str,
+    raw: bytes,
+    expected_artifact_sha256: str,
+    expected_artifact_size: int,
+) -> dict[str, Any]:
+    """Upload and prove the immutable artifact before the privileged run call."""
+
+    if (
+        not isinstance(raw, bytes)
+        or not raw
+        or type(expected_artifact_size) is not int
+        or len(raw) != expected_artifact_size
+        or not re.fullmatch(r"[a-f0-9]{64}", expected_artifact_sha256)
+        or not secrets.compare_digest(
+            hashlib.sha256(raw).hexdigest(),
+            expected_artifact_sha256,
+        )
+    ):
+        raise DeployError("Artifact staging source integrity check failed")
+    offset = 0
+    chunk_count = 0
+    final_receipt: dict[str, Any] | None = None
+    while offset < expected_artifact_size:
+        chunk = raw[offset : offset + ARTIFACT_STAGE_CHUNK_BYTES]
+        final = offset + len(chunk) == expected_artifact_size
+        final_receipt = stage_artifact_chunk(
+            client,
+            token,
+            deployment_id,
+            expected_artifact_sha256,
+            expected_artifact_size,
+            offset,
+            chunk,
+            final,
+        )
+        offset = int(final_receipt["next_offset"])
+        chunk_count += 1
+    if (
+        final_receipt is None
+        or final_receipt.get("complete") is not True
+        or final_receipt.get("total_bytes") != expected_artifact_size
+        or final_receipt.get("artifact_sha256") != expected_artifact_sha256
+    ):
+        raise DeployError("Artifact staging did not produce an exact completed receipt")
+    return {
+        "artifact_sha256": expected_artifact_sha256,
+        "artifact_size": expected_artifact_size,
+        "chunk_bytes": ARTIFACT_STAGE_CHUNK_BYTES,
+        "chunk_count": chunk_count,
+        "complete": True,
+        "final_next_offset": int(final_receipt["next_offset"]),
+    }
+
+
 def verify_bridge_site_identity(response: dict[str, Any], target_host: str) -> dict[str, str]:
     identity = response.get("site_identity")
     if not isinstance(identity, dict):
@@ -1569,7 +1783,10 @@ def install_with_recovery(
     token: str,
     deployment_id: str,
     run_fields: dict[str, Any],
+    expected_plugin_sha256: str,
 ) -> dict[str, Any]:
+    if re.fullmatch(r"[a-f0-9]{64}", expected_plugin_sha256) is None:
+        raise DeployError("Expected installed plugin digest is invalid")
     try:
         return bridge_call(client, "run", token, deployment_id, **run_fields)
     except DeployError as original_error:
@@ -1583,12 +1800,9 @@ def install_with_recovery(
             }
             and status.get("forward_stabilization_candidate")
             and status.get("expected_sha256") == run_fields["expected_sha256"]
-            and re.fullmatch(
-                r"[a-f0-9]{64}",
-                str(status.get("installed_plugin_sha256", "")),
-            )
+            and status.get("installed_plugin_sha256") == expected_plugin_sha256
             and status.get("current_plugin_sha256")
-            == status.get("installed_plugin_sha256")
+            == expected_plugin_sha256
             and status.get("current_version") == run_fields["version"]
             and status.get("current_database_version") == run_fields["version"]
             and status.get("current_active")
@@ -2764,6 +2978,22 @@ def finalize_deployment(client: Client, token: str, deployment_id: str) -> dict[
     }
 
 
+def can_finalize_unstarted_status(status: dict[str, Any]) -> bool:
+    """Allow only exact state-free outcomes that finalization can close safely."""
+
+    if not isinstance(status, dict) or status.get("state_exists") is not False:
+        return False
+    lock_owned = status.get("lock_owned")
+    if lock_owned is False:
+        return True
+    if lock_owned is not True:
+        return False
+    phase = status.get("phase")
+    if phase == "reserved":
+        return True
+    return phase == "locked" and status.get("recovery_ready") is True
+
+
 def delete_snippet_and_prove_404(
     client: Client,
     snippet_id: int | None,
@@ -2918,6 +3148,10 @@ def main() -> int:
             args.fault_injection,
             target_host=target_host,
             allowed_hosts=allowed_hosts,
+            expected_artifact_sha256=str(metadata["sha256"]),
+            expected_artifact_size=len(raw),
+            expected_plugin_sha256=str(metadata["installed_sha256"]),
+            expected_version=str(metadata["version"]),
         )
         arm_live_mutation_recovery(args.mutation_marker, deployment_id)
         snippet_creation_attempted = True
@@ -2986,25 +3220,38 @@ def main() -> int:
             reservation_acquired = False
             audit["result"] = "dry-run-passed"
         else:
+            gate = "stage-artifact"
+            audit["artifact_staging"] = stage_artifact(
+                client,
+                token,
+                deployment_id,
+                raw,
+                str(metadata["sha256"]),
+                len(raw),
+            )
             gate = "install"
             run_fields = {
                 "slug": SLUG,
                 "type": "plugin",
                 "version": metadata["version"],
                 "expected_sha256": metadata["sha256"],
-                "package_base64": base64.b64encode(raw).decode("ascii"),
+                "staged": True,
                 "activate": True,
             }
             deployed = True
             mutation_pending = True
-            result = install_with_recovery(client, token, deployment_id, run_fields)
+            result = install_with_recovery(
+                client,
+                token,
+                deployment_id,
+                run_fields,
+                str(metadata["installed_sha256"]),
+            )
             if (
                 result.get("sha256") != metadata["sha256"]
                 or result.get("version") != metadata["version"]
-                or not re.fullmatch(
-                    r"[a-f0-9]{64}",
-                    str(result.get("installed_plugin_sha256", "")),
-                )
+                or result.get("installed_plugin_sha256")
+                != metadata["installed_sha256"]
                 or not re.fullmatch(
                     r"[a-f0-9]{64}",
                     str(result.get("robots_sha256", "")),
@@ -3132,14 +3379,29 @@ def main() -> int:
                     reservation,
                     target_host,
                 )
+                gate = "stage-artifact-after-exercise"
+                audit["artifact_staging_after_exercise"] = stage_artifact(
+                    client,
+                    token,
+                    deployment_id,
+                    raw,
+                    str(metadata["sha256"]),
+                    len(raw),
+                )
+                gate = "install"
                 mutation_pending = True
-                result = install_with_recovery(client, token, deployment_id, run_fields)
+                result = install_with_recovery(
+                    client,
+                    token,
+                    deployment_id,
+                    run_fields,
+                    str(metadata["installed_sha256"]),
+                )
                 if (
                     result.get("sha256") != metadata["sha256"]
-                    or not re.fullmatch(
-                        r"[a-f0-9]{64}",
-                        str(result.get("installed_plugin_sha256", "")),
-                    )
+                    or result.get("version") != metadata["version"]
+                    or result.get("installed_plugin_sha256")
+                    != metadata["installed_sha256"]
                     or not re.fullmatch(
                         r"[a-f0-9]{64}",
                         str(result.get("robots_sha256", "")),
@@ -3308,13 +3570,7 @@ def main() -> int:
             unstarted_recovered = False
             try:
                 recovery_status = bridge_call(client, "status", token, deployment_id)
-                if not recovery_status.get("state_exists") and (
-                    not recovery_status.get("lock_owned")
-                    or (
-                        recovery_status.get("phase") == "locked"
-                        and recovery_status.get("recovery_ready")
-                    )
-                ):
+                if can_finalize_unstarted_status(recovery_status):
                     audit["unstarted_recovery_finalize"] = finalize_deployment(
                         client, token, deployment_id
                     )

@@ -712,6 +712,7 @@ class CompletedRollbackTests(unittest.TestCase):
         robots_sha = "c" * 64
         metadata = {
             "artifact": "complete99-platform.zip",
+            "installed_sha256": plugin_sha,
             "sha256": "a" * 64,
             "slug": DEPLOY.SLUG,
             "source_sha256": "d" * 64,
@@ -772,6 +773,11 @@ class CompletedRollbackTests(unittest.TestCase):
             mock.patch.object(DEPLOY, "remove_prefixed_snippets", return_value={}),
             mock.patch.object(DEPLOY, "verify_health", return_value={"status": "ok"}),
             mock.patch.object(DEPLOY, "verify_rendered_home", return_value={}),
+            mock.patch.object(
+                DEPLOY,
+                "stage_artifact",
+                return_value={"complete": True, "artifact_sha256": metadata["sha256"]},
+            ),
             mock.patch.object(DEPLOY, "install_with_recovery", return_value=install),
             mock.patch.object(DEPLOY, "stabilize_deployment", return_value={"stabilized": True}),
             mock.patch.object(DEPLOY, "verify_managed_robots", return_value={}),
