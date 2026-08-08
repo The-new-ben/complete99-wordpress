@@ -93,7 +93,7 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
 1. Bump the plugin header and `COMPLETE99_PLATFORM_VERSION`; set
    `COMPLETE99_PLATFORM_DEPLOYMENT_ID` to exactly `c99-wp-<version>`.
 2. Run PHP lint, contract tests and the secret scan.
-3. For release 1.18.1, require the Entity Studio contracts to prove private
+3. For release 1.18.1 and later, require the Entity Studio contracts to prove private
    post-type and REST boundaries, capability denial, advisory-lock failure,
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
@@ -300,11 +300,11 @@ earlier probe-finalize response was lost, the next run waits for that unstarted
 probe lease, releases only its exact state-free reservation, and repeats the full
 attestation under a new probe.
 
-## Release 1.18.1 live verification
+## Release 1.18.2 live verification
 
 Before installation:
 
-1. Confirm the artifact, manifest and deployment marker all report `1.18.1`.
+1. Confirm the artifact, manifest and deployment marker all report `1.18.2`.
 2. Confirm the deployment audit records a complete chunked-staging receipt with
    the exact artifact byte count and SHA-256 before the install gate begins.
 3. Confirm the package changes no product seed, price, stock, supplier,
@@ -318,8 +318,8 @@ Before installation:
 
 After installation and cache purge:
 
-1. Verify anonymous health returns version `1.18.1`, deployment ID
-   `c99-wp-1.18.1` and the expected database version.
+1. Verify anonymous health returns version `1.18.2`, deployment ID
+   `c99-wp-1.18.2` and the expected database version.
 2. Verify Hebrew and English unfiltered stores expose three pages of twelve
    unique products with no omission or duplicate.
 3. Verify the Japanese pantry filter exposes exactly nine products through
@@ -509,7 +509,7 @@ A production release is complete only when the non-secret audit JSON shows:
   with 672 science identities, 56 product identities and 728 Entity Studio
   subjects;
 - exact 56 of 56 product price-basis coverage, comprising 36 live prices and 20
-  private planning prices, with zero active or draft offer added by 1.18.1;
+  private planning prices, with zero active or draft offer added by 1.18.2;
 - exact 282-identity Syrian type counts, including the 86 new private identities
   and four exact held records, with no price, product, offer, supplier, stock or
   public projection;

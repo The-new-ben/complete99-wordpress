@@ -129,6 +129,61 @@ class Complete99ScalableStoreShelfContracts(unittest.TestCase):
         self.assertIsNotNone(pagination_rule)
         self.assertRegex(pagination_rule.group(1), r"min-height:\s*44px")
 
+    def test_mobile_shelf_compaction_preserves_copy_dom_and_target_sizes(self) -> None:
+        mobile = self.css.split("@media (max-width: 700px)", 1)[1].split(
+            "@media (max-width: 420px)", 1
+        )[0]
+
+        hero = re.search(r"\.c99-live-store-hero\s*\{([^}]*)\}", mobile)
+        hero_eyebrow = re.search(
+            r"\.c99-live-store-hero > \.c99-container > \.c99-eyebrow\s*\{([^}]*)\}",
+            mobile,
+        )
+        hero_heading = re.search(r"\.c99-live-store-hero h1\s*\{([^}]*)\}", mobile)
+        products = re.search(r"\.c99-live-store-products\s*\{([^}]*)\}", mobile)
+        heading = re.search(r"\.c99-live-store-heading\s*\{([^}]*)\}", mobile)
+        heading_support = re.search(
+            r"\.c99-live-store-heading \.c99-eyebrow,\s*"
+            r"\.c99-live-store-heading \.c99-text-link\s*\{([^}]*)\}",
+            mobile,
+        )
+        shelf_heading = re.search(r"\.c99-live-store-heading h2\s*\{([^}]*)\}", mobile)
+        product_filter = re.search(r"\.c99-product-filter\s*\{([^}]*)\}", mobile)
+        mobile_button = re.search(
+            r"\.c99-consumer-site \.c99-live-store-hero "
+            r"\.c99-hero-actions \.c99-button\s*\{([^}]*)\}",
+            mobile,
+        )
+
+        for rule in (
+            hero,
+            hero_eyebrow,
+            hero_heading,
+            products,
+            heading,
+            heading_support,
+            shelf_heading,
+            product_filter,
+            mobile_button,
+        ):
+            self.assertIsNotNone(rule)
+        self.assertRegex(hero.group(1), r"padding:\s*14px 0 16px")
+        self.assertRegex(hero_eyebrow.group(1), r"display:\s*none")
+        self.assertRegex(hero_heading.group(1), r"max-width:\s*none")
+        self.assertRegex(hero_heading.group(1), r"font-size:\s*2rem")
+        self.assertRegex(hero_heading.group(1), r"line-height:\s*1\.02")
+        self.assertRegex(products.group(1), r"padding-top:\s*8px")
+        self.assertRegex(heading.group(1), r"margin-bottom:\s*10px")
+        self.assertRegex(heading_support.group(1), r"display:\s*none")
+        self.assertRegex(shelf_heading.group(1), r"max-width:\s*none")
+        self.assertRegex(shelf_heading.group(1), r"font-size:\s*1\.55rem")
+        self.assertRegex(shelf_heading.group(1), r"line-height:\s*1\.08")
+        self.assertRegex(product_filter.group(1), r"margin-bottom:\s*16px")
+        self.assertRegex(mobile_button.group(1), r"min-height:\s*44px")
+        self.assertIn("The store is open", self.consumer)
+        self.assertIn("What you can bring into the kitchen", self.consumer)
+        self.assertIn("Back to the dishes", self.consumer)
+
     def test_cards_are_compact_details_and_use_one_priority_image(self) -> None:
         store = method_block(
             self.consumer, "render_live_store_page", "render_store_cart_feedback"

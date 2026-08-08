@@ -1,9 +1,30 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-08
-Release target: Complete99 Platform 1.18.1
+Release target: Complete99 Platform 1.18.2
 
-## Current 1.18.1 scalable pantry shelf
+## Current 1.18.2 mobile acceptance patch
+
+Release 1.18.2 preserves the complete 1.18.1 shelf and compacts only its mobile
+masthead and shelf introduction. At 390 by 844, release 1.18.1 placed the first
+Hebrew card at 848.25 pixels and the first English card at 1007.8 pixels. The
+patch keeps both full summaries visible, scales the H1 and H2 for narrow screens,
+and removes repeated eyebrow and back-link copy from the mobile visual flow
+without removing it from the server-rendered document. Fresh Chrome acceptance
+must place both first-card top coordinates at or before 820 CSS pixels. The patch
+does not reduce any control below 44 by 44 CSS pixels and does not change the
+desktop layout, catalog, price, stock, cart, supplier, gateway or checkout
+state.
+
+A read-only pre-deploy browser preview injected the exact candidate CSS into
+the unchanged live 1.18.1 document. In the same 390 by 844 browser state, the
+English first-card top moved from 982.39 to 696.19 CSS pixels and the Hebrew
+first-card top moved from 840.41 to 609.92 CSS pixels. Both previews reported
+zero visible link or button target violations. This paired preview proves the
+candidate geometry only. It is not a substitute for fresh 1.18.2 post-deploy
+Chrome acceptance.
+
+## Preserved 1.18.1 scalable pantry shelf
 
 Release 1.18.1 preserves the exact 36 WooCommerce products and presents them in
 three server-rendered pages of twelve products. Product-type filters and page
