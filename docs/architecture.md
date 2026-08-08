@@ -134,6 +134,13 @@ canonical metadata, robots and Product schema. Filtered utility states are
 presentation helper can write a product, price, stock value, supplier record,
 order or payment setting.
 
+Release 1.18.2 keeps that architecture and every registry, product and commerce
+state unchanged. Its mobile-only presentation compacts the two store headings,
+spacing and repeated supporting labels while retaining the complete copy in the
+server-rendered document. The first product card must enter the 390 by 844
+initial viewport, all interaction targets remain at least 44 by 44 CSS pixels,
+and no desktop rule changes.
+
 ## Private Entity Studio
 
 Release 1.10.0 adds Entity Studio inside WordPress as a copy-on-write commercial
@@ -262,6 +269,9 @@ Release 1.18.1 preserves those exact registry and public graph counts. It
 changes only how the 36 WooCommerce products are discovered and rendered on the
 public shelf: three pages of twelve products, server-rendered filters, stable
 page-aware product anchors and progressively disclosed specifications.
+
+Release 1.18.2 preserves the same counts, routes and shelf behavior. Its only
+runtime change is mobile store spacing.
 
 ## Syria regional and community boundary
 

@@ -2241,11 +2241,18 @@ body.c99-consumer-site {
 	}
 
 	.c99-live-store-hero {
-		padding: 18px 0 22px;
+		padding: 14px 0 16px;
+	}
+
+	.c99-live-store-hero > .c99-container > .c99-eyebrow {
+		display: none;
 	}
 
 	.c99-live-store-hero h1 {
-		font-size: clamp(2.45rem, 12vw, 3.6rem);
+		max-width: none;
+		font-size: 2rem;
+		letter-spacing: -.035em;
+		line-height: 1.02;
 	}
 
 	.c99-live-store-hero .c99-hero-actions {
@@ -2261,19 +2268,27 @@ body.c99-consumer-site {
 	}
 
 	.c99-live-store-products {
-		padding-top: 22px;
+		padding-top: 8px;
 	}
 
 	.c99-live-store-heading {
-		margin-bottom: 14px;
+		margin-bottom: 10px;
+	}
+
+	.c99-live-store-heading .c99-eyebrow,
+	.c99-live-store-heading .c99-text-link {
+		display: none;
 	}
 
 	.c99-live-store-heading h2 {
-		font-size: clamp(1.9rem, 9vw, 2.8rem);
+		max-width: none;
+		font-size: 1.55rem;
+		letter-spacing: -.025em;
+		line-height: 1.08;
 	}
 
 	.c99-product-filter {
-		margin-bottom: 18px;
+		margin-bottom: 16px;
 		padding: 12px;
 	}
 

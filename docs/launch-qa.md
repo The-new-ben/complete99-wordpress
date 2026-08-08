@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.18.1
+Release target: Complete99 Platform 1.18.2
 
 ## Automated gates
 
@@ -25,7 +25,7 @@ Release target: Complete99 Platform 1.18.1
 - The install route refuses `package_base64`, requires a completed staged
   artifact, and rechecks its exact size and SHA-256 before and after claiming the
   deployment lease.
-- The public update manifest matches version 1.18.1 and its versioned package URL.
+- The public update manifest matches version 1.18.2 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -40,6 +40,15 @@ Release target: Complete99 Platform 1.18.1
   twelve unique products, without omissions or duplicates.
 - Product-type filters and pagination work as ordinary links without
   JavaScript, and every control exposes a minimum 44 by 44 CSS-pixel target.
+- The mobile-only store masthead and shelf introduction use compact headings
+  and omit repeated supporting labels from the narrow visual flow without
+  changing the server-rendered copy, any control target or any desktop rule.
+  Fresh Hebrew and English Chrome acceptance at 390 by 844 must place each first
+  product-card top coordinate at or before 820 CSS pixels.
+- A paired read-only 390 by 844 candidate-CSS preview moved the English first
+  card from 982.39 to 696.19 CSS pixels and the Hebrew first card from 840.41 to
+  609.92, with zero visible link or button target violations. Treat this as
+  pre-deploy geometry evidence, never as post-deploy acceptance.
 - Filtered pantry states are `noindex,follow`; unfiltered page states preserve
   the store's current search eligibility. Canonical and Hebrew, English and
   x-default alternates reflect the exact validated state.

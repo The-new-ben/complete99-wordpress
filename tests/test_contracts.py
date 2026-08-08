@@ -185,14 +185,20 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("added no WooCommerce offers, stock, supplier claims", changelog)
         self.assertIn("payment activation or role assignments", changelog)
 
-    def test_release_1_18_1_manifest_describes_scalable_store_and_preserves_1_18(self) -> None:
+    def test_release_1_18_2_manifest_describes_mobile_acceptance_and_preserves_1_18_1(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
-        self.assertTrue(changelog.startswith("<h4>1.18.1</h4>"))
+        self.assertTrue(changelog.startswith("<h4>1.18.2</h4>"))
+        self.assertIn("first product card", changelog)
+        self.assertIn("390 by 844 viewport in both languages", changelog)
+        self.assertIn("complete consumer copy in the server-rendered document", changelog)
+        self.assertIn("every 44 by 44 control target", changelog)
+        self.assertIn("desktop layout", changelog)
+        self.assertIn("<h4>1.18.1</h4>", changelog)
         self.assertIn("twelve products per page", changelog)
         self.assertIn("work without JavaScript", changelog)
         self.assertIn("accessible expandable panels", changelog)

@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-08
-Status: source release target 1.18.1, with 12 public dishes, 36 unchanged public products presented in twelve-product server-rendered shelf pages, 56 product identities, 20 private planning prices, 672 science identities, 728 Entity Studio subjects and 27 public science entities across 19 page owners per language
+Status: source release target 1.18.2, with a bounded mobile pantry acceptance patch, 12 public dishes, 36 unchanged public products presented in twelve-product server-rendered shelf pages, 56 product identities, 20 private planning prices, 672 science identities, 728 Entity Studio subjects and 27 public science entities across 19 page owners per language
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future

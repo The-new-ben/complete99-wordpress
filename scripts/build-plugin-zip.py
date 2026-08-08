@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-08 05:05:00"
+RELEASE_LAST_UPDATED = "2026-08-08 07:30:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -236,6 +236,12 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Compacted only the mobile pantry masthead and shelf introduction so the first product card can appear inside the initial 390 by 844 viewport in both languages.</li>"
+                "<li>Kept the complete consumer copy in the server-rendered document while removing repeated narrow-screen labels from the visual flow and scaling the two store headings for a concise mobile shelf.</li>"
+                "<li>Preserved every 44 by 44 control target, the desktop layout, all 36 products, prices, stock, links, cart behavior and disabled payment state.</li>"
+                "</ul>"
+                "<h4>1.18.1</h4>"
                 "<ul>"
                 "<li>Rebuilt the bilingual pantry shelf as a compact server-rendered catalog with twelve products per page, real pagination and safe product-type links that work without JavaScript.</li>"
                 "<li>Kept stock, price, add-to-cart and the primary culinary continuation visible while moving detailed ingredients, allergens, storage, equipment care and secondary connections into accessible expandable panels.</li>"
