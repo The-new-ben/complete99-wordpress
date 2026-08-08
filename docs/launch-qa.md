@@ -13,6 +13,15 @@ Release target: Complete99 Platform 1.18.1
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
+- The production bridge embeds the exact artifact SHA-256, artifact byte count,
+  release version and installed-tree SHA-256. The driver uploads the artifact in
+  sequential chunks of at most 1 MiB and records only a bounded staging receipt.
+- The staging route rejects gaps, overlaps, changed replays, malformed base64,
+  oversized chunks, incomplete final state, unsafe paths, symbolic links,
+  duplicate ZIP entries and expansion beyond its ceiling.
+- The install route refuses `package_base64`, requires a completed staged
+  artifact, and rechecks its exact size and SHA-256 before and after claiming the
+  deployment lease.
 - The public update manifest matches version 1.18.1 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.

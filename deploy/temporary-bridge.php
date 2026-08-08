@@ -11,12 +11,17 @@ add_action(
 	'rest_api_init',
 	static function () {
 		$config = array(
-			'token'         => '__C99_TOKEN__',
-			'deployment_id' => '__C99_DEPLOYMENT_ID__',
-			'slug'          => 'complete99-platform',
-			'plugin_file'   => 'complete99-platform/complete99-platform.php',
+			'token'                    => '__C99_TOKEN__',
+			'deployment_id'            => '__C99_DEPLOYMENT_ID__',
+			'slug'                     => 'complete99-platform',
+			'plugin_file'              => 'complete99-platform/complete99-platform.php',
 			'max_bytes'     => __C99_MAX_BYTES__,
 			'min_free_bytes'=> __C99_MIN_FREE_BYTES__,
+			'expected_artifact_sha256' => '__C99_EXPECTED_ARTIFACT_SHA256__',
+			'expected_artifact_size'   => __C99_EXPECTED_ARTIFACT_SIZE__,
+			'expected_plugin_sha256'   => '__C99_EXPECTED_PLUGIN_SHA256__',
+			'expected_version'         => '__C99_EXPECTED_VERSION__',
+			'stage_chunk_max_bytes'    => 1048576,
 			'local_test'    => __C99_LOCAL_TEST__,
 			'test_fault'    => '__C99_TEST_FAULT__',
 			'target_host'   => '__C99_TARGET_HOST__',
@@ -25,9 +30,9 @@ add_action(
 			'interrupted_forward' => array(
 				'finalized_attestation_enabled'     => __C99_INTERRUPTED_FORWARD_FINALIZED_ATTESTATION__,
 				'target_deployment_id'              => '__C99_INTERRUPTED_FORWARD_TARGET_DEPLOYMENT_ID__',
-				'expected_artifact_sha256'          => '__C99_EXPECTED_ARTIFACT_SHA256__',
-				'expected_plugin_sha256'            => '__C99_EXPECTED_PLUGIN_SHA256__',
-				'expected_version'                  => '__C99_EXPECTED_VERSION__',
+				'expected_artifact_sha256'          => '',
+				'expected_plugin_sha256'            => '',
+				'expected_version'                  => '',
 				'proof_sha256'                      => '__C99_INTERRUPTED_FORWARD_PROOF_SHA256__',
 				'reviewed_database_fingerprint'     => '__C99_REVIEWED_DATABASE_FINGERPRINT__',
 				'reviewed_database_manifest'        => json_decode( base64_decode( '__C99_REVIEWED_DATABASE_MANIFEST_BASE64__' ), true ),
@@ -40,6 +45,9 @@ add_action(
 				'prior_robots_sha256'                => '__C99_PRIOR_ROBOTS_SHA256__',
 			),
 		);
+		$config['interrupted_forward']['expected_artifact_sha256'] = $config['expected_artifact_sha256'];
+		$config['interrupted_forward']['expected_plugin_sha256']   = $config['expected_plugin_sha256'];
+		$config['interrupted_forward']['expected_version']         = $config['expected_version'];
 		$route_prefix = '/' . $config['deployment_id'];
 
 		$permission = static function ( WP_REST_Request $request ) use ( $config ) {
@@ -112,6 +120,16 @@ add_action(
 
 		$state_directory = static function ( $deployment_id ) {
 			return trailingslashit( WP_CONTENT_DIR ) . '.complete99-deploy-backups/' . $deployment_id;
+		};
+		$staging_root = trailingslashit( WP_CONTENT_DIR ) . '.complete99-deploy-staging';
+		$staging_directory = static function ( $deployment_id ) use ( $staging_root ) {
+			return trailingslashit( $staging_root ) . $deployment_id;
+		};
+		$staged_artifact_path = static function ( $deployment_id ) use ( $staging_directory ) {
+			return trailingslashit( $staging_directory( $deployment_id ) ) . 'artifact.zip';
+		};
+		$staged_metadata_path = static function ( $deployment_id ) use ( $staging_directory ) {
+			return trailingslashit( $staging_directory( $deployment_id ) ) . 'stage.json';
 		};
 
 		$lock_option = 'complete99_deploy_lock';
@@ -322,6 +340,368 @@ add_action(
 				return new WP_Error( 'c99_deploy_state_commit', 'Deployment state could not be committed atomically.', array( 'status' => 500 ) );
 			}
 			return true;
+		};
+
+		$validate_embedded_artifact_identity = static function () use ( $config ) {
+			if (
+				! preg_match( '/^[a-f0-9]{64}$/', (string) $config['expected_artifact_sha256'] )
+				|| ! is_int( $config['expected_artifact_size'] )
+				|| 0 >= $config['expected_artifact_size']
+				|| $config['expected_artifact_size'] > (int) $config['max_bytes']
+				|| ! preg_match( '/^[a-f0-9]{64}$/', (string) $config['expected_plugin_sha256'] )
+				|| ! preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) $config['expected_version'] )
+			) {
+				return new WP_Error( 'c99_stage_embedded_identity', 'The bridge does not contain one complete immutable release identity.', array( 'status' => 409 ) );
+			}
+			return true;
+		};
+
+		$protect_staging_directory = static function ( $deployment_id ) use ( $config, $staging_root, $staging_directory ) {
+			global $wp_filesystem;
+			if (
+				$config['deployment_id'] !== $deployment_id
+				|| ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id )
+			) {
+				return new WP_Error( 'c99_stage_path_identity', 'The artifact staging identity is invalid.', array( 'status' => 400 ) );
+			}
+			if ( is_link( $staging_root ) || ( file_exists( $staging_root ) && ! is_dir( $staging_root ) ) ) {
+				return new WP_Error( 'c99_stage_root_unsafe', 'The artifact staging root is unsafe.', array( 'status' => 409 ) );
+			}
+			if ( ! is_dir( $staging_root ) && ! $wp_filesystem->mkdir( $staging_root, FS_CHMOD_DIR ) ) {
+				return new WP_Error( 'c99_stage_root_create', 'The artifact staging root could not be created.', array( 'status' => 500 ) );
+			}
+			if ( is_link( $staging_root ) || ! is_dir( $staging_root ) ) {
+				return new WP_Error( 'c99_stage_root_readback', 'The artifact staging root failed safety readback.', array( 'status' => 409 ) );
+			}
+			$guard_files = array(
+				'index.php'  => "<?php\n// Silence is golden.\n",
+				'.htaccess'  => "Require all denied\nDeny from all\n",
+				'web.config' => "<?xml version=\"1.0\" encoding=\"UTF-8\"?><configuration><system.webServer><security><authorization><remove users=\"*\" roles=\"\" verbs=\"\"/><add accessType=\"Deny\" users=\"*\"/></authorization></security></system.webServer></configuration>\n",
+			);
+			foreach ( $guard_files as $guard_name => $guard_contents ) {
+				$guard_path = trailingslashit( $staging_root ) . $guard_name;
+				if (
+					is_link( $guard_path )
+					|| is_dir( $guard_path )
+					|| ! $wp_filesystem->put_contents( $guard_path, $guard_contents, FS_CHMOD_FILE )
+				) {
+					return new WP_Error( 'c99_stage_guard', 'The artifact staging root could not be protected.', array( 'status' => 500 ) );
+				}
+				$guard_readback = $wp_filesystem->get_contents( $guard_path );
+				if ( ! is_string( $guard_readback ) || ! hash_equals( hash( 'sha256', $guard_contents ), hash( 'sha256', $guard_readback ) ) ) {
+					return new WP_Error( 'c99_stage_guard_readback', 'An artifact staging guard failed readback.', array( 'status' => 500 ) );
+				}
+			}
+
+			$stage_dir = $staging_directory( $deployment_id );
+			if ( is_link( $stage_dir ) || ( file_exists( $stage_dir ) && ! is_dir( $stage_dir ) ) ) {
+				return new WP_Error( 'c99_stage_directory_unsafe', 'The isolated artifact staging directory is unsafe.', array( 'status' => 409 ) );
+			}
+			if ( ! is_dir( $stage_dir ) && ! $wp_filesystem->mkdir( $stage_dir, FS_CHMOD_DIR ) ) {
+				return new WP_Error( 'c99_stage_directory_create', 'The isolated artifact staging directory could not be created.', array( 'status' => 500 ) );
+			}
+			$resolved_root = realpath( $staging_root );
+			$resolved_dir  = realpath( $stage_dir );
+			if (
+				false === $resolved_root
+				|| false === $resolved_dir
+				|| is_link( $stage_dir )
+				|| wp_normalize_path( dirname( $resolved_dir ) ) !== wp_normalize_path( $resolved_root )
+			) {
+				return new WP_Error( 'c99_stage_directory_readback', 'The isolated artifact staging directory failed safety readback.', array( 'status' => 409 ) );
+			}
+			return $stage_dir;
+		};
+
+		$cleanup_staging = static function ( $deployment_id ) use ( $config, $staging_root, $staging_directory ) {
+			if ( $config['deployment_id'] !== $deployment_id || ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id ) ) {
+				return new WP_Error( 'c99_stage_cleanup_identity', 'The artifact staging cleanup identity is invalid.', array( 'status' => 400 ) );
+			}
+			if ( is_link( $staging_root ) || ( file_exists( $staging_root ) && ! is_dir( $staging_root ) ) ) {
+				return new WP_Error( 'c99_stage_cleanup_root', 'The artifact staging root is unsafe for cleanup.', array( 'status' => 409 ) );
+			}
+			$stage_dir = $staging_directory( $deployment_id );
+			if ( is_link( $stage_dir ) ) {
+				return new WP_Error( 'c99_stage_cleanup_directory_link', 'The isolated artifact staging directory is a symbolic link.', array( 'status' => 409 ) );
+			}
+			if ( ! file_exists( $stage_dir ) ) {
+				return true;
+			}
+			if ( ! is_dir( $stage_dir ) ) {
+				return new WP_Error( 'c99_stage_cleanup_directory', 'The isolated artifact staging path is not a directory.', array( 'status' => 409 ) );
+			}
+			$resolved_root = realpath( $staging_root );
+			$resolved_dir  = realpath( $stage_dir );
+			if (
+				false === $resolved_root
+				|| false === $resolved_dir
+				|| wp_normalize_path( dirname( $resolved_dir ) ) !== wp_normalize_path( $resolved_root )
+			) {
+				return new WP_Error( 'c99_stage_cleanup_path', 'The isolated artifact staging path failed safety validation.', array( 'status' => 409 ) );
+			}
+			$entries = @scandir( $stage_dir );
+			if ( ! is_array( $entries ) ) {
+				return new WP_Error( 'c99_stage_cleanup_scan', 'The isolated artifact staging directory could not be inspected.', array( 'status' => 500 ) );
+			}
+			foreach ( $entries as $entry ) {
+				if ( '.' === $entry || '..' === $entry ) {
+					continue;
+				}
+				if (
+					'artifact.zip' !== $entry
+					&& 'stage.json' !== $entry
+					&& ! preg_match( '/^stage\.json\.tmp-[a-f0-9]{16}$/', $entry )
+				) {
+					return new WP_Error( 'c99_stage_cleanup_unexpected', 'The isolated artifact staging directory contains an unexpected entry.', array( 'status' => 409 ) );
+				}
+				$entry_path = trailingslashit( $stage_dir ) . $entry;
+				if ( is_link( $entry_path ) || is_dir( $entry_path ) || ! is_file( $entry_path ) ) {
+					return new WP_Error( 'c99_stage_cleanup_entry', 'The isolated artifact staging directory contains an unsafe entry.', array( 'status' => 409 ) );
+				}
+				if ( ! @unlink( $entry_path ) ) {
+					return new WP_Error( 'c99_stage_cleanup_unlink', 'An artifact staging residue file could not be removed.', array( 'status' => 500 ) );
+				}
+			}
+			if ( ! @rmdir( $stage_dir ) ) {
+				return new WP_Error( 'c99_stage_cleanup_rmdir', 'The isolated artifact staging directory could not be removed.', array( 'status' => 500 ) );
+			}
+			return true;
+		};
+
+		$read_stage_metadata = static function ( $deployment_id ) use ( $config, $staged_metadata_path ) {
+			$metadata_path = $staged_metadata_path( $deployment_id );
+			if ( is_link( $metadata_path ) || is_dir( $metadata_path ) || ! is_file( $metadata_path ) ) {
+				return new WP_Error( 'c99_stage_metadata_missing', 'Completed artifact staging metadata was not found.', array( 'status' => 409 ) );
+			}
+			$metadata_size = @filesize( $metadata_path );
+			if ( false === $metadata_size || 0 >= $metadata_size || 16384 < $metadata_size ) {
+				return new WP_Error( 'c99_stage_metadata_size', 'Artifact staging metadata has an invalid size.', array( 'status' => 409 ) );
+			}
+			$contents = @file_get_contents( $metadata_path );
+			$metadata = is_string( $contents ) ? json_decode( $contents, true ) : null;
+			$expected_keys = array(
+				'artifact_sha256',
+				'complete',
+				'deployment_id',
+				'expected_artifact_sha256',
+				'expected_artifact_size',
+				'last_final',
+				'last_offset',
+				'last_sha256',
+				'last_size',
+				'received_bytes',
+				'schema',
+				'updated_at',
+			);
+			$actual_keys = is_array( $metadata ) ? array_keys( $metadata ) : array();
+			sort( $actual_keys, SORT_STRING );
+			if (
+				$expected_keys !== $actual_keys
+				|| 'complete99-artifact-stage/v1' !== (string) ( $metadata['schema'] ?? '' )
+				|| $config['deployment_id'] !== (string) ( $metadata['deployment_id'] ?? '' )
+				|| ! hash_equals( (string) $config['expected_artifact_sha256'], (string) ( $metadata['expected_artifact_sha256'] ?? '' ) )
+				|| (int) $config['expected_artifact_size'] !== ( $metadata['expected_artifact_size'] ?? null )
+				|| ! is_int( $metadata['received_bytes'] ?? null )
+				|| ! is_bool( $metadata['complete'] ?? null )
+				|| ! is_int( $metadata['last_offset'] ?? null )
+				|| ! is_int( $metadata['last_size'] ?? null )
+				|| ! preg_match( '/^[a-f0-9]{64}$/', (string) ( $metadata['last_sha256'] ?? '' ) )
+				|| ! is_bool( $metadata['last_final'] ?? null )
+				|| ! is_int( $metadata['updated_at'] ?? null )
+				|| 0 >= (int) ( $metadata['received_bytes'] ?? 0 )
+				|| (int) ( $metadata['received_bytes'] ?? 0 ) > (int) $config['expected_artifact_size']
+				|| 0 > (int) ( $metadata['last_offset'] ?? -1 )
+				|| 0 >= (int) ( $metadata['last_size'] ?? 0 )
+				|| (int) ( $metadata['last_size'] ?? 0 ) > (int) $config['stage_chunk_max_bytes']
+				|| (int) ( $metadata['last_offset'] ?? -1 ) + (int) ( $metadata['last_size'] ?? 0 ) !== (int) ( $metadata['received_bytes'] ?? -1 )
+				|| (bool) ( $metadata['complete'] ?? false ) !== ( (int) ( $metadata['received_bytes'] ?? 0 ) === (int) $config['expected_artifact_size'] )
+				|| (bool) ( $metadata['last_final'] ?? false ) !== (bool) ( $metadata['complete'] ?? false )
+				|| ( ! empty( $metadata['complete'] ) && ! hash_equals( (string) $config['expected_artifact_sha256'], (string) ( $metadata['artifact_sha256'] ?? '' ) ) )
+				|| ( empty( $metadata['complete'] ) && '' !== (string) ( $metadata['artifact_sha256'] ?? '' ) )
+			) {
+				return new WP_Error( 'c99_stage_metadata_invalid', 'Artifact staging metadata failed immutable identity validation.', array( 'status' => 409 ) );
+			}
+			return $metadata;
+		};
+
+		$inspect_staged_artifact = static function ( $deployment_id ) use ( $config, $validate_embedded_artifact_identity, $staging_directory, $staged_artifact_path, $read_stage_metadata ) {
+			$identity = $validate_embedded_artifact_identity();
+			if ( is_wp_error( $identity ) ) {
+				return $identity;
+			}
+			$metadata = $read_stage_metadata( $deployment_id );
+			if ( is_wp_error( $metadata ) ) {
+				return $metadata;
+			}
+			if (
+				true !== $metadata['complete']
+				|| (int) $config['expected_artifact_size'] !== $metadata['received_bytes']
+				|| ! hash_equals( (string) $config['expected_artifact_sha256'], (string) $metadata['artifact_sha256'] )
+			) {
+				return new WP_Error( 'c99_stage_incomplete', 'The immutable release artifact has not completed staging.', array( 'status' => 409 ) );
+			}
+			$stage_dir    = $staging_directory( $deployment_id );
+			$artifact_path = $staged_artifact_path( $deployment_id );
+			if ( is_link( $stage_dir ) || is_link( $artifact_path ) || is_dir( $artifact_path ) || ! is_file( $artifact_path ) ) {
+				return new WP_Error( 'c99_stage_artifact_path', 'The staged release artifact path is unsafe.', array( 'status' => 409 ) );
+			}
+			$resolved_dir      = realpath( $stage_dir );
+			$resolved_artifact = realpath( $artifact_path );
+			if (
+				false === $resolved_dir
+				|| false === $resolved_artifact
+				|| wp_normalize_path( dirname( $resolved_artifact ) ) !== wp_normalize_path( $resolved_dir )
+			) {
+				return new WP_Error( 'c99_stage_artifact_escape', 'The staged release artifact escaped its isolated directory.', array( 'status' => 409 ) );
+			}
+			$before = @lstat( $artifact_path );
+			$size   = @filesize( $artifact_path );
+			$sha256 = @hash_file( 'sha256', $artifact_path );
+			clearstatcache( true, $artifact_path );
+			$after = @lstat( $artifact_path );
+			if (
+				! is_array( $before )
+				|| ! is_array( $after )
+				|| false === $size
+				|| (int) $config['expected_artifact_size'] !== (int) $size
+				|| false === $sha256
+				|| ! hash_equals( (string) $config['expected_artifact_sha256'], $sha256 )
+				|| (int) ( $before['size'] ?? -1 ) !== (int) ( $after['size'] ?? -2 )
+				|| (int) ( $before['ino'] ?? -1 ) !== (int) ( $after['ino'] ?? -2 )
+				|| (int) ( $before['dev'] ?? -1 ) !== (int) ( $after['dev'] ?? -2 )
+			) {
+				return new WP_Error( 'c99_stage_artifact_integrity', 'The staged release artifact failed exact size or digest validation.', array( 'status' => 422 ) );
+			}
+			return array(
+				'path'     => $artifact_path,
+				'size'     => (int) $size,
+				'sha256'   => $sha256,
+				'metadata' => $metadata,
+			);
+		};
+
+		$validate_staged_archive = static function ( $artifact_path ) use ( $config ) {
+			if ( ! class_exists( 'ZipArchive' ) ) {
+				return new WP_Error( 'c99_stage_zip_support', 'ZIP archive validation is unavailable.', array( 'status' => 500 ) );
+			}
+			$archive = new \ZipArchive();
+			$opened  = $archive->open( $artifact_path, \ZipArchive::CHECKCONS );
+			if ( true !== $opened ) {
+				return new WP_Error( 'c99_stage_zip_open', 'The staged release artifact is not a valid ZIP archive.', array( 'status' => 422 ) );
+			}
+			$entry_count = (int) $archive->numFiles;
+			if ( 0 >= $entry_count || 20000 < $entry_count ) {
+				$archive->close();
+				return new WP_Error( 'c99_stage_zip_entries', 'The staged release archive has an invalid entry count.', array( 'status' => 422 ) );
+			}
+			$seen = array();
+			$total_uncompressed = 0;
+			$plugin_main_found  = false;
+			for ( $index = 0; $index < $entry_count; $index++ ) {
+				$stat = $archive->statIndex( $index, \ZipArchive::FL_UNCHANGED );
+				$name = is_array( $stat ) ? (string) ( $stat['name'] ?? '' ) : '';
+				$segments = explode( '/', rtrim( $name, '/' ) );
+				$canonical_name = strtolower( $name );
+				if (
+					'' === $name
+					|| 1024 < strlen( $name )
+					|| str_contains( $name, "\0" )
+					|| str_contains( $name, '\\' )
+					|| str_starts_with( $name, '/' )
+					|| preg_match( '/^[A-Za-z]:/', $name )
+					|| in_array( '', $segments, true )
+					|| in_array( '.', $segments, true )
+					|| in_array( '..', $segments, true )
+					|| ( $config['slug'] !== rtrim( $name, '/' ) && ! str_starts_with( $name, $config['slug'] . '/' ) )
+					|| isset( $seen[ $canonical_name ] )
+				) {
+					$archive->close();
+					return new WP_Error( 'c99_stage_zip_path', 'The staged release archive contains an unsafe or duplicate path.', array( 'status' => 422 ) );
+				}
+				$seen[ $canonical_name ] = true;
+				$operating_system = 0;
+				$attributes       = 0;
+				if ( $archive->getExternalAttributesIndex( $index, $operating_system, $attributes, \ZipArchive::FL_UNCHANGED ) ) {
+					$file_type = ( $attributes >> 16 ) & 0170000;
+					if ( 0120000 === $file_type || ( 0 !== $file_type && 0100000 !== $file_type && 0040000 !== $file_type ) ) {
+						$archive->close();
+						return new WP_Error( 'c99_stage_zip_link', 'The staged release archive contains a link or special filesystem entry.', array( 'status' => 422 ) );
+					}
+				}
+				$entry_size = (int) ( $stat['size'] ?? -1 );
+				if ( 0 > $entry_size ) {
+					$archive->close();
+					return new WP_Error( 'c99_stage_zip_entry_size', 'The staged release archive contains an invalid entry size.', array( 'status' => 422 ) );
+				}
+				$total_uncompressed += $entry_size;
+				if ( $total_uncompressed > (int) $config['max_bytes'] * 32 ) {
+					$archive->close();
+					return new WP_Error( 'c99_stage_zip_expansion', 'The staged release archive exceeds the bounded extraction ceiling.', array( 'status' => 422 ) );
+				}
+				$plugin_main_found = $plugin_main_found || $config['plugin_file'] === $name;
+			}
+			$archive->close();
+			if ( ! $plugin_main_found ) {
+				return new WP_Error( 'c99_stage_zip_plugin_main', 'The staged release archive does not contain the allowlisted plugin entry point.', array( 'status' => 422 ) );
+			}
+			return true;
+		};
+
+		$consume_staged_artifact = static function ( $deployment_id, $destination ) use ( $config, $inspect_staged_artifact, $cleanup_staging ) {
+			$staged = $inspect_staged_artifact( $deployment_id );
+			if ( is_wp_error( $staged ) ) {
+				return $staged;
+			}
+			$temp_root       = strtolower( trailingslashit( wp_normalize_path( get_temp_dir() ) ) );
+			$normalized_temp = strtolower( wp_normalize_path( $destination ) );
+			if (
+				'' === $destination
+				|| ! str_starts_with( $normalized_temp, $temp_root )
+				|| ! str_ends_with( $normalized_temp, '.zip' )
+				|| is_link( $destination )
+				|| file_exists( $destination )
+			) {
+				return new WP_Error( 'c99_stage_consume_destination', 'The staged release destination is unsafe.', array( 'status' => 409 ) );
+			}
+			$source = (string) $staged['path'];
+			$moved  = @rename( $source, $destination );
+			$copied = false;
+			if ( ! $moved ) {
+				$copied = @copy( $source, $destination );
+				if ( ! $copied ) {
+					@unlink( $destination );
+					return new WP_Error( 'c99_stage_consume_copy', 'The staged release artifact could not be moved to the installer.', array( 'status' => 500 ) );
+				}
+			}
+			@chmod( $destination, FS_CHMOD_FILE );
+			clearstatcache( true, $destination );
+			$destination_size = @filesize( $destination );
+			$destination_sha  = @hash_file( 'sha256', $destination );
+			if (
+				is_link( $destination )
+				|| is_dir( $destination )
+				|| false === $destination_size
+				|| (int) $config['expected_artifact_size'] !== (int) $destination_size
+				|| false === $destination_sha
+				|| ! hash_equals( (string) $config['expected_artifact_sha256'], $destination_sha )
+			) {
+				@unlink( $destination );
+				return new WP_Error( 'c99_stage_consume_integrity', 'The installer copy of the staged release artifact failed integrity validation.', array( 'status' => 422 ) );
+			}
+			if ( $copied && ( ! @unlink( $source ) || file_exists( $source ) || is_link( $source ) ) ) {
+				@unlink( $destination );
+				return new WP_Error( 'c99_stage_consume_source_cleanup', 'The verified staging source could not be consumed exactly once.', array( 'status' => 500 ) );
+			}
+			$cleaned = $cleanup_staging( $deployment_id );
+			if ( is_wp_error( $cleaned ) ) {
+				@unlink( $destination );
+				return $cleaned;
+			}
+			return array(
+				'path'   => $destination,
+				'size'   => (int) $destination_size,
+				'sha256' => $destination_sha,
+			);
 		};
 
 		$protect_recovery_evidence_root = static function ( $root ) {
@@ -2046,7 +2426,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $decrypt_database_state, $managed_robots_path, $managed_robots_contents ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $decrypt_database_state, $managed_robots_path, $managed_robots_contents ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -2065,6 +2445,10 @@ add_action(
 						return $process_lock;
 					}
 					try {
+					$staging_cleaned = $cleanup_staging( $deployment_id );
+					if ( is_wp_error( $staging_cleaned ) ) {
+						return $staging_cleaned;
+					}
 					$state_dir  = $state_directory( $deployment_id );
 					$state_file = trailingslashit( $state_dir ) . 'state.json';
 					if ( ! $wp_filesystem->exists( $state_file ) ) {
@@ -3200,11 +3584,331 @@ add_action(
 
 		register_rest_route(
 			'complete99-deploy/v1',
+			$route_prefix . '/stage',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $permission,
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $validate_embedded_artifact_identity, $protect_staging_directory, $cleanup_staging, $state_directory, $staged_artifact_path, $staged_metadata_path, $read_stage_metadata, $validate_staged_archive, $write_state_file, $read_lock, $heartbeat_lock, $acquire_process_lock, $release_process_lock ) {
+					$filesystem = $bootstrap_filesystem();
+					if ( is_wp_error( $filesystem ) ) {
+						return $filesystem;
+					}
+					$site_identity = $verify_site_identity();
+					if ( is_wp_error( $site_identity ) ) {
+						return $site_identity;
+					}
+					$embedded_identity = $validate_embedded_artifact_identity();
+					if ( is_wp_error( $embedded_identity ) ) {
+						return $embedded_identity;
+					}
+
+					$json_params = $request->get_json_params();
+					$request_keys = is_array( $json_params ) ? array_keys( $json_params ) : array();
+					$expected_request_keys = array(
+						'chunk_base64',
+						'chunk_sha256',
+						'deployment_id',
+						'expected_artifact_sha256',
+						'expected_artifact_size',
+						'final',
+						'offset',
+						'token',
+					);
+					sort( $request_keys, SORT_STRING );
+					if ( $expected_request_keys !== $request_keys ) {
+						return new WP_Error( 'c99_stage_request_shape', 'The artifact staging request shape is invalid.', array( 'status' => 400 ) );
+					}
+					$deployment_id = (string) $request->get_param( 'deployment_id' );
+					$expected_sha  = (string) $request->get_param( 'expected_artifact_sha256' );
+					$expected_size = $request->get_param( 'expected_artifact_size' );
+					$offset        = $request->get_param( 'offset' );
+					$chunk_sha     = (string) $request->get_param( 'chunk_sha256' );
+					$encoded       = $request->get_param( 'chunk_base64' );
+					$final         = $request->get_param( 'final' );
+					if (
+						$config['deployment_id'] !== $deployment_id
+						|| ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', $expected_sha )
+						|| ! hash_equals( (string) $config['expected_artifact_sha256'], $expected_sha )
+						|| ! is_int( $expected_size )
+						|| (int) $config['expected_artifact_size'] !== $expected_size
+						|| ! is_int( $offset )
+						|| 0 > $offset
+						|| ! preg_match( '/^[a-f0-9]{64}$/', $chunk_sha )
+						|| ! is_string( $encoded )
+						|| ! is_bool( $final )
+					) {
+						return new WP_Error( 'c99_stage_metadata', 'Artifact staging metadata does not match the embedded immutable release.', array( 'status' => 400 ) );
+					}
+					$max_encoded_bytes = 4 * (int) ceil( (int) $config['stage_chunk_max_bytes'] / 3 );
+					if (
+						'' === $encoded
+						|| strlen( $encoded ) > $max_encoded_bytes
+						|| ! preg_match( '/^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)?$/D', $encoded )
+					) {
+						return new WP_Error( 'c99_stage_chunk_encoding', 'The artifact staging chunk is not bounded canonical base64.', array( 'status' => 413 ) );
+					}
+					$chunk = base64_decode( $encoded, true );
+					if (
+						false === $chunk
+						|| '' === $chunk
+						|| strlen( $chunk ) > (int) $config['stage_chunk_max_bytes']
+						|| ! hash_equals( $encoded, base64_encode( $chunk ) )
+						|| ! hash_equals( $chunk_sha, hash( 'sha256', $chunk ) )
+					) {
+						return new WP_Error( 'c99_stage_chunk_integrity', 'The artifact staging chunk failed size or digest validation.', array( 'status' => 422 ) );
+					}
+					$chunk_size = strlen( $chunk );
+					$next_offset = $offset + $chunk_size;
+					if (
+						$next_offset > $expected_size
+						|| $final !== ( $next_offset === $expected_size )
+					) {
+						return new WP_Error( 'c99_stage_chunk_boundary', 'The artifact staging chunk exceeds or misstates the immutable artifact boundary.', array( 'status' => 422 ) );
+					}
+
+					$process_lock = $acquire_process_lock();
+					if ( is_wp_error( $process_lock ) ) {
+						return $process_lock;
+					}
+					try {
+						$lock = $read_lock( true );
+						$lock_age = max( 0, time() - (int) ( $lock['updated_at'] ?? $lock['started_at'] ?? 0 ) );
+						if (
+							$deployment_id !== (string) ( $lock['deployment_id'] ?? '' )
+							|| $lock_owner !== (string) ( $lock['owner_id'] ?? '' )
+							|| 'reserved' !== (string) ( $lock['phase'] ?? '' )
+							|| 1 > (int) ( $lock['fence'] ?? 0 )
+							|| $lock_age >= (int) $config['recovery_lease_seconds']
+						) {
+							return new WP_Error( 'c99_stage_lock', 'Artifact staging requires the exact fresh owned deployment reservation.', array( 'status' => 409 ) );
+						}
+						if ( file_exists( $state_directory( $deployment_id ) ) || is_link( $state_directory( $deployment_id ) ) ) {
+							return new WP_Error( 'c99_stage_state_exists', 'Artifact staging is closed after rollback state preparation begins.', array( 'status' => 409 ) );
+						}
+						$stage_dir = $protect_staging_directory( $deployment_id );
+						if ( is_wp_error( $stage_dir ) ) {
+							return $stage_dir;
+						}
+						$artifact_path = $staged_artifact_path( $deployment_id );
+						$metadata_path = $staged_metadata_path( $deployment_id );
+						$metadata_exists = file_exists( $metadata_path ) || is_link( $metadata_path );
+						if ( ! $metadata_exists ) {
+							if ( 0 !== $offset ) {
+								return new WP_Error( 'c99_stage_gap', 'Artifact staging must begin at exact byte offset zero.', array( 'status' => 409 ) );
+							}
+							$reset = $cleanup_staging( $deployment_id );
+							if ( is_wp_error( $reset ) ) {
+								return $reset;
+							}
+							$stage_dir = $protect_staging_directory( $deployment_id );
+							if ( is_wp_error( $stage_dir ) ) {
+								return $stage_dir;
+							}
+							$handle = @fopen( $artifact_path, 'x+b' );
+							if ( false === $handle ) {
+								return new WP_Error( 'c99_stage_artifact_create', 'The isolated staging artifact could not be created exclusively.', array( 'status' => 500 ) );
+							}
+							@chmod( $artifact_path, FS_CHMOD_FILE );
+							$metadata = array(
+								'schema'                   => 'complete99-artifact-stage/v1',
+								'deployment_id'            => $deployment_id,
+								'expected_artifact_sha256' => $expected_sha,
+								'expected_artifact_size'   => $expected_size,
+								'received_bytes'           => 0,
+								'complete'                 => false,
+								'artifact_sha256'          => '',
+								'last_offset'              => 0,
+								'last_size'                => 0,
+								'last_sha256'              => str_repeat( '0', 64 ),
+								'last_final'               => false,
+								'updated_at'               => time(),
+							);
+						} else {
+							$metadata = $read_stage_metadata( $deployment_id );
+							if ( is_wp_error( $metadata ) ) {
+								return $metadata;
+							}
+							if ( is_link( $artifact_path ) || is_dir( $artifact_path ) || ! is_file( $artifact_path ) ) {
+								return new WP_Error( 'c99_stage_artifact_unsafe', 'The isolated staging artifact is unsafe.', array( 'status' => 409 ) );
+							}
+							$handle = @fopen( $artifact_path, 'r+b' );
+							if ( false === $handle ) {
+								return new WP_Error( 'c99_stage_artifact_open', 'The isolated staging artifact could not be opened.', array( 'status' => 500 ) );
+							}
+						}
+
+						if ( ! @flock( $handle, LOCK_EX ) ) {
+							@fclose( $handle );
+							return new WP_Error( 'c99_stage_artifact_flock', 'The isolated staging artifact could not be locked.', array( 'status' => 500 ) );
+						}
+						$file_stat = @fstat( $handle );
+						$path_stat = @lstat( $artifact_path );
+						$resolved_stage_dir = realpath( $stage_dir );
+						$resolved_artifact  = realpath( $artifact_path );
+						$received  = (int) $metadata['received_bytes'];
+						if (
+							! is_array( $file_stat )
+							|| ! is_array( $path_stat )
+							|| false === $resolved_stage_dir
+							|| false === $resolved_artifact
+							|| wp_normalize_path( dirname( $resolved_artifact ) ) !== wp_normalize_path( $resolved_stage_dir )
+							|| 0100000 !== ( (int) ( $file_stat['mode'] ?? 0 ) & 0170000 )
+							|| (int) ( $file_stat['ino'] ?? -1 ) !== (int) ( $path_stat['ino'] ?? -2 )
+							|| (int) ( $file_stat['dev'] ?? -1 ) !== (int) ( $path_stat['dev'] ?? -2 )
+							|| $received !== (int) ( $file_stat['size'] ?? -1 )
+							|| $received > $expected_size
+						) {
+							@flock( $handle, LOCK_UN );
+							@fclose( $handle );
+							return new WP_Error( 'c99_stage_length_state', 'Artifact staging byte state or file identity does not match its isolated file.', array( 'status' => 409 ) );
+						}
+						if ( $offset < $received ) {
+							$identical_replay = $offset === (int) $metadata['last_offset']
+								&& $chunk_size === (int) $metadata['last_size']
+								&& $next_offset === $received
+								&& $final === $metadata['last_final']
+								&& hash_equals( $chunk_sha, (string) $metadata['last_sha256'] );
+							if ( $identical_replay && 0 === @fseek( $handle, $offset, SEEK_SET ) ) {
+								$existing = '';
+								while ( strlen( $existing ) < $chunk_size && ! feof( $handle ) ) {
+									$part = @fread( $handle, $chunk_size - strlen( $existing ) );
+									if ( false === $part || '' === $part ) {
+										break;
+									}
+									$existing .= $part;
+								}
+								$identical_replay = strlen( $existing ) === $chunk_size && hash_equals( $chunk, $existing );
+							}
+							@flock( $handle, LOCK_UN );
+							@fclose( $handle );
+							if ( ! $identical_replay ) {
+								$error_code = $offset === (int) $metadata['last_offset'] ? 'c99_stage_replay_changed' : 'c99_stage_overlap';
+								return new WP_Error( $error_code, 'Artifact staging rejected an overlap or changed replay.', array( 'status' => 409 ) );
+							}
+							$heartbeat = $heartbeat_lock( $deployment_id, $lock_owner, (int) $lock['fence'], 'reserved' );
+							if ( is_wp_error( $heartbeat ) ) {
+								return $heartbeat;
+							}
+							return array(
+								'deployment_id'  => $deployment_id,
+								'accepted_offset'=> $offset,
+								'next_offset'    => $next_offset,
+								'total_bytes'    => $next_offset,
+								'complete'       => $final,
+								'artifact_sha256'=> $final ? $expected_sha : '',
+							);
+						}
+						if ( $offset > $received ) {
+							@flock( $handle, LOCK_UN );
+							@fclose( $handle );
+							return new WP_Error( 'c99_stage_gap', 'Artifact staging rejected a nonsequential byte gap.', array( 'status' => 409 ) );
+						}
+						if ( true === $metadata['complete'] ) {
+							@flock( $handle, LOCK_UN );
+							@fclose( $handle );
+							return new WP_Error( 'c99_stage_complete_overlap', 'The completed staged artifact cannot be extended.', array( 'status' => 409 ) );
+						}
+						if ( 0 !== @fseek( $handle, $offset, SEEK_SET ) ) {
+							@flock( $handle, LOCK_UN );
+							@fclose( $handle );
+							return new WP_Error( 'c99_stage_seek', 'The staged artifact offset could not be selected.', array( 'status' => 500 ) );
+						}
+						$written = 0;
+						while ( $written < $chunk_size ) {
+							$count = @fwrite( $handle, substr( $chunk, $written ) );
+							if ( false === $count || 0 === $count ) {
+								break;
+							}
+							$written += $count;
+						}
+						$flushed = $written === $chunk_size && @fflush( $handle );
+						if ( $flushed && function_exists( 'fsync' ) ) {
+							$flushed = @fsync( $handle );
+						}
+						$post_write_stat = @fstat( $handle );
+						@flock( $handle, LOCK_UN );
+						@fclose( $handle );
+						if ( ! $flushed || ! is_array( $post_write_stat ) || $next_offset !== (int) ( $post_write_stat['size'] ?? -1 ) ) {
+							$cleanup = $cleanup_staging( $deployment_id );
+							return is_wp_error( $cleanup )
+								? $cleanup
+								: new WP_Error( 'c99_stage_write', 'The artifact staging chunk could not be committed exactly.', array( 'status' => 500 ) );
+						}
+
+						$artifact_sha = '';
+						if ( $final ) {
+							$artifact_sha = (string) @hash_file( 'sha256', $artifact_path );
+							if ( ! hash_equals( $expected_sha, $artifact_sha ) ) {
+								$cleanup = $cleanup_staging( $deployment_id );
+								return is_wp_error( $cleanup )
+									? $cleanup
+									: new WP_Error( 'c99_stage_artifact_digest', 'The completed staged artifact digest does not match the embedded release.', array( 'status' => 422 ) );
+							}
+							$archive_valid = $validate_staged_archive( $artifact_path );
+							if ( is_wp_error( $archive_valid ) ) {
+								$cleanup = $cleanup_staging( $deployment_id );
+								return is_wp_error( $cleanup ) ? $cleanup : $archive_valid;
+							}
+						}
+						$metadata = array(
+							'schema'                   => 'complete99-artifact-stage/v1',
+							'deployment_id'            => $deployment_id,
+							'expected_artifact_sha256' => $expected_sha,
+							'expected_artifact_size'   => $expected_size,
+							'received_bytes'           => $next_offset,
+							'complete'                 => $final,
+							'artifact_sha256'          => $artifact_sha,
+							'last_offset'              => $offset,
+							'last_size'                => $chunk_size,
+							'last_sha256'              => $chunk_sha,
+							'last_final'               => $final,
+							'updated_at'               => time(),
+						);
+						$metadata_written = $write_state_file( $metadata_path, $metadata );
+						if ( is_wp_error( $metadata_written ) ) {
+							$rollback_handle = @fopen( $artifact_path, 'r+b' );
+							$rolled_back = false;
+							if ( false !== $rollback_handle && @flock( $rollback_handle, LOCK_EX ) ) {
+								$rolled_back = @ftruncate( $rollback_handle, $offset ) && @fflush( $rollback_handle );
+								@flock( $rollback_handle, LOCK_UN );
+							}
+							if ( is_resource( $rollback_handle ) ) {
+								@fclose( $rollback_handle );
+							}
+							if ( ! $rolled_back ) {
+								$cleanup = $cleanup_staging( $deployment_id );
+								return is_wp_error( $cleanup ) ? $cleanup : $metadata_written;
+							}
+							return $metadata_written;
+						}
+						$heartbeat = $heartbeat_lock( $deployment_id, $lock_owner, (int) $lock['fence'], 'reserved' );
+						if ( is_wp_error( $heartbeat ) ) {
+							$cleanup = $cleanup_staging( $deployment_id );
+							return is_wp_error( $cleanup ) ? $cleanup : $heartbeat;
+						}
+						return array(
+							'deployment_id'  => $deployment_id,
+							'accepted_offset'=> $offset,
+							'next_offset'    => $next_offset,
+							'total_bytes'    => $next_offset,
+							'complete'       => $final,
+							'artifact_sha256'=> $artifact_sha,
+						);
+					} finally {
+						$release_process_lock( $process_lock );
+					}
+				},
+			)
+		);
+
+		register_rest_route(
+			'complete99-deploy/v1',
 			$route_prefix . '/run',
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $auto_update_enabled, $purge_caches, $claim_lock, $release_lock, $acquire_process_lock, $release_process_lock, $write_state_file, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $encrypt_database_state, $decrypt_database_state, $capture_robots_snapshot, $apply_managed_robots, $restore_managed_robots ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $validate_embedded_artifact_identity, $inspect_staged_artifact, $validate_staged_archive, $consume_staged_artifact, $cleanup_staging, $state_directory, $auto_update_enabled, $purge_caches, $claim_lock, $release_lock, $acquire_process_lock, $release_process_lock, $write_state_file, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $encrypt_database_state, $decrypt_database_state, $capture_robots_snapshot, $apply_managed_robots, $restore_managed_robots ) {
 					global $wp_filesystem;
 
 					$filesystem = $bootstrap_filesystem();
@@ -3222,14 +3926,29 @@ add_action(
 							array( 'status' => 409 )
 						);
 					}
+					$embedded_identity = $validate_embedded_artifact_identity();
+					if ( is_wp_error( $embedded_identity ) ) {
+						return $embedded_identity;
+					}
 
 					$slug          = sanitize_key( (string) $request->get_param( 'slug' ) );
 					$type          = sanitize_key( (string) $request->get_param( 'type' ) );
 					$version       = sanitize_text_field( (string) $request->get_param( 'version' ) );
 					$deployment_id = sanitize_text_field( (string) $request->get_param( 'deployment_id' ) );
 					$expected      = strtolower( sanitize_text_field( (string) $request->get_param( 'expected_sha256' ) ) );
-					$encoded       = (string) $request->get_param( 'package_base64' );
 					$activate      = rest_sanitize_boolean( $request->get_param( 'activate' ) );
+					$staged        = $request->get_param( 'staged' );
+					$json_params   = $request->get_json_params();
+					$run_request_keys = is_array( $json_params ) ? array_keys( $json_params ) : array();
+					$expected_run_request_keys = array( 'activate', 'deployment_id', 'expected_sha256', 'slug', 'staged', 'token', 'type', 'version' );
+					sort( $run_request_keys, SORT_STRING );
+					if (
+						$expected_run_request_keys !== $run_request_keys
+						|| ( is_array( $json_params ) && array_key_exists( 'package_base64', $json_params ) )
+						|| null !== $request->get_param( 'package_base64' )
+					) {
+						return new WP_Error( 'c99_deploy_transport', 'The run route accepts only a previously completed staged artifact.', array( 'status' => 400 ) );
+					}
 
 					if ( $config['slug'] !== $slug || 'plugin' !== $type ) {
 						return new WP_Error( 'c99_deploy_allowlist', 'The requested component is not allowlisted.', array( 'status' => 403 ) );
@@ -3237,20 +3956,14 @@ add_action(
 					if ( $config['deployment_id'] !== $deployment_id || ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id ) ) {
 						return new WP_Error( 'c99_deploy_id', 'The deployment ID is invalid.', array( 'status' => 400 ) );
 					}
-					if ( ! preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', $version ) || ! preg_match( '/^[a-f0-9]{64}$/', $expected ) ) {
+					if (
+						true !== $staged
+						|| ! preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', $version )
+						|| ! preg_match( '/^[a-f0-9]{64}$/', $expected )
+						|| ! hash_equals( (string) $config['expected_artifact_sha256'], $expected )
+						|| ! hash_equals( (string) $config['expected_version'], $version )
+					) {
 						return new WP_Error( 'c99_deploy_metadata', 'Version or digest metadata is invalid.', array( 'status' => 400 ) );
-					}
-					if ( strlen( $encoded ) > (int) ceil( $config['max_bytes'] * 1.38 ) ) {
-						return new WP_Error( 'c99_deploy_size', 'The encoded package exceeds the upload ceiling.', array( 'status' => 413 ) );
-					}
-
-					$bytes = base64_decode( $encoded, true );
-					if ( false === $bytes || 0 === strlen( $bytes ) || strlen( $bytes ) > $config['max_bytes'] ) {
-						return new WP_Error( 'c99_deploy_package', 'The uploaded package is invalid or too large.', array( 'status' => 413 ) );
-					}
-					$actual = hash( 'sha256', $bytes );
-					if ( ! hash_equals( $expected, $actual ) ) {
-						return new WP_Error( 'c99_deploy_digest', 'The uploaded package digest does not match.', array( 'status' => 422 ) );
 					}
 					$free_space = function_exists( 'disk_free_space' ) ? @disk_free_space( WP_CONTENT_DIR ) : false;
 					if ( false !== $free_space && $free_space < $config['min_free_bytes'] ) {
@@ -3264,11 +3977,30 @@ add_action(
 					if ( is_wp_error( $process_lock ) ) {
 						return $process_lock;
 					}
+					$stage_cleanup_on_exit = false;
+					$stage_cleanup_result  = true;
 					try {
+					$staged_before_claim = $inspect_staged_artifact( $deployment_id );
+					if ( is_wp_error( $staged_before_claim ) ) {
+						$cleanup_staging( $deployment_id );
+						return $staged_before_claim;
+					}
 					$lock = $claim_lock( $deployment_id, array( 'reserved' ), 'locked', true, false );
 					if ( is_wp_error( $lock ) ) {
 						return $lock;
 					}
+					$stage_cleanup_on_exit = true;
+					$staged_after_claim = $inspect_staged_artifact( $deployment_id );
+					if ( is_wp_error( $staged_after_claim ) ) {
+						$release_lock( $deployment_id, $lock );
+						return $staged_after_claim;
+					}
+					$archive_valid = $validate_staged_archive( (string) $staged_after_claim['path'] );
+					if ( is_wp_error( $archive_valid ) ) {
+						$release_lock( $deployment_id, $lock );
+						return $archive_valid;
+					}
+					$actual = (string) $staged_after_claim['sha256'];
 					$transactional_storage = $verify_transactional_storage();
 					if ( is_wp_error( $transactional_storage ) ) {
 						$release_lock( $deployment_id, $lock );
@@ -3481,14 +4213,17 @@ add_action(
 					if ( is_wp_error( $temp_recorded ) ) {
 						return $temp_recorded;
 					}
-					if ( ! $temp || ! $wp_filesystem->put_contents( $temp, $bytes, FS_CHMOD_FILE ) ) {
+					$consumed = $temp ? $consume_staged_artifact( $deployment_id, $temp ) : new WP_Error( 'c99_deploy_temp', 'Could not allocate the verified package installer path.', array( 'status' => 500 ) );
+					if ( is_wp_error( $consumed ) ) {
 						$temp_removed = ! $temp || ! $wp_filesystem->exists( $temp ) || ( $wp_filesystem->delete( $temp ) && ! $wp_filesystem->exists( $temp ) );
 						$set_state_phase( $state_dir, $deployment_id, 'failed', array( 'temp_removed' => $temp_removed, 'temp_path' => '' ) );
 						if ( ! $temp_removed ) {
 							return new WP_Error( 'c99_deploy_temp_cleanup', 'The partial temporary package could not be removed.', array( 'status' => 500 ) );
 						}
-						return new WP_Error( 'c99_deploy_temp', 'Could not write the verified package to a temporary file.', array( 'status' => 500 ) );
+						return $consumed;
 					}
+					$stage_cleanup_on_exit = false;
+					$actual = (string) $consumed['sha256'];
 					$installing = $set_state_phase( $state_dir, $deployment_id, 'installing' );
 					if ( is_wp_error( $installing ) ) {
 						$wp_filesystem->delete( $temp );
@@ -3586,7 +4321,11 @@ add_action(
 						}
 						$post_install_fingerprint = hash( 'sha256', $post_install_json );
 						$installed_plugin_sha256 = $directory_sha256( $target_dir );
-						if ( is_wp_error( $installed_plugin_sha256 ) || ! preg_match( '/^[a-f0-9]{64}$/', $installed_plugin_sha256 ) ) {
+						if (
+							is_wp_error( $installed_plugin_sha256 )
+							|| ! preg_match( '/^[a-f0-9]{64}$/', $installed_plugin_sha256 )
+							|| ! hash_equals( (string) $config['expected_plugin_sha256'], (string) $installed_plugin_sha256 )
+						) {
 							return new WP_Error( 'c99_installed_plugin_digest', 'The installed plugin directory fingerprint could not be captured.', array( 'status' => 500 ) );
 						}
 						$post_install_recorded = $set_state_phase(
@@ -3686,7 +4425,13 @@ add_action(
 					}
 					return $install_response;
 					} finally {
+						if ( $stage_cleanup_on_exit ) {
+							$stage_cleanup_result = $cleanup_staging( $deployment_id );
+						}
 						$release_process_lock( $process_lock );
+						if ( is_wp_error( $stage_cleanup_result ) ) {
+							return $stage_cleanup_result;
+						}
 					}
 				},
 			)
@@ -3698,7 +4443,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $capture_database_state, $restore_database_state, $decrypt_database_state, $restore_managed_robots, $reapply_managed_robots ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $capture_database_state, $restore_database_state, $decrypt_database_state, $restore_managed_robots, $reapply_managed_robots ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -3717,6 +4462,10 @@ add_action(
 						return $process_lock;
 					}
 					try {
+					$staging_cleaned = $cleanup_staging( $deployment_id );
+					if ( is_wp_error( $staging_cleaned ) ) {
+						return $staging_cleaned;
+					}
 					$state_dir  = $state_directory( $deployment_id );
 					$state_file = trailingslashit( $state_dir ) . 'state.json';
 					if ( ! $wp_filesystem->exists( $state_file ) ) {
@@ -5145,7 +5894,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $directory_sha256, $protect_recovery_evidence_root ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $directory_sha256, $protect_recovery_evidence_root ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -5164,6 +5913,10 @@ add_action(
 						return $process_lock;
 					}
 					try {
+					$staging_cleaned = $cleanup_staging( $deployment_id );
+					if ( is_wp_error( $staging_cleaned ) ) {
+						return $staging_cleaned;
+					}
 					$state_dir  = $state_directory( $deployment_id );
 					$state_file = trailingslashit( $state_dir ) . 'state.json';
 					$lock       = $read_lock( true );

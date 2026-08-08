@@ -213,6 +213,26 @@ Managed-host requests use a normal browser request signature with only standard
 `X-*` deployment header or send HTML/multipart bodies: UPress can reject those at
 nginx before WordPress receives the request.
 
+### Bounded artifact staging
+
+The production driver never sends the full plugin ZIP inside `/run`. After
+preflight reserves the exact deployment lock, the driver uploads the immutable
+CI artifact through the authenticated staging route in sequential chunks of at
+most 1 MiB. Every chunk carries its exact offset and SHA-256. The bridge accepts
+only the next chunk or an identical replay of the last chunk after an ambiguous
+transport loss.
+
+The bridge embeds the expected artifact SHA-256, exact byte count, release
+version and installed-tree SHA-256. The final chunk must produce the exact whole
+artifact digest and size before `/run` can begin. `/run` accepts only
+`staged=true`, refuses the former `package_base64` field, rechecks the file before
+and after claiming the lease and verifies the installed tree against release
+metadata. Reserved finalization, rollback, finalization and recreated-bridge
+recovery remove only the exact deployment staging directory.
+
+The evidence and threat boundary for this transport are recorded in
+`docs/chunked-artifact-staging-2026-08-08.md`.
+
 ## Mandatory live canary/rollback exercise
 
 After the first release is healthy, run:
@@ -280,13 +300,15 @@ attestation under a new probe.
 Before installation:
 
 1. Confirm the artifact, manifest and deployment marker all report `1.18.1`.
-2. Confirm the package changes no product seed, price, stock, supplier,
+2. Confirm the deployment audit records a complete chunked-staging receipt with
+   the exact artifact byte count and SHA-256 before the install gate begins.
+3. Confirm the package changes no product seed, price, stock, supplier,
    WooCommerce materialization contract or payment gateway state.
-3. Confirm the shelf contract uses twelve products per page and one validated
+4. Confirm the shelf contract uses twelve products per page and one validated
    allowlist for `product-type` and `product-page`.
-4. Confirm every first-party product continuation uses the central page-aware
+5. Confirm every first-party product continuation uses the central page-aware
    product URL helper.
-5. Confirm the schema graph emits only the current shelf page products and
+6. Confirm the schema graph emits only the current shelf page products and
    filtered states are `noindex,follow`.
 
 After installation and cache purge:

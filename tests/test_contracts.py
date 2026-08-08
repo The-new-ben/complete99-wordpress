@@ -410,7 +410,21 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("current_user_can( 'update_plugins' )", text)
         self.assertIn("hash_equals( $config['token']", text)
         self.assertIn("'direct' !== get_filesystem_method()", text)
-        self.assertIn("hash( 'sha256', $bytes )", text)
+        self.assertIn("$route_prefix . '/stage'", text)
+        self.assertIn(
+            "$staged_before_claim = $inspect_staged_artifact( $deployment_id );",
+            text,
+        )
+        self.assertIn(
+            "$staged_after_claim = $inspect_staged_artifact( $deployment_id );",
+            text,
+        )
+        self.assertIn(
+            "$consumed = $temp ? $consume_staged_artifact( $deployment_id, $temp )",
+            text,
+        )
+        self.assertIn("$destination_sha  = @hash_file( 'sha256', $destination );", text)
+        self.assertNotIn("hash( 'sha256', $bytes )", text)
         self.assertIn("$wp_filesystem->mkdir( $state_root, FS_CHMOD_DIR )", text)
         self.assertIn("$wp_filesystem->mkdir( $state_dir, FS_CHMOD_DIR )", text)
         self.assertNotIn("$wp_filesystem->mkdir( $state_dir, FS_CHMOD_DIR, true )", text)
