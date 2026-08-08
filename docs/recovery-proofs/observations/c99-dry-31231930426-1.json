@@ -1,0 +1,90 @@
+{
+  "artifact": "complete99-platform-1.18.0.zip",
+  "bootstrap_cleanup": {
+    "exact_name": "c99-deploy-bootstrap",
+    "known_id": 5,
+    "known_id_matched": false,
+    "removed_ids": [],
+    "row_absence_verified": true
+  },
+  "bridge_site_identity": {
+    "home_host": "complete99.co.il",
+    "rest_host": "complete99.co.il",
+    "siteurl_host": "complete99.co.il"
+  },
+  "cleanup": {
+    "removed_ids": [
+      189
+    ],
+    "route_404": true,
+    "row_absence_verified": true,
+    "snippet_active": false,
+    "snippet_deleted": true
+  },
+  "commit": "4ae02e5039337b5fdb70ef9c8483f55ccd0f94f6",
+  "deployment_id": "c99-dry-31231930426-1",
+  "dry_run": true,
+  "dry_run_finalize": {
+    "cache_purge": {
+      "not_required": true
+    },
+    "finalized": true,
+    "lock_released": true,
+    "response_recovered": false,
+    "state_removed": true
+  },
+  "finished_at": "2026-08-08T01:10:10Z",
+  "identity": {
+    "id": 1,
+    "roles": [
+      "administrator"
+    ],
+    "site_identity": {
+      "home": "https://complete99.co.il",
+      "url": "https://complete99.co.il"
+    }
+  },
+  "local_test": false,
+  "preflight": {
+    "auto_update_enabled": false,
+    "current_active": true,
+    "current_deployment": "c99-prod-31217684760-1",
+    "current_version": "1.18.0",
+    "database_fingerprint": "4976f887006e5432140fcfa9a0fb6c1dcfadc1ec8f94f7a7f181d316e33e04ff",
+    "direct_filesystem": true,
+    "free_bytes": null,
+    "had_plugin": true,
+    "lock_reserved": true,
+    "plugin_main_exists": true,
+    "required_free_bytes": 251210640,
+    "robots_prior_exists": true,
+    "robots_prior_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "target_dir_exists": true,
+    "transactional_storage": {
+      "engine": "INNODB",
+      "tables": 3
+    }
+  },
+  "prior_health": {
+    "component": "complete99-platform",
+    "database_version": "1.18.0",
+    "deployment_id": "c99-prod-31217684760-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.18.0"
+  },
+  "prior_rendered_home": {
+    "body_sha256": "bd07d8b5753ceb806e80ac6792d01e4b68129bf822401b8cbc4c9031bf4af59d",
+    "deployment_id": "c99-prod-31217684760-1",
+    "exact_path": "/",
+    "version": "1.18.0"
+  },
+  "result": "dry-run-passed",
+  "rollback_exercise": false,
+  "sha256": "6471075a4391c34a573e6c04ccac3b707c005119bd4c618c669a7eb9888d31b0",
+  "slug": "complete99-platform",
+  "source_sha256": "3bcc9c6834a0079d74f6d9e7d7b044af4db68937618611dc8480df8765ab7b0b",
+  "stale_bridges_recovered": [],
+  "started_at": "2026-08-08T01:09:53Z",
+  "version": "1.18.0"
+}
