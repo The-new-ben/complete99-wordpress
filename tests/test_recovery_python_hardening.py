@@ -7,6 +7,7 @@ import http.client
 import importlib.util
 import json
 import re
+import shutil
 import sys
 import tempfile
 import types
@@ -293,6 +294,27 @@ def interrupted_forward_status(
             prior["robots_sha256"] if terminal else ""
         ),
     }
+
+
+def interrupted_robots_checkpoint_loaded() -> tuple[
+    dict[str, Any], dict[str, Any]
+]:
+    loaded = interrupted_forward_loaded(version=2)
+    loaded["proof"]["forward_adoption"][
+        "schema"
+    ] = "complete99-interrupted-forward-adoption/v3"
+    loaded["proof_sha256"] = RECOVER.canonical_proof_sha256(loaded["proof"])
+    status = interrupted_forward_status(loaded)
+    status["interrupted_forward_candidate"] = False
+    status["robots_applied"] = False
+    status["robots_managed_sha256"] = ""
+    receipt = RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+        DEPLOY,
+        status,
+        loaded,
+    )
+    loaded["reviewed_forward_observation"] = receipt
+    return loaded, status
 
 
 def interrupted_finalized_attestation(
@@ -2076,6 +2098,310 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             package["installed_sha256"],
         )
 
+    def test_real_robots_checkpoint_adoption_v3_proof_is_exact(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31217684760-1-v2.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        adoption = loaded["proof"]["forward_adoption"]
+        receipt = loaded["reviewed_forward_observation"]
+        self.assertEqual(
+            "complete99-interrupted-forward-proof/v2", loaded["schema"]
+        )
+        self.assertEqual(
+            "complete99-interrupted-forward-adoption/v3",
+            adoption["schema"],
+        )
+        self.assertEqual(
+            "bb55df5c5c3ff11780ce21fdfbbc75678547b5a9bc16ca48a86a933e19fdf32d",
+            loaded["proof_sha256"],
+        )
+        self.assertEqual(31229946737, adoption["observation_run_id"])
+        self.assertEqual(
+            "e253c43e8822a8ddc6340206fae216690ed644a0fd524ca45dd56960293fb2a8",
+            adoption["observation_audit_sha256"],
+        )
+        self.assertEqual(
+            "55d9b71b3f71058e35d0929cbbd3cd68973088e87a75383dd6e90c6838edc33b",
+            receipt["safe_status_sha256"],
+        )
+        self.assertEqual(
+            RECOVER.INTERRUPTED_FORWARD_ROBOTS_CHECKPOINT_MISMATCHES,
+            receipt["mismatches"],
+        )
+        self.assertTrue(receipt["diagnostic_only"])
+        self.assertFalse(receipt["recovery_authority"])
+        self.assertFalse(receipt["proof_consumed"])
+        package = RECOVER.validate_interrupted_forward_dist(
+            DEPLOY,
+            ROOT / "plugin-dist",
+            loaded,
+        )
+        self.assertEqual("1.18.0", package["version"])
+        self.assertEqual(
+            "8216376a993505e18bf616362df1db6318d9382319d53d70e58390bcdb60becc",
+            package["installed_sha256"],
+        )
+
+    def test_robots_checkpoint_adoption_v3_rejects_every_authority_drift(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(
+                ROOT / "docs" / "recovery-proofs",
+                root / "docs" / "recovery-proofs",
+            )
+            proof_path = (
+                root
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31217684760-1-v2.json"
+            )
+            original_proof = json.loads(proof_path.read_text(encoding="utf-8"))
+            adoption = original_proof["proof"]["forward_adoption"]
+            audit_path = root / adoption["observation_audit_path"]
+            original_audit = json.loads(audit_path.read_text(encoding="utf-8"))
+            recovery_identity = {
+                "database_fingerprint": original_audit[
+                    "interrupted_forward_observation"
+                ]["safe_status"]["database_fingerprint"],
+                "database_manifest_sha256": original_audit[
+                    "interrupted_forward_observation"
+                ]["safe_status"]["database_manifest_sha256"],
+            }
+
+            def load_changed(
+                *,
+                mutate_audit: Callable[[dict[str, Any]], None] | None = None,
+                mutate_proof: Callable[[dict[str, Any]], None] | None = None,
+                recompute_receipt: bool = False,
+                rebind_audit: bool = True,
+            ) -> None:
+                envelope = copy.deepcopy(original_proof)
+                audit = copy.deepcopy(original_audit)
+                if mutate_audit is not None:
+                    mutate_audit(audit)
+                if recompute_receipt:
+                    receipt = audit["interrupted_forward_observation"]
+                    safe = receipt["safe_status"]
+                    receipt["safe_status_sha256"] = (
+                        RECOVER.canonical_proof_sha256(safe)
+                    )
+                    receipt["mismatches"] = (
+                        RECOVER.interrupted_forward_status_mismatches(
+                            safe,
+                            {
+                                "proof": {
+                                    "failed_run": envelope["proof"]["failed_run"],
+                                    "prior_run": envelope["proof"]["prior_run"],
+                                },
+                                "recovery_identity": recovery_identity,
+                            },
+                        )
+                    )
+                audit_path.write_text(json.dumps(audit), encoding="utf-8")
+                if rebind_audit:
+                    envelope["proof"]["forward_adoption"][
+                        "observation_audit_sha256"
+                    ] = hashlib.sha256(audit_path.read_bytes()).hexdigest()
+                if mutate_proof is not None:
+                    mutate_proof(envelope["proof"])
+                envelope["proof_sha256"] = RECOVER.canonical_proof_sha256(
+                    envelope["proof"]
+                )
+                proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+                with mock.patch.object(RECOVER, "ROOT", root):
+                    RECOVER.load_interrupted_forward_proof(
+                        DEPLOY,
+                        str(proof_path),
+                    )
+
+            cases: tuple[
+                tuple[
+                    str,
+                    Callable[[dict[str, Any]], None] | None,
+                    Callable[[dict[str, Any]], None] | None,
+                    bool,
+                    bool,
+                ],
+                ...,
+            ] = (
+                (
+                    "adoption v1 cannot bind diagnostic",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "schema", "complete99-interrupted-forward-adoption/v1"
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "adoption v2 requires database drift",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "schema", "complete99-interrupted-forward-adoption/v2"
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "database fingerprint",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "observed_database_fingerprint", "0" * 64
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "database manifest",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "observed_database_manifest_sha256", "0" * 64
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "missing mismatch",
+                    lambda audit: audit["interrupted_forward_observation"].__setitem__(
+                        "mismatches", ["interrupted_forward_candidate"]
+                    ),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "extra mismatch",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "mismatches"
+                    ].append("state_exists"),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "reordered mismatches",
+                    lambda audit: audit["interrupted_forward_observation"].__setitem__(
+                        "mismatches",
+                        list(
+                            reversed(
+                                audit["interrupted_forward_observation"][
+                                    "mismatches"
+                                ]
+                            )
+                        ),
+                    ),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "candidate checkpoint already true",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("interrupted_forward_candidate", True),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "robots checkpoint already applied",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("robots_applied", True),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "robots checkpoint contains another digest",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("robots_managed_sha256", "0" * 64),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "unrelated invariant",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("current_active", False),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "receipt grants authority",
+                    lambda audit: audit["interrupted_forward_observation"].__setitem__(
+                        "recovery_authority", True
+                    ),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "receipt consumes proof",
+                    lambda audit: audit["interrupted_forward_observation"].__setitem__(
+                        "proof_consumed", True
+                    ),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "public robots",
+                    lambda audit: audit["robots"].__setitem__("sha256", "0" * 64),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "cleanup",
+                    lambda audit: audit["cleanup"].__setitem__("route_404", False),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "probe",
+                    lambda audit: audit["discovery"].__setitem__(
+                        "probe_id", "c99-recovery-probe-31229946738-1"
+                    ),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "commit",
+                    lambda audit: audit.__setitem__("commit", "0" * 40),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "unbound audit bytes",
+                    lambda audit: audit.__setitem__("result", "failed"),
+                    None,
+                    False,
+                    False,
+                ),
+            )
+            for label, audit_mutation, proof_mutation, recompute, rebind in cases:
+                with self.subTest(authority_drift=label), self.assertRaises(
+                    DEPLOY.DeployError
+                ):
+                    load_changed(
+                        mutate_audit=audit_mutation,
+                        mutate_proof=proof_mutation,
+                        recompute_receipt=recompute,
+                        rebind_audit=rebind,
+                    )
+
     def test_v1_proof_rejects_duplicate_keys_and_path_indirection(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -3478,6 +3804,69 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
                 loaded["recovery_identity"],
                 adoption,
             )
+
+    def test_robots_checkpoint_adoption_requires_exact_live_v3_receipt(self) -> None:
+        loaded, status = interrupted_robots_checkpoint_loaded()
+        self.assertEqual(
+            loaded["reviewed_forward_observation"],
+            RECOVER.validate_interrupted_forward_robots_checkpoint_status(
+                DEPLOY,
+                status,
+                loaded,
+            ),
+        )
+        fake, adopt, rollback, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=status,
+            observe_only=False,
+        )
+        adopt.assert_called_once()
+        rollback.assert_not_called()
+        fake.verify_health.assert_called()
+        fake.verify_rendered_home.assert_called()
+        fake.verify_managed_robots.assert_called()
+        audit = write_audit.call_args.args[1]
+        self.assertEqual("recovered", audit["result"])
+        self.assertEqual(
+            loaded["reviewed_forward_observation"],
+            audit["pre_adoption_observation"],
+        )
+        self.assertTrue(audit["adopted_forward_no_rollback"])
+
+        for field, replacement in (
+            ("current_active", False),
+            ("database_fingerprint", "0" * 64),
+            ("current_robots_sha256", "0" * 64),
+            ("robots_applied", True),
+            ("robots_managed_sha256", "0" * 64),
+        ):
+            with self.subTest(live_drift=field):
+                changed = copy.deepcopy(status)
+                changed[field] = replacement
+                with self.assertRaises(DEPLOY.DeployError):
+                    RECOVER.validate_interrupted_forward_robots_checkpoint_status(
+                        DEPLOY,
+                        changed,
+                        loaded,
+                    )
+
+    def test_robots_checkpoint_adoption_v3_resumes_idempotently(self) -> None:
+        loaded, _ = interrupted_robots_checkpoint_loaded()
+        status = interrupted_forward_status(loaded, adopted=True)
+        fake, adopt, rollback, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=status,
+            observe_only=False,
+        )
+        adopt.assert_called_once()
+        rollback.assert_not_called()
+        fake.finalize_deployment.assert_called_once()
+        audit = write_audit.call_args.args[1]
+        self.assertEqual("recovered", audit["result"])
+        self.assertNotIn("pre_adoption_observation", audit)
+        self.assertTrue(
+            audit["interrupted_forward_adoption"]["receipt"]["idempotent"]
+        )
 
     def test_recovery_resumes_durable_adoption_through_idempotent_receipt(self) -> None:
         loaded = interrupted_forward_loaded(version=2)

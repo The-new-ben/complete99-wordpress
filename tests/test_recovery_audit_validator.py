@@ -4,6 +4,7 @@ import copy
 import hashlib
 import importlib.util
 import json
+import shutil
 import sys
 import tempfile
 import unittest
@@ -1065,6 +1066,240 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             package["installed_sha256"],
         )
 
+    def test_repository_robots_checkpoint_adoption_v3_proof_is_exact(self) -> None:
+        proof = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31217684760-1-v2.json",
+            ROOT,
+        )
+        package = VALIDATOR.validate_interrupted_forward_dist(
+            ROOT / "plugin-dist",
+            proof,
+        )
+        adoption = proof["proof"]["forward_adoption"]
+        receipt = proof["reviewed_forward_observation"]
+        self.assertEqual("complete99-interrupted-forward-proof/v2", proof["schema"])
+        self.assertEqual(
+            "complete99-interrupted-forward-adoption/v3",
+            adoption["schema"],
+        )
+        self.assertEqual(
+            "bb55df5c5c3ff11780ce21fdfbbc75678547b5a9bc16ca48a86a933e19fdf32d",
+            proof["proof_sha256"],
+        )
+        self.assertEqual(
+            "e253c43e8822a8ddc6340206fae216690ed644a0fd524ca45dd56960293fb2a8",
+            adoption["observation_audit_sha256"],
+        )
+        self.assertEqual(
+            "55d9b71b3f71058e35d0929cbbd3cd68973088e87a75383dd6e90c6838edc33b",
+            receipt["safe_status_sha256"],
+        )
+        self.assertEqual(
+            VALIDATOR.INTERRUPTED_FORWARD_ROBOTS_CHECKPOINT_MISMATCHES,
+            receipt["mismatches"],
+        )
+        self.assertEqual("1.18.0", package["version"])
+
+    def test_independent_robots_checkpoint_authority_rejects_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            repository_root = Path(temporary)
+            shutil.copytree(
+                ROOT / "docs" / "recovery-proofs",
+                repository_root / "docs" / "recovery-proofs",
+            )
+            proof_path = (
+                repository_root
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31217684760-1-v2.json"
+            )
+            original_proof = json.loads(proof_path.read_text(encoding="utf-8"))
+            original_adoption = original_proof["proof"]["forward_adoption"]
+            audit_path = repository_root / original_adoption[
+                "observation_audit_path"
+            ]
+            original_audit = json.loads(audit_path.read_text(encoding="utf-8"))
+            recovery_identity = {
+                "database_fingerprint": original_audit[
+                    "interrupted_forward_observation"
+                ]["safe_status"]["database_fingerprint"],
+                "database_manifest_sha256": original_audit[
+                    "interrupted_forward_observation"
+                ]["safe_status"]["database_manifest_sha256"],
+            }
+
+            def load_changed(
+                audit_mutation: Callable[[dict[str, object]], None] | None,
+                proof_mutation: Callable[[dict[str, object]], None] | None,
+                *,
+                recompute_receipt: bool = False,
+                rebind_audit: bool = True,
+            ) -> None:
+                envelope = copy.deepcopy(original_proof)
+                audit = copy.deepcopy(original_audit)
+                if audit_mutation is not None:
+                    audit_mutation(audit)
+                if recompute_receipt:
+                    receipt = audit["interrupted_forward_observation"]
+                    safe = receipt["safe_status"]
+                    receipt["safe_status_sha256"] = (
+                        VALIDATOR.canonical_json_sha256(safe)
+                    )
+                    receipt["mismatches"] = VALIDATOR.interrupted_status_mismatches(
+                        safe,
+                        envelope["proof"]["failed_run"],
+                        envelope["proof"]["prior_run"],
+                        recovery_identity,
+                    )
+                audit_path.write_text(json.dumps(audit), encoding="utf-8")
+                if rebind_audit:
+                    envelope["proof"]["forward_adoption"][
+                        "observation_audit_sha256"
+                    ] = hashlib.sha256(audit_path.read_bytes()).hexdigest()
+                if proof_mutation is not None:
+                    proof_mutation(envelope["proof"])
+                envelope["proof_sha256"] = VALIDATOR.canonical_json_sha256(
+                    envelope["proof"]
+                )
+                proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+                VALIDATOR.load_interrupted_forward_proof(
+                    str(proof_path),
+                    repository_root,
+                )
+
+            cases = (
+                (
+                    "v1 schema confusion",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "schema", "complete99-interrupted-forward-adoption/v1"
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "v2 schema confusion",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "schema", "complete99-interrupted-forward-adoption/v2"
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "observation mismatches",
+                    lambda audit: audit["interrupted_forward_observation"].__setitem__(
+                        "mismatches", ["robots_applied"]
+                    ),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "candidate",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("interrupted_forward_candidate", True),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "robots applied",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("robots_applied", True),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "robots managed",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("robots_managed_sha256", "0" * 64),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "unrelated invariant",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("migration_invariants_valid", False),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "diagnostic authority",
+                    lambda audit: audit["interrupted_forward_observation"].__setitem__(
+                        "recovery_authority", True
+                    ),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "database identity",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "observed_database_fingerprint", "0" * 64
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "plugin identity",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "observed_plugin_sha256", "0" * 64
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "robots identity",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "observed_robots_sha256", "0" * 64
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "public health",
+                    lambda audit: audit["health"].__setitem__("status", "failed"),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "cleanup",
+                    lambda audit: audit["cleanup"].__setitem__("route_404", False),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "raw audit digest",
+                    lambda audit: audit.__setitem__("result", "failed"),
+                    None,
+                    False,
+                    False,
+                ),
+            )
+            for label, audit_mutation, proof_mutation, recompute, rebind in cases:
+                with self.subTest(tamper=label), self.assertRaises(
+                    VALIDATOR.AuditValidationError
+                ):
+                    load_changed(
+                        audit_mutation,
+                        proof_mutation,
+                        recompute_receipt=recompute,
+                        rebind_audit=rebind,
+                    )
+
     def test_interrupted_observation_binds_commit_path_digest_and_probe(self) -> None:
         audit, failed, prior, context = interrupted_observation_audit()
 
@@ -1972,6 +2207,134 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                         loaded,
                         probe_id,
                     )
+
+    def test_robots_checkpoint_recovery_binds_pre_adoption_v3_and_resume(
+        self,
+    ) -> None:
+        loaded = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31217684760-1-v2.json",
+            ROOT,
+        )
+        proof = loaded["proof"]
+        failed = proof["failed_run"]
+        prior = proof["prior_run"]
+        adoption = proof["forward_adoption"]
+        probe_id = "c99-recovery-probe-40000000004-1"
+        receipt = {
+            "adopted_forward_no_rollback": True,
+            "cache_purge": {"deferred_to_finalize": True},
+            "database_manifest": adoption["observed_database_manifest"],
+            "database_manifest_sha256": adoption[
+                "observed_database_manifest_sha256"
+            ],
+            "database_storage": adoption["observed_database_storage"],
+            "database_version": failed["version"],
+            "deployment_id": failed["deployment_id"],
+            "idempotent": False,
+            "installed_plugin_sha256": failed["installed_plugin_sha256"],
+            "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            "post_install_database_fingerprint": adoption[
+                "observed_database_fingerprint"
+            ],
+            "stabilized": True,
+            "stabilized_from_phase": "installing",
+            "version": failed["version"],
+        }
+        status = {
+            "adopted_forward_no_rollback": True,
+            "database_fingerprint": adoption["observed_database_fingerprint"],
+            "database_manifest_sha256": adoption[
+                "observed_database_manifest_sha256"
+            ],
+            "deployment_id": failed["deployment_id"],
+            "installed_plugin_sha256": failed["installed_plugin_sha256"],
+            "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            "phase": "installed",
+            "state_exists": True,
+            "version": failed["version"],
+        }
+        audit = {
+            **interrupted_common(failed["deployment_id"]),
+            **interrupted_health_home_robots(failed, prior),
+            **interrupted_health_home_robots(failed, prior, "pre_adoption_"),
+            "adopted_forward_no_rollback": True,
+            "decision": "adopt_interrupted_forward",
+            "discovery": interrupted_discovery(failed["deployment_id"], probe_id),
+            "finalize": finalize_record(),
+            "interrupted_forward_adoption": {"receipt": receipt, "status": status},
+            "interrupted_forward_proof": {
+                "path": loaded["path"],
+                "proof_sha256": loaded["proof_sha256"],
+                "schema": "complete99-interrupted-forward-proof/v2",
+            },
+            "pre_adoption_observation": loaded[
+                "reviewed_forward_observation"
+            ],
+            "result": "recovered",
+        }
+        VALIDATOR.validate_interrupted_forward_recovery_audit(
+            audit,
+            loaded,
+            probe_id,
+        )
+
+        for label, mutate in (
+            (
+                "extra mismatch",
+                lambda value: value["pre_adoption_observation"][
+                    "mismatches"
+                ].append("state_exists"),
+            ),
+            (
+                "safe status",
+                lambda value: value["pre_adoption_observation"][
+                    "safe_status"
+                ].__setitem__("robots_applied", True),
+            ),
+            (
+                "v1 receipt",
+                lambda value: value.__setitem__(
+                    "pre_adoption_observation",
+                    VALIDATOR.expected_interrupted_observation(
+                        failed,
+                        prior,
+                        adoption["observed_database_fingerprint"],
+                        adoption["observed_database_manifest"],
+                        adoption["observed_database_manifest_sha256"],
+                        adoption["observed_database_storage"],
+                        "",
+                    ),
+                ),
+            ),
+        ):
+            with self.subTest(pre_adoption_tamper=label):
+                changed = copy.deepcopy(audit)
+                mutate(changed)
+                with self.assertRaisesRegex(
+                    VALIDATOR.AuditValidationError,
+                    "robots checkpoint changed",
+                ):
+                    VALIDATOR.validate_interrupted_forward_recovery_audit(
+                        changed,
+                        loaded,
+                        probe_id,
+                    )
+
+        resumed = copy.deepcopy(audit)
+        for key in (
+            "pre_adoption_health",
+            "pre_adoption_observation",
+            "pre_adoption_rendered_home",
+            "pre_adoption_robots",
+        ):
+            del resumed[key]
+        resumed["interrupted_forward_adoption"]["receipt"]["idempotent"] = True
+        resumed["discovery"]["owner_phase"] = "installed"
+        VALIDATOR.validate_interrupted_forward_recovery_audit(
+            resumed,
+            loaded,
+            probe_id,
+        )
 
     def test_interrupted_already_finalized_audit_is_exact_and_dispatchable(
         self,

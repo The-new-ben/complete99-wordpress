@@ -825,6 +825,12 @@ INTERRUPTED_FORWARD_DATABASE_MISMATCHES = [
     "interrupted_forward_candidate",
 ]
 
+INTERRUPTED_FORWARD_ROBOTS_CHECKPOINT_MISMATCHES = [
+    "interrupted_forward_candidate",
+    "robots_applied",
+    "robots_managed_sha256",
+]
+
 INTERRUPTED_FORWARD_SAFE_STATUS_KEYS = {
     "adopted_forward_no_rollback",
     "baseline_database_fingerprint",
@@ -1649,6 +1655,69 @@ def validate_interrupted_mismatch_diagnostic_audit(
     return safe
 
 
+def validate_interrupted_robots_checkpoint_observation_audit(
+    audit: dict[str, Any],
+    failed: dict[str, Any],
+    prior: dict[str, Any],
+    recovery_identity: dict[str, str],
+    proof_path: str,
+    proof_sha256: str,
+    expected_probe_id: str,
+    adoption: dict[str, Any],
+    *,
+    expected_commit: str | None = None,
+) -> dict[str, Any]:
+    """Authorize only the exact reviewed missing robots state checkpoint."""
+    safe = validate_interrupted_mismatch_diagnostic_audit(
+        audit,
+        failed,
+        prior,
+        recovery_identity,
+        proof_path,
+        proof_sha256,
+        expected_probe_id,
+        expected_commit=expected_commit,
+    )
+    observation = require_mapping(
+        audit.get("interrupted_forward_observation"),
+        "Interrupted forward robots checkpoint receipt",
+    )
+    require(
+        exact_json_equal(
+            observation.get("mismatches"),
+            INTERRUPTED_FORWARD_ROBOTS_CHECKPOINT_MISMATCHES,
+        )
+        and safe.get("robots_applied") is False
+        and safe.get("robots_managed_sha256") == ""
+        and safe.get("interrupted_forward_candidate") is False
+        and safe.get("database_fingerprint")
+        == recovery_identity["database_fingerprint"]
+        and safe.get("database_manifest_sha256")
+        == recovery_identity["database_manifest_sha256"]
+        and safe.get("database_fingerprint")
+        == adoption.get("observed_database_fingerprint")
+        and safe.get("database_manifest_sha256")
+        == adoption.get("observed_database_manifest_sha256")
+        and exact_json_equal(
+            safe.get("database_manifest"),
+            adoption.get("observed_database_manifest"),
+        )
+        and exact_json_equal(
+            safe.get("database_storage"),
+            adoption.get("observed_database_storage"),
+        )
+        and safe.get("deployment_id")
+        == adoption.get("observed_deployment_id")
+        and safe.get("current_plugin_sha256")
+        == adoption.get("observed_plugin_sha256")
+        and safe.get("current_robots_sha256")
+        == adoption.get("observed_robots_sha256")
+        and safe.get("current_version") == adoption.get("observed_version"),
+        "Interrupted forward robots checkpoint observation is not the exact reviewed exception",
+    )
+    return observation
+
+
 def load_interrupted_forward_proof(
     raw_path: str,
     repository_root: Path,
@@ -1818,6 +1887,7 @@ def load_interrupted_forward_proof(
     base_proof = {"failed_run": failed, "prior_run": prior}
     base_proof_sha256 = canonical_json_sha256(base_proof)
     adoption = proof.get("forward_adoption")
+    reviewed_forward_observation: dict[str, Any] | None = None
     if schema == "complete99-interrupted-forward-proof/v2":
         adoption = require_mapping(adoption, "Interrupted forward adoption")
         adoption_schema = adoption.get("schema")
@@ -1845,6 +1915,7 @@ def load_interrupted_forward_proof(
             in {
                 "complete99-interrupted-forward-adoption/v1",
                 "complete99-interrupted-forward-adoption/v2",
+                "complete99-interrupted-forward-adoption/v3",
             }
             and type(adoption.get("observation_run_id")) is int
             and adoption["observation_run_id"] > failed["run_id"]
@@ -1863,7 +1934,10 @@ def load_interrupted_forward_proof(
             and adoption.get("observed_version") == failed["version"]
             and (
                 adoption_schema
-                != "complete99-interrupted-forward-adoption/v1"
+                not in {
+                    "complete99-interrupted-forward-adoption/v1",
+                    "complete99-interrupted-forward-adoption/v3",
+                }
                 or (
                     adoption.get("observed_database_fingerprint")
                     == recovery_identity["database_fingerprint"]
@@ -1949,6 +2023,20 @@ def load_interrupted_forward_proof(
                 expected_commit=adoption["observation_commit"],
                 expected_database_identity=adoption,
             )
+        elif adoption_schema == "complete99-interrupted-forward-adoption/v3":
+            reviewed_forward_observation = (
+                validate_interrupted_robots_checkpoint_observation_audit(
+                    observation_audit,
+                    failed,
+                    prior,
+                    recovery_identity,
+                    historical_relative,
+                    base_proof_sha256,
+                    f"c99-recovery-probe-{adoption['observation_run_id']}-1",
+                    adoption,
+                    expected_commit=adoption["observation_commit"],
+                )
+            )
         else:
             validate_interrupted_observation_audit(
                 observation_audit,
@@ -1962,7 +2050,7 @@ def load_interrupted_forward_proof(
                 expected_manifest=manifest,
                 expected_storage=storage,
             )
-    return {
+    loaded = {
         "base_proof_sha256": base_proof_sha256,
         "path": path.relative_to(repository_root.resolve()).as_posix(),
         "proof": proof,
@@ -1970,6 +2058,9 @@ def load_interrupted_forward_proof(
         "recovery_identity": recovery_identity,
         "schema": schema,
     }
+    if reviewed_forward_observation is not None:
+        loaded["reviewed_forward_observation"] = reviewed_forward_observation
+    return loaded
 
 
 def installed_zip_sha256(raw: bytes) -> str:
@@ -2302,26 +2393,38 @@ def validate_interrupted_forward_recovery_audit(
             audit.get("pre_adoption_observation"),
             "Interrupted forward pre-adoption observation",
         )
-        require(
-            exact_json_equal(
-                pre_adoption,
-                expected_interrupted_observation(
-                    failed,
-                    prior,
-                    adoption["observed_database_fingerprint"],
-                    adoption["observed_database_manifest"],
-                    adoption["observed_database_manifest_sha256"],
-                    adoption["observed_database_storage"],
-                    pre_adoption.get("recorded_installed_plugin_sha256"),
+        if (
+            adoption.get("schema")
+            == "complete99-interrupted-forward-adoption/v3"
+        ):
+            require(
+                exact_json_equal(
+                    pre_adoption,
+                    loaded.get("reviewed_forward_observation"),
                 ),
-            ),
-            "Interrupted forward pre-adoption observation is invalid",
-        )
-        require(
-            pre_adoption.get("recorded_installed_plugin_sha256")
-            in {"", failed["installed_plugin_sha256"]},
-            "Interrupted forward pre-adoption plugin receipt is invalid",
-        )
+                "Interrupted forward robots checkpoint changed before adoption",
+            )
+        else:
+            require(
+                exact_json_equal(
+                    pre_adoption,
+                    expected_interrupted_observation(
+                        failed,
+                        prior,
+                        adoption["observed_database_fingerprint"],
+                        adoption["observed_database_manifest"],
+                        adoption["observed_database_manifest_sha256"],
+                        adoption["observed_database_storage"],
+                        pre_adoption.get("recorded_installed_plugin_sha256"),
+                    ),
+                ),
+                "Interrupted forward pre-adoption observation is invalid",
+            )
+            require(
+                pre_adoption.get("recorded_installed_plugin_sha256")
+                in {"", failed["installed_plugin_sha256"]},
+                "Interrupted forward pre-adoption plugin receipt is invalid",
+            )
         validate_interrupted_health_home_robots(
             audit,
             failed,
