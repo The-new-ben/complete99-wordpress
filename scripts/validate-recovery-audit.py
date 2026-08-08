@@ -878,6 +878,274 @@ INTERRUPTED_FORWARD_SAFE_STATUS_KEYS = {
     "state_exists",
 }
 
+INTERRUPTED_FORWARD_SAFE_BOOLEAN_FIELDS = {
+    "adopted_forward_no_rollback",
+    "baseline_database_journal_valid",
+    "baseline_sync_configured",
+    "baseline_sync_secret_existed",
+    "current_active",
+    "current_plugin_main_exists",
+    "current_sync_configured",
+    "current_target_dir_exists",
+    "database_fingerprint_available",
+    "database_restored",
+    "had_plugin",
+    "interrupted_forward_candidate",
+    "lock_owned",
+    "migration_failed",
+    "migration_invariants_valid",
+    "no_rollback_artifacts",
+    "prior_active",
+    "prior_plugin_main_exists",
+    "prior_target_dir_exists",
+    "process_lock_available",
+    "recovery_ready",
+    "robots_applied",
+    "robots_prior_exists",
+    "robots_restored",
+    "runtime_loaded",
+    "state_exists",
+}
+
+INTERRUPTED_FORWARD_SAFE_DIGEST_FIELDS = {
+    "baseline_database_fingerprint",
+    "current_plugin_sha256",
+    "current_robots_sha256",
+    "database_fingerprint",
+    "expected_sha256",
+    "installed_plugin_sha256",
+    "interrupted_forward_database_manifest_sha256",
+    "interrupted_forward_proof_sha256",
+    "post_install_database_fingerprint",
+    "prior_plugin_sha256",
+    "robots_managed_sha256",
+    "robots_prior_sha256",
+}
+
+INTERRUPTED_FORWARD_SAFE_DEPLOYMENT_FIELDS = {
+    "current_deployment",
+    "deployment_id",
+    "prior_deployment",
+}
+
+INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS = {
+    "current_database_version",
+    "current_version",
+    "expected_version",
+    "prior_version",
+    "runtime_version",
+}
+
+INTERRUPTED_FORWARD_SAFE_PHASES = {
+    "",
+    "cleanup_failed",
+    "commit_failed",
+    "committed",
+    "committing",
+    "failed",
+    "finalized",
+    "installed",
+    "installed_pending_cleanup",
+    "installed_pending_stabilization",
+    "installing",
+    "locked",
+    "prepared",
+    "reserved",
+    "rollback_failed",
+    "rolled_back",
+    "rolling_back",
+}
+
+
+def validate_interrupted_safe_status_shape(
+    value: Any,
+    label: str,
+) -> dict[str, Any]:
+    """Independently accept only the fixed non-secret status projection."""
+    safe = require_mapping(value, f"{label} safe status")
+    require(
+        set(safe) == INTERRUPTED_FORWARD_SAFE_STATUS_KEYS,
+        f"{label} safe status fields are invalid",
+    )
+    validate_database_manifest(
+        safe.get("database_manifest"),
+        safe.get("database_manifest_sha256"),
+        f"{label} database manifest",
+    )
+    validate_database_storage(
+        safe.get("database_storage"),
+        f"{label} database storage",
+    )
+    require(
+        all(
+            safe["database_manifest"].get(f"{component}_count")
+            <= 9_223_372_036_854_775_807
+            for component in (
+                "options_without_deployment_marker",
+                "posts",
+                "postmeta",
+                "seed_ids",
+                "evaluation_ids",
+            )
+        ),
+        f"{label} manifest count is unbounded",
+    )
+    require(
+        all(type(safe.get(field)) is bool for field in INTERRUPTED_FORWARD_SAFE_BOOLEAN_FIELDS),
+        f"{label} safe boolean status is invalid",
+    )
+    require(
+        all(
+            type(safe.get(field)) is str
+            and (safe[field] == "" or DIGEST.fullmatch(safe[field]) is not None)
+            for field in INTERRUPTED_FORWARD_SAFE_DIGEST_FIELDS
+        ),
+        f"{label} safe digest status is invalid",
+    )
+    require(
+        all(
+            type(safe.get(field)) is str
+            and (
+                safe[field] == ""
+                or DEPLOYMENT_ID.fullmatch(safe[field]) is not None
+            )
+            for field in INTERRUPTED_FORWARD_SAFE_DEPLOYMENT_FIELDS
+        ),
+        f"{label} safe deployment identity is invalid",
+    )
+    require(
+        all(
+            type(safe.get(field)) is str
+            and len(safe[field]) <= 64
+            and (safe[field] == "" or VERSION.fullmatch(safe[field]) is not None)
+            for field in INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS
+        ),
+        f"{label} safe version status is invalid",
+    )
+    require(
+        type(safe.get("phase")) is str
+        and safe["phase"] in INTERRUPTED_FORWARD_SAFE_PHASES,
+        f"{label} safe phase status is invalid",
+    )
+    return safe
+
+
+def interrupted_status_mismatches(
+    safe: dict[str, Any],
+    failed: dict[str, Any],
+    prior: dict[str, Any],
+    recovery_identity: dict[str, str],
+) -> list[str]:
+    expected = {
+        "adopted_forward_no_rollback": False,
+        "baseline_database_fingerprint": failed["baseline_database_fingerprint"],
+        "baseline_database_journal_valid": True,
+        "baseline_sync_configured": True,
+        "baseline_sync_secret_existed": True,
+        "current_active": True,
+        "current_database_version": failed["version"],
+        "current_deployment": failed["deployment_id"],
+        "current_plugin_main_exists": True,
+        "current_plugin_sha256": failed["installed_plugin_sha256"],
+        "current_robots_sha256": prior["robots_sha256"],
+        "current_sync_configured": True,
+        "current_target_dir_exists": True,
+        "current_version": failed["version"],
+        "database_fingerprint": recovery_identity["database_fingerprint"],
+        "database_fingerprint_available": True,
+        "database_manifest_sha256": recovery_identity[
+            "database_manifest_sha256"
+        ],
+        "database_restored": False,
+        "deployment_id": failed["deployment_id"],
+        "expected_sha256": failed["artifact_sha256"],
+        "expected_version": failed["version"],
+        "had_plugin": True,
+        "interrupted_forward_candidate": True,
+        "interrupted_forward_database_manifest_sha256": "",
+        "interrupted_forward_proof_sha256": "",
+        "lock_owned": True,
+        "migration_failed": False,
+        "migration_invariants_valid": True,
+        "no_rollback_artifacts": True,
+        "phase": "installing",
+        "prior_active": True,
+        "prior_deployment": prior["deployment_id"],
+        "prior_plugin_main_exists": True,
+        "prior_plugin_sha256": prior["plugin_sha256"],
+        "prior_target_dir_exists": True,
+        "prior_version": prior["version"],
+        "process_lock_available": True,
+        "recovery_ready": True,
+        "robots_applied": True,
+        "robots_managed_sha256": prior["robots_sha256"],
+        "robots_prior_exists": True,
+        "robots_prior_sha256": prior["robots_sha256"],
+        "robots_restored": False,
+        "runtime_loaded": True,
+        "runtime_version": failed["version"],
+        "state_exists": True,
+    }
+    mismatches = [
+        field
+        for field, expected_value in expected.items()
+        if not exact_json_equal(safe.get(field), expected_value)
+    ]
+    if safe.get("installed_plugin_sha256") not in {
+        "",
+        failed["installed_plugin_sha256"],
+    }:
+        mismatches.append("installed_plugin_sha256")
+    return sorted(mismatches)
+
+
+def validate_interrupted_mismatch_diagnostic_receipt(
+    observation: Any,
+    failed: dict[str, Any],
+    prior: dict[str, Any],
+    recovery_identity: dict[str, str],
+) -> dict[str, Any]:
+    receipt = require_mapping(
+        observation,
+        "Interrupted forward mismatch diagnostic receipt",
+    )
+    require(
+        set(receipt)
+        == {
+            "diagnostic_only",
+            "mismatches",
+            "proof_consumed",
+            "recovery_authority",
+            "safe_status",
+            "safe_status_sha256",
+            "schema",
+        }
+        and receipt.get("schema")
+        == "complete99-interrupted-forward-observation/v3"
+        and receipt.get("diagnostic_only") is True
+        and receipt.get("proof_consumed") is False
+        and receipt.get("recovery_authority") is False,
+        "Interrupted forward mismatch diagnostic receipt schema is invalid",
+    )
+    safe = validate_interrupted_safe_status_shape(
+        receipt.get("safe_status"),
+        "Interrupted forward mismatch diagnostic",
+    )
+    mismatches = interrupted_status_mismatches(
+        safe,
+        failed,
+        prior,
+        recovery_identity,
+    )
+    require(
+        bool(mismatches)
+        and mismatches != INTERRUPTED_FORWARD_DATABASE_MISMATCHES
+        and exact_json_equal(receipt.get("mismatches"), mismatches)
+        and receipt.get("safe_status_sha256") == canonical_json_sha256(safe),
+        "Interrupted forward mismatch diagnostic receipt identity is invalid",
+    )
+    return safe
+
 
 def validate_interrupted_database_mismatch_receipt(
     observation: Any,
@@ -1292,6 +1560,93 @@ def validate_interrupted_database_mismatch_observation_audit(
         label="Interrupted forward database mismatch observation",
     )
     return identity
+
+
+def validate_interrupted_mismatch_diagnostic_audit(
+    audit: dict[str, Any],
+    failed: dict[str, Any],
+    prior: dict[str, Any],
+    recovery_identity: dict[str, str],
+    proof_path: str,
+    proof_sha256: str,
+    expected_probe_id: str,
+    *,
+    expected_commit: str | None = None,
+) -> dict[str, Any]:
+    """Validate evidence-only v3 without making it recovery authority."""
+    validate_interrupted_common_audit(
+        audit,
+        failed["deployment_id"],
+        "Interrupted forward mismatch diagnostic",
+    )
+    require(
+        set(audit)
+        == {
+            "bootstrap_cleanup",
+            "bridge_site_identity",
+            "cleanup",
+            "commit",
+            "decision",
+            "deployment_id",
+            "discovery",
+            "finished_at",
+            "health",
+            "identity",
+            "interrupted_forward_observation",
+            "interrupted_forward_proof",
+            "local_test",
+            "proof_consumed",
+            "rendered_home",
+            "result",
+            "robots",
+            "started_at",
+        }
+        and audit.get("decision")
+        == "observe_interrupted_forward_mismatch_diagnostic"
+        and audit.get("result")
+        == "interrupted_forward_mismatch_diagnostic_observed"
+        and audit.get("proof_consumed") is False,
+        "Interrupted forward mismatch diagnostic audit schema is invalid",
+    )
+    commit = audit.get("commit")
+    require(
+        type(commit) is str
+        and COMMIT.fullmatch(commit) is not None
+        and commit not in {failed["commit"], prior["commit"]}
+        and (expected_commit is None or commit == expected_commit),
+        "Interrupted forward mismatch diagnostic commit is invalid",
+    )
+    validate_interrupted_discovery(
+        audit.get("discovery"),
+        failed["deployment_id"],
+        expected_probe_id,
+        "installing",
+        "Interrupted forward mismatch diagnostic discovery",
+    )
+    require(
+        exact_json_equal(
+            audit.get("interrupted_forward_proof"),
+            {
+                "path": proof_path,
+                "proof_sha256": proof_sha256,
+                "schema": "complete99-interrupted-forward-proof/v1",
+            },
+        ),
+        "Interrupted forward mismatch diagnostic proof path or digest changed",
+    )
+    safe = validate_interrupted_mismatch_diagnostic_receipt(
+        audit.get("interrupted_forward_observation"),
+        failed,
+        prior,
+        recovery_identity,
+    )
+    validate_interrupted_health_home_robots(
+        audit,
+        failed,
+        prior,
+        label="Interrupted forward mismatch diagnostic",
+    )
+    return safe
 
 
 def load_interrupted_forward_proof(
@@ -3546,6 +3901,7 @@ def validate_recovery_audit(
         allowed_results = (
             {
                 "interrupted_forward_database_mismatch_observed",
+                "interrupted_forward_mismatch_diagnostic_observed",
                 "interrupted_forward_observed",
             }
             if expect_observation
@@ -3611,6 +3967,20 @@ def validate_recovery_audit(
                 require(
                     summary.get("proof_consumed") is False,
                     "Interrupted forward database mismatch summary consumed its proof",
+                )
+            elif result == "interrupted_forward_mismatch_diagnostic_observed":
+                validate_interrupted_mismatch_diagnostic_audit(
+                    audit,
+                    loaded["proof"]["failed_run"],
+                    loaded["proof"]["prior_run"],
+                    loaded["recovery_identity"],
+                    loaded["path"],
+                    loaded["proof_sha256"],
+                    expected_probe_id,
+                )
+                require(
+                    summary.get("proof_consumed") is False,
+                    "Interrupted forward mismatch diagnostic summary consumed its proof",
                 )
             else:
                 validate_interrupted_observation_audit(

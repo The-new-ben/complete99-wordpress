@@ -101,16 +101,19 @@ class InterruptedForwardWorkflowTests(unittest.TestCase):
         self.assertIn("--expect-interrupted-forward", preflight)
         self.assertIn("--expect-observation", preflight)
         self.assertIn("ConvertFrom-Json -ErrorAction Stop", preflight)
+        self.assertIn('$recoveryRecord.result -in @(', preflight)
         self.assertIn(
-            'result -eq "interrupted_forward_database_mismatch_observed"',
-            preflight,
+            '"interrupted_forward_database_mismatch_observed"', preflight
+        )
+        self.assertIn(
+            '"interrupted_forward_mismatch_diagnostic_observed"', preflight
         )
         self.assertIn(
             '$recoveryRecord.proof_consumed -ne $false',
             preflight,
         )
         self.assertIn(
-            'Write-Error "A database-mismatch observation must explicitly preserve its v1 proof as unconsumed."',
+            'Write-Error "A mismatch observation must explicitly preserve its v1 proof as unconsumed."',
             preflight,
         )
         self.assertIn(
@@ -125,6 +128,14 @@ class InterruptedForwardWorkflowTests(unittest.TestCase):
             '$dryId = "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"',
         )
         self.assertIn("exit 0", interrupted_exit)
+        diagnostic_position = preflight.index(
+            '"interrupted_forward_mismatch_diagnostic_observed"'
+        )
+        dry_run_position = preflight.index(
+            '$dryId = "c99-dry-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"'
+        )
+        self.assertLess(diagnostic_position, dry_run_position)
+        self.assertIn("exit 0", preflight[diagnostic_position:dry_run_position])
 
         output_guard = between(
             preflight,

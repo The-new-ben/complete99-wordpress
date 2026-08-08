@@ -2059,6 +2059,280 @@ INTERRUPTED_FORWARD_SAFE_STATUS_KEYS = (
     "state_exists",
 )
 
+INTERRUPTED_FORWARD_SAFE_BOOLEAN_FIELDS = (
+    "adopted_forward_no_rollback",
+    "baseline_database_journal_valid",
+    "baseline_sync_configured",
+    "baseline_sync_secret_existed",
+    "current_active",
+    "current_plugin_main_exists",
+    "current_sync_configured",
+    "current_target_dir_exists",
+    "database_fingerprint_available",
+    "database_restored",
+    "had_plugin",
+    "interrupted_forward_candidate",
+    "lock_owned",
+    "migration_failed",
+    "migration_invariants_valid",
+    "no_rollback_artifacts",
+    "prior_active",
+    "prior_plugin_main_exists",
+    "prior_target_dir_exists",
+    "process_lock_available",
+    "recovery_ready",
+    "robots_applied",
+    "robots_prior_exists",
+    "robots_restored",
+    "runtime_loaded",
+    "state_exists",
+)
+
+INTERRUPTED_FORWARD_SAFE_DIGEST_FIELDS = (
+    "baseline_database_fingerprint",
+    "current_plugin_sha256",
+    "current_robots_sha256",
+    "database_fingerprint",
+    "expected_sha256",
+    "installed_plugin_sha256",
+    "interrupted_forward_database_manifest_sha256",
+    "interrupted_forward_proof_sha256",
+    "post_install_database_fingerprint",
+    "prior_plugin_sha256",
+    "robots_managed_sha256",
+    "robots_prior_sha256",
+)
+
+INTERRUPTED_FORWARD_SAFE_DEPLOYMENT_FIELDS = (
+    "current_deployment",
+    "deployment_id",
+    "prior_deployment",
+)
+
+INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS = (
+    "current_database_version",
+    "current_version",
+    "expected_version",
+    "prior_version",
+    "runtime_version",
+)
+
+INTERRUPTED_FORWARD_SAFE_PHASES = {
+    "",
+    "cleanup_failed",
+    "commit_failed",
+    "committed",
+    "committing",
+    "failed",
+    "finalized",
+    "installed",
+    "installed_pending_cleanup",
+    "installed_pending_stabilization",
+    "installing",
+    "locked",
+    "prepared",
+    "reserved",
+    "rollback_failed",
+    "rolled_back",
+    "rolling_back",
+}
+
+
+def validate_interrupted_forward_safe_status_shape(
+    deployer: Any,
+    status: Any,
+    label: str,
+) -> dict[str, Any]:
+    """Return only bounded non-secret status fields after strict type checks."""
+    if not isinstance(status, dict) or any(
+        key not in status for key in INTERRUPTED_FORWARD_SAFE_STATUS_KEYS
+    ):
+        raise deployer.DeployError(f"{label} safe status fields are invalid")
+    validate_database_manifest(
+        deployer,
+        status.get("database_manifest"),
+        status.get("database_manifest_sha256"),
+        label,
+    )
+    validate_transactional_storage(
+        deployer,
+        status.get("database_storage"),
+        label,
+    )
+    if any(
+        status["database_manifest"].get(f"{component}_count")
+        > 9_223_372_036_854_775_807
+        for component in (
+            "options_without_deployment_marker",
+            "posts",
+            "postmeta",
+            "seed_ids",
+            "evaluation_ids",
+        )
+    ):
+        raise deployer.DeployError(f"{label} manifest count is unbounded")
+    safe_status = {
+        key: status[key] for key in INTERRUPTED_FORWARD_SAFE_STATUS_KEYS
+    }
+    digest = deployer.re.compile(r"[a-f0-9]{64}")
+    version = deployer.re.compile(
+        r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?"
+    )
+    if any(
+        type(safe_status[field]) is not bool
+        for field in INTERRUPTED_FORWARD_SAFE_BOOLEAN_FIELDS
+    ):
+        raise deployer.DeployError(f"{label} safe boolean status is invalid")
+    if any(
+        type(safe_status[field]) is not str
+        or (
+            safe_status[field] != ""
+            and digest.fullmatch(safe_status[field]) is None
+        )
+        for field in INTERRUPTED_FORWARD_SAFE_DIGEST_FIELDS
+    ):
+        raise deployer.DeployError(f"{label} safe digest status is invalid")
+    if any(
+        type(safe_status[field]) is not str
+        or (
+            safe_status[field] != ""
+            and (
+                not safe_status[field].startswith("c99-")
+                or deployer.re.fullmatch(
+                    r"[A-Za-z0-9._-]{8,96}", safe_status[field]
+                )
+                is None
+            )
+        )
+        for field in INTERRUPTED_FORWARD_SAFE_DEPLOYMENT_FIELDS
+    ):
+        raise deployer.DeployError(
+            f"{label} safe deployment identity is invalid"
+        )
+    if any(
+        type(safe_status[field]) is not str
+        or len(safe_status[field]) > 64
+        or (
+            safe_status[field] != ""
+            and version.fullmatch(safe_status[field]) is None
+        )
+        for field in INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS
+    ):
+        raise deployer.DeployError(f"{label} safe version status is invalid")
+    if (
+        type(safe_status.get("phase")) is not str
+        or safe_status["phase"] not in INTERRUPTED_FORWARD_SAFE_PHASES
+    ):
+        raise deployer.DeployError(f"{label} safe phase status is invalid")
+    return safe_status
+
+
+def interrupted_forward_status_mismatches(
+    safe_status: dict[str, Any],
+    loaded_proof: dict[str, Any],
+) -> list[str]:
+    """Name every reviewed predicate that differs, in canonical order."""
+    failed = loaded_proof["proof"]["failed_run"]
+    prior = loaded_proof["proof"]["prior_run"]
+    recovery_identity = loaded_proof["recovery_identity"]
+    expected = {
+        "adopted_forward_no_rollback": False,
+        "baseline_database_fingerprint": failed[
+            "baseline_database_fingerprint"
+        ],
+        "baseline_database_journal_valid": True,
+        "baseline_sync_configured": True,
+        "baseline_sync_secret_existed": True,
+        "current_active": True,
+        "current_database_version": failed["version"],
+        "current_deployment": failed["deployment_id"],
+        "current_plugin_main_exists": True,
+        "current_plugin_sha256": failed["installed_plugin_sha256"],
+        "current_robots_sha256": prior["robots_sha256"],
+        "current_sync_configured": True,
+        "current_target_dir_exists": True,
+        "current_version": failed["version"],
+        "database_fingerprint": recovery_identity["database_fingerprint"],
+        "database_fingerprint_available": True,
+        "database_manifest_sha256": recovery_identity[
+            "database_manifest_sha256"
+        ],
+        "database_restored": False,
+        "deployment_id": failed["deployment_id"],
+        "expected_sha256": failed["artifact_sha256"],
+        "expected_version": failed["version"],
+        "had_plugin": True,
+        "interrupted_forward_candidate": True,
+        "interrupted_forward_database_manifest_sha256": "",
+        "interrupted_forward_proof_sha256": "",
+        "lock_owned": True,
+        "migration_failed": False,
+        "migration_invariants_valid": True,
+        "no_rollback_artifacts": True,
+        "phase": "installing",
+        "prior_active": True,
+        "prior_deployment": prior["deployment_id"],
+        "prior_plugin_main_exists": True,
+        "prior_plugin_sha256": prior["plugin_sha256"],
+        "prior_target_dir_exists": True,
+        "prior_version": prior["version"],
+        "process_lock_available": True,
+        "recovery_ready": True,
+        "robots_applied": True,
+        "robots_managed_sha256": prior["robots_sha256"],
+        "robots_prior_exists": True,
+        "robots_prior_sha256": prior["robots_sha256"],
+        "robots_restored": False,
+        "runtime_loaded": True,
+        "runtime_version": failed["version"],
+        "state_exists": True,
+    }
+    mismatches = [
+        field
+        for field, expected_value in expected.items()
+        if not exact_json_equal(safe_status.get(field), expected_value)
+    ]
+    if safe_status.get("installed_plugin_sha256") not in {
+        "",
+        failed["installed_plugin_sha256"],
+    }:
+        mismatches.append("installed_plugin_sha256")
+    return sorted(mismatches)
+
+
+def capture_interrupted_forward_mismatch_diagnostic(
+    deployer: Any,
+    status: Any,
+    loaded_proof: dict[str, Any],
+) -> dict[str, Any]:
+    """Capture a non-authoritative receipt for a safely shaped mismatch."""
+    safe_status = validate_interrupted_forward_safe_status_shape(
+        deployer,
+        status,
+        "Interrupted forward mismatch diagnostic",
+    )
+    mismatches = interrupted_forward_status_mismatches(
+        safe_status,
+        loaded_proof,
+    )
+    if not mismatches:
+        raise deployer.DeployError(
+            "Interrupted forward mismatch diagnostic had no reviewed mismatch"
+        )
+    if mismatches == INTERRUPTED_FORWARD_DATABASE_MISMATCHES:
+        raise deployer.DeployError(
+            "Interrupted forward database-only mismatch requires observation v2"
+        )
+    return {
+        "diagnostic_only": True,
+        "mismatches": mismatches,
+        "proof_consumed": False,
+        "recovery_authority": False,
+        "safe_status": safe_status,
+        "safe_status_sha256": canonical_proof_sha256(safe_status),
+        "schema": "complete99-interrupted-forward-observation/v3",
+    }
+
 
 def validate_interrupted_forward_database_mismatch_status(
     deployer: Any,
@@ -2070,6 +2344,11 @@ def validate_interrupted_forward_database_mismatch_status(
         raise deployer.DeployError(
             "Interrupted forward database mismatch status is invalid"
         )
+    safe_status = validate_interrupted_forward_safe_status_shape(
+        deployer,
+        status,
+        "Interrupted forward drift database",
+    )
     proof = loaded_proof["proof"]
     failed = proof["failed_run"]
     prior = proof["prior_run"]
@@ -2166,9 +2445,6 @@ def validate_interrupted_forward_database_mismatch_status(
         raise deployer.DeployError(
             "Interrupted forward mismatch was not isolated to both reviewed database identities"
         )
-    safe_status = {
-        key: status.get(key) for key in INTERRUPTED_FORWARD_SAFE_STATUS_KEYS
-    }
     safe_status_sha256 = canonical_proof_sha256(safe_status)
     return {
         "database_fingerprint": current_database_fingerprint,
@@ -3549,19 +3825,28 @@ def main() -> int:
                     and status.get("database_manifest_sha256")
                     != recovery_identity["database_manifest_sha256"]
                 )
-                observation = (
-                    validate_interrupted_forward_database_mismatch_status(
+                observation_kind = "database-mismatch" if database_drift else "exact"
+                try:
+                    observation = (
+                        validate_interrupted_forward_database_mismatch_status(
+                            deployer,
+                            status,
+                            interrupted_proof,
+                        )
+                        if database_drift
+                        else validate_interrupted_forward_status(
+                            deployer,
+                            status,
+                            interrupted_proof,
+                        )
+                    )
+                except deployer.DeployError:
+                    observation = capture_interrupted_forward_mismatch_diagnostic(
                         deployer,
                         status,
                         interrupted_proof,
                     )
-                    if database_drift
-                    else validate_interrupted_forward_status(
-                        deployer,
-                        status,
-                        interrupted_proof,
-                    )
-                )
+                    observation_kind = "mismatch-diagnostic"
                 observation_commit = os.environ.get("GITHUB_SHA", "")
                 if args.local_test and not observation_commit:
                     observation_commit = "0" * 40
@@ -3590,13 +3875,21 @@ def main() -> int:
                     client,
                     prior_forward["robots_sha256"],
                 )
-                if database_drift:
+                if observation_kind == "database-mismatch":
                     audit["decision"] = (
                         "observe_interrupted_forward_database_mismatch"
                     )
                     audit["proof_consumed"] = False
                     audit["result"] = (
                         "interrupted_forward_database_mismatch_observed"
+                    )
+                elif observation_kind == "mismatch-diagnostic":
+                    audit["decision"] = (
+                        "observe_interrupted_forward_mismatch_diagnostic"
+                    )
+                    audit["proof_consumed"] = False
+                    audit["result"] = (
+                        "interrupted_forward_mismatch_diagnostic_observed"
                     )
                 else:
                     audit["decision"] = "observe_interrupted_forward"

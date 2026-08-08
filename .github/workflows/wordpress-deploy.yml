@@ -286,10 +286,13 @@ jobs:
             Write-Error "The live recovery probe returned invalid summary JSON."
             exit 1
           }
-          if ($recoveryRecord.result -eq "interrupted_forward_database_mismatch_observed" -and
+          if ($recoveryRecord.result -in @(
+                "interrupted_forward_database_mismatch_observed",
+                "interrupted_forward_mismatch_diagnostic_observed"
+              ) -and
               (($recoveryRecord.PSObject.Properties.Name -notcontains "proof_consumed") -or
                $recoveryRecord.proof_consumed -ne $false)) {
-            Write-Error "A database-mismatch observation must explicitly preserve its v1 proof as unconsumed."
+            Write-Error "A mismatch observation must explicitly preserve its v1 proof as unconsumed."
             exit 1
           }
           $env:COMPLETE99_RECOVERY_SUMMARY_JSON = $recoverySummary
