@@ -125,6 +125,15 @@ though it adds no product identity or effective channel offer. Three reviewed
 Japanese records become public sections inside the existing dashi and umami
 owners.
 
+Release 1.18.1 keeps both registry versions unchanged and adds a presentation
+layer over the same WooCommerce authority. The store listing state consists of
+an allowlisted product type, a bounded page number and a fixed page size of
+twelve. The same state drives rendering, product links, localized alternates,
+canonical metadata, robots and Product schema. Filtered utility states are
+`noindex,follow`; unfiltered pages keep the store's existing eligibility. No
+presentation helper can write a product, price, stock value, supplier record,
+order or payment setting.
+
 ## Private Entity Studio
 
 Release 1.10.0 adds Entity Studio inside WordPress as a copy-on-write commercial
@@ -248,6 +257,11 @@ to 27 science entities while remaining at 19 canonical page owners per language
 and 38 bilingual routes. The 84-identity Japanese cluster contains 24 public and
 60 private records. The WooCommerce catalog remains exactly 36 products,
 and no product, price, stock, supplier, bundle or payment state is added.
+
+Release 1.18.1 preserves those exact registry and public graph counts. It
+changes only how the 36 WooCommerce products are discovered and rendered on the
+public shelf: three pages of twelve products, server-rendered filters, stable
+page-aware product anchors and progressively disclosed specifications.
 
 ## Syria regional and community boundary
 

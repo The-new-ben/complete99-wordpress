@@ -1,9 +1,25 @@
 # Consumer site and commerce runbook
 
-Last reviewed: 2026-08-07
-Release target: Complete99 Platform 1.18.0
+Last reviewed: 2026-08-08
+Release target: Complete99 Platform 1.18.1
 
-## Current 1.18.0 dashi depth and commerce boundary
+## Current 1.18.1 scalable pantry shelf
+
+Release 1.18.1 preserves the exact 36 WooCommerce products and presents them in
+three server-rendered pages of twelve products. Product-type filters and page
+controls are ordinary links, so the shelf remains usable without JavaScript.
+Every product continuation points to the page that owns its stable product
+anchor. Detailed ingredients, allergens, storage, equipment care and secondary
+connections remain present in the initial HTML inside native expandable panels.
+
+The unfiltered shelf pages retain the store's existing search eligibility and
+use self-canonical page URLs. Filtered utility views are `noindex,follow` and
+also self-canonical. Hebrew and English alternates preserve the same validated
+filter and page. Structured data includes only the products visible on the
+current page. The release performs no WooCommerce rematerialization and changes
+no price, stock, product, supplier, gateway or payment state.
+
+## Preserved 1.18.0 dashi depth and commerce boundary
 
 Release 1.18.0 keeps the culinary-science registry at 672 entities and Entity
 Studio at 728 subjects: 672 science identities plus the unchanged 56 product

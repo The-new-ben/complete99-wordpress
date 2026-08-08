@@ -202,6 +202,20 @@ final class Complete99_Frontend {
 			return $title;
 		}
 		$post = get_queried_object();
+		if ( $post && 'store' === Complete99_Content::translation_group_for_post( $post->ID ) ) {
+			$lang          = Complete99_Content::language_for_post( $post->ID );
+			$listing_state = Complete99_Commerce::storefront_listing_state();
+			$listing       = Complete99_Commerce::storefront_listing(
+				$listing_state['product_type'] ?? 'all',
+				$listing_state['product_page'] ?? 1
+			);
+			$product_page  = absint( $listing['product_page'] ?? 1 );
+			$page_suffix   = 1 < $product_page
+				? sprintf( 'he' === $lang ? ', עמוד %d' : ', Page %d', $product_page )
+				: '';
+
+			return wp_strip_all_tags( $post->post_title ) . $page_suffix . ' | Complete99';
+		}
 		return $post ? wp_strip_all_tags( $post->post_title ) . ' | Complete99' : $title;
 	}
 
@@ -456,7 +470,20 @@ final class Complete99_Frontend {
 		if ( ! is_singular() || ! Complete99_Content::is_complete99_post( get_queried_object_id() ) ) {
 			return $robots;
 		}
-		if ( 'c99_dish' === get_post_type( get_queried_object_id() ) && ! Complete99_Content::dish_gate_status( get_queried_object_id() )['passed'] ) {
+		$post_id = get_queried_object_id();
+		if ( 'store' === Complete99_Content::translation_group_for_post( $post_id ) ) {
+			$listing = Complete99_Commerce::storefront_listing();
+			if (
+				'all' !== (string) ( $listing['product_type'] ?? 'all' )
+				|| empty( $listing['query_is_canonical'] )
+			) {
+				unset( $robots['index'], $robots['nofollow'] );
+				$robots['noindex'] = true;
+				$robots['follow']  = true;
+			}
+			return $robots;
+		}
+		if ( 'c99_dish' === get_post_type( $post_id ) && ! Complete99_Content::dish_gate_status( $post_id )['passed'] ) {
 			$robots['noindex']  = true;
 			$robots['nofollow'] = false;
 		}
@@ -497,11 +524,26 @@ final class Complete99_Frontend {
 		$canonical = get_permalink( $post );
 		$image     = self::post_image_url( $post->ID );
 		$description = wp_strip_all_tags( $post->post_excerpt );
+		$social_title = wp_strip_all_tags( $post->post_title );
 		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
+			$listing_state = Complete99_Commerce::storefront_listing_state();
+			$listing       = Complete99_Commerce::storefront_listing(
+				$listing_state['product_type'] ?? 'all',
+				$listing_state['product_page'] ?? 1
+			);
+			$product_type  = (string) ( $listing['product_type'] ?? 'all' );
+			$product_page  = absint( $listing['product_page'] ?? 1 );
+			$canonical     = Complete99_Commerce::storefront_url( $lang, $product_type, $product_page );
+			$he_url        = Complete99_Commerce::storefront_url( 'he', $product_type, $product_page );
+			$en_url        = Complete99_Commerce::storefront_url( 'en', $product_type, $product_page );
+			$alternate     = 'he' === $lang ? $en_url : $he_url;
+			if ( 1 < $product_page ) {
+				$social_title .= sprintf( 'he' === $lang ? ', עמוד %d' : ', Page %d', $product_page );
+			}
 			$description = 'he' === $lang
 				? 'חומרי גלם וציוד למטבח של קומפלט 99 עם מחיר, מפרט, מלאי ותנאי איסוף או משלוח.'
 				: 'Complete99 food ingredients and kitchen equipment with price, specifications, stock and pickup or delivery terms.';
-			$product_ids = Complete99_Commerce::storefront_product_ids();
+			$product_ids = isset( $listing['product_ids'] ) && is_array( $listing['product_ids'] ) ? $listing['product_ids'] : array();
 			$product     = ! empty( $product_ids ) && function_exists( 'wc_get_product' ) ? wc_get_product( $product_ids[0] ) : false;
 			if ( $product ) {
 				$product_image = wp_get_attachment_image_url( $product->get_image_id(), 'full' );
@@ -521,11 +563,11 @@ final class Complete99_Frontend {
 		echo '<meta property="og:type" content="website" />' . "\n";
 		echo '<meta property="og:locale" content="' . esc_attr( 'he' === $lang ? 'he_IL' : 'en_US' ) . '" />' . "\n";
 		echo '<meta property="og:locale:alternate" content="' . esc_attr( 'he' === $lang ? 'en_US' : 'he_IL' ) . '" />' . "\n";
-		echo '<meta property="og:title" content="' . esc_attr( wp_strip_all_tags( $post->post_title ) ) . '" />' . "\n";
+		echo '<meta property="og:title" content="' . esc_attr( $social_title ) . '" />' . "\n";
 		echo '<meta property="og:description" content="' . esc_attr( $description ) . '" />' . "\n";
 		echo '<meta property="og:url" content="' . esc_url( $canonical ) . '" />' . "\n";
 		echo '<meta name="twitter:card" content="' . esc_attr( $image ? 'summary_large_image' : 'summary' ) . '" />' . "\n";
-		echo '<meta name="twitter:title" content="' . esc_attr( wp_strip_all_tags( $post->post_title ) ) . '" />' . "\n";
+		echo '<meta name="twitter:title" content="' . esc_attr( $social_title ) . '" />' . "\n";
 		echo '<meta name="twitter:description" content="' . esc_attr( $description ) . '" />' . "\n";
 		if ( $image ) {
 			echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
@@ -748,10 +790,11 @@ final class Complete99_Frontend {
 				$menu_item['image'] = $image;
 			}
 			if ( Complete99_Commerce::catalog_is_ready() && class_exists( 'Complete99_Live_Catalog' ) ) {
-				$store_url = Complete99_Content::route_url( 'store', $lang );
 				$related_products = array();
 				foreach ( Complete99_Live_Catalog::product_codes_for_dish_slug( (string) $dish['slug'] ) as $product_code ) {
-					$related_products[] = array( '@id' => $store_url . '#c99-product-code-' . sanitize_html_class( $product_code ) );
+					$related_products[] = array(
+						'@id' => Complete99_Commerce::storefront_product_url( $product_code, $lang, 'all' ),
+					);
 				}
 				if ( ! empty( $related_products ) ) {
 					$menu_item['isRelatedTo'] = $related_products;
@@ -786,24 +829,38 @@ final class Complete99_Frontend {
 	}
 
 	private static function schema_graph( $post, $lang, $alternate ) {
-		$url     = get_permalink( $post );
-		$org_id  = home_url( '/#organization' );
-		$page_id = $url . '#webpage';
-		$image   = self::post_image_url( $post->ID );
-		$key     = Complete99_Content::translation_group_for_post( $post->ID );
+		$url          = get_permalink( $post );
+		$org_id       = home_url( '/#organization' );
+		$image        = self::post_image_url( $post->ID );
+		$key          = Complete99_Content::translation_group_for_post( $post->ID );
+		$page_name    = wp_strip_all_tags( $post->post_title );
+		$product_type = 'all';
+		$listing      = array();
 		$page_description = wp_strip_all_tags( $post->post_excerpt );
 		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
+			$listing_state = Complete99_Commerce::storefront_listing_state();
+			$listing       = Complete99_Commerce::storefront_listing(
+				$listing_state['product_type'] ?? 'all',
+				$listing_state['product_page'] ?? 1
+			);
+			$product_type  = (string) ( $listing['product_type'] ?? 'all' );
+			$product_page  = absint( $listing['product_page'] ?? 1 );
+			$url           = Complete99_Commerce::storefront_url( $lang, $product_type, $product_page );
+			if ( 1 < $product_page ) {
+				$page_name .= sprintf( 'he' === $lang ? ', עמוד %d' : ', Page %d', $product_page );
+			}
 			$page_description = 'he' === $lang
 				? 'חומרי גלם וציוד למטבח של קומפלט 99 עם מחיר, מפרט, מלאי והוספה לסל.'
 				: 'Complete99 food ingredients and kitchen equipment with price, specifications, stock and add-to-cart.';
 		}
+		$page_id = $url . '#webpage';
 		$graph   = array(
 			self::food_business_schema( $lang ),
 			array(
 				'@type'       => 'WebPage',
 				'@id'         => $page_id,
 				'url'         => $url,
-				'name'        => wp_strip_all_tags( $post->post_title ),
+				'name'        => $page_name,
 				'description' => $page_description,
 				'inLanguage'  => $lang,
 				'isPartOf'     => array( '@id' => home_url( '/#website' ) ),
@@ -812,12 +869,13 @@ final class Complete99_Frontend {
 
 		if ( 'home' !== $key ) {
 			$breadcrumb_items = array();
-			foreach ( self::breadcrumb_items( $post, $lang ) as $position => $breadcrumb ) {
+			$breadcrumbs = self::breadcrumb_items( $post, $lang );
+			foreach ( $breadcrumbs as $position => $breadcrumb ) {
 				$breadcrumb_items[] = array(
 					'@type'    => 'ListItem',
 					'position' => $position + 1,
 					'name'     => $breadcrumb['label'],
-					'item'     => $breadcrumb['url'],
+					'item'     => 'store' === $key && $position === count( $breadcrumbs ) - 1 ? $url : $breadcrumb['url'],
 				);
 			}
 			$graph[1]['breadcrumb'] = array( '@id' => $url . '#breadcrumb' );
@@ -866,8 +924,9 @@ final class Complete99_Frontend {
 			$graph[] = $recipe;
 		}
 		if ( 'store' === $key && Complete99_Commerce::catalog_is_ready() ) {
-			foreach ( Complete99_Commerce::storefront_product_ids() as $product_id ) {
-				$product_schema = self::store_product_schema( $product_id, $lang, $url );
+			$product_ids = isset( $listing['product_ids'] ) && is_array( $listing['product_ids'] ) ? $listing['product_ids'] : array();
+			foreach ( $product_ids as $product_id ) {
+				$product_schema = self::store_product_schema( $product_id, $lang, $product_type );
 				if ( $product_schema ) {
 					$graph[] = $product_schema;
 				}
@@ -880,7 +939,7 @@ final class Complete99_Frontend {
 		);
 	}
 
-	private static function store_product_schema( $product_id, $lang, $store_url ) {
+	private static function store_product_schema( $product_id, $lang, $product_type ) {
 		if ( ! function_exists( 'wc_get_product' ) ) {
 			return null;
 		}
@@ -909,6 +968,10 @@ final class Complete99_Frontend {
 		$unit_codes  = array( 'kg' => 'KGM', 'g' => 'GRM', 'lbs' => 'LBR', 'oz' => 'ONZ' );
 		$weight_unit = (string) get_option( 'woocommerce_weight_unit', 'kg' );
 		if ( '' === trim( $name ) || '' === trim( $description ) || '' === trim( $product_code ) || ! $image ) {
+			return null;
+		}
+		$product_url = Complete99_Commerce::storefront_product_url( $product_code, $lang, $product_type );
+		if ( '' === $product_url ) {
 			return null;
 		}
 		$weight_unit_code = $unit_codes[ $weight_unit ] ?? strtoupper( $weight_unit );
@@ -961,7 +1024,7 @@ final class Complete99_Frontend {
 		}
 		$schema = array(
 			'@type'              => 'Product',
-			'@id'                => $store_url . '#c99-product-code-' . sanitize_html_class( $product_code ),
+			'@id'                => $product_url,
 			'name'               => $name,
 			'description'        => $description,
 			'inLanguage'         => $lang,
@@ -971,7 +1034,7 @@ final class Complete99_Frontend {
 			'additionalProperty' => $additional_properties,
 			'offers'             => array(
 				'@type'         => 'Offer',
-				'url'           => $store_url . '#c99-product-code-' . sanitize_html_class( $product_code ),
+				'url'           => $product_url,
 				'priceCurrency' => (string) get_woocommerce_currency(),
 				'price'         => (string) $product->get_price(),
 				'availability'  => $product->is_in_stock() ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',

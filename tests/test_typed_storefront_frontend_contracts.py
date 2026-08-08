@@ -57,9 +57,9 @@ def test_store_card_uses_a_typed_food_or_equipment_contract() -> None:
         "Care",
         "Safety",
         "Fulfilment",
-        "Equipment guide",
     ):
         assert label in card
+    assert "Equipment guide" in card or "Open equipment guide" in card
 
     food_branch = card.split("<?php else : ?>", 1)[1]
     for existing_food_label in (
@@ -142,6 +142,9 @@ class Complete99_Commerce {{
     const STORAGE_EN = '_complete99_product_storage_en';
     const FULFILMENT_HE = '_complete99_product_fulfilment_he';
     const FULFILMENT_EN = '_complete99_product_fulfilment_en';
+    public static function storefront_product_url($product_code, $lang, $filter = 'all') {{
+        return 'https://complete99.example/en/store/?product-page=3#c99-product-code-' . $product_code;
+    }}
 }}
 class Complete99_Live_Catalog {{
     const META_WEIGHT_MIN_KG = '_complete99_live_catalog_weight_min_kg';
@@ -192,9 +195,9 @@ function get_post_meta($product_id, $key, $single = true) {{
 require {frontend_path};
 $method = new ReflectionMethod('Complete99_Frontend', 'store_product_schema');
 $method->setAccessible(true);
-$food = $method->invoke(null, 1, 'en', 'https://complete99.example/en/store/');
+$food = $method->invoke(null, 1, 'en', 'all');
 $c99_kind = 'equipment';
-$equipment = $method->invoke(null, 2, 'en', 'https://complete99.example/en/store/');
+$equipment = $method->invoke(null, 2, 'en', 'all');
 echo json_encode(
     array('food' => $food, 'equipment' => $equipment),
     JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
@@ -237,6 +240,14 @@ echo json_encode(
         "value": 0.25,
         "unitCode": "KGM",
     }
+    expected_url = (
+        "https://complete99.example/en/store/?product-page=3"
+        "#c99-product-code-product-test"
+    )
+    assert result["food"]["@id"] == expected_url
+    assert result["food"]["offers"]["url"] == expected_url
+    assert result["equipment"]["@id"] == expected_url
+    assert result["equipment"]["offers"]["url"] == expected_url
 
 
 def test_museum_accessibility_and_localization_contracts_are_explicit() -> None:

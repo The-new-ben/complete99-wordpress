@@ -19,7 +19,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-07 23:35:00"
+RELEASE_LAST_UPDATED = "2026-08-08 05:05:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -236,6 +236,14 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Rebuilt the bilingual pantry shelf as a compact server-rendered catalog with twelve products per page, real pagination and safe product-type links that work without JavaScript.</li>"
+                "<li>Kept stock, price, add-to-cart and the primary culinary continuation visible while moving detailed ingredients, allergens, storage, equipment care and secondary connections into accessible expandable panels.</li>"
+                "<li>Added page-aware product links across dishes, ingredients, culinary science and the museum, including bounded compatibility handling for older product bookmarks.</li>"
+                "<li>Aligned localized titles, canonical links, hreflang, robots and Product structured data with the exact rendered page and filter state.</li>"
+                "<li>Preserved the exact 36 WooCommerce products, prices, stock and disabled payment state, with no catalog rematerialization, supplier assertion or checkout activation.</li>"
+                "</ul>"
+                "<h4>1.18.0</h4>"
                 "<ul>"
                 "<li>Expanded the reviewed bilingual public science graph from 24 to 27 entities while preserving 19 canonical page owners per language and 38 bilingual routes.</li>"
                 "<li>Kept the registry at 672 entities with 370 sources and Entity Studio at 728 subjects; the 84-identity Japanese cluster now contains 24 public and 60 private records.</li>"

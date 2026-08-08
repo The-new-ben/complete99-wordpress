@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.18.0
+Release target: Complete99 Platform 1.18.1
 
 ## Automated gates
 
@@ -13,7 +13,7 @@ Release target: Complete99 Platform 1.18.0
   metadata.
 - Package SHA-256, size and packaged-source SHA-256 match the separate integrity
   metadata.
-- The public update manifest matches version 1.18.0 and its versioned package URL.
+- The public update manifest matches version 1.18.1 and its versioned package URL.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -24,6 +24,19 @@ Release target: Complete99 Platform 1.18.0
   packaged-menu fallback.
 - Consumer breadcrumb and live cart-status links expose a minimum 44 by 44
   CSS-pixel target.
+- The unfiltered pantry resolves into exactly three server-rendered pages of
+  twelve unique products, without omissions or duplicates.
+- Product-type filters and pagination work as ordinary links without
+  JavaScript, and every control exposes a minimum 44 by 44 CSS-pixel target.
+- Filtered pantry states are `noindex,follow`; unfiltered page states preserve
+  the store's current search eligibility. Canonical and Hebrew, English and
+  x-default alternates reflect the exact validated state.
+- Product schema contains only the current page's products. Every first-party
+  product continuation resolves to the page that contains its stable anchor.
+- The first product image on each shelf page is eager and high priority; later
+  product images remain lazy.
+- Add-to-cart from a filtered or paginated shelf returns to that same shelf
+  state and preserves the product anchor.
 - An exactly equivalent read-model retry repeats all public cache purges,
   reports `write_changed=false`, and can recover after a prior purge failure.
 - A fresh model with older or changed dish copy falls back to the packaged menu;

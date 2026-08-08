@@ -925,7 +925,7 @@ final class Complete99_Culinary_Museum_Frontend {
 		}
 		$is_he = 'he' === self::$bundle['language'];
 		$name  = (string) get_post_meta( $product_id, $is_he ? Complete99_Commerce::NAME_HE : Complete99_Commerce::NAME_EN, true );
-		$url   = self::internal_url( (string) ( $offer['store_path'] ?? '' ) );
+		$url   = Complete99_Commerce::storefront_product_url( $code, self::$bundle['language'], 'all' );
 		if ( '' === trim( $name ) || '' === $url ) {
 			return;
 		}
