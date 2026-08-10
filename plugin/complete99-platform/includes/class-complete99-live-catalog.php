@@ -584,7 +584,11 @@ final class Complete99_Live_Catalog {
 		if ( self::is_error( $bundle ) || ! isset( $bundle['relations']['products'][ $product_code ] ) ) {
 			return array();
 		}
-		return $bundle['relations']['products'][ $product_code ];
+		$relation = $bundle['relations']['products'][ $product_code ];
+		if ( 'approved_public' !== (string) ( $bundle['science_relation_states'][ $product_code ] ?? 'none' ) ) {
+			unset( $relation['science_entity_id'] );
+		}
+		return $relation;
 	}
 
 	public static function product_codes_for_dish_slug( $dish_slug ) {
@@ -743,6 +747,9 @@ final class Complete99_Live_Catalog {
 			$relations      = require COMPLETE99_PLATFORM_DIR . 'data/live-catalog-relations.php';
 			$asset_manifest = require COMPLETE99_PLATFORM_DIR . 'data/generated-asset-manifest.php';
 			$science_registry = require COMPLETE99_PLATFORM_DIR . 'data/culinary-science-pilot.php';
+			$owner_publication_status = function_exists( 'complete99_owner_publication_cached_status' )
+				? complete99_owner_publication_cached_status()
+				: array();
 			if ( ! is_array( $seed_registry )
 				|| ! is_array( $price_registry )
 				|| ! is_array( $policy )
@@ -754,7 +761,7 @@ final class Complete99_Live_Catalog {
 				|| 'complete99-live-catalog-products/v1' !== ( $policy['schema'] ?? '' )
 				|| 'complete99-live-catalog-relations/v1' !== ( $relations['schema'] ?? '' )
 				|| 'complete99-generated-asset-manifest/v1' !== ( $asset_manifest['schema'] ?? '' )
-				|| 'complete99-culinary-science-registry/v5' !== ( $science_registry['schema'] ?? '' )
+				|| 'complete99-culinary-science-registry/v6' !== ( $science_registry['schema'] ?? '' )
 				|| 'ILS' !== ( $price_registry['currency'] ?? '' )
 				|| 'owner_authorized_opening_retail_price_informed_by_market_observation' !== ( $price_registry['price_scope'] ?? '' )
 				|| ! is_array( $price_registry['evidence'] ?? null )
@@ -819,15 +826,17 @@ final class Complete99_Live_Catalog {
 				throw new \UnexpectedValueException( 'The live catalog allowlist does not have exact 36-product coverage.' );
 			}
 
-			$products      = array();
-			$asset_receipt = array();
+			$products                = array();
+			$asset_receipt           = array();
+			$science_relation_states = array();
 			foreach ( self::PRODUCT_CODES as $code ) {
 				$seed       = $seeds[ $code ];
 				$public     = $policy['products'][ $code ];
 				$relation   = $relations['products'][ $code ];
 				$price      = (string) $price_registry['prices'][ $code ];
 				$asset_name = sanitize_file_name( (string) ( $seed['image_asset'] ?? '' ) );
-				$science_entity_id = sanitize_key( (string) ( $relation['science_entity_id'] ?? '' ) );
+				$raw_science_entity_id = (string) ( $relation['science_entity_id'] ?? '' );
+				$science_entity_id = sanitize_key( $raw_science_entity_id );
 				$product_kind = sanitize_key( (string) ( $seed['product_kind'] ?? '' ) );
 				$public_product_kind = sanitize_key( (string) ( $public['product_kind'] ?? '' ) );
 				$weight_range = is_array( $public['weight_range_kg'] ?? null ) ? $public['weight_range_kg'] : array();
@@ -881,6 +890,7 @@ final class Complete99_Live_Catalog {
 					|| ! isset( $relation['dish_slugs'] )
 					|| ! is_array( $relation['dish_slugs'] )
 					|| ( empty( $relation['dish_slugs'] ) && '' === $science_entity_id )
+					|| $raw_science_entity_id !== $science_entity_id
 					|| ( '' !== $science_entity_id && 1 !== preg_match( '/\A[a-z0-9][a-z0-9-]{4,99}\z/', $science_entity_id ) )
 					|| ! isset( $policy['categories'][ $public['category'] ], $policy['shipping_classes'][ $public['shipping_class'] ] )
 					|| ! is_array( $public['tags'] )
@@ -889,21 +899,19 @@ final class Complete99_Live_Catalog {
 					|| ! $weight_range_valid ) {
 					throw new \UnexpectedValueException( 'A live product policy record is invalid: ' . $code );
 				}
+				$science_relation_state = 'none';
 				if ( '' !== $science_entity_id ) {
-					$science_entity = $science_entities[ $science_entity_id ] ?? array();
-					if ( 'public_discovery' !== (string) ( $science_entity['surface_class'] ?? '' )
-						|| 'approved_public' !== (string) ( $science_entity['publication']['state'] ?? '' )
-						|| true !== ( $science_entity['publication']['public_api'] ?? null )
-						|| true !== ( $science_entity['publication']['public_page'] ?? null )
-						|| 'standalone' !== (string) ( $science_entity['seo']['route_mode'] ?? '' )
-						|| '' === (string) ( $science_entity['seo']['canonical_path']['he'] ?? '' )
-						|| '' === (string) ( $science_entity['seo']['canonical_path']['en'] ?? '' )
-						|| 'active_offer' !== (string) ( $science_entity['commerce']['state'] ?? '' )
-						|| true !== ( $science_entity['commerce']['public_offer_allowed'] ?? null )
-						|| $code !== (string) ( $science_entity['commerce']['woo_product_code'] ?? '' ) ) {
+					$science_relation_state = self::science_relation_state(
+						$code,
+						$science_entity_id,
+						$science_entities[ $science_entity_id ] ?? array(),
+						$owner_publication_status
+					);
+					if ( '' === $science_relation_state ) {
 						throw new \UnexpectedValueException( 'A live product science relation is not public and reciprocal: ' . $code );
 					}
 				}
+				$science_relation_states[ $code ] = $science_relation_state;
 				foreach ( $public['tags'] as $tag ) {
 					if ( ! isset( $policy['tags'][ $tag ] ) ) {
 						throw new \UnexpectedValueException( 'A live product tag is unknown: ' . $code );
@@ -1041,6 +1049,7 @@ final class Complete99_Live_Catalog {
 			}
 			ksort( $products, SORT_STRING );
 			ksort( $asset_receipt, SORT_STRING );
+			ksort( $science_relation_states, SORT_STRING );
 			return array(
 				'products'        => $products,
 				'policy'          => $policy,
@@ -1050,10 +1059,105 @@ final class Complete99_Live_Catalog {
 				'asset_digest'    => self::digest( $asset_receipt ),
 				'relation_digest' => self::digest( $relations ),
 				'relations'       => $relations,
+				'science_relation_states' => $science_relation_states,
 			);
 		} catch ( \Throwable $error ) {
 			return self::error( 'complete99_live_catalog_registry_invalid', $error->getMessage(), 500 );
 		}
+	}
+
+	/**
+	 * Load the exact owner-gated entity set from the validated registry.
+	 *
+	 * @return array
+	 */
+	private static function owner_publication_required_entity_ids() {
+		static $required_entity_ids = null;
+		if ( null !== $required_entity_ids ) {
+			return $required_entity_ids;
+		}
+		$required_entity_ids = array();
+		$path = COMPLETE99_PLATFORM_DIR . 'data/culinary-science-publication-approvals.php';
+		if ( ! is_readable( $path ) || ! function_exists( 'complete99_owner_publication_registry_shape_is_valid' ) ) {
+			return $required_entity_ids;
+		}
+		try {
+			$registry = require $path;
+		} catch ( \Throwable $error ) {
+			return $required_entity_ids;
+		}
+		$candidate_ids = isset( $registry['required_entity_ids'] ) && is_array( $registry['required_entity_ids'] )
+			? $registry['required_entity_ids']
+			: array();
+		if ( 12 === count( $candidate_ids ) && complete99_owner_publication_registry_shape_is_valid( $registry, $candidate_ids ) ) {
+			$required_entity_ids = $candidate_ids;
+		}
+		return $required_entity_ids;
+	}
+
+	/**
+	 * Classify an exact reciprocal Science edge for public projection.
+	 *
+	 * A held owner-publication candidate remains available to private registry
+	 * consumers, but never becomes a public catalog continuation.
+	 */
+	private static function science_relation_state( $product_code, $science_entity_id, $science_entity, $owner_publication_status ) {
+		if ( ! is_array( $science_entity )
+			|| $science_entity_id !== (string) ( $science_entity['id'] ?? '' )
+			|| $product_code !== (string) ( $science_entity['commerce']['woo_product_code'] ?? '' ) ) {
+			return '';
+		}
+
+		$decisions = is_array( $owner_publication_status['decisions'] ?? null )
+			? $owner_publication_status['decisions']
+			: array();
+		$has_owner_decision = array_key_exists( $science_entity_id, $decisions );
+		$decision = $has_owner_decision && is_array( $decisions[ $science_entity_id ] )
+			? $decisions[ $science_entity_id ]
+			: array();
+		$required_entity_ids = self::owner_publication_required_entity_ids();
+		$is_owner_candidate = in_array( $science_entity_id, $required_entity_ids, true );
+		$status_schema_valid = ! empty( $required_entity_ids )
+			&& function_exists( 'complete99_owner_publication_status_is_valid' )
+			&& complete99_owner_publication_status_is_valid( $owner_publication_status, $required_entity_ids );
+		$is_owner_approved = $status_schema_valid
+			&& $has_owner_decision
+			&& $science_entity_id === (string) ( $decision['entity_id'] ?? '' )
+			&& true === ( $decision['approved'] ?? null )
+			&& 'owner_approved_publication' === (string) ( $decision['state'] ?? '' )
+			&& 'exact_owner_receipt_and_delivery_verified' === (string) ( $decision['reason'] ?? '' )
+			&& 'exact' === (string) ( $decision['delivery_validation'] ?? '' )
+			&& '' !== (string) ( $decision['candidate_sha256'] ?? '' )
+			&& '' !== (string) ( $decision['receipt_sha256'] ?? '' )
+			&& in_array( $science_entity_id, (array) ( $owner_publication_status['approved_entity_ids'] ?? array() ), true );
+
+		$is_public = 'public_discovery' === (string) ( $science_entity['surface_class'] ?? '' )
+			&& 'approved_public' === (string) ( $science_entity['publication']['state'] ?? '' )
+			&& true === ( $science_entity['publication']['public_api'] ?? null )
+			&& true === ( $science_entity['publication']['public_page'] ?? null )
+			&& 'standalone' === (string) ( $science_entity['seo']['route_mode'] ?? '' )
+			&& '' !== (string) ( $science_entity['seo']['canonical_path']['he'] ?? '' )
+			&& '' !== (string) ( $science_entity['seo']['canonical_path']['en'] ?? '' )
+			&& 'active_offer' === (string) ( $science_entity['commerce']['state'] ?? '' )
+			&& true === ( $science_entity['commerce']['public_offer_allowed'] ?? null );
+		if ( $is_public && ( ( ! $is_owner_candidate && ! $has_owner_decision ) || $is_owner_approved ) ) {
+			return 'approved_public';
+		}
+
+		$is_held = $status_schema_valid
+			&& $has_owner_decision
+			&& $science_entity_id === (string) ( $decision['entity_id'] ?? '' )
+			&& false === ( $decision['approved'] ?? null )
+			&& in_array( (string) ( $decision['state'] ?? '' ), array( 'held_pending_owner_approval', 'held_pending_exact_asset_delivery' ), true )
+			&& ! in_array( $science_entity_id, (array) ( $owner_publication_status['approved_entity_ids'] ?? array() ), true )
+			&& 'editorial_draft' === (string) ( $science_entity['surface_class'] ?? '' )
+			&& 'private_preview' === (string) ( $science_entity['publication']['state'] ?? '' )
+			&& false === ( $science_entity['publication']['public_api'] ?? null )
+			&& false === ( $science_entity['publication']['public_page'] ?? null )
+			&& false === ( $science_entity['publication']['search_index'] ?? null )
+			&& 'private' === (string) ( $science_entity['seo']['route_mode'] ?? '' );
+
+		return $is_held ? 'held_private_candidate' : '';
 	}
 
 	private static function preflight( $bundle ) {

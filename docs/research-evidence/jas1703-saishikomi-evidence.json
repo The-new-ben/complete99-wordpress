@@ -1,0 +1,51 @@
+{
+  "schema": "complete99-source-evidence-extract/v1",
+  "source_id": "jas-shoyu-1703",
+  "upstream": {
+    "url": "https://www.famic.go.jp/english/jas/_doc/jas1703.pdf",
+    "sha256": "9dbbf59b5fb4f5fbb557ce6edf3835056d649490f6287bf0ac25b2614ff766d4",
+    "bytes": 1170021,
+    "retrieved_at": "2026-08-08T11:34:30+03:00",
+    "license": "official-standard-tentative-english-translation"
+  },
+  "bibliography": {
+    "title": "Japanese Agricultural Standard 1703:2021, Soy sauce (Shoyu), Tentative Translation",
+    "publisher": "Food and Agricultural Materials Inspection Center",
+    "standard": "JAS 1703:2021",
+    "revision_date": "2021-01-25"
+  },
+  "claims": [
+    {
+      "id": "shoyu-koji-definition",
+      "locator": "Section 3.2, page 4",
+      "scope": "Shoyu koji is defined as koji mold cultivated on processed soybeans, or soybeans with grains such as wheat or rice."
+    },
+    {
+      "id": "saishikomi-definition",
+      "locator": "Section 3.12, page 5",
+      "scope": "Saishikomi shoyu uses approximately equal soybean and wheat inputs for shoyu koji, and its moromi uses kiage instead of brine."
+    },
+    {
+      "id": "saishikomi-quality-thresholds",
+      "locator": "Section 4.4, Table 4, page 10",
+      "thresholds": {
+        "total_nitrogen_g_per_100_ml": {
+          "special_grade": 1.65,
+          "superior_grade": 1.5,
+          "normal_grade": 1.4,
+          "mixed_fermenting_special_grade": 2.0
+        },
+        "soluble_solids_excluding_salt_g_per_100_ml": {
+          "special_grade": 21,
+          "superior_grade": 18
+        },
+        "mixed_fermenting_hydrolyzed_protein_max_percent": 20
+      }
+    }
+  ],
+  "public_boundary": [
+    "These are category definitions and thresholds, not certification of Yamaroku, Complete99, a WooCommerce product, a shipment, or a lot.",
+    "The FAMIC English document is a tentative informational translation; the Japanese original controls if interpretation differs.",
+    "No product grade, nitrogen value, soluble-solids value, import approval, or label conformity may be inferred without product-specific evidence."
+  ]
+}

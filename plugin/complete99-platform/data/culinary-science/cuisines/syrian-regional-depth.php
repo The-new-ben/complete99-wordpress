@@ -3,9 +3,10 @@
  * Complete99 Syrian regional cuisine, high-resolution depth tranche.
  *
  * This module extends the Syrian graph with source-bounded city, subregion,
- * community, dish, ingredient, institution and technique entities. Everything
- * remains private, noindex and reference-only until the public-content gates
- * are completed. Family testimony is never promoted to a citywide rule.
+ * community, dish, ingredient, institution and technique entities. The main
+ * registry may expose an explicitly reviewed noindex subset; every other
+ * identity remains private and reference-only. Family testimony is never
+ * promoted to a citywide rule.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -346,12 +347,12 @@ $c99_syrian_depth_rows = array(
 	/* Aleppo depth. */
 	array(
 		'hub-aleppine-kibbeh-family', 'topic_hub', 'aleppine-kibbeh-family', 'region-syria-aleppo',
-		'משפחת הקובה החלבית', 'Aleppine Kibbeh Family', 'syria-aleppo', array( 'avs-mirvet-aleppo', 'international-academy-gastronomy-syria' ),
-		'מפת ניווט לסוגי קובה חלבית לפי צורה, נוזל בישול, פרי חמצמץ ושיטת חימום, בלי להפוך עדות משפחתית אחת לטקסונומיה סופית של העיר.',
-		'A navigation map for Aleppine kibbeh by shape, cooking liquid, sour fruit and heat method, without turning one household testimony into a final city taxonomy.',
-		'המקורות תומכים בריבוי צורות ושיטות, אך היחסים המדויקים בין כל השמות דורשים הצלבה וניסוי.',
-		'The sources support multiple forms and methods, while exact relationships among all names require corroboration and testing.',
-		array( 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat' ), 'Aleppine kibbeh taxonomy board with grilled, fried, rolled and braised forms separated, studio culinary top view, no labels.'
+		'משפחת הקובה החלבית', 'Aleppine Kibbeh Family', 'syria-aleppo', array( 'avs-mirvet-aleppo', 'simon-schuster-aleppo-cookbook', 'georgetown-making-levantine-cuisine' ),
+		'קובה חלבית אינה מנה אחת אלא משפחה של צורות וטכניקות: צלויה, מטוגנת, מגולגלת או מבושלת ברוטב, ולעיתים פוגשת סומאק, רימון, חבוש או דובדבן חמוץ. בחרו דרך אחת והמשיכו אל הבורגול, הבשר ושיטת הבישול שמעצבים אותה.',
+		'Aleppine kibbeh is not one dish but a family of forms and techniques: grilled, fried, rolled or cooked in sauce, sometimes meeting sumac, pomegranate, quince or sour cherry. Choose one path and continue to the bulgur, meat and cooking method that shape it.',
+		'עמוד המו״ל של ספרה של מרלן מטר מציג עשרים מתכוני קובה. זהו תיעוד של ספר בישול שממחיש את רוחב המשפחה, לא מפקד רשמי של כל צורות הקובה בחלב.',
+		'The publisher page for Marlene Matar\'s cookbook presents twenty kibbeh recipes. That cookbook documentation illustrates the breadth of the family; it is not an official census of every Aleppine kibbeh form.',
+		array( 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat' ), 'Commercial culinary studio comparison of four fully cooked Aleppine kibbeh forms: grilled, fried, rolled and sauce-cooked, each clearly separate, inviting top view, no labels and no claim of a definitive taxonomy.'
 	),
 	array(
 		'technique-aleppine-sour-fruit-cookery', 'technique', 'aleppine-sour-fruit-cookery', 'region-syria-aleppo',
@@ -1153,7 +1154,7 @@ $c99_syrian_depth_counts = array_count_values( array_column( $c99_syrian_depth_e
 
 return array(
 	'schema' => 'complete99-syrian-regional-depth-module/v1',
-	'version' => 'culinary-science-2026.08.07.v18',
+	'version' => 'culinary-science-2026.08.08.v20',
 	'sources' => $c99_syrian_depth_sources,
 	'entities' => $c99_syrian_depth_entities,
 	'private_entity_ids' => array_column( $c99_syrian_depth_entities, 'id' ),

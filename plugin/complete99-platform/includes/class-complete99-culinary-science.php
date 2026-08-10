@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * in the administrator-only editorial snapshot.
  */
 final class Complete99_Culinary_Science {
-	const REGISTRY_SCHEMA = 'complete99-culinary-science-registry/v5';
+	const REGISTRY_SCHEMA = 'complete99-culinary-science-registry/v6';
 	const REST_NAMESPACE  = 'complete99/v1';
 	const DATA_FILE       = 'culinary-science-pilot.php';
 
@@ -127,15 +127,26 @@ final class Complete99_Culinary_Science {
 			return self::$registry_cache;
 		}
 
+		if ( ! defined( 'COMPLETE99_PLATFORM_DIR' ) ) {
+			self::clear_caches();
+			return new WP_Error( 'complete99_science_registry_missing', 'The culinary science registry is unavailable.' );
+		}
 		$path = COMPLETE99_PLATFORM_DIR . 'data/' . self::DATA_FILE;
 		if ( ! is_readable( $path ) ) {
+			self::clear_caches();
 			return new WP_Error( 'complete99_science_registry_missing', 'The culinary science registry is unavailable.' );
 		}
 
-		$registry = require $path;
-		$valid    = self::validate_registry( $registry );
-		if ( is_wp_error( $valid ) ) {
-			return $valid;
+		try {
+			$registry = require $path;
+			$valid    = self::validate_registry( $registry );
+			if ( is_wp_error( $valid ) ) {
+				self::clear_caches();
+				return self::invalid_registry_error();
+			}
+		} catch ( Throwable $error ) {
+			self::clear_caches();
+			return self::invalid_registry_error();
 		}
 
 		self::$registry_cache = $registry;
@@ -143,6 +154,19 @@ final class Complete99_Culinary_Science {
 			self::$public_index_cache = array();
 		}
 		return self::$registry_cache;
+	}
+
+	private static function clear_caches() {
+		self::$registry_cache     = null;
+		self::$public_index_cache = array();
+	}
+
+	private static function invalid_registry_error() {
+		return new WP_Error(
+			'complete99_science_registry_invalid',
+			'The culinary science registry failed its schema contract.',
+			array( 'status' => 500 )
+		);
 	}
 
 	/**
@@ -155,7 +179,7 @@ final class Complete99_Culinary_Science {
 		try {
 			self::assert_exact_keys(
 				$registry,
-				array( 'schema', 'version', 'generated_at', 'locales', 'surface_class', 'controlled_vocabulary', 'sources', 'entities', 'collections' ),
+				array( 'schema', 'version', 'generated_at', 'locales', 'surface_class', 'controlled_vocabulary', 'sources', 'source_receipts', 'entities', 'collections' ),
 				'registry'
 			);
 			if ( self::REGISTRY_SCHEMA !== $registry['schema'] ) {
@@ -210,6 +234,11 @@ final class Complete99_Culinary_Science {
 				self::assert_identifier( $source_id, 'registry.sources.key', 100 );
 				self::validate_source( $source_id, $source, $registry['controlled_vocabulary'] );
 			}
+			self::assert_associative_array( $registry['source_receipts'], 'registry.source_receipts', true );
+			foreach ( $registry['source_receipts'] as $source_id => $receipt ) {
+				self::assert_identifier( $source_id, 'registry.source_receipts.key', 100 );
+				self::validate_source_receipt( $source_id, $receipt, $registry['sources'] );
+			}
 
 			self::assert_list( $registry['entities'], 'registry.entities', false );
 			$entities_by_id = array();
@@ -217,6 +246,7 @@ final class Complete99_Culinary_Science {
 			$canonical      = array();
 			$fact_ids       = array();
 			$relation_ids   = array();
+			$scientific_measurement_ids = array();
 			$children_by_parent = array();
 			$query_owners   = array(
 				'he' => array(),
@@ -224,7 +254,14 @@ final class Complete99_Culinary_Science {
 			);
 			foreach ( $registry['entities'] as $offset => $entity ) {
 				$path = 'registry.entities.' . $offset;
-				self::validate_entity_shape( $entity, $path, $registry['controlled_vocabulary'], $registry['sources'] );
+				self::validate_entity_shape(
+					$entity,
+					$path,
+					$registry['controlled_vocabulary'],
+					$registry['sources'],
+					$registry['source_receipts'],
+					$scientific_measurement_ids
+				);
 				$id   = $entity['id'];
 				$slug = $entity['slug'];
 				if ( isset( $entities_by_id[ $id ] ) || isset( $slugs[ $slug ] ) ) {
@@ -298,7 +335,45 @@ final class Complete99_Culinary_Science {
 		self::assert_date( $source['retrieved_at'], $path . '.retrieved_at' );
 	}
 
-	private static function validate_entity_shape( $entity, $path, $vocabulary, $sources ) {
+	private static function validate_source_receipt( $source_id, $receipt, $sources ) {
+		$path = 'registry.source_receipts.' . $source_id;
+		self::assert_exact_keys(
+			$receipt,
+			array( 'schema', 'source_id', 'upstream_url', 'upstream_sha256', 'evidence_repository_path', 'evidence_sha256', 'retrieved_at', 'license', 'claim_locators', 'review_state' ),
+			$path
+		);
+		if ( 'complete99-source-evidence-receipt/v1' !== $receipt['schema'] ) {
+			throw new RuntimeException( $path . '.schema' );
+		}
+		self::assert_identifier( $receipt['source_id'], $path . '.source_id', 100 );
+		if ( $source_id !== $receipt['source_id'] ) {
+			throw new RuntimeException( $path . '.source_id_mismatch' );
+		}
+		if ( ! isset( $sources[ $source_id ] ) ) {
+			throw new RuntimeException( $path . '.unknown_source' );
+		}
+		if ( ! is_string( $receipt['upstream_url'] )
+			|| strlen( $receipt['upstream_url'] ) > 2048
+			|| ! filter_var( $receipt['upstream_url'], FILTER_VALIDATE_URL )
+			|| 0 !== strpos( $receipt['upstream_url'], 'https://' ) ) {
+			throw new RuntimeException( $path . '.upstream_url' );
+		}
+		self::assert_sha256( $receipt['upstream_sha256'], $path . '.upstream_sha256' );
+		self::assert_evidence_repository_path( $receipt['evidence_repository_path'], $path . '.evidence_repository_path' );
+		self::assert_sha256( $receipt['evidence_sha256'], $path . '.evidence_sha256' );
+		self::assert_datetime( $receipt['retrieved_at'], $path . '.retrieved_at' );
+		self::assert_text( $receipt['license'], $path . '.license', 200 );
+		self::assert_associative_array( $receipt['claim_locators'], $path . '.claim_locators', false );
+		foreach ( $receipt['claim_locators'] as $locator => $description ) {
+			self::assert_identifier( $locator, $path . '.claim_locators.key', 120 );
+			self::assert_text( $description, $path . '.claim_locators.' . $locator, 500 );
+		}
+		if ( 'verified' !== $receipt['review_state'] ) {
+			throw new RuntimeException( $path . '.review_state' );
+		}
+	}
+
+	private static function validate_entity_shape( $entity, $path, $vocabulary, $sources, $source_receipts, &$scientific_measurement_ids ) {
 		self::assert_exact_keys(
 			$entity,
 			array( 'id', 'type', 'slug', 'parent_id', 'name', 'summary', 'surface_class', 'index_policy', 'publication', 'seo', 'profiles', 'facts', 'taxonomy', 'relations', 'commerce', 'visual', 'compliance', 'trust', 'review' ),
@@ -327,7 +402,14 @@ final class Complete99_Culinary_Science {
 		self::assert_list( $entity['facts'], $path . '.facts', true );
 		$facts_by_id = array();
 		foreach ( $entity['facts'] as $offset => $fact ) {
-			self::validate_fact( $fact, $path . '.facts.' . $offset, $vocabulary, $sources );
+			self::validate_fact(
+				$fact,
+				$path . '.facts.' . $offset,
+				$vocabulary,
+				$sources,
+				$source_receipts,
+				$scientific_measurement_ids
+			);
 			if ( isset( $facts_by_id[ $fact['id'] ] ) ) {
 				throw new RuntimeException( $path . '.facts.duplicate' );
 			}
@@ -571,7 +653,7 @@ final class Complete99_Culinary_Science {
 		}
 	}
 
-	private static function validate_fact( $fact, $path, $vocabulary, $sources ) {
+	private static function validate_fact( $fact, $path, $vocabulary, $sources, $source_receipts, &$scientific_measurement_ids ) {
 		$allowed = array( 'id', 'dimension', 'statement', 'evidence_class', 'value_scope', 'source_ids', 'verified_at', 'observed_at', 'public_safe', 'measurement', 'scientific_measurements' );
 		self::assert_exact_keys( $fact, $allowed, $path );
 		self::assert_identifier( $fact['id'], $path . '.id', 120 );
@@ -614,15 +696,23 @@ final class Complete99_Culinary_Science {
 				throw new RuntimeException( $path . '.measurement_observation_time' );
 			}
 		}
-		self::validate_scientific_measurements( $fact['scientific_measurements'], $path . '.scientific_measurements', $vocabulary, $sources );
+		self::validate_scientific_measurements(
+			$fact['scientific_measurements'],
+			$path . '.scientific_measurements',
+			$vocabulary,
+			$sources,
+			$source_receipts,
+			$fact['source_ids'],
+			$scientific_measurement_ids
+		);
 		if ( ! empty( $fact['scientific_measurements'] ) && 'scientific' !== $fact['dimension'] ) {
 			throw new RuntimeException( $path . '.scientific_measurement_scope' );
 		}
 	}
 
-	private static function validate_scientific_measurements( $measurements, $path, $vocabulary, $sources ) {
+	private static function validate_scientific_measurements( $measurements, $path, $vocabulary, $sources, $source_receipts, $fact_source_ids, &$scientific_measurement_ids ) {
 		self::assert_list( $measurements, $path, true );
-		$seen = array();
+		$fact_sources = array_fill_keys( $fact_source_ids, true );
 		foreach ( $measurements as $offset => $measurement ) {
 			$item_path = $path . '.' . $offset;
 			self::assert_exact_keys(
@@ -631,24 +721,32 @@ final class Complete99_Culinary_Science {
 				$item_path
 			);
 			self::assert_identifier( $measurement['id'], $item_path . '.id', 120 );
-			if ( isset( $seen[ $measurement['id'] ] ) ) {
+			if ( isset( $scientific_measurement_ids[ $measurement['id'] ] ) ) {
 				throw new RuntimeException( $item_path . '.duplicate' );
 			}
-			$seen[ $measurement['id'] ] = true;
+			$scientific_measurement_ids[ $measurement['id'] ] = true;
 			self::assert_identifier( $measurement['property'], $item_path . '.property', 100 );
 			if ( ! in_array( $measurement['kind'], array( 'point', 'range' ), true ) ) {
 				throw new RuntimeException( $item_path . '.kind' );
 			}
 			foreach ( array( 'low', 'high', 'value' ) as $numeric_key ) {
-				if ( null !== $measurement[ $numeric_key ] && ! is_numeric( $measurement[ $numeric_key ] ) ) {
+				$numeric_value = $measurement[ $numeric_key ];
+				if ( null !== $numeric_value
+					&& ( ( ! is_int( $numeric_value ) && ! is_float( $numeric_value ) )
+						|| ! is_finite( (float) $numeric_value )
+						|| $numeric_value < 0 ) ) {
 					throw new RuntimeException( $item_path . '.' . $numeric_key );
 				}
 			}
-			if ( 'point' === $measurement['kind'] && null === $measurement['value'] ) {
+			if ( 'point' === $measurement['kind']
+				&& ( null === $measurement['value'] || null !== $measurement['low'] || null !== $measurement['high'] ) ) {
 				throw new RuntimeException( $item_path . '.point' );
 			}
 			if ( 'range' === $measurement['kind']
-				&& ( null === $measurement['low'] || null === $measurement['high'] || (float) $measurement['low'] > (float) $measurement['high'] ) ) {
+				&& ( null === $measurement['low']
+					|| null === $measurement['high']
+					|| null !== $measurement['value']
+					|| $measurement['low'] > $measurement['high'] ) ) {
 				throw new RuntimeException( $item_path . '.range' );
 			}
 			self::assert_text( $measurement['unit'], $item_path . '.unit', 80 );
@@ -669,8 +767,23 @@ final class Complete99_Culinary_Science {
 				if ( ! isset( $sources[ $source_id ] ) ) {
 					throw new RuntimeException( $item_path . '.unknown_source' );
 				}
+				if ( ! isset( $fact_sources[ $source_id ] ) ) {
+					throw new RuntimeException( $item_path . '.source_outside_fact' );
+				}
+				if ( 'verified' === $measurement['confidence']
+					&& ( ! isset( $source_receipts[ $source_id ] )
+						|| 'verified' !== $source_receipts[ $source_id ]['review_state'] ) ) {
+					throw new RuntimeException( $item_path . '.verified_source_receipt' );
+				}
 			}
 			self::assert_datetime( $measurement['measured_at'], $item_path . '.measured_at', true );
+			if ( 'literature_context' === $measurement['specimen_scope']
+				&& ( empty( $measurement['conditions'] ) || '' !== $measurement['measured_at'] ) ) {
+				throw new RuntimeException( $item_path . '.literature_context' );
+			}
+			if ( 'lot_measurement' === $measurement['specimen_scope'] && '' === $measurement['measured_at'] ) {
+				throw new RuntimeException( $item_path . '.lot_measurement' );
+			}
 		}
 	}
 
@@ -1766,6 +1879,14 @@ final class Complete99_Culinary_Science {
 				continue;
 			}
 			$public_fact_ids[] = $fact['id'];
+			$public_scientific_measurements = array_values(
+				array_filter(
+					$fact['scientific_measurements'],
+					static function ( $measurement ) {
+						return 'verified' === $measurement['confidence'];
+					}
+				)
+			);
 			$public_facts[] = array(
 				'id'             => $fact['id'],
 				'dimension'      => $fact['dimension'],
@@ -1776,7 +1897,7 @@ final class Complete99_Culinary_Science {
 				'verified_at'    => $fact['verified_at'],
 				'observed_at'    => $fact['observed_at'],
 				'measurement'    => $fact['measurement'],
-				'scientific_measurements' => $fact['scientific_measurements'],
+				'scientific_measurements' => $public_scientific_measurements,
 			);
 			$source_ids = array_merge( $source_ids, $fact['source_ids'] );
 		}
@@ -1848,7 +1969,20 @@ final class Complete99_Culinary_Science {
 		$asset_slug = preg_replace( '/[^a-z0-9-]/', '', (string) $entity['slug'] );
 		$asset_stems = array(
 			'museum-culinary-science' => 'c99-science-culinary-museum-pantry-v02',
+			'hub-japanese-foundations-lab' => 'c99-science-japanese-foundations-lab-v01',
 			'cuisine-syrian-regional' => 'c99-science-syrian-regional-table-v01',
+			'region-syria-aleppo' => 'c99-science-syrian-aleppo-table-v01',
+			'hub-aleppine-kibbeh-family' => 'c99-science-aleppine-kibbeh-family-v01',
+			'ingredient-syrian-bulgur' => 'c99-science-syrian-bulgur-v01',
+			'ingredient-syrian-red-meat' => 'c99-science-syrian-lamb-beef-family-v01',
+			'technique-syrian-bulgur-hydration' => 'c99-science-syrian-bulgur-hydration-v01',
+			'technique-syrian-kibbeh-cooking' => 'c99-science-syrian-kibbeh-cooking-v01',
+			'tradition-aleppan-jewish-foodways' => 'c99-science-aleppan-jewish-foodways-v01',
+			'ingredient-shoyu-koji' => 'c99-science-shoyu-koji-substrate-v01',
+			'equipment-kioke' => 'c99-science-kioke-wooden-barrel-v01',
+			'guide-koji-hydrolysis' => 'c99-science-koji-enzymes-hydrolysis-guide-v01',
+			'reaction-koji-enzymatic-hydrolysis' => 'c99-science-koji-enzymatic-hydrolysis-v01',
+			'standard-jas-shoyu-1703' => 'c99-science-jas-1703-shoyu-standard-v01',
 			'cuisine-lebanese-regional' => 'c99-science-lebanese-regional-table-v01',
 		);
 		$asset_stem = isset( $asset_stems[ $entity['id'] ] )
@@ -1873,6 +2007,18 @@ final class Complete99_Culinary_Science {
 			'ingredient-hon-mirin' => array( 'he' => 'הון מירין ענברי בכלי זכוכית לצד אורז דביק וקוג׳י אורז', 'en' => 'Amber hon mirin in a glass vessel beside glutinous rice and rice koji' ),
 			'guide-umami-synergy' => array( 'he' => 'דאשי, קומבו וקצואובושי לצד המחשה מולקולרית של גלוטמט ו-IMP', 'en' => 'Dashi, kombu and katsuobushi beside a molecular illustration of glutamate and IMP' ),
 			'cuisine-syrian-regional' => array( 'he' => 'שולחן מנות סוריות עם מוחמרה, עלי גפן, קובה מבושלת, תריד ודג עם אורז ובצל שחום', 'en' => 'Syrian tasting table with muhammara, grape leaves, cooked kibbeh, thareed, and fish with rice and browned onion' ),
+			'region-syria-aleppo' => array( 'he' => 'שולחן חלבי עם קובה מבושלת, פלפל אדום, דובדבנים חמוצים, חבוש ובורגול', 'en' => 'Aleppine table with cooked kibbeh, red pepper, sour cherries, quince and bulgur' ),
+			'hub-aleppine-kibbeh-family' => array( 'he' => 'מבחר צורות קובה חלבית מבושלות, צלויות ומטוגנות על שולחן אבן', 'en' => 'A selection of cooked, grilled and fried Aleppine kibbeh forms on a stone table' ),
+			'ingredient-syrian-bulgur' => array( 'he' => 'גרגרי בורגול דק ובינוני בשתי קערות קרמיקה ללא אריזה', 'en' => 'Fine and medium bulgur grains in two unbranded ceramic bowls' ),
+			'ingredient-syrian-red-meat' => array( 'he' => 'דוגמאות מבושלות ונפרדות של כבש ובקר בכלי קרמיקה ניטרליים', 'en' => 'Separate fully cooked lamb and beef examples in neutral ceramic dishes' ),
+			'technique-syrian-bulgur-hydration' => array( 'he' => 'ארבע קערות המציגות בורגול יבש, ספיחת מים, מנוחה ומרקם מוכן', 'en' => 'Four bowls showing dry bulgur, water uptake, resting and a workable final texture' ),
+			'technique-syrian-kibbeh-cooking' => array( 'he' => 'ארבע תוצאות קובה מבושלות לחלוטין בצלייה, טיגון, מים ורוטב', 'en' => 'Four fully cooked kibbeh results from grilling, frying, simmering and sauce cooking' ),
+			'tradition-aleppan-jewish-foodways' => array( 'he' => 'שולחן משפחתי יהודי חלבי עם קובה מבושלת, עוף צלוי ועלי גפן ממולאים', 'en' => 'Aleppan Jewish family table with cooked kibbeh, roast chicken and stuffed grape leaves' ),
+			'ingredient-shoyu-koji' => array( 'he' => 'מגש קוג׳י לשויו מסויה וחיטה עם מעטה קוג׳י בהיר', 'en' => 'Tray of soybean and wheat shoyu koji with a pale koji bloom' ),
+			'equipment-kioke' => array( 'he' => 'חבית קיוקה מעץ ארז עם חישוקי במבוק בסדנת תסיסה', 'en' => 'Cedar kioke barrel with bamboo hoops in a fermentation workshop' ),
+			'guide-koji-hydrolysis' => array( 'he' => 'קוג׳י אורז וקוג׳י לשויו לצד המחשה מושגית של פירוק אנזימטי', 'en' => 'Rice koji and shoyu koji beside a conceptual enzymatic-breakdown illustration' ),
+			'reaction-koji-enzymatic-hydrolysis' => array( 'he' => 'שלושה רצפים מושגיים של שרשראות מזון המתפרקות מעל מצע קוג׳י לשויו', 'en' => 'Three conceptual food-chain breakdown sequences above shoyu koji substrate' ),
+			'standard-jas-shoyu-1703' => array( 'he' => 'דוגמאות גוון כלליות של רוטב סויה לצד תיק תקן וכלי בדיקה לא מסומנים', 'en' => 'Generic soy-sauce color samples beside an unmarked standards folio and test glassware' ),
 			'cuisine-lebanese-regional' => array( 'he' => 'שולחן לבנוני עם מנאקיש זעתר, טאבולה, קובה אפויה, דג מבושל, בורגול ועדשים, טחינה וסומאק', 'en' => 'Lebanese table with zaatar manouche, tabbouleh, baked kibbeh, cooked fish, bulgur and lentils, tahini and sumac' ),
 		);
 		$visual = array(
@@ -2041,6 +2187,28 @@ final class Complete99_Culinary_Science {
 		}
 	}
 
+	private static function assert_sha256( $value, $path ) {
+		if ( ! is_string( $value ) || 64 !== strlen( $value ) || ! preg_match( '/\A[a-f0-9]{64}\z/', $value ) ) {
+			throw new RuntimeException( $path );
+		}
+	}
+
+	private static function assert_evidence_repository_path( $value, $path ) {
+		if ( ! is_string( $value )
+			|| strlen( $value ) > 500
+			|| 0 !== strpos( $value, 'docs/research-evidence/' )
+			|| false !== strpos( $value, '\\' )
+			|| '/' === substr( $value, -1 )
+			|| ! preg_match( '#\Adocs/research-evidence/[A-Za-z0-9][A-Za-z0-9._/-]*\z#', $value ) ) {
+			throw new RuntimeException( $path );
+		}
+		foreach ( explode( '/', $value ) as $segment ) {
+			if ( '' === $segment || '.' === $segment || '..' === $segment ) {
+				throw new RuntimeException( $path );
+			}
+		}
+	}
+
 	private static function assert_translation( $value, $path, $maximum ) {
 		self::assert_exact_keys( $value, array( 'he', 'en' ), $path );
 		self::assert_text( $value['he'], $path . '.he', $maximum );
@@ -2089,7 +2257,7 @@ final class Complete99_Culinary_Science {
 	}
 
 	private static function assert_identifier( $value, $path, $maximum ) {
-		if ( ! is_string( $value ) || strlen( $value ) > $maximum || ! preg_match( '/^[a-zA-Z][a-zA-Z0-9_.:-]*$/', $value ) ) {
+		if ( ! is_string( $value ) || strlen( $value ) > $maximum || ! preg_match( '/\A[a-zA-Z][a-zA-Z0-9_.:-]*\z/', $value ) ) {
 			throw new RuntimeException( $path );
 		}
 	}
@@ -2119,7 +2287,8 @@ final class Complete99_Culinary_Science {
 		if ( $allow_empty && '' === $value ) {
 			return;
 		}
-		if ( ! is_string( $value ) || ! preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/', $value ) ) {
+		if ( ! is_string( $value )
+			|| ! preg_match( '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-](?:(?:0\d|1[0-3]):[0-5]\d|14:00))\z/', $value ) ) {
 			throw new RuntimeException( $path );
 		}
 		$date = DateTimeImmutable::createFromFormat( DateTimeInterface::ATOM, $value );

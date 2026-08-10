@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugin" / "complete99-platform"
 SCIENCE_CLASS = PLUGIN / "includes" / "class-complete99-culinary-science.php"
 SCIENCE_DATA = PLUGIN / "data" / "culinary-science-pilot.php"
+LIVE_CATALOG_RELATIONS = PLUGIN / "data" / "live-catalog-relations.php"
 SYRIAN_LEAF = (
     PLUGIN
     / "data"
@@ -293,9 +294,234 @@ EXPECTED_PUBLIC_JAPANESE = {
     "molecule-allyl-isothiocyanate",
     "equipment-wasabi-grater",
 }
-EXPECTED_PUBLIC = EXPECTED_PUBLIC_JAPANESE | {
+EXPECTED_PUBLIC_SYRIAN = {
     "cuisine-syrian-regional",
+}
+HELD_SYRIAN_CANDIDATES = {
+    "region-syria-aleppo",
+    "hub-aleppine-kibbeh-family",
+    "ingredient-syrian-bulgur",
+    "ingredient-syrian-red-meat",
+    "technique-syrian-bulgur-hydration",
+    "technique-syrian-kibbeh-cooking",
+    "tradition-aleppan-jewish-foodways",
+}
+EXPECTED_PUBLIC = EXPECTED_PUBLIC_JAPANESE | EXPECTED_PUBLIC_SYRIAN | {
     "cuisine-lebanese-regional",
+}
+FROZEN_1_19_SYRIAN_PUBLIC_FACTS = {
+    "cuisine-syrian-regional": {"fact-syrian-cuisine-regional-mosaic"},
+    "region-syria-aleppo": {"fact-aleppo-regional-testimony-boundary"},
+    "hub-aleppine-kibbeh-family": {
+        "fact-aleppine-kibbeh-family-documented-scope"
+    },
+    "ingredient-syrian-bulgur": {
+        "fact-syrian-bulgur-culinary-identity",
+        "fact-syrian-bulgur-hydration-category-context",
+    },
+    "ingredient-syrian-red-meat": {
+        "fact-syrian-lamb-beef-family-culinary-identity"
+    },
+    "technique-syrian-bulgur-hydration": {
+        "fact-syrian-bulgur-hydration-bounded-method"
+    },
+    "technique-syrian-kibbeh-cooking": {
+        "fact-syrian-kibbeh-cooking-bounded-method"
+    },
+    "tradition-aleppan-jewish-foodways": {
+        "fact-aleppan-jewish-foodways-community-scope"
+    },
+}
+FROZEN_1_19_SYRIAN_PUBLIC_RELATION_IDS = {
+    "cuisine-syrian-regional": {
+        "edge-cuisine-syrian-regional-contains-1"
+    },
+    "region-syria-aleppo": set(),
+    "hub-aleppine-kibbeh-family": {
+        "edge-hub-aleppine-kibbeh-family-part_of-1",
+        "edge-hub-aleppine-kibbeh-family-requires-2",
+        "edge-hub-aleppine-kibbeh-family-requires-3",
+    },
+    "ingredient-syrian-bulgur": set(),
+    "ingredient-syrian-red-meat": set(),
+    "technique-syrian-bulgur-hydration": {
+        "edge-technique-syrian-bulgur-hydration-requires-2",
+    },
+    "technique-syrian-kibbeh-cooking": {
+        "edge-technique-syrian-kibbeh-cooking-requires-2",
+        "edge-technique-syrian-kibbeh-cooking-requires-3",
+    },
+    "tradition-aleppan-jewish-foodways": set(),
+}
+FROZEN_1_19_SYRIAN_PUBLIC_SEMANTIC_IDS = {
+    "cuisine-syrian-regional": [
+        "museum-culinary-science",
+        "region-syria-aleppo",
+        "hub-aleppine-kibbeh-family",
+        "ingredient-syrian-bulgur",
+        "ingredient-syrian-red-meat",
+        "technique-syrian-bulgur-hydration",
+        "technique-syrian-kibbeh-cooking",
+        "tradition-aleppan-jewish-foodways",
+        "cuisine-lebanese-regional",
+    ],
+    "region-syria-aleppo": [
+        "cuisine-syrian-regional",
+        "hub-aleppine-kibbeh-family",
+        "ingredient-syrian-bulgur",
+        "ingredient-syrian-red-meat",
+        "technique-syrian-bulgur-hydration",
+        "technique-syrian-kibbeh-cooking",
+        "tradition-aleppan-jewish-foodways",
+    ],
+    "hub-aleppine-kibbeh-family": [
+        "cuisine-syrian-regional",
+        "region-syria-aleppo",
+        "ingredient-syrian-bulgur",
+        "ingredient-syrian-red-meat",
+        "technique-syrian-bulgur-hydration",
+        "technique-syrian-kibbeh-cooking",
+    ],
+    "ingredient-syrian-bulgur": [
+        "cuisine-syrian-regional",
+        "region-syria-aleppo",
+        "hub-aleppine-kibbeh-family",
+        "technique-syrian-bulgur-hydration",
+        "technique-syrian-kibbeh-cooking",
+    ],
+    "ingredient-syrian-red-meat": [
+        "cuisine-syrian-regional",
+        "region-syria-aleppo",
+        "hub-aleppine-kibbeh-family",
+        "technique-syrian-kibbeh-cooking",
+    ],
+    "technique-syrian-bulgur-hydration": [
+        "cuisine-syrian-regional",
+        "region-syria-aleppo",
+        "hub-aleppine-kibbeh-family",
+        "ingredient-syrian-bulgur",
+        "technique-syrian-kibbeh-cooking",
+    ],
+    "technique-syrian-kibbeh-cooking": [
+        "cuisine-syrian-regional",
+        "region-syria-aleppo",
+        "hub-aleppine-kibbeh-family",
+        "ingredient-syrian-bulgur",
+        "ingredient-syrian-red-meat",
+        "technique-syrian-bulgur-hydration",
+    ],
+    "tradition-aleppan-jewish-foodways": [
+        "cuisine-syrian-regional",
+        "region-syria-aleppo",
+    ],
+}
+FROZEN_1_19_SYRIAN_PUBLIC_COMPLIANCE = {
+    "ingredient-syrian-bulgur": {"product-allergen-verification"},
+    "ingredient-syrian-red-meat": {"no-raw-ground-meat-guidance"},
+    "technique-syrian-kibbeh-cooking": {"raw-kibbeh-prohibited"},
+}
+FROZEN_1_19_SYRIAN_PUBLIC_CANONICALS = {
+    "cuisine-syrian-regional": "/museum/syrian-culinary-science/",
+    "region-syria-aleppo": "/museum/syrian-culinary-science/aleppo/",
+    "hub-aleppine-kibbeh-family": (
+        "/museum/syrian-culinary-science/aleppo/aleppine-kibbeh-family/"
+    ),
+    "ingredient-syrian-bulgur": "/ingredients/syrian-bulgur/",
+    "ingredient-syrian-red-meat": (
+        "/ingredients/lamb-and-beef-in-syrian-cooking/"
+    ),
+    "technique-syrian-bulgur-hydration": (
+        "/knowledge/how-to-hydrate-bulgur-for-kibbeh/"
+    ),
+    "technique-syrian-kibbeh-cooking": (
+        "/knowledge/how-to-cook-kibbeh-safely/"
+    ),
+    "tradition-aleppan-jewish-foodways": (
+        "/traditions/aleppan-jewish-foodways/"
+    ),
+}
+HELD_SYRIAN_CANDIDATE_H1_KEYWORDS = {
+    "region-syria-aleppo": {
+        "h1": {
+            "he": "חלב, עיר של קובה וטעמים חמוצים עמוקים",
+            "en": "Aleppo, a city of kibbeh and deep sour flavors",
+        },
+        "keyword": {"he": "המטבח החַלבי", "en": "Aleppine cuisine"},
+    },
+    "hub-aleppine-kibbeh-family": {
+        "h1": {
+            "he": "קובה חלבית היא משפחה שלמה",
+            "en": "Aleppine kibbeh is a whole family",
+        },
+        "keyword": {
+            "he": "סוגי קובה חלבית",
+            "en": "Aleppine kibbeh types",
+        },
+    },
+    "ingredient-syrian-bulgur": {
+        "h1": {
+            "he": "הבורגול שבונה את מעטפת הקובה",
+            "en": "The bulgur that gives kibbeh its structure",
+        },
+        "keyword": {"he": "בורגול לקובה", "en": "bulgur for kibbeh"},
+    },
+    "ingredient-syrian-red-meat": {
+        "h1": {
+            "he": "כבש ובקר אינם אותו חומר גלם",
+            "en": "Lamb and beef are not interchangeable",
+        },
+        "keyword": {
+            "he": "כבש ובקר במטבח הסורי",
+            "en": "lamb and beef in Syrian cooking",
+        },
+    },
+    "technique-syrian-bulgur-hydration": {
+        "h1": {
+            "he": "איך בורגול סופג מים ומשנה מרקם",
+            "en": "How bulgur absorbs water and changes texture",
+        },
+        "keyword": {
+            "he": "השריית בורגול לקובה",
+            "en": "how to hydrate bulgur for kibbeh",
+        },
+    },
+    "technique-syrian-kibbeh-cooking": {
+        "h1": {
+            "he": "ארבע דרכי בישול, תוצאה מבושלת לחלוטין",
+            "en": "Four cooking paths, one fully cooked result",
+        },
+        "keyword": {
+            "he": "איך מבשלים קובה בבטחה",
+            "en": "how to cook kibbeh safely",
+        },
+    },
+    "tradition-aleppan-jewish-foodways": {
+        "h1": {
+            "he": "טעמים מחלב שנשאו משפחות אל העולם",
+            "en": "Aleppan flavors carried across generations",
+        },
+        "keyword": {
+            "he": "מסורת האוכל של יהודי חלב",
+            "en": "Aleppan Jewish foodways",
+        },
+    },
+}
+
+EXPECTED_SYRIAN_PUBLIC_FACTS = {
+    "cuisine-syrian-regional": {"fact-syrian-cuisine-regional-mosaic"},
+}
+EXPECTED_SYRIAN_PUBLIC_RELATION_IDS = {
+    "cuisine-syrian-regional": set(),
+}
+EXPECTED_SYRIAN_PUBLIC_SEMANTIC_IDS = {
+    "cuisine-syrian-regional": [
+        "museum-culinary-science",
+        "cuisine-lebanese-regional",
+    ],
+}
+EXPECTED_SYRIAN_PUBLIC_COMPLIANCE: dict[str, set[str]] = {}
+EXPECTED_SYRIAN_PUBLIC_CANONICALS = {
+    "cuisine-syrian-regional": "/museum/syrian-culinary-science/",
 }
 
 
@@ -380,7 +606,7 @@ def _one_relation(entity: dict, relation_type: str, target_id: str) -> dict:
 def test_full_syrian_foundation_inventory_is_exact(
     registry: dict, syrian_entities: dict[str, dict]
 ) -> None:
-    assert registry["version"] == "culinary-science-2026.08.07.v18"
+    assert registry["version"] == "culinary-science-2026.08.08.v20"
     assert len(syrian_entities) == 196
     by_type: dict[str, set[str]] = {}
     for entity in syrian_entities.values():
@@ -498,12 +724,12 @@ def test_regional_depth_preserves_family_and_community_boundaries(
     assert "food-safety expert" in raw_text
 
 
-def test_every_syrian_entity_is_fail_closed_and_non_commercial(
+def test_every_syrian_foundation_entity_has_exact_public_and_commerce_boundaries(
     syrian_entities: dict[str, dict]
 ) -> None:
     for entity_id, entity in syrian_entities.items():
-        is_public_root = entity_id == "cuisine-syrian-regional"
-        if is_public_root:
+        is_public = entity_id in EXPECTED_PUBLIC_SYRIAN
+        if is_public:
             assert entity["surface_class"] == "public_discovery"
             assert entity["index_policy"] == "noindex_until_longform_review"
             assert entity["seo"]["route_mode"] == "standalone"
@@ -512,7 +738,11 @@ def test_every_syrian_entity_is_fail_closed_and_non_commercial(
                 "public_api": True,
                 "public_page": True,
                 "search_index": False,
-                "approved_at": "2026-08-06",
+                "approved_at": (
+                    "2026-08-06"
+                    if entity_id == "cuisine-syrian-regional"
+                    else "2026-08-08"
+                ),
             }
             assert entity["review"]["status"] == "source_reviewed"
             assert entity["review"]["language_status"] == "reviewed_bilingual"
@@ -529,19 +759,32 @@ def test_every_syrian_entity_is_fail_closed_and_non_commercial(
             }, entity_id
             assert entity["review"]["status"] == "research_draft", entity_id
             assert entity["review"]["language_status"] == "draft_bilingual", entity_id
-        assert entity["commerce"]["state"] == "reference_only", entity_id
-        assert entity["commerce"]["woo_product_code"] == "", entity_id
-        assert entity["commerce"]["public_offer_allowed"] is False, entity_id
-        if is_public_root:
+        if entity_id == "ingredient-syrian-bulgur":
+            assert is_public is False
+            assert entity["commerce"]["state"] == "active_offer"
+            assert entity["commerce"]["woo_product_code"] == (
+                "product-bulgur-fine-500g"
+            )
+            assert entity["commerce"]["public_offer_allowed"] is True
+        else:
+            assert entity["commerce"]["state"] == "reference_only", entity_id
+            assert entity["commerce"]["woo_product_code"] == "", entity_id
+            assert entity["commerce"]["public_offer_allowed"] is False, entity_id
+        if is_public:
             assert entity["taxonomy"]["public_category_path"]
-            assert entity["taxonomy"]["public_attribute_keys"] == [
-                "pa_region",
-                "pa_community",
-            ]
+            assert entity["taxonomy"]["public_attribute_keys"]
             assert entity["taxonomy"]["public_tags"]
+            assert entity["seo"]["semantic_entity_ids"] == (
+                EXPECTED_SYRIAN_PUBLIC_SEMANTIC_IDS[entity_id]
+            )
             assert entity["visual"]["asset_state"] == "approved"
             assert entity["visual"]["rights_state"] == "cleared_generated"
             assert entity["visual"]["rights_receipt_digest"].startswith("sha256:")
+            assert entity["visual"]["rights_method"] == (
+                "generated_for_complete99_with_human_review"
+                if entity_id == "cuisine-syrian-regional"
+                else "generated_for_complete99_with_editorial_review"
+            )
         else:
             assert entity["taxonomy"]["public_category_path"] == [], entity_id
             assert entity["taxonomy"]["public_attribute_keys"] == [], entity_id
@@ -554,18 +797,36 @@ def test_every_syrian_entity_is_fail_closed_and_non_commercial(
         assert entity["taxonomy"]["attributes"]["pa_region"], entity_id
         assert entity["taxonomy"]["attributes"]["pa_community"], entity_id
         assert entity["facts"], entity_id
+        actual_public_facts = {
+            fact["id"] for fact in entity["facts"] if fact["public_safe"]
+        }
+        assert actual_public_facts == EXPECTED_SYRIAN_PUBLIC_FACTS.get(
+            entity_id, set()
+        )
         for fact in entity["facts"]:
             assert fact["source_ids"], (entity_id, fact["id"])
-            if is_public_root and fact["id"] == "fact-syrian-cuisine-regional-mosaic":
-                assert fact["public_safe"] is True
-            else:
-                assert fact["public_safe"] is False, (entity_id, fact["id"])
+        expected_public_relation_ids = EXPECTED_SYRIAN_PUBLIC_RELATION_IDS.get(
+            entity_id, set()
+        )
+        actual_public_relation_ids = {
+            relation["id"]
+            for relation in entity["relations"]
+            if relation["public_safe"]
+        }
+        assert actual_public_relation_ids == expected_public_relation_ids
         for relation in entity["relations"]:
             assert relation["source_ids"], (entity_id, relation["id"])
-            assert relation["public_safe"] is False, (entity_id, relation["id"])
+            assert relation["public_safe"] is (
+                relation["id"] in expected_public_relation_ids
+            ), (entity_id, relation["id"])
+        actual_public_compliance = {
+            note["code"] for note in entity["compliance"] if note["public_safe"]
+        }
+        assert actual_public_compliance == EXPECTED_SYRIAN_PUBLIC_COMPLIANCE.get(
+            entity_id, set()
+        )
         for note in entity["compliance"]:
             assert note["source_ids"], (entity_id, note["code"])
-            assert note["public_safe"] is False, (entity_id, note["code"])
 
 
 def test_canonical_cluster_and_parent_hierarchy(
@@ -594,12 +855,67 @@ def test_canonical_cluster_and_parent_hierarchy(
     for entity_id, entity in syrian_entities.items():
         assert entity["seo"]["cluster_id"] == "cluster-syrian-regional-cuisine"
         assert entity["seo"]["hub_entity_id"] == "cuisine-syrian-regional"
-        assert entity["seo"]["canonical_path"]["he"].startswith(
-            "/museum/syrian-culinary-science/"
-        ), entity_id
-        assert entity["seo"]["canonical_path"]["en"].startswith(
-            "/en/museum/syrian-culinary-science/"
-        ), entity_id
+        if entity_id in EXPECTED_SYRIAN_PUBLIC_CANONICALS:
+            he_path = EXPECTED_SYRIAN_PUBLIC_CANONICALS[entity_id]
+            assert entity["seo"]["canonical_path"] == {
+                "he": he_path,
+                "en": "/en" + he_path,
+            }
+        else:
+            he_path = entity["seo"]["canonical_path"]["he"]
+            assert he_path.startswith("/"), entity_id
+            assert entity["seo"]["canonical_path"]["en"] == "/en" + he_path
+
+
+def test_seven_held_syrian_candidates_keep_bilingual_h1_and_primary_keywords(
+    entities: dict[str, dict]
+) -> None:
+    for entity_id, expected in HELD_SYRIAN_CANDIDATE_H1_KEYWORDS.items():
+        seo = entities[entity_id]["seo"]
+        assert seo["h1"] == expected["h1"]
+        assert seo["primary_keyword"] == expected["keyword"]
+        assert seo["query_variants"]["he"][0] == expected["keyword"]["he"]
+        assert seo["query_variants"]["en"][0] == expected["keyword"]["en"]
+
+    aleppo_queries = entities["region-syria-aleppo"]["seo"]["query_variants"][
+        "he"
+    ]
+    assert "קובה חלבית" not in aleppo_queries
+    assert "קובה חלבית" in entities["hub-aleppine-kibbeh-family"]["seo"][
+        "query_variants"
+    ]["he"]
+
+    family_queries = entities["hub-aleppine-kibbeh-family"]["seo"][
+        "query_variants"
+    ]
+    assert "קובה סורית" not in family_queries["he"]
+    assert not {"kibbeh", "kibbe", "kubbeh"} & set(family_queries["en"])
+
+    bulgur_queries = entities["ingredient-syrian-bulgur"]["seo"][
+        "query_variants"
+    ]
+    assert "סוגי בורגול" not in bulgur_queries["he"]
+    assert not {"bulghur", "burghul"} & set(bulgur_queries["en"])
+    assert all("לקובה" in query for query in bulgur_queries["he"])
+    assert all(
+        "for kibbeh" in query.casefold()
+        for query in bulgur_queries["en"]
+        if query != "برغل للكبة"
+    )
+
+    hydration_queries = entities["technique-syrian-bulgur-hydration"]["seo"][
+        "query_variants"
+    ]
+    assert "הרטבת בורגול" not in hydration_queries["he"]
+    assert "הרטבת בורגול לקובה" in hydration_queries["he"]
+    assert "bulgur hydration" not in hydration_queries["en"]
+    assert "bulgur hydration for kibbeh" in hydration_queries["en"]
+
+    tradition_queries = entities["tradition-aleppan-jewish-foodways"]["seo"][
+        "query_variants"
+    ]
+    assert "המטבח היהודי הסורי" not in tradition_queries["he"]
+    assert "Syrian Jewish food" not in tradition_queries["en"]
 
 
 def test_cross_sell_links_resolve_without_creating_offers(
@@ -617,8 +933,13 @@ def test_cross_sell_links_resolve_without_creating_offers(
         assert entity["commerce"]["cross_sell_ids"], entity_id
         for target_id in entity["commerce"]["cross_sell_ids"]:
             assert target_id in EXPECTED_INGREDIENTS, (entity_id, target_id)
-            assert entities[target_id]["publication"]["public_page"] is False
-            assert entities[target_id]["commerce"]["public_offer_allowed"] is False
+            if target_id in EXPECTED_PUBLIC_SYRIAN:
+                assert entities[target_id]["publication"]["public_page"] is True
+            else:
+                assert entities[target_id]["publication"]["public_page"] is False
+            assert entities[target_id]["commerce"]["public_offer_allowed"] is (
+                target_id == "ingredient-syrian-bulgur"
+            )
 
     linked_techniques = 0
     for entity_id in EXPECTED_TECHNIQUES:
@@ -627,7 +948,9 @@ def test_cross_sell_links_resolve_without_creating_offers(
             linked_techniques += 1
         for target_id in targets:
             assert target_id in EXPECTED_INGREDIENTS, (entity_id, target_id)
-            assert entities[target_id]["commerce"]["public_offer_allowed"] is False
+            assert entities[target_id]["commerce"]["public_offer_allowed"] is (
+                target_id == "ingredient-syrian-bulgur"
+            )
     assert linked_techniques == 10
     assert entities["technique-syrian-mouneh"]["commerce"][
         "cross_sell_ids"
@@ -1268,6 +1591,10 @@ def test_exact_source_ledger_urls_are_retained(registry: dict) -> None:
         "jfs-yebra-apricots": "https://www.jewishfoodsociety.org/recipes/yebra-stuffed-grape-leaves-with-apricots",
         "foodish-matzah-kebab": "https://foodish.anumuseum.org.il/en/recipe/matzah-kebab/",
         "bulgur-hydration-2025": "https://pubmed.ncbi.nlm.nih.gov/41273208/",
+        "unesco-ancient-city-aleppo": "https://whc.unesco.org/en/list/21/",
+        "georgetown-making-levantine-cuisine": "https://ccas.georgetown.edu/ccas-newsmagazine/on-making-levantine-cuisine/",
+        "simon-schuster-aleppo-cookbook": "https://www.simonandschuster.com/books/The-Aleppo-Cookbook/Marlene-Matar/9781566569866",
+        "bulgur-hydration-cereal-chemistry": "https://doi.org/10.1002/cche.10427",
         "cdc-raw-kibbeh-salmonella-2013": "https://archive.cdc.gov/www_cdc_gov/salmonella/typhimurium-01-13/index.html",
         "big-dabach-sugat-freekeh-500g-listing-2026": "https://www.bigdabach.co.il/?catalogProduct=6279611",
         "tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026": "https://www.tamar-hst.co.il/product-details/209856/%D7%A8%D7%9B%D7%96_%D7%A8%D7%99%D7%9E%D7%95%D7%9F",
@@ -1275,6 +1602,98 @@ def test_exact_source_ledger_urls_are_retained(registry: dict) -> None:
     }
     for source_id, url in expected.items():
         assert registry["sources"][source_id]["url"] == url
+
+
+def test_held_aleppo_sources_schema_allergen_and_private_woo_candidate(
+    registry: dict, entities: dict[str, dict]
+) -> None:
+    assert len(registry["sources"]) == 375
+    assert len(HELD_SYRIAN_CANDIDATES) == 7
+    for entity_id in HELD_SYRIAN_CANDIDATES:
+        entity = entities[entity_id]
+        assert entity["seo"]["schema_type"] != "Product"
+        assert entity["publication"] == {
+            "state": "private_preview",
+            "public_api": False,
+            "public_page": False,
+            "search_index": False,
+            "approved_at": "",
+        }
+        assert all(fact["public_safe"] is False for fact in entity["facts"])
+        assert all(
+            relation["public_safe"] is False for relation in entity["relations"]
+        )
+        assert all(note["public_safe"] is False for note in entity["compliance"])
+
+    expected_source_sets = {
+        "region-syria-aleppo": {
+            "unesco-ancient-city-aleppo",
+            "georgetown-making-levantine-cuisine",
+            "avs-mirvet-aleppo",
+            "aleppo-project-cuisine-2017",
+        },
+        "hub-aleppine-kibbeh-family": {
+            "avs-mirvet-aleppo",
+            "simon-schuster-aleppo-cookbook",
+            "georgetown-making-levantine-cuisine",
+        },
+    }
+    for entity_id, source_ids in expected_source_sets.items():
+        private_sources = {
+            source_id
+            for fact in entities[entity_id]["facts"]
+            for source_id in fact["source_ids"]
+        }
+        assert private_sources == source_ids
+
+    hydration_sources = {
+        source_id
+        for entity_id in (
+            "ingredient-syrian-bulgur",
+            "technique-syrian-bulgur-hydration",
+        )
+        for fact in entities[entity_id]["facts"]
+        for source_id in fact["source_ids"]
+    }
+    assert "bulgur-hydration-cereal-chemistry" in hydration_sources
+
+    bulgur_note = next(
+        note
+        for note in entities["ingredient-syrian-bulgur"]["compliance"]
+        if note["code"] == "product-allergen-verification"
+    )
+    assert bulgur_note["public_safe"] is False
+    assert bulgur_note["source_ids"] == [
+        "israel-moh-food-allergen-labeling-2026",
+        "israel-moh-allergen-survey-2024",
+    ]
+    assert "exact pack label" in bulgur_note["note"]["en"]
+    assert "cross-contact" in bulgur_note["note"]["en"]
+
+    script = (
+        "define('ABSPATH', __DIR__); "
+        f"echo json_encode(require '{_php_path(LIVE_CATALOG_RELATIONS)}', "
+        "JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);"
+    )
+    completed = subprocess.run(
+        ["php", "-r", script],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=30,
+    )
+    relations = json.loads(completed.stdout)
+    assert len(relations["products"]) == 36
+    assert relations["products"]["product-bulgur-fine-500g"].get(
+        "science_entity_id", ""
+    ) == "ingredient-syrian-bulgur"
+    assert {
+        row.get("science_entity_id", "")
+        for row in relations["products"].values()
+        if row.get("science_entity_id", "") in HELD_SYRIAN_CANDIDATES
+    } == {"ingredient-syrian-bulgur"}
 
 
 def test_syrian_and_lebanese_gates_and_exact_japanese_public_boundary(
@@ -1288,8 +1707,7 @@ def test_syrian_and_lebanese_gates_and_exact_japanese_public_boundary(
     }
     assert public_ids == EXPECTED_PUBLIC
     assert (
-        public_ids
-        - {"cuisine-syrian-regional", "cuisine-lebanese-regional"}
+        public_ids - EXPECTED_PUBLIC_SYRIAN - {"cuisine-lebanese-regional"}
         == EXPECTED_PUBLIC_JAPANESE
     )
     japanese_entities = [
@@ -1308,6 +1726,32 @@ def test_syrian_and_lebanese_gates_and_exact_japanese_public_boundary(
     assert len(registry["collections"]) == 1
     assert registry["collections"][0]["key"] == "japanese-foundations-lab"
     assert registry["collections"][0]["public_projection"]["enabled"] is True
+
+
+def test_complete_syrian_cluster_is_exactly_282_with_one_public(
+    registry: dict,
+) -> None:
+    syrian_cluster = [
+        entity
+        for entity in registry["entities"]
+        if entity["seo"]["cluster_id"] == "cluster-syrian-regional-cuisine"
+    ]
+    public_ids = {
+        entity["id"]
+        for entity in syrian_cluster
+        if entity["publication"]["public_page"]
+    }
+    assert len(syrian_cluster) == 282
+    assert public_ids == EXPECTED_PUBLIC_SYRIAN
+    assert sum(not entity["publication"]["public_page"] for entity in syrian_cluster) == (
+        281
+    )
+    meshwiyyeh = next(
+        entity
+        for entity in syrian_cluster
+        if entity["id"] == "dish-kibbeh-meshwiyyeh"
+    )
+    assert meshwiyyeh["publication"]["public_page"] is False
 
 
 def test_public_syrian_trust_copy_is_written_for_readers(

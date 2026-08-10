@@ -40,7 +40,7 @@ $c99_profiles = static function ( $overrides = array() ) use ( $c99_profile ) {
 	return $profiles;
 };
 
-$c99_fact = static function ( $id, $dimension, $he, $en, $evidence_class, $value_scope, $source_ids, $public_safe = true, $measurement = array(), $observed_at = '', $scientific_measurements = array() ) use ( $c99_text ) {
+$c99_fact = static function ( $id, $dimension, $he, $en, $evidence_class, $value_scope, $source_ids, $public_safe = true, $measurement = array(), $observed_at = '', $scientific_measurements = array(), $verified_at = '' ) use ( $c99_text ) {
 	return array(
 		'id'             => $id,
 		'dimension'      => $dimension,
@@ -48,7 +48,7 @@ $c99_fact = static function ( $id, $dimension, $he, $en, $evidence_class, $value
 		'evidence_class' => $evidence_class,
 		'value_scope'     => $value_scope,
 		'source_ids'     => $source_ids,
-		'verified_at'    => '' !== $observed_at ? substr( $observed_at, 0, 10 ) : '2026-08-06',
+		'verified_at'    => '' !== $verified_at ? $verified_at : ( '' !== $observed_at ? substr( $observed_at, 0, 10 ) : '2026-08-06' ),
 		'observed_at'    => $observed_at,
 		'public_safe'    => $public_safe,
 		'measurement'    => $measurement,
@@ -278,6 +278,14 @@ $sources = array(
 		'url'          => 'https://www.famic.go.jp/english/jas/_doc/jas1703.pdf',
 		'published_at' => '',
 		'retrieved_at' => '2026-08-05',
+	),
+	'zhang-industrial-koji-proteases-2023' => array(
+		'type'         => 'peer_reviewed_paper',
+		'publisher'    => 'Microbiology Spectrum',
+		'title'        => 'Phenotypic, Genomic, and Transcriptomic Comparison of Industrial Aspergillus oryzae Used in Chinese and Japanese Soy Sauce: Analysis of Key Proteolytic Enzymes Produced by Koji Molds',
+		'url'          => 'https://pmc.ncbi.nlm.nih.gov/articles/PMC10100866/',
+		'published_at' => '2023-02-06',
+		'retrieved_at' => '2026-08-08',
 	),
 	'umami-receptor-2009' => array(
 		'type'         => 'peer_reviewed_paper',
@@ -673,6 +681,40 @@ $sources = array(
 	),
 );
 
+$source_receipts = array(
+	'zhang-industrial-koji-proteases-2023' => array(
+		'schema'                   => 'complete99-source-evidence-receipt/v1',
+		'source_id'                => 'zhang-industrial-koji-proteases-2023',
+		'upstream_url'             => 'https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC10100866/unicode',
+		'upstream_sha256'          => 'fd57c0cdf14beb447ad47a0561cfc8c6fac1d356ce9cde64b10a2dbd2e1266c3',
+		'evidence_repository_path' => 'docs/research-evidence/pmc10100866-koji-protease-evidence.json',
+		'evidence_sha256'          => '44752ca77d881e2ccc71d7dc2fb4c2d9051c2207b7e67553b81abdc0206c4de5',
+		'retrieved_at'             => '2026-08-08T11:34:30+03:00',
+		'license'                  => 'CC-BY-4.0',
+		'claim_locators'           => array(
+			'industrial-koji-protease-activity-ranges' => 'Results, Phenotypic comparison of three industrial Aspergillus oryzae strains, paragraph discussing Figure 2B',
+			'industrial-koji-protease-assay-context' => 'Materials and Methods, Enzyme activity assays',
+		),
+		'review_state'             => 'verified',
+	),
+	'jas-shoyu-1703' => array(
+		'schema'                   => 'complete99-source-evidence-receipt/v1',
+		'source_id'                => 'jas-shoyu-1703',
+		'upstream_url'             => 'https://www.famic.go.jp/english/jas/_doc/jas1703.pdf',
+		'upstream_sha256'          => '9dbbf59b5fb4f5fbb557ce6edf3835056d649490f6287bf0ac25b2614ff766d4',
+		'evidence_repository_path' => 'docs/research-evidence/jas1703-saishikomi-evidence.json',
+		'evidence_sha256'          => '5b7d44ac614256d86d7d547021146dbe66875045eaaca836637f0e9ea0be9357',
+		'retrieved_at'             => '2026-08-08T11:34:30+03:00',
+		'license'                  => 'official-standard-tentative-english-translation',
+		'claim_locators'           => array(
+			'shoyu-koji-definition' => 'Section 3.2, page 4',
+			'saishikomi-definition' => 'Section 3.12, page 5',
+			'saishikomi-quality-thresholds' => 'Section 4.4, Table 4, page 10',
+		),
+		'review_state'             => 'verified',
+	),
+);
+
 $entities = array();
 
 $entities[] = $c99_entity(
@@ -1061,17 +1103,17 @@ $entities[] = $c99_entity(
 	array(
 		'id' => 'ingredient-shoyu-koji', 'type' => 'ingredient', 'slug' => 'shoyu-koji-substrate', 'parent_id' => 'cuisine-japanese-washoku',
 		'name' => $c99_text( 'קוג׳י לשויו', 'Shoyu koji substrate' ),
-		'summary' => $c99_text( 'קוג׳י לשויו הוא מצע קוג׳י המיועד לייצור רוטב סויה, בדרך כלל מסויה וחיטה שעברו הכנה מתאימה וגידול עובש קוג׳י מבוקר. הוא ישות נפרדת מקומה קוג׳י המבוסס על אורז, כדי לשמור על חומרי גלם, אלרגנים, אנזימים ותהליך נכונים.', 'Shoyu koji is a koji substrate intended for soy sauce production, commonly prepared from soybeans and wheat under controlled koji mold cultivation. It is separate from rice-based kome koji so ingredients, allergens, enzymes and process remain accurate.' ),
+		'summary' => $c99_text( 'קוג׳י לשויו הוא מצע קוג׳י המיועד לייצור רוטב סויה, בדרך כלל מסויה וחיטה שעברו הכנה מתאימה וגידול עובש קוג׳י מבוקר. הוא נבדל מקומה קוג׳י המבוסס על אורז, כדי לשמור על חומרי גלם, אלרגנים, אנזימים ותהליך נכונים.', 'Shoyu koji is a koji substrate intended for soy sauce production, commonly prepared from soybeans and wheat under controlled koji mold cultivation. It is distinct from rice-based kome koji so ingredients, allergens, enzymes and process remain accurate.' ),
 		'seo_group' => 'ingredients', 'primary_intent' => $c99_text( 'להבין קוג׳י לשויו והבדלו מקומה קוג׳י', 'Understand shoyu koji and how it differs from kome koji' ),
 		'primary_keyword' => $c99_text( 'קוג׳י לשויו', 'shoyu koji' ),
 		'secondary_keywords' => array( 'he' => array( 'מצע קוג׳י סויה וחיטה' ), 'en' => array( 'soy wheat koji substrate' ) ),
 		'schema_type' => 'DefinedTerm',
 		'facts' => array(
-			$c99_fact( 'fact-shoyu-koji-distinction', 'scientific', 'מקור MAFF מתאר את שלב הקוג׳י בייצור שויו; המודל מפריד אותו מקומה קוג׳י כדי לא לייחס מצע אורז לתהליך סויה וחיטה.', 'The MAFF source describes the koji stage in shoyu production; the model separates it from kome koji so a rice substrate is not assigned to a soybean and wheat process.', 'official_source', 'technique_context', array( 'maff-fermented-foods' ) ),
+			$c99_fact( 'fact-shoyu-koji-distinction', 'scientific', 'מקור MAFF מתאר את שלב הקוג׳י בייצור שויו. קוג׳י לשויו מובחן מקומה קוג׳י כדי שלא לייחס מצע אורז לתהליך המבוסס על סויה וחיטה.', 'The MAFF source describes the koji stage in shoyu production. Shoyu koji is kept distinct from kome koji so a rice substrate is not attributed to a soybean-and-wheat process.', 'official_source', 'technique_context', array( 'maff-fermented-foods' ) ),
 			$c99_fact( 'fact-shoyu-koji-allergen-scope', 'structural', 'סויה, חיטה, זן תרבית ותנאי גידול חייבים להיקשר למפרט תהליך או אצווה.', 'Soybean, wheat, culture strain and cultivation conditions must attach to a process or lot specification.', 'editorial_inference', 'entity', array( 'maff-fermented-foods', 'jas-shoyu-1703' ) ),
 		),
 		'profiles' => $c99_profiles( array(
-			'scientific' => $c99_profile( 'source_backed', 'הישות מונעת ערבוב בין מצעי קוג׳י שונים.', 'The entity prevents conflation of different koji substrates.', array( 'fact-shoyu-koji-distinction' ) ),
+			'scientific' => $c99_profile( 'source_backed', 'ההבחנה מונעת ערבוב בין מצעי קוג׳י שונים.', 'The distinction prevents conflation of different koji substrates.', array( 'fact-shoyu-koji-distinction' ) ),
 			'cultural' => $c99_profile( 'pending_evidence', 'ההקשר ההיסטורי של קוג׳י לשויו ייכתב ממקור תרבותי ייעודי.', 'The historical context of shoyu koji will be written from a dedicated cultural source.' ),
 			'institutional' => $c99_profile( 'pending_evidence', 'יצרני תרביות וגופי תקינה יתווספו בנפרד.', 'Culture producers and standards bodies will be added separately.' ),
 			'economic' => $c99_profile( 'pending_evidence', 'הכדאיות תימדד לפי תפוקת מורומי, זמן, אובדן וחומרי גלם.', 'Economics will be measured by moromi yield, time, loss and inputs.' ),
@@ -1101,14 +1143,14 @@ $entities[] = $c99_entity(
 		'schema_type' => 'DefinedTerm',
 		'facts' => array(
 			$c99_fact( 'fact-kioke-documented-use', 'cultural', 'המקור הרשמי של Yamaroku מתעד שימוש ושימור של חביות קיוקה כחלק מייצור שויו.', 'Yamaroku official source documents the use and preservation of kioke barrels in shoyu production.', 'official_source', 'entity', array( 'yamaroku-about' ) ),
-			$c99_fact( 'fact-kioke-equipment-boundary', 'structural', 'החבית היא ישות ציוד; יצרן, מוצר, תהליך ואצווה נשמרים כישויות נפרדות.', 'The barrel is an equipment entity; producer, product, process and lot remain separate entities.', 'editorial_inference', 'entity', array( 'yamaroku-about' ) ),
+			$c99_fact( 'fact-kioke-equipment-boundary', 'structural', 'החבית היא כלי; היצרן, המוצר, התהליך והאצווה נשמרים בנפרד.', 'The barrel is equipment; producer, product, process and lot remain separate.', 'editorial_inference', 'entity', array( 'yamaroku-about' ) ),
 		),
 		'profiles' => $c99_profiles( array(
 			'scientific' => $c99_profile( 'pending_evidence', 'מיקרוביוטה, מעבר חמצן ותרכובות עץ דורשים מחקר או בדיקת חבית ספציפית.', 'Microbiota, oxygen transfer and wood compounds require research or a barrel-specific test.' ),
 			'cultural' => $c99_profile( 'source_backed', 'השימוש והשימור מתועדים בדוגמת יצרן מזוהה.', 'Use and preservation are documented through an identified producer example.', array( 'fact-kioke-documented-use' ) ),
 			'institutional' => $c99_profile( 'pending_evidence', 'בוני חביות וגופי מלאכה יישמרו כישויות נפרדות.', 'Barrel makers and craft bodies will be separate entities.' ),
 			'economic' => $c99_profile( 'pending_evidence', 'המודל יפריד עלות רכישה, תחזוקה, נפח, חיי שירות ואובדן ייצור.', 'The model will separate acquisition, maintenance, capacity, service life and production loss.' ),
-			'structural' => $c99_profile( 'source_backed', 'ציוד, יצרן, תהליך ואצווה אינם מתאחדים לישות אחת.', 'Equipment, producer, process and lot do not collapse into one entity.', array( 'fact-kioke-equipment-boundary' ) ),
+			'structural' => $c99_profile( 'source_backed', 'ציוד, יצרן, תהליך ואצווה נשמרים בנפרד.', 'Equipment, producer, process and lot remain separate.', array( 'fact-kioke-equipment-boundary' ) ),
 		) ),
 		'categories' => array( 'professional-equipment', 'fermentation', 'wooden-vessels', 'kioke' ),
 		'attributes' => array( 'pa_material' => array( 'wood-product-specific' ), 'pa_equipment_required' => array( 'fermentation-facility-specific' ) ),
@@ -1151,7 +1193,7 @@ $entities[] = $c99_entity(
 			$c99_relation( 'produced_by', 'producer-yamaroku-shoyu', 'ימרוקו נשמר כיצרן מתועד לדוגמה, לא כספק של Complete99.', 'Yamaroku is retained as a documented example producer, not a Complete99 supplier.', true, array( 'yamaroku-about' ), 'official_source' ),
 			$c99_relation( 'complements', 'dish-edomae-nigiri', 'שויו יכול להשתלב במפת ניגירי אדומאה.', 'Shoyu can participate in the Edomae nigiri map.' ),
 			$c99_relation( 'requires', 'ingredient-shoyu-koji', 'קוג׳י לשויו הוא מצע התהליך המתאים, בנפרד מקומה קוג׳י.', 'Shoyu koji is the appropriate process substrate, separate from kome koji.', true, array( 'maff-fermented-foods' ), 'official_source' ),
-			$c99_relation( 'requires', 'equipment-kioke', 'ישות הקיוקה מתעדת את כלי העץ בנפרד מן הרוטב.', 'The kioke entity documents the wooden vessel separately from the sauce.', true, array( 'yamaroku-about' ), 'official_source' ),
+			$c99_relation( 'requires', 'equipment-kioke', 'העמוד על קיוקה מתעד את כלי העץ בנפרד מן הרוטב.', 'The kioke page documents the wooden vessel separately from the sauce.', true, array( 'yamaroku-about' ), 'official_source' ),
 			$c99_relation( 'requires', 'reaction-koji-enzymatic-hydrolysis', 'פירוק אנזימטי הוא שכבת מדע מרכזית בתהליך.', 'Enzymatic hydrolysis is a central science layer in the process.', true, array( 'maff-fermented-foods' ), 'official_source' ),
 		),
 		'commerce_state' => 'active_offer',
@@ -1486,9 +1528,86 @@ $entities[] = $c99_entity( array(
 	'summary' => $c99_text( 'עמילאזות ופרוטאזות שמקורן בקוג׳י מפרקות עמילנים וחלבונים לסוכרים, פפטידים וחומצות אמינו. הטמפרטורה, המים, המלח, המצע והזמן קובעים את מסלול התהליך בפועל.', 'Koji-derived amylases and proteases break starches and proteins into sugars, peptides and amino acids. Temperature, water, salt, substrate and time determine the actual process path.' ),
 	'seo_group' => 'science', 'primary_intent' => $c99_text( 'להבין את תגובת ההידרוליזה האנזימטית בקוג׳י', 'Understand the koji enzymatic hydrolysis reaction' ), 'primary_keyword' => $c99_text( 'תגובת הידרוליזה אנזימטית בקוג׳י', 'koji enzymatic hydrolysis reaction' ),
 	'secondary_keywords' => array( 'he' => array(), 'en' => array() ), 'schema_type' => 'DefinedTerm',
-	'facts' => array( $c99_fact( 'fact-koji-hydrolysis-process', 'scientific', 'מקורות MAFF מתארים פירוק עמילן וחלבון כחלק מרכזי במזונות מותססים מבוססי קוג׳י.', 'MAFF sources describe starch and protein breakdown as a central part of koji-based fermented foods.', 'official_source', 'technique_context', array( 'maff-fermented-foods' ) ) ),
+	'facts' => array(
+		$c99_fact( 'fact-koji-hydrolysis-process', 'scientific', 'מקורות MAFF מתארים פירוק עמילן וחלבון כחלק מרכזי במזונות מותססים מבוססי קוג׳י.', 'MAFF sources describe starch and protein breakdown as a central part of koji-based fermented foods.', 'official_source', 'technique_context', array( 'maff-fermented-foods' ) ),
+		$c99_fact(
+			'fact-koji-industrial-protease-activity-ranges',
+			'scientific',
+			'במחקר על שלושה זנים תעשייתיים של Aspergillus oryzae במהלך 46 שעות התססת קוג׳י דווחו טווחי פעילות של 500–700 U/g לפרוטאז ניטרלי, 50–150 U/g לפרוטאז חומצי ו-50–250 U/g ללאוצין אמינופפטידאז. אלה טווחים בהקשר המחקר בלבד, ולא נתוני מוצר או אצווה, טווח אוניברסלי, הוראת ייצור או הבטחת תוצאה.',
+			'Across three industrial Aspergillus oryzae strains during a 46 h koji fermentation, the study reported activity ranges of 500–700 U/g for neutral protease, 50–150 U/g for acidic protease and 50–250 U/g for leucine aminopeptidase. These are literature-context ranges, not product or lot data, universal ranges, operating instructions or outcome guarantees.',
+			'peer_reviewed_context',
+			'technique_context',
+			array( 'zhang-industrial-koji-proteases-2023' ),
+			true,
+			array(),
+			'',
+			array(
+				array(
+					'id'             => 'measurement-industrial-koji-neutral-protease-range',
+					'property'       => 'neutral-protease-activity',
+					'kind'           => 'range',
+					'low'            => 500,
+					'high'           => 700,
+					'value'          => null,
+					'unit'           => 'U/g',
+					'method'         => 'Crude extract from 5 g koji plus 45 mL liquid, stirred at 40°C for 1 h. Neutral protease used pH 7.2 phosphate buffer; 1 U was the color equivalent of 1 μg tyrosine released per mL per min at 40°C.',
+					'specimen_scope' => 'literature_context',
+					'conditions'     => array(
+						'cohort' => 'Three industrial Aspergillus oryzae strains used in Chinese and Japanese soy sauce koji.',
+						'fermentation-time' => 'Activities reported during a 46 h koji fermentation.',
+						'extraction' => 'Crude extract from 5 g koji plus 45 mL liquid, stirred at 40°C for 1 h.',
+						'scope-boundary' => 'Literature context only; not a product, lot, universal range, recipe, supplier claim or operating guarantee.',
+					),
+					'confidence'     => 'verified',
+					'source_ids'     => array( 'zhang-industrial-koji-proteases-2023' ),
+					'measured_at'    => '',
+				),
+				array(
+					'id'             => 'measurement-industrial-koji-acidic-protease-range',
+					'property'       => 'acidic-protease-activity',
+					'kind'           => 'range',
+					'low'            => 50,
+					'high'           => 150,
+					'value'          => null,
+					'unit'           => 'U/g',
+					'method'         => 'Crude extract from 5 g koji plus 45 mL liquid, stirred at 40°C for 1 h. Acidic protease used pH 3.0 lactic acid buffer; 1 U was the color equivalent of 1 μg tyrosine released per mL per min at 40°C.',
+					'specimen_scope' => 'literature_context',
+					'conditions'     => array(
+						'cohort' => 'Three industrial Aspergillus oryzae strains used in Chinese and Japanese soy sauce koji.',
+						'fermentation-time' => 'Activities reported during a 46 h koji fermentation.',
+						'extraction' => 'Crude extract from 5 g koji plus 45 mL liquid, stirred at 40°C for 1 h.',
+						'scope-boundary' => 'Literature context only; not a product, lot, universal range, recipe, supplier claim or operating guarantee.',
+					),
+					'confidence'     => 'verified',
+					'source_ids'     => array( 'zhang-industrial-koji-proteases-2023' ),
+					'measured_at'    => '',
+				),
+				array(
+					'id'             => 'measurement-industrial-koji-leucine-aminopeptidase-range',
+					'property'       => 'leucine-aminopeptidase-activity',
+					'kind'           => 'range',
+					'low'            => 50,
+					'high'           => 250,
+					'value'          => null,
+					'unit'           => 'U/g',
+					'method'         => 'Crude extract from 5 g koji plus 45 mL liquid, stirred at 40°C for 1 h. Leucine aminopeptidase used leucine p-nitroaniline; 1 U was 1 μg p-nitroaniline released per min at 40°C.',
+					'specimen_scope' => 'literature_context',
+					'conditions'     => array(
+						'cohort' => 'Three industrial Aspergillus oryzae strains used in Chinese and Japanese soy sauce koji.',
+						'fermentation-time' => 'Activities reported during a 46 h koji fermentation.',
+						'extraction' => 'Crude extract from 5 g koji plus 45 mL liquid, stirred at 40°C for 1 h.',
+						'scope-boundary' => 'Literature context only; not a product, lot, universal range, recipe, supplier claim or operating guarantee.',
+					),
+					'confidence'     => 'verified',
+					'source_ids'     => array( 'zhang-industrial-koji-proteases-2023' ),
+					'measured_at'    => '',
+				),
+			),
+			'2026-08-08'
+		),
+	),
 	'profiles' => $c99_profiles( array(
-		'scientific' => $c99_profile( 'source_backed', 'התגובה נשמרת כמנגנון תהליכי עם תנאי מערכת.', 'The reaction is stored as a process mechanism with system conditions.', array( 'fact-koji-hydrolysis-process' ) ),
+		'scientific' => $c99_profile( 'source_backed', 'התגובה מוסברת עם תנאי המערכת ועם טווחי ספרות שמתוחמים לשיטת המחקר.', 'The reaction is explained with system conditions and literature ranges bounded to the study method.', array( 'fact-koji-hydrolysis-process', 'fact-koji-industrial-protease-activity-ranges' ) ),
 		'cultural' => $c99_profile( 'pending_evidence', 'ההקשר התרבותי מגיע מהמוצר המותסס.', 'Cultural context comes from the fermented product.' ),
 		'institutional' => $c99_profile( 'pending_evidence', 'שיטות מעבדה ותקנים ייקשרו בנפרד.', 'Laboratory methods and standards will link separately.' ),
 		'economic' => $c99_profile( 'pending_evidence', 'תפוקה, זמן ואנרגיה ישויכו לתהליך מקצועי פרטי.', 'Yield, time and energy belong to a private professional process.' ),
@@ -1660,19 +1779,22 @@ $entities[] = $c99_entity( array(
 $entities[] = $c99_entity( array(
 	'id' => 'standard-jas-shoyu-1703', 'type' => 'standard', 'slug' => 'jas-1703-shoyu-standard', 'parent_id' => 'cuisine-japanese-washoku',
 	'name' => $c99_text( 'תקן JAS 1703 לשויו', 'JAS 1703 shoyu standard' ),
-	'summary' => $c99_text( 'JAS 1703 הוא מקור תקני לסיווג רוטב סויה. ישות התקן נפרדת מן היצרן ומן ה-SKU, כדי שהמערכת תוכל לשמור גרסה, סעיף, טענה ותעודת התאמה בלי להציג קטגוריה כמוצר מוסמך.', 'JAS 1703 is a standards source for soy sauce classification. The standard entity remains separate from producer and SKU so version, clause, claim and conformity evidence can be stored without presenting a category as a certified product.' ),
+	'summary' => $c99_text( 'JAS 1703 הוא מקור תקני לסיווג רוטב סויה. התקן נבדל מן היצרן ומן המוצר המסוים, כדי להציג גרסה, סעיף וטענה בלי להציג קטגוריה כאישור למוצר.', 'JAS 1703 is a standards source for soy sauce classification. The standard remains separate from a producer or specific product so its version, clauses and claims are not presented as product certification.' ),
 	'seo_group' => 'standards', 'primary_intent' => $c99_text( 'להבין את תקן JAS לשויו', 'Understand the JAS standard for shoyu' ), 'primary_keyword' => $c99_text( 'תקן JAS לשויו', 'JAS shoyu standard' ),
 	'secondary_keywords' => array( 'he' => array( 'JAS 1703', 'סיווג רוטב סויה' ), 'en' => array( 'JAS 1703', 'soy sauce classification standard' ) ), 'schema_type' => 'Legislation',
-	'facts' => array( $c99_fact( 'fact-jas-shoyu-standard-identity', 'institutional', 'המסמך הרשמי JAS 1703 מספק מסגרת לסיווג שויו; התאמת מוצר דורשת מסמך או סימון של ה-SKU בפועל.', 'The official JAS 1703 document provides a shoyu classification framework; product conformity requires evidence or labeling for the actual SKU.', 'regulatory_standard', 'entity', array( 'jas-shoyu-1703' ) ) ),
+	'facts' => array(
+		$c99_fact( 'fact-jas-shoyu-standard-identity', 'institutional', 'המסמך הרשמי JAS 1703 מספק מסגרת לסיווג שויו; התאמת מוצר דורשת מסמך או סימון של המוצר המסוים.', 'The official JAS 1703 document provides a shoyu classification framework; product conformity requires evidence or labeling for the specific product.', 'regulatory_standard', 'entity', array( 'jas-shoyu-1703' ) ),
+		$c99_fact( 'fact-jas-saishikomi-category-thresholds', 'institutional', 'לפי התרגום האנגלי הזמני של JAS 1703, בקטגוריית saishikomi ספי החנקן הכולל הם 1.65, 1.50 ו-1.40 גרם ל-100 מ״ל לדרגות special, superior ו-normal, בהתאמה; ספי המוצקים המסיסים ללא מלח הם 21 ו-18 גרם ל-100 מ״ל לדרגות special ו-superior. אלה ספי קטגוריה בלבד, לא אישור, התאמה, דרגה או ערך שנמדד במוצר. במקרה של הבדל, המקור היפני קובע.', 'In the tentative English translation of JAS 1703, saishikomi category thresholds for total nitrogen are 1.65, 1.50 and 1.40 g/100 mL for special, superior and normal, respectively; soluble solids excluding salt are 21 and 18 g/100 mL for special and superior. These are category thresholds only, not product certification, conformity, grade or a measured product result. The Japanese original controls if the texts differ.', 'regulatory_standard', 'category', array( 'jas-shoyu-1703' ), true, array(), '', array(), '2026-08-08' ),
+	),
 	'profiles' => $c99_profiles( array(
 		'scientific' => $c99_profile( 'pending_evidence', 'דרישות אנליטיות יפורקו לסעיפים רק לאחר קריאת גרסה מלאה ובקרת מומחה.', 'Analytical requirements will be decomposed by clause only after full-version review and expert control.' ),
 		'cultural' => $c99_profile( 'not_applicable', 'זהו מסמך תקינה ולא מקור היסטורי.', 'This is a standards document, not a historical source.' ),
-		'institutional' => $c99_profile( 'source_backed', 'התקן נשמר כישות סמכות נפרדת.', 'The standard remains a separate authority entity.', array( 'fact-jas-shoyu-standard-identity' ) ),
-		'economic' => $c99_profile( 'pending_evidence', 'השפעת התאמה לתקן על תמחור תיבחן ברמת SKU.', 'The pricing effect of conformity will be assessed at SKU level.' ),
+		'institutional' => $c99_profile( 'source_backed', 'התקן מוצג כמקור סמכות עצמאי, עם ספי קטגוריה מתוחמים ובלי להסיק התאמה של מוצר.', 'The standard is presented as an independent authority source, with bounded category thresholds and no inferred product conformity.', array( 'fact-jas-shoyu-standard-identity', 'fact-jas-saishikomi-category-thresholds' ) ),
+		'economic' => $c99_profile( 'pending_evidence', 'השפעת התאמה לתקן על תמחור תיבחן ברמת המוצר המסוים.', 'The pricing effect of conformity will be assessed for the specific product.' ),
 		'structural' => $c99_profile( 'pending_evidence', 'גרסה, סעיף ותעודת התאמה יקושרו בנפרד.', 'Version, clause and conformity evidence will be linked separately.' ),
 	) ),
 	'categories' => array( 'culinary-science', 'standards', 'japan', 'shoyu' ), 'attributes' => array(), 'tags' => array( 'jas-1703', 'shoyu-standard', 'classification' ),
-	'relations' => array( $c99_relation( 'supported_by', 'ingredient-kioke-shoyu', 'התקן מספק הקשר סיווג לישות השויו, לא אישור מוצר.', 'The standard provides classification context for the shoyu entity, not product approval.', true, array( 'jas-shoyu-1703' ), 'regulatory_standard' ) ),
+	'relations' => array( $c99_relation( 'supported_by', 'ingredient-kioke-shoyu', 'התקן מספק הקשר סיווג לשויו, לא אישור מוצר.', 'The standard provides classification context for shoyu, not product approval.', true, array( 'jas-shoyu-1703' ), 'regulatory_standard' ) ),
 	'revenue_models' => array( 'content_to_commerce', 'education' ), 'customer_segments' => array( 'professional_chefs', 'foodservice_buyers', 'research_readers' ),
 	'prompt_en' => 'Editorial museum graphic representing a Japanese food standard as an abstract unbranded specification document beside soybeans, wheat and a dark shoyu sample, clean archival lighting, blank document areas, no copied seals, logos or readable text.',
 ) );
@@ -1780,7 +1902,7 @@ $entities[] = $c99_entity( array(
 		'structural' => $c99_profile( 'pending_evidence', 'המדריך הוא בעל הכוונה למונחי אנזימי קוג׳י.', 'The guide owns koji-enzyme intent.' ),
 	) ),
 	'categories' => array( 'knowledge', 'food-science', 'fermentation', 'koji-enzymes' ), 'attributes' => array( 'pa_fermentation_method' => array( 'koji-cultivation' ) ), 'tags' => array( 'koji-enzymes', 'hydrolysis', 'amylase', 'protease' ),
-	'relations' => array( $c99_relation( 'contains', 'reaction-koji-enzymatic-hydrolysis', 'תגובת ההידרוליזה היא ישות משנה במדריך.', 'The hydrolysis reaction is a subject entity in the guide.', true, array( 'maff-fermented-foods' ), 'official_source' ), $c99_relation( 'references', 'ingredient-kome-koji', 'קומה קוג׳י הוא מצע אורז נפרד.', 'Kome koji is a separate rice substrate.', true, array( 'maff-fermented-foods' ), 'official_source' ), $c99_relation( 'references', 'ingredient-shoyu-koji', 'קוג׳י לשויו הוא מצע סויה וחיטה נפרד.', 'Shoyu koji is a separate soybean and wheat substrate.', true, array( 'maff-fermented-foods' ), 'official_source' ) ),
+	'relations' => array( $c99_relation( 'contains', 'reaction-koji-enzymatic-hydrolysis', 'תגובת ההידרוליזה היא נושא מובחן בתוך המדריך.', 'The hydrolysis reaction is a distinct subject within the guide.', true, array( 'maff-fermented-foods' ), 'official_source' ), $c99_relation( 'references', 'ingredient-kome-koji', 'קומה קוג׳י הוא מצע אורז נפרד.', 'Kome koji is a separate rice substrate.', true, array( 'maff-fermented-foods' ), 'official_source' ), $c99_relation( 'references', 'ingredient-shoyu-koji', 'קוג׳י לשויו הוא מצע סויה וחיטה נפרד.', 'Shoyu koji is a separate soybean and wheat substrate.', true, array( 'maff-fermented-foods' ), 'official_source' ) ),
 	'revenue_models' => array( 'education', 'content_to_commerce' ), 'customer_segments' => array( 'professional_chefs', 'culinary_students', 'research_readers' ),
 	'prompt_en' => 'Scientific culinary visualization of rice koji and shoyu koji as distinct substrates beside simplified starch and protein chains being enzymatically cleaved, accurate food textures, museum lighting, no labels or futuristic effects.',
 ) );
@@ -2343,6 +2465,26 @@ $c99_private_cuisine_lookup = array_replace(
 	array_fill_keys( $c99_syrian_community_expansion_module['private_entity_ids'], true )
 );
 
+/*
+ * One coherent Syrian discovery path is public and noindex. Removing these
+ * exact IDs before route ownership is computed gives each page its real
+ * canonical owner while every other Syrian identity remains fail-closed.
+ */
+$c99_syrian_public_vertical_ids = array(
+	'cuisine-syrian-regional',
+	'region-syria-aleppo',
+	'hub-aleppine-kibbeh-family',
+	'ingredient-syrian-bulgur',
+	'ingredient-syrian-red-meat',
+	'technique-syrian-bulgur-hydration',
+	'technique-syrian-kibbeh-cooking',
+	'tradition-aleppan-jewish-foodways',
+);
+foreach ( $c99_syrian_public_vertical_ids as $c99_syrian_public_entity_id ) {
+	unset( $c99_private_cuisine_lookup[ $c99_syrian_public_entity_id ] );
+}
+unset( $c99_syrian_public_entity_id );
+
 $c99_lebanese_foundations_module = require __DIR__ . '/culinary-science/cuisines/lebanese-foundations.php';
 foreach ( $c99_lebanese_foundations_module['sources'] as $lebanese_source_id => $lebanese_source ) {
 	if ( isset( $sources[ $lebanese_source_id ] ) ) {
@@ -2482,6 +2624,80 @@ foreach ( $entities as &$entity ) {
 			'third_party_guide'
 		);
 	}
+	if ( 'cuisine-syrian-regional' === $entity['id'] ) {
+		foreach ( $entity['relations'] as &$syrian_root_relation ) {
+			if ( 'region-syria-aleppo' === $syrian_root_relation['target_id'] ) {
+				$syrian_root_relation['note'] = $c99_text( 'התחילו בחלב וגלו עיר של קובה, פלפל, פירות חמוצים ומסורות קהילתיות.', 'Begin in Aleppo and discover a city of kibbeh, pepper, sour fruit and community foodways.' );
+			}
+		}
+		unset( $syrian_root_relation );
+	}
+
+	if ( 'region-syria-aleppo' === $entity['id'] ) {
+		$entity['relations'][] = $c99_relation( 'contains', 'hub-aleppine-kibbeh-family', 'מכאן נכנסים אל משפחת הקובה החלבית ואל הצורות המבושלות הרבות שלה.', 'Continue from here into the Aleppine kibbeh family and its many cooked forms.', false, array( 'avs-mirvet-aleppo', 'simon-schuster-aleppo-cookbook' ), 'official_source' );
+		$entity['relations'][] = $c99_relation( 'contains', 'tradition-aleppan-jewish-foodways', 'מסורות האוכל של יהודי חלב פותחות מסלול נוסף מן העיר אל מטבחי התפוצות.', 'Aleppan Jewish foodways open another path from the city into diaspora kitchens.', false, array( 'anu-syrian-jewish-community', 'nli-aleppo-tradition' ), 'official_source' );
+		$entity['relations'][] = $c99_relation( 'references', 'ingredient-syrian-bulgur', 'הבורגול מחבר בין המזווה החַלבי לבין מעטפת הקובה.', 'Bulgur connects the Aleppine pantry with the kibbeh shell.', false, array( 'avs-mirvet-aleppo', 'simon-schuster-aleppo-cookbook' ), 'official_source' );
+		$entity['relations'][] = $c99_relation( 'references', 'ingredient-syrian-red-meat', 'הבחירה בין כבש לבקר תלויה במנה ובגרסה, ולא נעשית אוטומטית.', 'The choice between lamb and beef belongs to the dish and version rather than an automatic substitution.', false, array( 'avs-mirvet-aleppo', 'aleppo-project-cuisine-2017' ), 'official_source' );
+	}
+
+	if ( 'hub-aleppine-kibbeh-family' === $entity['id'] ) {
+		foreach ( $entity['relations'] as &$syrian_kibbeh_relation ) {
+			if ( 'region-syria-aleppo' === $syrian_kibbeh_relation['target_id'] ) {
+				$syrian_kibbeh_relation['note'] = $c99_text( 'משפחת הקובה מוצגת כחלק מן המטבח החַלבי הרחב.', 'The kibbeh family is explored within the wider Aleppine table.' );
+			} elseif ( 'ingredient-syrian-bulgur' === $syrian_kibbeh_relation['target_id'] ) {
+				$syrian_kibbeh_relation['note'] = $c99_text( 'בורגול מתאים מעניק למעטפת קובה גוף, אחיזה ומרקם.', 'Suitable bulgur gives a kibbeh shell body, cohesion and texture.' );
+			} elseif ( 'ingredient-syrian-red-meat' === $syrian_kibbeh_relation['target_id'] ) {
+				$syrian_kibbeh_relation['note'] = $c99_text( 'סוג הבשר, הטחינה והשומן משתנים בין צורות וגרסאות של קובה.', 'Meat choice, grind and fat vary among kibbeh forms and versions.' );
+			}
+		}
+		unset( $syrian_kibbeh_relation );
+		$entity['relations'][] = $c99_relation( 'references', 'technique-syrian-bulgur-hydration', 'המשיכו אל המדריך שמראה איך זמן, מים ומנוחה משנים את הבורגול ביד.', 'Continue to the guide showing how time, water and resting change bulgur in the hand.', false, array( 'bulgur-hydration-2025', 'bulgur-hydration-cereal-chemistry' ), 'peer_reviewed_context' );
+		$entity['relations'][] = $c99_relation( 'references', 'technique-syrian-kibbeh-cooking', 'צלייה, טיגון, בישול במים וברוטב מובילים למרקמים שונים ולמרכז מבושל.', 'Grilling, frying, simmering and sauce cooking lead to different textures and a cooked center.', false, array( 'foodsafety-safe-temperatures', 'avs-mirvet-aleppo' ), 'regulatory_standard' );
+		$entity['relations'][] = $c99_relation( 'references', 'tradition-aleppan-jewish-foodways', 'במסורות יהודי חלב ממשיכות לחיות צורות קובה ומנות משפחתיות נוספות.', 'Aleppan Jewish foodways carry kibbeh forms and other family dishes into new kitchens.', false, array( 'anu-syrian-jewish-community', 'jfs-kibbeh-hamda' ), 'official_source' );
+	}
+
+	if ( 'ingredient-syrian-bulgur' === $entity['id'] ) {
+		$entity['relations'][] = $c99_relation( 'references', 'hub-aleppine-kibbeh-family', 'ראו כיצד אותו גרגר נכנס למשפחה רחבה של צורות קובה חלביות.', 'See how the grain enters a broad family of Aleppine kibbeh forms.', false, array( 'avs-mirvet-aleppo', 'simon-schuster-aleppo-cookbook' ), 'official_source' );
+		$entity['relations'][] = $c99_relation( 'references', 'technique-syrian-bulgur-hydration', 'המדריך להרטבת בורגול מחבר בין גודל הגרגר לבין התחושה ביד.', 'The hydration guide connects grain size with the texture felt in the hand.', false, array( 'bulgur-hydration-2025', 'bulgur-hydration-cereal-chemistry' ), 'peer_reviewed_context' );
+		$entity['commerce']['state'] = 'active_offer';
+		$entity['commerce']['woo_product_code'] = 'product-bulgur-fine-500g';
+		$entity['commerce']['public_offer_allowed'] = true;
+		$entity['commerce']['product_copy'] = $c99_text( 'לקניית בורגול דק 500 גרם בחנות', 'Shop fine bulgur, 500 g' );
+		$entity['commerce']['business_model']['pricing_state'] = 'approved_sell_price';
+		$entity['commerce']['business_model']['market_scope'] = 'israel_launch';
+	}
+
+	if ( 'ingredient-syrian-red-meat' === $entity['id'] ) {
+		$entity['relations'][] = $c99_relation( 'references', 'hub-aleppine-kibbeh-family', 'עברו ממשפחת הבשר אל צורות הקובה שבהן הבחירה מקבלת משמעות.', 'Move from the meat family to the kibbeh forms where that choice becomes meaningful.', false, array( 'avs-mirvet-aleppo', 'simon-schuster-aleppo-cookbook' ), 'official_source' );
+		$entity['relations'][] = $c99_relation( 'references', 'technique-syrian-kibbeh-cooking', 'מדריך הבישול מסביר איך לבדוק מרכז מבושל במדחום מזון.', 'The cooking guide explains how to verify a cooked center with a food thermometer.', false, array( 'foodsafety-safe-temperatures' ), 'regulatory_standard' );
+	}
+
+	if ( 'technique-syrian-bulgur-hydration' === $entity['id'] ) {
+		foreach ( $entity['relations'] as &$syrian_hydration_relation ) {
+			if ( 'ingredient-syrian-bulgur' === $syrian_hydration_relation['target_id'] ) {
+				$syrian_hydration_relation['note'] = $c99_text( 'בחרו תחילה את גודל גרגר הבורגול, ואז בחנו מים, זמן ומרקם.', 'Choose the bulgur grain size first, then observe water, time and texture.' );
+			}
+		}
+		unset( $syrian_hydration_relation );
+		$entity['relations'][] = $c99_relation( 'references', 'hub-aleppine-kibbeh-family', 'המרקם שנוצר בהרטבה פוגש אחר כך את צורות הקובה החלביות.', 'The texture created during hydration continues into the Aleppine kibbeh forms.', false, array( 'avs-mirvet-aleppo', 'simon-schuster-aleppo-cookbook' ), 'official_source' );
+	}
+
+	if ( 'technique-syrian-kibbeh-cooking' === $entity['id'] ) {
+		foreach ( $entity['relations'] as &$syrian_cooking_relation ) {
+			if ( 'ingredient-syrian-red-meat' === $syrian_cooking_relation['target_id'] ) {
+				$syrian_cooking_relation['note'] = $c99_text( 'בקובה עם בשר טחון מכבש או בקר בודקים 71.1°C במרכז בעזרת מדחום מזון.', 'For kibbeh with ground lamb or beef, verify 71.1°C at the center with a food thermometer.' );
+			} elseif ( 'ingredient-syrian-bulgur' === $syrian_cooking_relation['target_id'] ) {
+				$syrian_cooking_relation['note'] = $c99_text( 'מעטפת הבורגול מגיבה אחרת לטיגון, לצלייה, למים ולרוטב.', 'The bulgur shell responds differently to frying, grilling, water and sauce.' );
+			}
+		}
+		unset( $syrian_cooking_relation );
+		$entity['relations'][] = $c99_relation( 'references', 'hub-aleppine-kibbeh-family', 'חזרו למשפחת הקובה כדי להשוות בין צלייה, טיגון ובישול ברוטב.', 'Return to the kibbeh family to compare grilled, fried and sauce-cooked forms.', false, array( 'avs-mirvet-aleppo', 'simon-schuster-aleppo-cookbook' ), 'official_source' );
+	}
+
+	if ( 'tradition-aleppan-jewish-foodways' === $entity['id'] ) {
+		$entity['relations'][] = $c99_relation( 'part_of', 'region-syria-aleppo', 'המסורות מוצגות בתוך הפסיפס הרחב של חלב, ולא במקומו.', 'These foodways sit within the wider Aleppine mosaic rather than replacing it.', false, array( 'anu-syrian-jewish-community', 'nli-aleppo-tradition' ), 'official_source' );
+		$entity['relations'][] = $c99_relation( 'references', 'hub-aleppine-kibbeh-family', 'קובה חמודה פותחת דלת אל משפחת הקובה החלבית הרחבה.', 'Kibbeh hamda opens a door into the wider Aleppine kibbeh family.', false, array( 'jfs-kibbeh-hamda', 'simon-schuster-aleppo-cookbook' ), 'official_source' );
+	}
 }
 unset( $entity );
 foreach ( $entities as &$entity ) {
@@ -2613,6 +2829,18 @@ $canonical_overrides = array(
 	'standard-jas-shoyu-1703' => $c99_text( '/knowledge/jas-1703-shoyu-standard/', '/en/knowledge/jas-1703-shoyu-standard/' ),
 );
 $canonical_overrides = array_replace( $canonical_overrides, $c99_syrian_foundations_module['canonical_overrides'] );
+$canonical_overrides = array_replace(
+	$canonical_overrides,
+	array(
+		'region-syria-aleppo' => $c99_text( '/museum/syrian-culinary-science/aleppo/', '/en/museum/syrian-culinary-science/aleppo/' ),
+		'hub-aleppine-kibbeh-family' => $c99_text( '/museum/syrian-culinary-science/aleppo/aleppine-kibbeh-family/', '/en/museum/syrian-culinary-science/aleppo/aleppine-kibbeh-family/' ),
+		'ingredient-syrian-bulgur' => $c99_text( '/ingredients/syrian-bulgur/', '/en/ingredients/syrian-bulgur/' ),
+		'ingredient-syrian-red-meat' => $c99_text( '/ingredients/lamb-and-beef-in-syrian-cooking/', '/en/ingredients/lamb-and-beef-in-syrian-cooking/' ),
+		'technique-syrian-bulgur-hydration' => $c99_text( '/knowledge/how-to-hydrate-bulgur-for-kibbeh/', '/en/knowledge/how-to-hydrate-bulgur-for-kibbeh/' ),
+		'technique-syrian-kibbeh-cooking' => $c99_text( '/knowledge/how-to-cook-kibbeh-safely/', '/en/knowledge/how-to-cook-kibbeh-safely/' ),
+		'tradition-aleppan-jewish-foodways' => $c99_text( '/traditions/aleppan-jewish-foodways/', '/en/traditions/aleppan-jewish-foodways/' ),
+	)
+);
 
 $section_owner_map = array(
 	'hub-japanese-dishes' => 'cuisine-japanese-washoku',
@@ -2728,6 +2956,15 @@ foreach ( $entities as &$entity ) {
 }
 unset( $entity );
 
+$aleppine_kibbeh_hub_offset = $entity_offsets['hub-aleppine-kibbeh-family'];
+$entities[ $aleppine_kibbeh_hub_offset ]['seo']['visible_breadcrumbs'] = array(
+	array( 'key' => 'home', 'label' => $c99_text( 'בית', 'Home' ), 'path' => $c99_text( '/', '/en/' ) ),
+	array( 'key' => 'museum', 'label' => $c99_text( 'מוזיאון המדע של הקולינריה', 'Culinary Science Museum' ), 'path' => $c99_text( '/museum/', '/en/museum/' ) ),
+	array( 'key' => 'syrian-cuisine', 'label' => $entities[ $entity_offsets['cuisine-syrian-regional'] ]['name'], 'path' => $entities[ $entity_offsets['cuisine-syrian-regional'] ]['seo']['canonical_path'] ),
+	array( 'key' => 'aleppo', 'label' => $entities[ $entity_offsets['region-syria-aleppo'] ]['name'], 'path' => $entities[ $entity_offsets['region-syria-aleppo'] ]['seo']['canonical_path'] ),
+	array( 'key' => 'current-hub-aleppine-kibbeh-family', 'label' => $entities[ $aleppine_kibbeh_hub_offset ]['name'], 'path' => $entities[ $aleppine_kibbeh_hub_offset ]['seo']['canonical_path'] ),
+);
+
 foreach ( $entities as &$entity ) {
 	$link_plan = array();
 	if ( '' !== $entity['parent_id'] ) {
@@ -2776,6 +3013,26 @@ unset( $entity );
  * Visibility and search indexing stay separate, so reviewed preview pages can
  * be evaluated before long-form index approval.
  */
+$c99_owner_publication_candidate_ids = array(
+	'region-syria-aleppo',
+	'hub-aleppine-kibbeh-family',
+	'ingredient-syrian-bulgur',
+	'ingredient-syrian-red-meat',
+	'technique-syrian-bulgur-hydration',
+	'technique-syrian-kibbeh-cooking',
+	'tradition-aleppan-jewish-foodways',
+	'ingredient-shoyu-koji',
+	'equipment-kioke',
+	'guide-koji-hydrolysis',
+	'reaction-koji-enzymatic-hydrolysis',
+	'standard-jas-shoyu-1703',
+);
+$c99_owner_publication_registry_file = __DIR__ . '/culinary-science-publication-approvals.php';
+$c99_owner_publication_registry = is_file( $c99_owner_publication_registry_file )
+	? require $c99_owner_publication_registry_file
+	: array();
+
+// Original reviewed cohort. Held candidates join only after an exact receipt.
 $public_pilot_ids = array(
 	'museum-culinary-science',
 	'cuisine-japanese-washoku',
@@ -2807,20 +3064,32 @@ $public_pilot_ids = array(
 );
 $public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
 $public_semantic_allowlists = array(
-	'museum-culinary-science' => array( 'cuisine-japanese-washoku', 'cuisine-syrian-regional', 'cuisine-lebanese-regional' ),
-	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-foundations-lab', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'equipment-wasabi-grater' ),
-	'cuisine-syrian-regional' => array( 'museum-culinary-science', 'cuisine-lebanese-regional' ),
+	'museum-culinary-science' => array( 'cuisine-japanese-washoku', 'cuisine-syrian-regional', 'region-syria-aleppo', 'cuisine-lebanese-regional' ),
+	'cuisine-japanese-washoku' => array( 'museum-culinary-science', 'hub-japanese-foundations-lab', 'hub-japanese-equipment', 'hub-japanese-ingredients', 'hub-japanese-techniques', 'hub-japanese-food-science', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'equipment-wasabi-grater', 'ingredient-shoyu-koji', 'guide-koji-hydrolysis', 'equipment-kioke', 'standard-jas-shoyu-1703' ),
+	'cuisine-syrian-regional' => array( 'museum-culinary-science', 'region-syria-aleppo', 'hub-aleppine-kibbeh-family', 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat', 'technique-syrian-bulgur-hydration', 'technique-syrian-kibbeh-cooking', 'tradition-aleppan-jewish-foodways', 'cuisine-lebanese-regional' ),
+	'region-syria-aleppo' => array( 'cuisine-syrian-regional', 'hub-aleppine-kibbeh-family', 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat', 'technique-syrian-bulgur-hydration', 'technique-syrian-kibbeh-cooking', 'tradition-aleppan-jewish-foodways' ),
+	'hub-aleppine-kibbeh-family' => array( 'cuisine-syrian-regional', 'region-syria-aleppo', 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat', 'technique-syrian-bulgur-hydration', 'technique-syrian-kibbeh-cooking' ),
+	'ingredient-syrian-bulgur' => array( 'cuisine-syrian-regional', 'region-syria-aleppo', 'hub-aleppine-kibbeh-family', 'technique-syrian-bulgur-hydration', 'technique-syrian-kibbeh-cooking' ),
+	'ingredient-syrian-red-meat' => array( 'cuisine-syrian-regional', 'region-syria-aleppo', 'hub-aleppine-kibbeh-family', 'technique-syrian-kibbeh-cooking' ),
+	'technique-syrian-bulgur-hydration' => array( 'cuisine-syrian-regional', 'region-syria-aleppo', 'hub-aleppine-kibbeh-family', 'ingredient-syrian-bulgur', 'technique-syrian-kibbeh-cooking' ),
+	'technique-syrian-kibbeh-cooking' => array( 'cuisine-syrian-regional', 'region-syria-aleppo', 'hub-aleppine-kibbeh-family', 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat', 'technique-syrian-bulgur-hydration' ),
+	'tradition-aleppan-jewish-foodways' => array( 'cuisine-syrian-regional', 'region-syria-aleppo' ),
 	'cuisine-lebanese-regional' => array( 'museum-culinary-science', 'cuisine-syrian-regional' ),
-	'hub-japanese-foundations-lab' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'equipment-wasabi-grater' ),
-	'hub-japanese-equipment' => array( 'cuisine-japanese-washoku', 'equipment-wasabi-grater', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'guide-wasabi-aitc' ),
-	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
+	'hub-japanese-foundations-lab' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'equipment-wasabi-grater', 'ingredient-shoyu-koji', 'guide-koji-hydrolysis', 'reaction-koji-enzymatic-hydrolysis', 'equipment-kioke', 'standard-jas-shoyu-1703' ),
+	'hub-japanese-equipment' => array( 'cuisine-japanese-washoku', 'equipment-wasabi-grater', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'guide-wasabi-aitc', 'equipment-kioke', 'ingredient-kioke-shoyu' ),
+	'hub-japanese-ingredients' => array( 'cuisine-japanese-washoku', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'ingredient-shoyu-koji' ),
 	'hub-japanese-techniques' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'hub-japanese-food-science' ),
-	'hub-japanese-food-science' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi' ),
+	'hub-japanese-food-science' => array( 'cuisine-japanese-washoku', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'molecule-l-glutamate', 'molecule-inosine-monophosphate', 'guide-wasabi-aitc', 'ingredient-kombu', 'ingredient-katsuobushi', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-shoyu-koji', 'guide-koji-hydrolysis', 'reaction-koji-enzymatic-hydrolysis', 'equipment-kioke', 'standard-jas-shoyu-1703', 'ingredient-kioke-shoyu' ),
 	'ingredient-kombu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-katsuobushi', 'ingredient-kioke-shoyu', 'ingredient-fresh-wasabi', 'ingredient-kito-yuzu', 'preparation-ichiban-dashi', 'technique-dashi-extraction', 'guide-umami-synergy', 'molecule-l-glutamate' ),
 	'ingredient-katsuobushi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kombu', 'preparation-ichiban-dashi', 'guide-umami-synergy', 'molecule-inosine-monophosphate' ),
-	'ingredient-kioke-shoyu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin' ),
-	'ingredient-kome-koji' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-kioke-shoyu' ),
-	'ingredient-koji-starter-culture' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kome-koji', 'ingredient-koshihikari-rice', 'ingredient-kioke-shoyu' ),
+	'ingredient-kioke-shoyu' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'ingredient-kombu', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu', 'ingredient-hon-mirin', 'ingredient-shoyu-koji', 'guide-koji-hydrolysis', 'reaction-koji-enzymatic-hydrolysis', 'equipment-kioke', 'standard-jas-shoyu-1703' ),
+	'ingredient-kome-koji' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-koji-starter-culture', 'ingredient-koshihikari-rice', 'ingredient-kioke-shoyu', 'ingredient-shoyu-koji', 'guide-koji-hydrolysis', 'reaction-koji-enzymatic-hydrolysis' ),
+	'ingredient-koji-starter-culture' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kome-koji', 'ingredient-koshihikari-rice', 'ingredient-kioke-shoyu', 'ingredient-shoyu-koji', 'guide-koji-hydrolysis', 'reaction-koji-enzymatic-hydrolysis' ),
+	'ingredient-shoyu-koji' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'guide-koji-hydrolysis', 'reaction-koji-enzymatic-hydrolysis', 'ingredient-kioke-shoyu' ),
+	'equipment-kioke' => array( 'cuisine-japanese-washoku', 'hub-japanese-equipment', 'ingredient-kioke-shoyu' ),
+	'guide-koji-hydrolysis' => array( 'cuisine-japanese-washoku', 'hub-japanese-food-science', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-shoyu-koji', 'reaction-koji-enzymatic-hydrolysis', 'ingredient-kioke-shoyu' ),
+	'reaction-koji-enzymatic-hydrolysis' => array( 'guide-koji-hydrolysis', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-shoyu-koji' ),
+	'standard-jas-shoyu-1703' => array( 'cuisine-japanese-washoku', 'hub-japanese-food-science', 'ingredient-kioke-shoyu' ),
 	'ingredient-koshihikari-rice' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'ingredient-kome-koji', 'ingredient-koji-starter-culture', 'ingredient-kioke-shoyu', 'ingredient-fresh-dutch-wasabi' ),
 	'ingredient-fresh-wasabi' => array( 'cuisine-japanese-washoku', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'hub-japanese-equipment', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'equipment-wasabi-grater', 'ingredient-kombu', 'ingredient-kioke-shoyu', 'ingredient-fresh-dutch-wasabi', 'ingredient-kito-yuzu' ),
 	'ingredient-fresh-dutch-wasabi' => array( 'cuisine-japanese-washoku', 'ingredient-fresh-wasabi', 'hub-japanese-ingredients', 'hub-japanese-food-science', 'hub-japanese-equipment', 'guide-wasabi-aitc', 'molecule-allyl-isothiocyanate', 'equipment-wasabi-grater', 'ingredient-kioke-shoyu', 'ingredient-koshihikari-rice' ),
@@ -2835,16 +3104,76 @@ $public_semantic_allowlists = array(
 	'molecule-allyl-isothiocyanate' => array( 'guide-wasabi-aitc', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi' ),
 	'equipment-wasabi-grater' => array( 'hub-japanese-equipment', 'ingredient-fresh-wasabi', 'ingredient-fresh-dutch-wasabi', 'guide-wasabi-aitc' ),
 );
+$public_fact_allowlists = array(
+	'ingredient-shoyu-koji' => array( 'fact-shoyu-koji-distinction' ),
+	'equipment-kioke' => array( 'fact-kioke-documented-use' ),
+	'guide-koji-hydrolysis' => array( 'fact-koji-guide-process' ),
+	'reaction-koji-enzymatic-hydrolysis' => array( 'fact-koji-hydrolysis-process', 'fact-koji-industrial-protease-activity-ranges' ),
+	'standard-jas-shoyu-1703' => array( 'fact-jas-shoyu-standard-identity', 'fact-jas-saishikomi-category-thresholds' ),
+	'region-syria-aleppo' => array( 'fact-aleppo-regional-testimony-boundary' ),
+	'hub-aleppine-kibbeh-family' => array( 'fact-aleppine-kibbeh-family-documented-scope' ),
+	'ingredient-syrian-bulgur' => array( 'fact-syrian-bulgur-culinary-identity', 'fact-syrian-bulgur-hydration-category-context' ),
+	'ingredient-syrian-red-meat' => array( 'fact-syrian-lamb-beef-family-culinary-identity' ),
+	'technique-syrian-bulgur-hydration' => array( 'fact-syrian-bulgur-hydration-bounded-method' ),
+	'technique-syrian-kibbeh-cooking' => array( 'fact-syrian-kibbeh-cooking-bounded-method' ),
+	'tradition-aleppan-jewish-foodways' => array( 'fact-aleppan-jewish-foodways-community-scope' ),
+);
+$public_relation_id_allowlists = array(
+	'ingredient-shoyu-koji' => array(
+		'edge-ingredient-shoyu-koji-used_in-1',
+		'edge-ingredient-shoyu-koji-complements-2',
+	),
+	'equipment-kioke' => array( 'edge-equipment-kioke-used_in-1' ),
+	'guide-koji-hydrolysis' => array(
+		'edge-guide-koji-hydrolysis-contains-1',
+		'edge-guide-koji-hydrolysis-references-2',
+		'edge-guide-koji-hydrolysis-references-3',
+	),
+	'reaction-koji-enzymatic-hydrolysis' => array(),
+	'standard-jas-shoyu-1703' => array( 'edge-standard-jas-shoyu-1703-supported_by-1' ),
+	'cuisine-syrian-regional' => array( 'edge-cuisine-syrian-regional-contains-1' ),
+	'region-syria-aleppo' => array(),
+	'hub-aleppine-kibbeh-family' => array(
+		'edge-hub-aleppine-kibbeh-family-part_of-1',
+		'edge-hub-aleppine-kibbeh-family-requires-2',
+		'edge-hub-aleppine-kibbeh-family-requires-3',
+	),
+	'ingredient-syrian-bulgur' => array(),
+	'ingredient-syrian-red-meat' => array(),
+	'technique-syrian-bulgur-hydration' => array( 'edge-technique-syrian-bulgur-hydration-requires-2' ),
+	'technique-syrian-kibbeh-cooking' => array(
+		'edge-technique-syrian-kibbeh-cooking-requires-2',
+		'edge-technique-syrian-kibbeh-cooking-requires-3',
+	),
+	'tradition-aleppan-jewish-foodways' => array(),
+);
+$public_compliance_allowlists = array(
+	'ingredient-syrian-bulgur' => array( 'product-allergen-verification' ),
+	'ingredient-syrian-red-meat' => array( 'no-raw-ground-meat-guidance' ),
+	'technique-syrian-kibbeh-cooking' => array( 'raw-kibbeh-prohibited' ),
+);
 $public_asset_receipts = array(
 	'museum-culinary-science' => 'sha256:153069cca78fb3121b0d5bdc18a55234c6e49b306592e56e691865ea146d3fd3',
 	'cuisine-japanese-washoku' => 'sha256:98558d16ea7975b78ba7b925ea2a4b3a7dc0f6158a42e94855f30f73f7fa644c',
-	'cuisine-syrian-regional' => 'sha256:4abfb4b819c5b8df9e555656ee56fd0328b09870fbdb8142dadc9cc769b8e7de',
-	'cuisine-lebanese-regional' => 'sha256:0adf73a4888d068a204d38da644ba222240ccd28b7a10ef67c20fc4f6057b37e',
-	'hub-japanese-foundations-lab' => 'sha256:8dcc708e53538ed4a0044d3cd79704f1d9e02ff01142b8f5f486192e3595e180',
+	'cuisine-syrian-regional' => 'sha256:073da8295218283dd115540e169549bc940ae6bbad50f176ca15cea464001b24',
+	'cuisine-lebanese-regional' => 'sha256:6f1fa8d7fa80a2a9d873b5e3e2a4c91ae57ee431a4a38db9b90229d3df0319b2',
+	'region-syria-aleppo' => 'sha256:12be0704e4211ec5b39686ff291ee1b1c162cde2d93e6fc66b83c3316c1fd6c6',
+	'hub-aleppine-kibbeh-family' => 'sha256:ad8b1b3fdfc59eb22b7e06e443b1477ec152ab4f00985d44533ff7245d1f8d5b',
+	'ingredient-syrian-bulgur' => 'sha256:0abf067b8a84796b002103da6839b549c47adf37bd7821d35b5c0a66b15ab620',
+	'ingredient-syrian-red-meat' => 'sha256:e87dc0d2d74bffe2b48156838a11f704fe35d0480380bd965b186df0affb67db',
+	'technique-syrian-bulgur-hydration' => 'sha256:762a91a1a3c00483b1c5a572f17b4659a328ee86cf832a281ef360aace6eecd1',
+	'technique-syrian-kibbeh-cooking' => 'sha256:c28467bb07a6900d22618b17791ae6c5eefee7d73bf3c5f1a75b4d4661db2d03',
+	'tradition-aleppan-jewish-foodways' => 'sha256:1160071fd8b80a9d11ad2792ed8b53643e2b086a4db3d81772ddedf98bba2797',
+	'hub-japanese-foundations-lab' => 'sha256:6dcf73f4c9bc3a37beed600118e7cbbcb2dc6c6dee2ba10eed51464a46acdb41',
 	'hub-japanese-ingredients' => 'sha256:76cc7ecfebd4eac9ecb9ed6a670cee097941a99637fbc2446b00eb7692848e10',
 	'ingredient-kombu' => 'sha256:046d2ba7f392efa8076afc3acae177604e27cbe77ef3d8c626fc2974abe8ac4e',
 	'ingredient-katsuobushi' => 'sha256:a48c8adf8f92b0c425301ff5cfff502301af0babb059cf446aa100c1fdd91b8e',
 	'ingredient-kioke-shoyu' => 'sha256:7bbb750f81dac4c2ec8326174f48d2aedba782be68a780c0b63acfcf1ad8b950',
+	'ingredient-shoyu-koji' => 'sha256:1213fee79dbd9dfe3d597aaddb0011e57ed0bc014fdd13a83a23ccdf478f1319',
+	'equipment-kioke' => 'sha256:bafac22402602dbda38f512754a701a4388b262e89dda7e7cac68d6dd2616a23',
+	'guide-koji-hydrolysis' => 'sha256:6bb6f6becd75c7e4fdeed3e76f70e616ed6fc8713b94163475f585c4ac0d1a77',
+	'reaction-koji-enzymatic-hydrolysis' => 'sha256:5978859d2161cbb6a41daddf52cc7402952a63068b9a0c0f684166237eee66a5',
+	'standard-jas-shoyu-1703' => 'sha256:5a099802acabf8e704a03e5b254844519d2e32df0d8358d277b8594889e16ebf',
 	'ingredient-kome-koji' => 'sha256:49a01347668903b4e6140b27cbd18db5560dccc17216153a71c85a7eaf385e61',
 	'ingredient-koji-starter-culture' => 'sha256:58811677efcbc8534e8c3ade288c7de332b06d95e2d1e3e0bedddbd2eb37dea0',
 	'ingredient-koshihikari-rice' => 'sha256:e231622d6a84a5c2d2f8023bf1431faee49c7da141a22a944882fc584e744799',
@@ -2933,6 +3262,110 @@ $entities[ $syrian_root_offset ]['trust']['next_review_trigger'] = $c99_text(
 $entities[ $syrian_root_offset ]['taxonomy']['public_category_path'] = array( 'culinary-museum', 'syrian-culinary-science', 'cuisines' );
 $entities[ $syrian_root_offset ]['taxonomy']['public_attribute_keys'] = array( 'pa_region', 'pa_community' );
 $entities[ $syrian_root_offset ]['taxonomy']['public_tags'] = array( 'syrian-cuisine', 'syria-national', 'syrian-multi-community' );
+
+$syrian_public_page_copy = array(
+	'region-syria-aleppo' => array(
+		'title' => $c99_text( 'המטבח החַלבי: קובה, פלפל ופירות חמוצים | Complete99', 'Aleppo cuisine: kibbeh, pepper and sour fruit | Complete99' ),
+		'h1' => $c99_text( 'חלב, עיר של קובה וטעמים חמוצים עמוקים', 'Aleppo, a city of kibbeh and deep sour flavors' ),
+		'meta' => $c99_text( 'גלו את המטבח החַלבי דרך משפחת הקובה, בורגול, פלפל אדום, פירות חמוצים ומסורות האוכל של יהודי חלב.', 'Discover Aleppo cuisine through its kibbeh family, bulgur, red pepper, sour fruit and Aleppan Jewish foodways.' ),
+		'queries' => array( 'he' => array( 'המטבח החַלבי', 'מטבח חלב', 'מטבח חַלבי', 'מטבח חלב Aleppo' ), 'en' => array( 'Aleppine cuisine', 'Aleppo cuisine', 'Aleppine food', 'Halabi cuisine', 'مطبخ حلبي' ) ),
+		'terms' => array( 'he' => array( 'חלב', 'המטבח החַלבי' ), 'en' => array( 'Aleppo', 'Aleppine cuisine', 'Halabi cuisine' ) ),
+		'categories' => array( 'culinary-museum', 'syrian-culinary-science', 'aleppo' ),
+		'tags' => array( 'syrian-cuisine', 'aleppo', 'aleppine-foodways' ),
+	),
+	'hub-aleppine-kibbeh-family' => array(
+		'title' => $c99_text( 'משפחת הקובה החלבית: צורות, טעמים ושיטות | Complete99', 'Aleppine kibbeh family: forms, flavors and methods | Complete99' ),
+		'h1' => $c99_text( 'קובה חלבית היא משפחה שלמה', 'Aleppine kibbeh is a whole family' ),
+		'meta' => $c99_text( 'הכירו קובה חלבית צלויה, מטוגנת, מגולגלת ומבושלת ברוטב, והמשיכו לבורגול, לבשר ולשיטות שמעצבות אותה.', 'Meet grilled, fried, rolled and sauce-cooked Aleppine kibbeh, then continue to the bulgur, meat and methods that shape it.' ),
+		'queries' => array( 'he' => array( 'סוגי קובה חלבית', 'קובה חלבית', 'קובה מחלב' ), 'en' => array( 'Aleppine kibbeh types', 'Aleppine kibbeh', 'Aleppo kibbeh types', 'Halabi kibbeh types', 'كبة حلبية' ) ),
+		'terms' => array( 'he' => array( 'משפחת הקובה החלבית', 'קובה חלבית' ), 'en' => array( 'Aleppine Kibbeh Family', 'Aleppo kibbeh', 'Halabi kibbeh' ) ),
+		'categories' => array( 'culinary-museum', 'syrian-culinary-science', 'aleppo', 'kibbeh' ),
+		'tags' => array( 'syrian-cuisine', 'aleppo', 'kibbeh', 'bulgur' ),
+	),
+	'ingredient-syrian-bulgur' => array(
+		'title' => $c99_text( 'בורגול לקובה: גרגר, מרקם והשריה | Complete99', 'Bulgur for kibbeh: grain, texture and hydration | Complete99' ),
+		'h1' => $c99_text( 'הבורגול שבונה את מעטפת הקובה', 'The bulgur that gives kibbeh its structure' ),
+		'meta' => $c99_text( 'איך בוחרים בורגול לקובה, מה ההבדל בין גרגר דק לבינוני, כיצד השריה משנה מרקם ואיפה מוצאים בורגול דק 500 גרם בחנות.', 'How to choose bulgur for kibbeh, compare fine and medium grain, understand hydration and find the fine bulgur 500 g pack in the store.' ),
+		'queries' => array( 'he' => array( 'בורגול לקובה', 'בורגול דק לקובה', 'סוגי בורגול לקובה' ), 'en' => array( 'bulgur for kibbeh', 'fine bulgur for kibbeh', 'bulghur for kibbeh', 'burghul for kibbeh', 'برغل للكبة' ) ),
+		'terms' => array( 'he' => array( 'בורגול', 'בורגול לקובה' ), 'en' => array( 'bulgur', 'bulghur', 'burghul' ) ),
+		'categories' => array( 'culinary-museum', 'syrian-culinary-science', 'ingredients', 'grains' ),
+		'tags' => array( 'syrian-cuisine', 'bulgur', 'kibbeh', 'wheat' ),
+	),
+	'ingredient-syrian-red-meat' => array(
+		'title' => $c99_text( 'כבש ובקר בקובה ובמטבח הסורי | Complete99', 'Lamb and beef in kibbeh and Syrian cooking | Complete99' ),
+		'h1' => $c99_text( 'כבש ובקר אינם אותו חומר גלם', 'Lamb and beef are not interchangeable' ),
+		'meta' => $c99_text( 'מדריך לבחירה בין כבש לבקר בקובה ובמנות סוריות, עם תשומת לב לטחינה, לשומן, למרקם ולבישול בטוח.', 'A guide to lamb and beef in kibbeh and Syrian dishes, with attention to grind, fat, texture and safe cooking.' ),
+		'queries' => array( 'he' => array( 'כבש ובקר במטבח הסורי', 'בשר לקובה', 'כבש או בקר לקובה', 'בשר טחון לקובה' ), 'en' => array( 'lamb and beef in Syrian cooking', 'meat for kibbeh', 'lamb or beef for kibbeh', 'ground meat for kibbeh', 'لحم للكبة' ) ),
+		'terms' => array( 'he' => array( 'כבש ובקר', 'בשר לקובה' ), 'en' => array( 'lamb and beef', 'kibbeh meat' ) ),
+		'categories' => array( 'culinary-museum', 'syrian-culinary-science', 'ingredients', 'meat' ),
+		'tags' => array( 'syrian-cuisine', 'lamb', 'beef', 'kibbeh' ),
+	),
+	'technique-syrian-bulgur-hydration' => array(
+		'title' => $c99_text( 'איך משרים בורגול לקובה לפי מרקם | Complete99', 'How to hydrate bulgur for kibbeh by texture | Complete99' ),
+		'h1' => $c99_text( 'איך בורגול סופג מים ומשנה מרקם', 'How bulgur absorbs water and changes texture' ),
+		'meta' => $c99_text( 'הבינו כיצד גודל גרגר, מים, טמפרטורה וזמן מנוחה משנים בורגול לקובה, בלי יחס אוניברסלי שאינו מתאים לכל מוצר.', 'See how grain size, water, temperature and resting time change bulgur for kibbeh without relying on one universal ratio.' ),
+		'queries' => array( 'he' => array( 'השריית בורגול לקובה', 'איך משרים בורגול לקובה', 'הרטבת בורגול לקובה', 'יחס מים לבורגול לקובה' ), 'en' => array( 'how to hydrate bulgur for kibbeh', 'soaking bulgur for kibbeh', 'bulgur hydration for kibbeh' ) ),
+		'terms' => array( 'he' => array( 'השריית בורגול', 'הרטבת בורגול' ), 'en' => array( 'bulgur hydration', 'soaking bulgur' ) ),
+		'categories' => array( 'culinary-museum', 'syrian-culinary-science', 'techniques', 'kibbeh' ),
+		'tags' => array( 'syrian-cuisine', 'bulgur-hydration', 'kibbeh', 'texture' ),
+	),
+	'technique-syrian-kibbeh-cooking' => array(
+		'title' => $c99_text( 'איך מבשלים קובה בבטחה: טיגון, צלייה ורוטב | Complete99', 'How to cook kibbeh safely: frying, grilling and sauce | Complete99' ),
+		'h1' => $c99_text( 'ארבע דרכי בישול, תוצאה מבושלת לחלוטין', 'Four cooking paths, one fully cooked result' ),
+		'meta' => $c99_text( 'השוו קובה מטוגנת, צלויה, מבושלת במים או ברוטב, ולמדו לבדוק מרכז מבושל במדחום מזון במקום להסתמך על צבע.', 'Compare fried, grilled, simmered and sauce-cooked kibbeh, and verify a cooked center with a food thermometer rather than color.' ),
+		'queries' => array( 'he' => array( 'איך מבשלים קובה בבטחה', 'איך מבשלים קובה', 'טמפרטורה לקובה', 'טיגון קובה' ), 'en' => array( 'how to cook kibbeh safely', 'kibbeh cooking temperature', 'fried grilled simmered kibbeh' ) ),
+		'terms' => array( 'he' => array( 'בישול קובה', 'קובה מבושלת' ), 'en' => array( 'cooking kibbeh', 'fully cooked kibbeh' ) ),
+		'categories' => array( 'culinary-museum', 'syrian-culinary-science', 'techniques', 'kibbeh' ),
+		'tags' => array( 'syrian-cuisine', 'kibbeh-cooking', 'food-safety', 'thermometer' ),
+	),
+	'tradition-aleppan-jewish-foodways' => array(
+		'title' => $c99_text( 'מאכלי יהודי חלב: קובה, יברה וזיכרון משפחתי | Complete99', 'Aleppan Jewish foodways: kibbeh, yebra and family memory | Complete99' ),
+		'h1' => $c99_text( 'טעמים מחלב שנשאו משפחות אל העולם', 'Aleppan flavors carried across generations' ),
+		'meta' => $c99_text( 'גלו את מסורות האוכל של יהודי חלב דרך קובה חמודה, דג׳אג׳ משווי, יברה עם משמשים וסיפורים שעברו אל מטבחי התפוצות.', 'Discover Aleppan Jewish foodways through kibbeh hamda, dajaj mashwi, yebra with apricots and stories carried into diaspora kitchens.' ),
+		'queries' => array( 'he' => array( 'מסורת האוכל של יהודי חלב', 'מאכלי יהודי חלב', 'המטבח היהודי החַלבי', 'מסורת יהודי חלב' ), 'en' => array( 'Aleppan Jewish foodways', 'Aleppan Jewish food', 'Aleppo Jewish cuisine' ) ),
+		'terms' => array( 'he' => array( 'יהודי חלב', 'מאכלי יהודי חלב' ), 'en' => array( 'Aleppan Jews', 'Aleppan Jewish cuisine' ) ),
+		'categories' => array( 'culinary-museum', 'syrian-culinary-science', 'traditions', 'aleppan-jewish' ),
+		'tags' => array( 'syrian-cuisine', 'aleppo', 'jewish-foodways', 'diaspora' ),
+	),
+);
+$syrian_public_profile_copy = array(
+	'scientific' => $c99_text( 'המדע נכנס רק כשהוא עוזר להבין מרקם, מים, חום או בטיחות בצורה שימושית.', 'Science appears where it helps explain texture, water, heat or safety in a useful way.' ),
+	'cultural' => $c99_text( 'הטעמים נשארים קשורים לעיר, למשפחה ולקהילה שמספרות אותם.', 'Flavors stay connected to the city, family and community that carry them.' ),
+	'institutional' => $c99_text( 'בסוף העמוד מחכים ספרים, מוזיאונים וגופי ידע למי שרוצה להעמיק.', 'Books, museums and knowledge institutions await at the end for readers who want to go deeper.' ),
+	'economic' => $c99_text( 'השוואת ערך מתחילה בהתאמה למנה, באיכות חומר הגלם ובכמות שבאמת צריך.', 'Value begins with fit for the dish, ingredient quality and the quantity actually needed.' ),
+	'structural' => $c99_text( 'מכל עמוד אפשר להמשיך באופן טבעי לעיר, למשפחת המנות, לחומרי הגלם ולשיטות.', 'Every page offers a natural path to the city, dish family, ingredients and methods.' ),
+);
+foreach ( $syrian_public_page_copy as $syrian_public_copy_id => $syrian_public_copy ) {
+	$syrian_public_copy_offset = $entity_offsets[ $syrian_public_copy_id ];
+	$entities[ $syrian_public_copy_offset ]['seo']['title'] = $syrian_public_copy['title'];
+	$entities[ $syrian_public_copy_offset ]['seo']['h1'] = $syrian_public_copy['h1'];
+	$entities[ $syrian_public_copy_offset ]['seo']['meta_description'] = $syrian_public_copy['meta'];
+	$entities[ $syrian_public_copy_offset ]['seo']['opening'] = $entities[ $syrian_public_copy_offset ]['summary'];
+	$entities[ $syrian_public_copy_offset ]['seo']['primary_keyword'] = $c99_text( $syrian_public_copy['queries']['he'][0], $syrian_public_copy['queries']['en'][0] );
+	$entities[ $syrian_public_copy_offset ]['seo']['query_variants'] = $syrian_public_copy['queries'];
+	$entities[ $syrian_public_copy_offset ]['seo']['term_variants'] = $syrian_public_copy['terms'];
+	$entities[ $syrian_public_copy_offset ]['taxonomy']['category_path'] = $syrian_public_copy['categories'];
+	$entities[ $syrian_public_copy_offset ]['taxonomy']['tags'] = $syrian_public_copy['tags'];
+	$entities[ $syrian_public_copy_offset ]['trust']['research_method'] = $c99_text( 'האוכל והסיפור מובילים. חומרי הקריאה מחכים בסוף העמוד למי שרוצה להעמיק.', 'Food and story lead the way. Reading sources wait at the end for anyone who wants to go deeper.' );
+	$entities[ $syrian_public_copy_offset ]['trust']['next_review_trigger'] = $c99_text( 'מכירים גרסה משפחתית נוספת? אפשר לשתף אותנו דרך עמוד יצירת הקשר.', 'Know another family version? You can share it through the contact page.' );
+
+	$profile_fact_ids = array();
+	foreach ( $entities[ $syrian_public_copy_offset ]['facts'] as $syrian_public_fact ) {
+		if ( in_array( $syrian_public_fact['id'], $public_fact_allowlists[ $syrian_public_copy_id ], true ) ) {
+			$profile_fact_ids[ $syrian_public_fact['dimension'] ][] = $syrian_public_fact['id'];
+		}
+	}
+	foreach ( $syrian_public_profile_copy as $profile_dimension => $profile_summary ) {
+		$dimension_fact_ids = isset( $profile_fact_ids[ $profile_dimension ] ) ? $profile_fact_ids[ $profile_dimension ] : array();
+		$entities[ $syrian_public_copy_offset ]['profiles'][ $profile_dimension ] = $c99_profile(
+			empty( $dimension_fact_ids ) ? 'pending_evidence' : 'source_backed',
+			$profile_summary['he'],
+			$profile_summary['en'],
+			$dimension_fact_ids
+		);
+	}
+}
+unset( $syrian_public_copy_id, $syrian_public_copy, $syrian_public_copy_offset, $profile_fact_ids, $syrian_public_fact, $profile_dimension, $profile_summary, $dimension_fact_ids );
 
 $lebanese_root_offset = $entity_offsets['cuisine-lebanese-regional'];
 $lebanese_root_name = $c99_text(
@@ -3039,16 +3472,129 @@ $public_meta_descriptions = array(
 	'guide-umami-synergy' => $c99_text( 'סינרגיית אומאמי בין גלוטמט ל-IMP: מנגנון T1R1/T1R3, ההבדל בין מחקר למדידת מוצר וקשרים לדאשי, קומבו וקצואובושי.', 'Glutamate and IMP umami synergy: the T1R1/T1R3 mechanism, research versus product measurement, and links to dashi, kombu and katsuobushi.' ),
 	'guide-wasabi-aitc' => $c99_text( 'AITC וחריפות וואסבי טרי: המערכת האנזימטית, שונות בין זנים ועונות, והקשר בין קנה השורש, המולקולה וכלי הגרירה.', 'AITC and fresh wasabi pungency: the enzyme system, genetic and seasonal variation, and links among the rhizome, molecule and grating tool.' ),
 	'equipment-wasabi-grater' => $c99_text( 'מדריך לבחירת מגררת וואסבי לפי חומר, גודל ותחזוקה, עם קישור לוואסבי טרי ולהסבר על החריפות.', 'Choose a wasabi grater by material, size and care, with links to fresh wasabi and an explanation of pungency.' ),
+	'ingredient-shoyu-koji' => $c99_text( 'קוג׳י לשויו מסויה וחיטה: במה הוא נבדל מקומה קוג׳י, כיצד הוא משתלב בייצור שויו ואילו אלרגנים ותנאי גידול חשוב לבדוק.', 'Shoyu koji from soybeans and wheat: how it differs from kome koji, where it fits in shoyu production and which allergens and cultivation conditions matter.' ),
+	'equipment-kioke' => $c99_text( 'חבית קיוקה מסורתית לשויו: שימוש מתועד, מבנה עץ, תחזוקה והגבול בין כלי תהליך לבין טענת איכות על מוצר.', 'Traditional kioke barrels for shoyu: documented use, wooden construction, care and the boundary between process equipment and a product-quality claim.' ),
+	'guide-koji-hydrolysis' => $c99_text( 'מדריך לאנזימי קוג׳י ולהידרוליזה של עמילנים וחלבונים, עם הבחנה בין מצעים וטווחי פעילות מתוחמים למחקר.', 'A guide to koji enzymes and starch and protein hydrolysis, distinguishing substrates and keeping activity ranges bounded to the research context.' ),
+	'standard-jas-shoyu-1703' => $c99_text( 'תקן JAS 1703 לשויו: הגדרות וספי קטגוריית saishikomi לפי התרגום האנגלי הזמני, בלי להסיק אישור למוצר מסוים.', 'JAS 1703 for shoyu: definitions and saishikomi category thresholds from the tentative English translation, without inferring certification of a specific product.' ),
 );
 foreach ( $public_meta_descriptions as $public_meta_entity_id => $public_meta_description ) {
 	$entities[ $entity_offsets[ $public_meta_entity_id ] ]['seo']['meta_description'] = $public_meta_description;
 }
 
+$c99_owner_publication_pre_gate_entities = array();
+foreach ( $c99_owner_publication_candidate_ids as $candidate_entity_id ) {
+	$c99_owner_publication_pre_gate_entities[ $candidate_entity_id ] = $entities[ $entity_offsets[ $candidate_entity_id ] ];
+}
+if ( function_exists( 'complete99_owner_publication_cached_pre_gate_entities' ) ) {
+	complete99_owner_publication_cached_pre_gate_entities( $c99_owner_publication_pre_gate_entities );
+}
+
+$c99_owner_publication_fallback_status = array(
+	'schema'              => 'complete99-owner-publication-approval-status/v2',
+	'candidate_count'     => count( $c99_owner_publication_candidate_ids ),
+	'approved_count'      => 0,
+	'held_count'          => count( $c99_owner_publication_candidate_ids ),
+	'approved_entity_ids' => array(),
+	'decisions'           => array(),
+	'status_sha256'       => '',
+);
+$c99_owner_publication_status = function_exists( 'complete99_owner_publication_registry_status' )
+	? complete99_owner_publication_registry_status(
+		$c99_owner_publication_registry,
+		$c99_owner_publication_candidate_ids,
+		$entities,
+		dirname( __DIR__ )
+	)
+	: $c99_owner_publication_fallback_status;
+$c99_owner_publication_status_valid = function_exists( 'complete99_owner_publication_status_is_valid' )
+	&& complete99_owner_publication_status_is_valid( $c99_owner_publication_status, $c99_owner_publication_candidate_ids );
+if ( ! $c99_owner_publication_status_valid ) {
+	$c99_owner_publication_status = $c99_owner_publication_fallback_status;
+}
+if ( function_exists( 'complete99_owner_publication_cached_status' ) ) {
+	complete99_owner_publication_cached_status( $c99_owner_publication_status );
+}
+
+$c99_owner_publication_approved_ids = $c99_owner_publication_status_valid
+	? $c99_owner_publication_status['approved_entity_ids']
+	: array();
+$c99_owner_publication_approved_lookup = array_fill_keys( $c99_owner_publication_approved_ids, true );
+$public_pilot_ids = array_values( array_unique( array_merge( $public_pilot_ids, $c99_owner_publication_approved_ids ) ) );
+$public_pilot_lookup = array_fill_keys( $public_pilot_ids, true );
+
+// A public entity may never expose a held candidate through semantic links.
+foreach ( $public_semantic_allowlists as &$public_semantic_targets ) {
+	$public_semantic_targets = array_values(
+		array_filter(
+			$public_semantic_targets,
+			static function ( $target_id ) use ( $public_pilot_lookup ) {
+				return isset( $public_pilot_lookup[ $target_id ] );
+			}
+		)
+	);
+}
+unset( $public_semantic_targets );
+
+foreach ( $c99_owner_publication_candidate_ids as $held_candidate_id ) {
+	if ( isset( $c99_owner_publication_approved_lookup[ $held_candidate_id ] ) ) {
+		continue;
+	}
+	$held_offset = $entity_offsets[ $held_candidate_id ];
+	$entities[ $held_offset ]['surface_class'] = 'editorial_draft';
+	$entities[ $held_offset ]['index_policy'] = 'noindex_private';
+	$entities[ $held_offset ]['publication'] = array(
+		'state'        => 'private_preview',
+		'public_api'   => false,
+		'public_page'  => false,
+		'search_index' => false,
+		'approved_at'  => '',
+	);
+	$entities[ $held_offset ]['seo']['route_mode'] = 'private';
+	$entities[ $held_offset ]['seo']['owner_entity_id'] = $held_candidate_id;
+	$entities[ $held_offset ]['seo']['section_id'] = '';
+	if ( 'reaction-koji-enzymatic-hydrolysis' === $held_candidate_id ) {
+		$entities[ $held_offset ]['seo']['canonical_path'] = $c99_text(
+			'/knowledge/koji-enzymatic-hydrolysis-reaction-private-record/',
+			'/en/knowledge/koji-enzymatic-hydrolysis-reaction-private-record/'
+		);
+	}
+	foreach ( $entities[ $held_offset ]['seo']['link_plan'] as &$held_link ) {
+		$held_link['public_safe'] = false;
+	}
+	unset( $held_link );
+	foreach ( $entities[ $held_offset ]['facts'] as &$held_fact ) {
+		$held_fact['public_safe'] = false;
+	}
+	unset( $held_fact );
+	foreach ( $entities[ $held_offset ]['relations'] as &$held_relation ) {
+		$held_relation['public_safe'] = false;
+	}
+	unset( $held_relation );
+	foreach ( $entities[ $held_offset ]['compliance'] as &$held_compliance_note ) {
+		$held_compliance_note['public_safe'] = false;
+	}
+	unset( $held_compliance_note );
+	$entities[ $held_offset ]['taxonomy']['public_category_path'] = array();
+	$entities[ $held_offset ]['taxonomy']['public_attribute_keys'] = array();
+	$entities[ $held_offset ]['taxonomy']['public_tags'] = array();
+	$entities[ $held_offset ]['review']['status'] = 'research_draft';
+	$entities[ $held_offset ]['review']['language_status'] = 'draft_bilingual';
+	$entities[ $held_offset ]['trust']['attribution_state'] = 'pending_named_review';
+	$entities[ $held_offset ]['visual']['asset_state'] = 'rights_review_required';
+	$entities[ $held_offset ]['visual']['rights_method'] = 'generated_concept_with_human_review';
+	$entities[ $held_offset ]['visual']['rights_state'] = 'pending';
+	$entities[ $held_offset ]['visual']['rights_receipt_digest'] = '';
+}
+
 foreach ( $public_pilot_ids as $public_entity_id ) {
 	$entity_offset = $entity_offsets[ $public_entity_id ];
-	$public_review_date = in_array( $public_entity_id, array( 'museum-culinary-science', 'cuisine-lebanese-regional', 'technique-dashi-extraction', 'molecule-l-glutamate', 'molecule-inosine-monophosphate' ), true )
+	$public_review_date = isset( $c99_owner_publication_approved_lookup[ $public_entity_id ] )
+		? substr( $c99_owner_publication_status['decisions'][ $public_entity_id ]['approved_at'], 0, 10 )
+		: ( in_array( $public_entity_id, array_slice( $c99_syrian_public_vertical_ids, 1 ), true )
+		? '2026-08-08'
+		: ( in_array( $public_entity_id, array( 'museum-culinary-science', 'cuisine-lebanese-regional', 'technique-dashi-extraction', 'molecule-l-glutamate', 'molecule-inosine-monophosphate' ), true )
 		? '2026-08-07'
-		: '2026-08-06';
+		: '2026-08-06' ) );
 	$entities[ $entity_offset ]['surface_class'] = 'public_discovery';
 	$entities[ $entity_offset ]['index_policy'] = 'noindex_until_longform_review';
 	$entities[ $entity_offset ]['publication'] = array(
@@ -3064,7 +3610,10 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 	$entities[ $entity_offset ]['trust']['attribution_state'] = 'organization_editorial_process';
 	$entities[ $entity_offset ]['trust']['substantive_updated_at'] = $public_review_date;
 	$entities[ $entity_offset ]['visual']['asset_state'] = 'approved';
-	$entities[ $entity_offset ]['visual']['rights_method'] = 'generated_for_complete99_with_human_review';
+	$entities[ $entity_offset ]['visual']['rights_method'] = in_array( $public_entity_id, array( 'ingredient-shoyu-koji', 'equipment-kioke', 'guide-koji-hydrolysis', 'reaction-koji-enzymatic-hydrolysis', 'standard-jas-shoyu-1703' ), true )
+		|| in_array( $public_entity_id, array_slice( $c99_syrian_public_vertical_ids, 1 ), true )
+		? 'generated_for_complete99_with_editorial_review'
+		: 'generated_for_complete99_with_human_review';
 	$entities[ $entity_offset ]['visual']['rights_state'] = 'cleared_generated';
 	$entities[ $entity_offset ]['visual']['rights_receipt_digest'] = $public_asset_receipts[ $public_entity_id ];
 	$entities[ $entity_offset ]['taxonomy']['public_category_path'] = $entities[ $entity_offset ]['taxonomy']['category_path'];
@@ -3072,11 +3621,32 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 	$entities[ $entity_offset ]['taxonomy']['public_tags'] = $entities[ $entity_offset ]['taxonomy']['tags'];
 	$entities[ $entity_offset ]['seo']['semantic_entity_ids'] = $public_semantic_allowlists[ $public_entity_id ];
 
+	if ( isset( $public_fact_allowlists[ $public_entity_id ] ) ) {
+		foreach ( $entities[ $entity_offset ]['facts'] as &$public_fact ) {
+			$public_fact['public_safe'] = in_array( $public_fact['id'], $public_fact_allowlists[ $public_entity_id ], true );
+		}
+		unset( $public_fact );
+	}
+
 	foreach ( $entities[ $entity_offset ]['relations'] as &$public_relation ) {
-		$public_relation['public_safe'] = true === $public_relation['public_safe']
-			&& isset( $public_pilot_lookup[ $public_relation['target_id'] ] );
+		if ( isset( $public_relation_id_allowlists[ $public_entity_id ] ) ) {
+			$public_relation['public_safe'] = in_array( $public_relation['id'], $public_relation_id_allowlists[ $public_entity_id ], true )
+				&& ! empty( $public_relation['source_ids'] )
+				&& isset( $public_pilot_lookup[ $public_relation['target_id'] ] );
+		} else {
+			$public_relation['public_safe'] = true === $public_relation['public_safe']
+				&& isset( $public_pilot_lookup[ $public_relation['target_id'] ] );
+		}
 	}
 	unset( $public_relation );
+
+	if ( isset( $public_compliance_allowlists[ $public_entity_id ] ) ) {
+		foreach ( $entities[ $entity_offset ]['compliance'] as &$public_compliance_note ) {
+			$public_compliance_note['public_safe'] = in_array( $public_compliance_note['code'], $public_compliance_allowlists[ $public_entity_id ], true )
+				&& ! empty( $public_compliance_note['source_ids'] );
+		}
+		unset( $public_compliance_note );
+	}
 
 	foreach ( $entities[ $entity_offset ]['seo']['link_plan'] as &$existing_link ) {
 		$existing_link['public_safe'] = false;
@@ -3110,9 +3680,9 @@ foreach ( $public_pilot_ids as $public_entity_id ) {
 }
 
 return array(
-	'schema'        => 'complete99-culinary-science-registry/v5',
-	'version'       => 'culinary-science-2026.08.07.v18',
-	'generated_at'  => '2026-08-07',
+	'schema'        => 'complete99-culinary-science-registry/v6',
+	'version'       => 'culinary-science-2026.08.08.v20',
+	'generated_at'  => '2026-08-08',
 	'locales'       => array( 'he', 'en' ),
 	'surface_class' => 'editorial_draft',
 	'controlled_vocabulary' => array(
@@ -3140,7 +3710,8 @@ return array(
 		'publication_states' => array( 'research_draft', 'private_preview', 'approved_public' ),
 		'route_modes' => array( 'standalone', 'section', 'private' ),
 	),
-	'sources'     => $sources,
-	'entities'    => $entities,
-	'collections' => $collections,
+	'sources'         => $sources,
+	'source_receipts' => $source_receipts,
+	'entities'        => $entities,
+	'collections'     => $collections,
 );

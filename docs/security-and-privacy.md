@@ -114,6 +114,25 @@ is bound to culinary-science registry version 18. The three new reviewed public
 sections do not add an offer, product code, supplier claim, price, stock record,
 checkout path or POS row.
 
+Release 1.19.0 preserves the same 56 product identities, 36 WooCommerce
+products and 20 private planning prices. Culinary-commerce registry version 13
+is bound to culinary-science registry version 19. The frozen artifact encoded
+one Syrian commercial relation from its public/noindex
+`ingredient-syrian-bulgur` record to the already-authorized
+`product-bulgur-fine-500g` WooCommerce identity. It lacked owner approval and
+was never deployed, so that edge never became live. The product remains
+authoritative for its ILS 5.90 price, stock and Product and Offer schema.
+Current v20 holds the science record and emits no public continuation. No other
+Syrian record gains a product code, supplier, offer, stock record, checkout path
+or POS row. Payment remains disabled.
+
+Release 1.20.0 preserves the same 56 product identities, 36 WooCommerce
+products and 20 private planning prices. Culinary-commerce registry version 14
+is bound to culinary-science schema v6 and registry version 20. The five
+Japanese koji and shoyu discoveries create no product code, supplier, offer,
+price, stock record, checkout path or POS row. Eleven reciprocal Woo candidates
+remain private review inputs. Payment remains disabled.
+
 The health response reports culinary-commerce registry validity separately
 from active-offer readiness. Registry validation may be true while readiness is
 false. This prevents a well-formed research graph from being mistaken for a
@@ -127,15 +146,54 @@ market observations. Its one safe consumer gateway remained
 `noindex,follow`; the other 195 Syrian entities remained private. Release
 1.16.0 adds 86 more private Syrian identities and keeps the gateway unchanged.
 
-The current science registry contains 672 entities. The 86-identity Syrian
-expansion, all 121 new Lebanese records, the other 81 Lebanese foundation
-records and the 96-identity Iraqi foundation are private under their respective
-release boundaries, `noindex` and reference-only. One reviewed Lebanese cuisine
-root is eligible for a noindex public page and bounded public API projection.
-It carries no offer, price, stock, supplier or Product schema. The complete
-public science graph contains 27 entities resolving through 19 canonical page
-owners per language and 38 bilingual routes. The 84-identity Japanese cluster
-contains 24 public and 60 private records.
+The current science registry contains 672 entities and 375 sources. All 121 new
+Lebanese records, the other 81 Lebanese foundation records and the 96-identity
+Iraqi foundation are private under their respective release boundaries,
+`noindex` and reference-only. One reviewed Lebanese cuisine root is eligible
+for a noindex public page and bounded public API projection. It carries no
+offer, price, stock, supplier or Product schema. The complete public science
+graph remains exactly 27 entities resolving through 19 standalone page owners
+per language and 38 bilingual routes. Zero science records are indexable. The
+84-identity Japanese cluster contains 24 public and 60 private records. The
+282-identity Syrian cluster contains exactly one public cuisine root and 281
+private records.
+
+Exactly five Japanese records are held editorial candidates, not public
+discovery surfaces. Producer and retail-listing records remain private. Exactly
+three private `literature_context` assay ranges are verified with their complete
+unit, method, specimen scope, conditions, confidence, source and date. The
+ranges are cited study context and confer no operational or food-safety
+authorization. They remain absent from public projection with their parent
+candidate.
+
+The seven Syrian editorial candidates remain private. Across those seven and
+the five Japanese candidates, no trusted owner key or publication receipt
+exists. `dish-kibbeh-meshwiyyeh` also remains private and pending, cannot appear
+in a public link and emits no Recipe schema. Candidate cooking guidance
+prohibits raw kibbeh and keeps ground meat within a fully cooked boundary.
+Source-scoped Aleppan Jewish foodways do not become a claim about every Jewish
+family or the wider Syrian cuisine.
+
+The generated-asset manifest is an editorial evidence registry, not an
+installed-file inventory. It separates 60 catalog assets from 12 held Science
+editorial candidates. Approval v2 requires a trusted signed receipt that binds
+the exact PNG source evidence separately from all four deployable WebP/AVIF
+variants and complete bilingual content. An internal review state or SHA-256
+receipt cannot substitute for that approval.
+
+The package boundary independently defaults to denial. Its exact 1.20 policy
+classifies 47 stems and 175 repository files: 28 public-delivery stems, 18 held
+repository-only stems and one approved superseded archive stem. Only 70 public
+delivery files enter the ZIP. Exactly 105 files remain repository-only: 78 held
+files, 24 active public PNG source-evidence files and three archive files. This
+excludes all 60 held derivatives present in the earlier 1.20 candidate package
+while preserving all 78 held files as private evidence.
+
+An infrastructure artifact may proceed only through protected `main`, green
+required CI and the controlled WordPress workflow, without publishing held
+content. Any later approved candidate requires a newly reviewed and rebuilt
+artifact with the four exact approved delivery variants. This boundary is not a
+claim that any deployment or live publication occurred.
 
 Four new Syrian records remain held for unresolved botanical, preservation or
 exact identity questions. Family and community records are source-scoped and
@@ -239,6 +297,33 @@ Customer contact and address details are available only through the
 authenticated single-order operations endpoint. That response is private,
 no-store and excludes credentials, payment tokens, IP addresses and user
 agents.
+
+## Cross-domain binding review
+
+Cross-domain binding candidates are private editorial evidence. Candidate and
+rejected targets, evidence references, bilingual decision notes, reviewer IDs
+and review dates must never appear in public REST, page schema, navigation or
+Woo product metadata. The public health surface may expose only the registry
+version and a validity boolean. The capability-gated review surface may inspect
+the full registry, but it remains read-only.
+
+The registry never derives identity from a name, slug, translation or partial
+string match. Woo-to-science candidates require matching explicit declarations
+in both source registries. Invalid input digests, incomplete census coverage,
+one-sided relations or malformed reviews produce empty cross-domain indexes.
+They do not trigger a fallback match and do not publish or mutate any source
+record.
+
+Version 3 contains exactly 95 unresolved census records: 12 dishes, 47
+dish-scoped components and 36 Woo products. It also contains 11 private
+reciprocal Woo candidates. All five verified or public indexes are literally
+empty. Candidate targets, reviewer identity, evidence references and decisions
+remain capability-gated and cannot appear in public navigation, schema, REST or
+Woo metadata.
+
+The private decision overlay is valid but currently contains zero decisions and
+zero recognized reviewer authorities. Missing authority cannot be interpreted
+as approval, and the overlay exposes no public fallback.
 
 ## Cameras, devices and robots
 

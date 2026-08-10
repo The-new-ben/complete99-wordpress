@@ -1,7 +1,111 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-08
-Release target: Complete99 Platform 1.18.2
+Release target: Complete99 Platform 1.20.0
+
+## Current 1.20.0 Japanese koji and measurement boundary
+
+Release 1.20.0 keeps the culinary-science registry at 672 identities and Entity
+Studio at 728 subjects, and expands the source register to 375. Science schema
+`complete99-culinary-science-registry/v6` and version
+`culinary-science-2026.08.08.v20` bind to culinary-commerce
+`culinary-commerce-2026.08.08.v14`. The current public graph remains exactly 27
+entities across 19 standalone page owners per language and 38 bilingual routes.
+All public science records remain `noindex,follow`, outside the sitemap, with
+zero indexable science records.
+
+The five held Japanese editorial candidates are exactly shoyu koji, kioke, the
+koji-hydrolysis guide, JAS 1703 shoyu standard context and the koji
+enzymatic-hydrolysis reaction. The first four are proposed standalone owners;
+the reaction is a proposed section of the guide. Without an owner publication
+receipt they remain private, so the 84-identity Japanese cluster stays split
+into 24 public and 60 private records. Producer and retail-listing records and
+all shoyu-to-dish or reaction-to-product hypotheses remain private.
+
+Exactly three private measurements are verified as `literature_context` with
+their complete source scope: neutral protease 500-700 U/g, acidic protease
+50-150 U/g and leucine aminopeptidase 50-250 U/g from one 46-hour study of three
+*Aspergillus oryzae* strains. They are reported assay ranges, not operating
+targets, specifications or safety limits, and they do not render publicly while
+the parent candidate is held.
+
+Cross-domain binding registry v3 holds exactly 95 unresolved records: 12 dishes,
+47 dish-scoped components and 36 Woo products. Eleven reciprocal Woo candidates
+remain private. All five verified or public indexes are literally empty, so the
+registry creates no public link and performs no source or WooCommerce mutation.
+The valid private decision overlay reports zero decisions and zero recognized
+reviewer authorities.
+The exact 36 WooCommerce products, 56 product identities, 20 private planning
+prices, prices, stock authority, cart and disabled payment state remain
+unchanged.
+
+The generated-asset manifest is an editorial evidence registry, not an
+installed-file inventory. It records 60 catalog assets plus 12 separately
+classified science editorial candidates. All twelve, seven Syrian and five
+Japanese, remain held. Approval v2 binds each exact PNG source-evidence receipt
+separately from the four deployable WebP/AVIF variants and complete bilingual
+content. No trusted owner key or receipt exists; file receipts prove identity
+and integrity, not publication approval.
+
+The 1.20 Science package policy defaults to denial across exactly 47 stems and
+175 files: 28 public-delivery stems, 18 held repository-only stems and one
+approved superseded archive stem. A rebuilt ZIP contains exactly 70 public
+delivery files and excludes exactly 105 repository-only files: 78 held files,
+24 active public PNG source-evidence files and three archive files. All 60 held
+derivatives formerly packaged by the earlier 1.20 candidate are removed, while
+all 78 held files remain in the repository as evidence.
+
+This infrastructure candidate may use only the protected-main, green-CI,
+controlled deployment workflow and must not publish held content. Any future
+valid approval requires a newly reviewed and rebuilt artifact with all four
+exact delivery variants. This runbook records no deployment or live-publication
+claim.
+
+## Preserved 1.19.0 Syrian Aleppo artifact boundary
+
+Release 1.19.0 keeps the culinary-science registry at 672 identities and Entity
+Studio at 728 subjects, and expands the source register to 374. The registry
+pair is `culinary-science-2026.08.08.v19` and
+`culinary-commerce-2026.08.08.v13`. The frozen artifact encoded 34 public/noindex
+entities across 26 standalone page owners per language and 52 bilingual routes.
+No named owner publication receipt was recorded and the artifact was never
+deployed, so the live science boundary stayed at 27 entities across 19 owners
+and 38 routes.
+
+Inside the frozen artifact, the Syrian cluster remains exactly 282 identities:
+8 are public/noindex and 274 are private. Seven reviewed candidates cover
+Aleppo, the Aleppine kibbeh family, Syrian bulgur, cooked lamb and beef,
+hydration, fully cooked kibbeh methods and source-scoped Aleppan Jewish
+foodways. Seven original responsive science image sets support those records.
+The frozen manifest encoded public usage without owner approval; current v20
+holds all seven in the dedicated science-asset collection. The separate
+60-entry generated catalog asset collection is unchanged.
+
+The frozen artifact encoded an editorial relation from
+`ingredient-syrian-bulgur` to the existing `product-bulgur-fine-500g`
+commercial identity, whose live WooCommerce price is ILS 5.90. The product owner
+remains authoritative for Product and Offer facts. Because 1.19 was never
+deployed, the relation never became live; current v20 emits no public
+continuation from the held science record. The other Syrian candidates receive
+no commercial binding.
+The exact 36 products, 56 product identities, 20 private planning prices,
+current stock and cart behavior remain unchanged, and payment stays disabled.
+
+Before release, prove all of the following:
+
+1. `dish-kibbeh-meshwiyyeh` remains private, pending culinary testing and absent
+   from public routes, links and Recipe schema.
+2. Public safety copy contains no raw kibbeh method and keeps ground meat within
+   a fully cooked boundary.
+3. The seven candidates remain absent from anonymous routes, navigation,
+   canonical and hreflang output until approval v2 verifies a trusted owner
+   receipt and a newly reviewed artifact carries all four exact delivery
+   variants.
+4. A future reviewed public build must expose consumer food language and
+   collapsed source material, never registry, workflow, evidence-gate or prompt
+   terminology.
+5. The private bulgur relation does not render a public link or change the exact
+   existing offer's price, stock or checkout state.
 
 ## Current 1.18.2 mobile acceptance patch
 

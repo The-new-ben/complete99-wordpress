@@ -355,11 +355,102 @@ $matching_readback = array(
     'ready' => true,
     'receipt' => array('mutation_id' => 'mutation-12345678', 'deployment_id' => 'deployment-12345678'),
 );
+$science_registry = require COMPLETE99_PLATFORM_DIR . 'data/culinary-science-pilot.php';
+$owner_publication_status = complete99_owner_publication_cached_status();
+$science_entities = array();
+foreach ($science_registry['entities'] as $science_entity) {{
+    $science_entities[$science_entity['id']] = $science_entity;
+}}
+$science_relation_state = new ReflectionMethod('Complete99_Live_Catalog', 'science_relation_state');
+$science_relation_state->setAccessible(true);
+$held_entity = $science_entities['ingredient-syrian-bulgur'];
+$missing_decision_status = $owner_publication_status;
+unset($missing_decision_status['decisions']['ingredient-syrian-bulgur']);
+$coherent_missing_decision_status = $missing_decision_status;
+$coherent_missing_decision_status['candidate_count'] = 11;
+$coherent_missing_decision_status['held_count'] = 11;
+$coherent_missing_decision_status['status_sha256'] = complete99_owner_publication_status_digest($coherent_missing_decision_status);
+$approved_decision_status = $owner_publication_status;
+$approved_decision_status['decisions']['ingredient-syrian-bulgur']['approved'] = true;
+$approved_decision_status['decisions']['ingredient-syrian-bulgur']['state'] = 'owner_approved_publication';
+$approved_list_status = $owner_publication_status;
+$approved_list_status['approved_entity_ids'][] = 'ingredient-syrian-bulgur';
+$wrong_decision_status = $owner_publication_status;
+$wrong_decision_status['decisions']['ingredient-syrian-bulgur']['entity_id'] = 'ingredient-arbitrary-private';
+$public_api_entity = $held_entity;
+$public_api_entity['publication']['public_api'] = true;
+$public_page_entity = $held_entity;
+$public_page_entity['publication']['public_page'] = true;
+$public_route_entity = $held_entity;
+$public_route_entity['seo']['route_mode'] = 'standalone';
+$wrong_product_entity = $held_entity;
+$wrong_product_entity['commerce']['woo_product_code'] = 'product-couscous-1kg';
+$coherently_public_entity = $held_entity;
+$coherently_public_entity['surface_class'] = 'public_discovery';
+$coherently_public_entity['publication']['state'] = 'approved_public';
+$coherently_public_entity['publication']['public_api'] = true;
+$coherently_public_entity['publication']['public_page'] = true;
+$coherently_public_entity['seo']['route_mode'] = 'standalone';
+$coherently_public_entity['seo']['canonical_path']['he'] = '/ingredients/syrian-bulgur/';
+$coherently_public_entity['seo']['canonical_path']['en'] = '/en/ingredients/syrian-bulgur/';
+$coherently_public_entity['commerce']['state'] = 'active_offer';
+$coherently_public_entity['commerce']['public_offer_allowed'] = true;
+$fully_approved_candidate_status = $owner_publication_status;
+$fully_approved_candidate_status['decisions']['ingredient-syrian-bulgur']['approved'] = true;
+$fully_approved_candidate_status['decisions']['ingredient-syrian-bulgur']['state'] = 'owner_approved_publication';
+$fully_approved_candidate_status['decisions']['ingredient-syrian-bulgur']['reason'] = 'exact_owner_receipt_and_delivery_verified';
+$fully_approved_candidate_status['decisions']['ingredient-syrian-bulgur']['receipt_id'] = 'owner-publication-receipt-live-catalog-test';
+$fully_approved_candidate_status['decisions']['ingredient-syrian-bulgur']['receipt_sha256'] = 'sha256:' . str_repeat('1', 64);
+$fully_approved_candidate_status['decisions']['ingredient-syrian-bulgur']['approved_at'] = '2026-08-08T09:00:00+03:00';
+$fully_approved_candidate_status['decisions']['ingredient-syrian-bulgur']['delivery_validation'] = 'exact';
+$fully_approved_candidate_status['approved_entity_ids'][] = 'ingredient-syrian-bulgur';
+$fully_approved_candidate_status['approved_count'] = 1;
+$fully_approved_candidate_status['held_count'] = 11;
+$fully_approved_candidate_status['status_sha256'] = complete99_owner_publication_status_digest($fully_approved_candidate_status);
+$coherent_subset_status = $fully_approved_candidate_status;
+$coherent_subset_status['decisions'] = array(
+    'ingredient-syrian-bulgur' => $fully_approved_candidate_status['decisions']['ingredient-syrian-bulgur'],
+);
+$coherent_subset_status['candidate_count'] = 1;
+$coherent_subset_status['approved_count'] = 1;
+$coherent_subset_status['held_count'] = 0;
+$coherent_subset_status['status_sha256'] = complete99_owner_publication_status_digest($coherent_subset_status);
+$delivery_pending_status = $owner_publication_status;
+$delivery_pending_status['decisions']['ingredient-syrian-bulgur']['state'] = 'held_pending_exact_asset_delivery';
+$delivery_pending_status['decisions']['ingredient-syrian-bulgur']['reason'] = 'approved_delivery_bundle_missing';
+$delivery_pending_status['decisions']['ingredient-syrian-bulgur']['receipt_id'] = 'owner-publication-receipt-live-catalog-test';
+$delivery_pending_status['decisions']['ingredient-syrian-bulgur']['receipt_sha256'] = 'sha256:' . str_repeat('1', 64);
+$delivery_pending_status['decisions']['ingredient-syrian-bulgur']['approved_at'] = '2026-08-08T09:00:00+03:00';
+$delivery_pending_status['decisions']['ingredient-syrian-bulgur']['delivery_validation'] = 'missing';
+$delivery_pending_status['status_sha256'] = complete99_owner_publication_status_digest($delivery_pending_status);
+$held_science_gate = array(
+    'bundle_state' => $bundle['science_relation_states']['product-bulgur-fine-500g'],
+    'actual' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $held_entity, $owner_publication_status),
+    'missing_decision' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $held_entity, $missing_decision_status),
+    'approved_decision' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $held_entity, $approved_decision_status),
+    'approved_list' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $held_entity, $approved_list_status),
+    'wrong_decision_id' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $held_entity, $wrong_decision_status),
+    'public_api' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $public_api_entity, $owner_publication_status),
+    'public_page' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $public_page_entity, $owner_publication_status),
+    'public_route' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $public_route_entity, $owner_publication_status),
+    'wrong_product' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $wrong_product_entity, $owner_publication_status),
+    'coherent_public_tamper' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $coherently_public_entity, $owner_publication_status),
+    'coherent_public_missing_decision' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $coherently_public_entity, $coherent_missing_decision_status),
+    'coherent_public_approved' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $coherently_public_entity, $fully_approved_candidate_status),
+    'coherent_subset_approval' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $coherently_public_entity, $coherent_subset_status),
+    'delivery_pending' => $science_relation_state->invoke(null, 'product-bulgur-fine-500g', 'ingredient-syrian-bulgur', $held_entity, $delivery_pending_status),
+    'public_control' => $science_relation_state->invoke(null, 'product-rishiri-kombu-100g', 'ingredient-kombu', $science_entities['ingredient-kombu'], $owner_publication_status),
+);
 echo wp_json_encode(array(
     'products' => $products,
     'policy' => $bundle['policy'],
     'prices' => $bundle['price_registry'],
     'relations' => $bundle['relations'],
+    'public_relations' => array(
+        'held' => Complete99_Live_Catalog::relations_for_product_code('product-bulgur-fine-500g'),
+        'public' => Complete99_Live_Catalog::relations_for_product_code('product-rishiri-kombu-100g'),
+    ),
+    'held_science_gate' => $held_science_gate,
     'consumer_menu' => $consumer_menu,
     'product_identity' => array(
         'equal_across_languages' => $digest_value->invoke(null, $identity_he) === $digest_value->invoke(null, $identity_en),
@@ -432,11 +523,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_18_2(self) -> None:
+    def test_release_version_is_exact_1_20_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.18\.2$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.18.2' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.18.2' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.20\.0$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.20.0' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.20.0' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -769,11 +860,17 @@ echo wp_json_encode(array(
         self.assertNotIn("self::route( 'store', $lang ) . '#c99-product-code-'", self.consumer)
         self.assertIn("render_live_ingredient_index( $lang )", self.consumer)
 
+        relation_loader = self.live_catalog.split(
+            "private static function load_bundle", 1
+        )[1].split("private static function science_relation_state", 1)[0]
+        self.assertIn("complete99_owner_publication_cached_status()", relation_loader)
+        self.assertIn("self::science_relation_state(", relation_loader)
+        self.assertIn("$science_entities[ $science_entity_id ]", relation_loader)
+
         relation_validation = self.live_catalog.split(
-            "if ( '' !== $science_entity_id )", 1
-        )[1].split("foreach ( $public['tags'] as $tag )", 1)[0]
+            "private static function science_relation_state", 1
+        )[1].split("private static function preflight", 1)[0]
         for marker in (
-            "$science_entities[ $science_entity_id ]",
             "'public_discovery'",
             "'approved_public'",
             "'public_api'",
@@ -782,8 +879,63 @@ echo wp_json_encode(array(
             "'active_offer'",
             "'public_offer_allowed'",
             "'woo_product_code'",
+            "complete99_owner_publication_status_is_valid",
+            "'held_pending_owner_approval'",
+            "'held_pending_exact_asset_delivery'",
+            "'exact_owner_receipt_and_delivery_verified'",
+            "'approved_entity_ids'",
+            "'editorial_draft'",
+            "'private_preview'",
+            "'search_index'",
+            "'private'",
+            "'held_private_candidate'",
         ):
             self.assertIn(marker, relation_validation)
+
+    def test_held_science_candidate_stays_private_and_fails_closed_on_tamper(self) -> None:
+        raw_relation = self.bundle["relations"]["products"][
+            "product-bulgur-fine-500g"
+        ]
+        self.assertEqual(
+            "ingredient-syrian-bulgur", raw_relation["science_entity_id"]
+        )
+        self.assertEqual(["couscous"], raw_relation["dish_slugs"])
+
+        public_relation = self.bundle["public_relations"]["held"]
+        self.assertNotIn("science_entity_id", public_relation)
+        self.assertEqual("ingredient-bulgur", public_relation["ingredient_code"])
+        self.assertEqual(["couscous"], public_relation["dish_slugs"])
+        self.assertEqual(
+            "ingredient-kombu",
+            self.bundle["public_relations"]["public"]["science_entity_id"],
+        )
+
+        gate = self.bundle["held_science_gate"]
+        self.assertEqual("held_private_candidate", gate["bundle_state"])
+        self.assertEqual("held_private_candidate", gate["actual"])
+        self.assertEqual("held_private_candidate", gate["delivery_pending"])
+        self.assertEqual("approved_public", gate["public_control"])
+        for tamper in (
+            "missing_decision",
+            "approved_decision",
+            "approved_list",
+            "wrong_decision_id",
+            "public_api",
+            "public_page",
+            "public_route",
+            "wrong_product",
+            "coherent_public_tamper",
+            "coherent_public_missing_decision",
+            "coherent_subset_approval",
+        ):
+            self.assertEqual("", gate[tamper], tamper)
+        self.assertEqual("approved_public", gate["coherent_public_approved"])
+
+        public_resolver = self.live_catalog.split(
+            "public static function relations_for_product_code", 1
+        )[1].split("public static function product_codes_for_dish_slug", 1)[0]
+        self.assertIn("'approved_public'", public_resolver)
+        self.assertIn("unset( $relation['science_entity_id'] )", public_resolver)
 
     def test_product_assets_are_unique_webp_files_with_exact_hashes(self) -> None:
         hashes = set()

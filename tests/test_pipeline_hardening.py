@@ -361,7 +361,7 @@ class PipelineHardeningTests(unittest.TestCase):
         metadata, artifact, raw = DEPLOY.load_artifact(
             (ROOT / "plugin-dist").resolve()
         )
-        self.assertEqual("1.18.2", metadata["version"])
+        self.assertEqual("1.20.0", metadata["version"])
         self.assertRegex(metadata["installed_sha256"], r"^[a-f0-9]{64}$")
 
         entries: list[bytes] = []

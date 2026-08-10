@@ -24,9 +24,15 @@ final class Complete99_Consumer {
 
 	private static function dish_entity_tree( $slug ) {
 		if ( null === self::$dish_entities ) {
-			$records = require COMPLETE99_PLATFORM_DIR . 'data/dish-entity-trees.php';
+			$registry = require COMPLETE99_PLATFORM_DIR . 'data/dish-entity-trees.php';
+			$records  = is_array( $registry )
+				&& 'complete99-dish-entity-tree-registry/v1' === ( $registry['schema'] ?? '' )
+				&& isset( $registry['dishes'] )
+				&& is_array( $registry['dishes'] )
+				? $registry['dishes']
+				: array();
 			self::$dish_entities = array();
-			foreach ( is_array( $records ) ? $records : array() as $record ) {
+			foreach ( $records as $record ) {
 				$record_slug = sanitize_title( (string) ( $record['identity']['slug'] ?? '' ) );
 				if ( '' !== $record_slug ) {
 					self::$dish_entities[ $record_slug ] = $record;

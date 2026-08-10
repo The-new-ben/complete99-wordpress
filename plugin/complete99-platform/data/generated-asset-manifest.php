@@ -1280,4 +1280,460 @@ foreach ( $c99_generated_asset_manifest['assets'] as &$c99_asset_record ) {
 }
 unset( $c99_asset_record );
 
+/*
+ * Public culinary-editorial assets are kept in a separate collection so the
+ * exact 60-image WooCommerce catalog contract remains unchanged. Each record
+ * is bound to one knowledge entity and cannot be interpreted as a product
+ * photograph, supplier pack, tested recipe or current service presentation.
+ */
+$c99_syrian_science_asset = static function ( $record ) {
+	$stem      = (string) $record['stem'];
+	$entity_id = (string) $record['entity_id'];
+	$source    = (array) $record['source'];
+	$files     = (array) $record['files'];
+	$webp      = (array) $files['webp'];
+
+	return array(
+		'slug'                        => $stem,
+		'stable_slug'                 => preg_replace( '/^c99-science-|-v01$/', '', $stem ),
+		'label'                       => (array) $record['label'],
+		'alt'                         => (array) $record['alt'],
+		'asset_type'                  => 'science_editorial',
+		'provenance'                  => 'openai-imagegen-session',
+		'generation_interface'        => 'built-in-image_gen',
+		'generation_source_filename'  => (string) $source['generation_filename'],
+		'source_filename'             => $stem . '.png',
+		'source_relative_path'        => 'assets/images/science/' . $stem . '.png',
+		'source_sha256'               => (string) $source['sha256'],
+		'source_bytes'                => (int) $source['bytes'],
+		'filename'                    => $stem . '.webp',
+		'target_filename'             => $stem . '.webp',
+		'relative_path'               => 'assets/images/science/' . $stem . '.webp',
+		'width'                       => 1536,
+		'height'                      => 1024,
+		'aspect_ratio'                => '3:2',
+		'sha256'                      => (string) $webp['sha256'],
+		'bytes'                       => (int) $webp['bytes'],
+		'files'                       => $files,
+		'review_state'                => 'evaluation',
+		'usage_state'                 => 'held',
+		'rights'                      => 'OpenAI generated for Complete99; held for explicit owner publication approval',
+		'prompt_en'                   => (string) $record['prompt_en'],
+		'negative_prompt_en'          => (string) $record['negative_prompt_en'],
+		'prompt_record_type'          => 'reviewed_generation_specification_pending_owner_publication_receipt',
+		'generation_model'            => 'openai-imagegen',
+		'generation_reviewed_at'      => '2026-08-08',
+		'presentation_scope'          => 'illustrative_evaluation_only',
+		'actual_product_presentation' => false,
+		'delivery_review_state'       => 'png_webp_avif_visually_and_mechanically_checked',
+		'conversion'                  => array(
+			'engine'       => 'ImageMagick 7',
+			'webp_quality' => 68,
+			'avif_quality' => 40,
+			'responsive'   => 'Lanczos 768x512',
+		),
+		'public_delivery_receipt'     => array(
+			'filename'      => $stem . '.webp',
+			'relative_path' => 'assets/images/science/' . $stem . '.webp',
+			'sha256'        => (string) $webp['sha256'],
+			'bytes'         => (int) $webp['bytes'],
+			'width'         => 1536,
+			'height'        => 1024,
+		),
+		'rights_receipt_digest'       => '',
+		'publication_approval_state'  => 'held_pending_owner_approval',
+		'publication_approval_receipt_id' => '',
+		'related_entity_code'         => $entity_id,
+		'related_entity_codes'        => array( $entity_id ),
+		'related_product_code'        => '',
+		'related_product_codes'       => array(),
+		'visual_caveat'               => (array) $record['caveat'],
+		'visual_caveats'              => array( (string) $record['caveat']['en'] ),
+	);
+};
+
+$c99_syrian_shared_negative_prompt = 'No text, logos, brands, flags, national symbols, costumes, copied packaging, religious props, raw meat, pink center, unsourced garnish, health claim or watermark.';
+
+$c99_generated_asset_manifest['science_asset_schema'] = 'complete99-generated-science-asset-manifest/v1';
+$c99_generated_asset_manifest['science_reviewed_at']  = '2026-08-08';
+$c99_generated_asset_manifest['science_assets'] = array(
+	$c99_syrian_science_asset(
+		array(
+			'stem'       => 'c99-science-syrian-aleppo-table-v01',
+			'entity_id'  => 'region-syria-aleppo',
+			'label'      => array( 'he' => 'שולחן חלאבי עשיר', 'en' => 'Aleppo culinary table' ),
+			'alt'        => array(
+				'he' => 'שולחן קולינרי חַלבי עם קובה מבושלת, בורגול, ממרח פלפל ואגוז, דובדבנים חמוצים, חבוש ולחם שטוח',
+				'en' => 'Aleppine culinary table with cooked kibbeh, bulgur, red pepper and walnut spread, sour cherries, quince and flatbread',
+			),
+			'source'     => array(
+				'generation_filename' => 'region-syria-aleppo-source.png',
+				'sha256'             => '90e354e00d4a5e63f661f162284b1b5d0dc21fcada53e2f34d5f937fdd784042',
+				'bytes'              => 2702757,
+			),
+			'files'      => array(
+				'png'      => array( 'filename' => 'c99-science-syrian-aleppo-table-v01.png', 'relative_path' => 'assets/images/science/c99-science-syrian-aleppo-table-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2702757, 'sha256' => '90e354e00d4a5e63f661f162284b1b5d0dc21fcada53e2f34d5f937fdd784042' ),
+				'webp'     => array( 'filename' => 'c99-science-syrian-aleppo-table-v01.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-aleppo-table-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 152402, 'sha256' => '12be0704e4211ec5b39686ff291ee1b1c162cde2d93e6fc66b83c3316c1fd6c6' ),
+				'avif'     => array( 'filename' => 'c99-science-syrian-aleppo-table-v01.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-aleppo-table-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 66291, 'sha256' => 'b76d2dbe8988e2ff77f3945a7a76ba406526a7f083a4c3ff98e77402af697a2c' ),
+				'webp_768' => array( 'filename' => 'c99-science-syrian-aleppo-table-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-aleppo-table-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 53280, 'sha256' => 'bf33c3713d91c02314dcba5a12880fb4c1ff52a1517687d9de63556d1a66b73a' ),
+				'avif_768' => array( 'filename' => 'c99-science-syrian-aleppo-table-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-aleppo-table-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 21506, 'sha256' => '5c988117343f91799e5901c761825510b1a43afc38711c9c76738cc81d87b12e' ),
+			),
+			'prompt_en'  => 'Commercial culinary editorial photograph of an abundant Aleppo table with several fully cooked kibbeh forms, bulgur, red pepper and walnut spread, sour cherries, quince and warm flatbread, inviting natural window light, accurate food textures, no decorative stereotypes.',
+			'negative_prompt_en' => $c99_syrian_shared_negative_prompt,
+			'caveat'     => array(
+				'he' => 'איור קולינרי של שולחן חלאבי, לא צילום של מוצר, מתכון שנבדק או מנה המוגשת כיום.',
+				'en' => 'Culinary illustration of an Aleppo table, not a product photograph, tested recipe or currently served dish.',
+			),
+		)
+	),
+	$c99_syrian_science_asset(
+		array(
+			'stem'       => 'c99-science-aleppine-kibbeh-family-v01',
+			'entity_id'  => 'hub-aleppine-kibbeh-family',
+			'label'      => array( 'he' => 'משפחת הקובה החלאבית', 'en' => 'Aleppine kibbeh family' ),
+			'alt'        => array(
+				'he' => 'תצוגת השוואה של קובה חלבית מבושלת בצורות צלויות, מטוגנות, מגולגלות ומבושלות ברוטב',
+				'en' => 'Comparison display of fully cooked Aleppine kibbeh in grilled, fried, rolled and sauce-cooked forms',
+			),
+			'source'     => array(
+				'generation_filename' => 'hub-aleppine-kibbeh-family-source.png',
+				'sha256'             => '8ce08587469c4d1c6f18f3cd399c41b5fbfb2f6cc72b23a3046bca167ac8fbdc',
+				'bytes'              => 3423946,
+			),
+			'files'      => array(
+				'png'      => array( 'filename' => 'c99-science-aleppine-kibbeh-family-v01.png', 'relative_path' => 'assets/images/science/c99-science-aleppine-kibbeh-family-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 3423946, 'sha256' => '8ce08587469c4d1c6f18f3cd399c41b5fbfb2f6cc72b23a3046bca167ac8fbdc' ),
+				'webp'     => array( 'filename' => 'c99-science-aleppine-kibbeh-family-v01.webp', 'relative_path' => 'assets/images/science/c99-science-aleppine-kibbeh-family-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 264090, 'sha256' => 'ad8b1b3fdfc59eb22b7e06e443b1477ec152ab4f00985d44533ff7245d1f8d5b' ),
+				'avif'     => array( 'filename' => 'c99-science-aleppine-kibbeh-family-v01.avif', 'relative_path' => 'assets/images/science/c99-science-aleppine-kibbeh-family-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 100486, 'sha256' => 'e852acee075ced29382816cf72126596dc9be163c252f7e47e9da96673af3c85' ),
+				'webp_768' => array( 'filename' => 'c99-science-aleppine-kibbeh-family-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-aleppine-kibbeh-family-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 79274, 'sha256' => 'aeeb41fdc4dfa5cdf5b55d391e8bb08a2823de92797d2ab4e0f2d48e5a5b34dd' ),
+				'avif_768' => array( 'filename' => 'c99-science-aleppine-kibbeh-family-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-aleppine-kibbeh-family-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 26650, 'sha256' => 'bec787d4d6c518e2840b31f055d91189e928e14339e64e3350e781ec7c0429fe' ),
+			),
+			'prompt_en'  => 'Commercial overhead comparison of four distinct fully cooked Aleppine kibbeh forms: grilled, fried, rolled and sauce-cooked, separated on neutral ceramic plates, cutaways fully cooked, warm studio light, no claim of a definitive taxonomy.',
+			'negative_prompt_en' => $c99_syrian_shared_negative_prompt,
+			'caveat'     => array(
+				'he' => 'איור השוואתי שאינו טוען למיון ממצה ואינו מציג מתכון בדוק או מנה המוגשת כיום.',
+				'en' => 'Comparative illustration that does not claim a definitive taxonomy or depict a tested recipe or currently served dish.',
+			),
+		)
+	),
+	$c99_syrian_science_asset(
+		array(
+			'stem'       => 'c99-science-syrian-bulgur-v01',
+			'entity_id'  => 'ingredient-syrian-bulgur',
+			'label'      => array( 'he' => 'בורגול סורי', 'en' => 'Syrian bulgur' ),
+			'alt'        => array(
+				'he' => 'קערות נפרדות של בורגול דק ובינוני עם כף עץ וגרגרי חיטה סדוקה',
+				'en' => 'Separate bowls of fine and medium bulgur with a wooden scoop and cracked wheat grains',
+			),
+			'source'     => array(
+				'generation_filename' => 'ingredient-syrian-bulgur-source.png',
+				'sha256'             => '765a8b844ce6b12448e81e612a74cbd97e8a2e86506002260b1a29af833050a2',
+				'bytes'              => 2690132,
+			),
+			'files'      => array(
+				'png'      => array( 'filename' => 'c99-science-syrian-bulgur-v01.png', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2690132, 'sha256' => '765a8b844ce6b12448e81e612a74cbd97e8a2e86506002260b1a29af833050a2' ),
+				'webp'     => array( 'filename' => 'c99-science-syrian-bulgur-v01.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 134840, 'sha256' => '0abf067b8a84796b002103da6839b549c47adf37bd7821d35b5c0a66b15ab620' ),
+				'avif'     => array( 'filename' => 'c99-science-syrian-bulgur-v01.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 61530, 'sha256' => '751c0eba10bc368aa310678bb09e26efef563dba80eed83e40c80f9475b11608' ),
+				'webp_768' => array( 'filename' => 'c99-science-syrian-bulgur-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 47448, 'sha256' => '1e0ad172fac3ec7b1d9c14456f67322689153abc53e9eb2c98888598460db455' ),
+				'avif_768' => array( 'filename' => 'c99-science-syrian-bulgur-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 18438, 'sha256' => '626744dab964a0eaf42a61bfa6c1287f600513596e07a1ccadb3c0fa47ab3644' ),
+			),
+			'prompt_en'  => 'Commercial macro photograph of fine and medium bulgur grains in separate unbranded ceramic bowls with a wooden scoop, tactile dry grain detail, warm neutral daylight, no origin or grade claim.',
+			'negative_prompt_en' => $c99_syrian_shared_negative_prompt,
+			'caveat'     => array(
+				'he' => 'איור של קטגוריית חומר גלם, לא צילום של מוצר, זן, דרגת טחינה, מקור או אצווה מסוימים.',
+				'en' => 'Ingredient-category illustration, not a photograph of a specific product, variety, grind grade, origin or lot.',
+			),
+		)
+	),
+	$c99_syrian_science_asset(
+		array(
+			'stem'       => 'c99-science-syrian-lamb-beef-family-v01',
+			'entity_id'  => 'ingredient-syrian-red-meat',
+			'label'      => array( 'he' => 'משפחת חומרי הגלם כבש ובקר', 'en' => 'Lamb and beef ingredient family' ),
+			'alt'        => array(
+				'he' => 'מנות נפרדות של כבש ובקר צרובים ומבושלים היטב על שולחן אבן בהיר',
+				'en' => 'Separate dishes of seared, fully cooked lamb and beef on a pale stone table',
+			),
+			'source'     => array(
+				'generation_filename' => 'ingredient-syrian-red-meat-source.png',
+				'sha256'             => 'f2da86bc9b38544c42a1608103ad8b78294ab7385ee4bc93851f5e4716a8337e',
+				'bytes'              => 2490567,
+			),
+			'files'      => array(
+				'png'      => array( 'filename' => 'c99-science-syrian-lamb-beef-family-v01.png', 'relative_path' => 'assets/images/science/c99-science-syrian-lamb-beef-family-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2490567, 'sha256' => 'f2da86bc9b38544c42a1608103ad8b78294ab7385ee4bc93851f5e4716a8337e' ),
+				'webp'     => array( 'filename' => 'c99-science-syrian-lamb-beef-family-v01.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-lamb-beef-family-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 115636, 'sha256' => 'e87dc0d2d74bffe2b48156838a11f704fe35d0480380bd965b186df0affb67db' ),
+				'avif'     => array( 'filename' => 'c99-science-syrian-lamb-beef-family-v01.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-lamb-beef-family-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 49327, 'sha256' => '93590f1431df04a989f7cc2fae9ca0f9c406241eba80ca5117808c96b4b1a21f' ),
+				'webp_768' => array( 'filename' => 'c99-science-syrian-lamb-beef-family-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-lamb-beef-family-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 38118, 'sha256' => 'eb1c408619280d7475ac87aee0ce94253533c255576101c8f40231b877bb8c93' ),
+				'avif_768' => array( 'filename' => 'c99-science-syrian-lamb-beef-family-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-lamb-beef-family-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 15253, 'sha256' => '190d8c7606cca9f18c9b307e95314695a6aee2d19c657ee2bcfb8322757c7d82' ),
+			),
+			'prompt_en'  => 'Commercial culinary photograph of fully cooked lamb and beef presented in separate neutral dishes, clear visual separation, warm natural light, no raw mince and no equivalence cue.',
+			'negative_prompt_en' => $c99_syrian_shared_negative_prompt,
+			'caveat'     => array(
+				'he' => 'איור של משפחת חומרי גלם, לא צילום מוצר, נתח, ספק, אצווה, הכשר או תחליף הדדי בין כבש לבקר.',
+				'en' => 'Ingredient-family illustration, not a product, cut, supplier, lot, certification or statement that lamb and beef are interchangeable.',
+			),
+		)
+	),
+	$c99_syrian_science_asset(
+		array(
+			'stem'       => 'c99-science-syrian-bulgur-hydration-v01',
+			'entity_id'  => 'technique-syrian-bulgur-hydration',
+			'label'      => array( 'he' => 'הידרציית בורגול', 'en' => 'Bulgur hydration' ),
+			'alt'        => array(
+				'he' => 'ארבע קערות המציגות בורגול יבש, ספיחת מים, מנוחה ומרקם לח סופי',
+				'en' => 'Four bowls showing dry bulgur, water uptake, resting and a final hydrated texture',
+			),
+			'source'     => array(
+				'generation_filename' => 'technique-syrian-bulgur-hydration-source.png',
+				'sha256'             => '0839e05df007410bc9ef224683241ac653da4cd35bafe2adc17ac84a12674ccb',
+				'bytes'              => 2457045,
+			),
+			'files'      => array(
+				'png'      => array( 'filename' => 'c99-science-syrian-bulgur-hydration-v01.png', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-hydration-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2457045, 'sha256' => '0839e05df007410bc9ef224683241ac653da4cd35bafe2adc17ac84a12674ccb' ),
+				'webp'     => array( 'filename' => 'c99-science-syrian-bulgur-hydration-v01.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-hydration-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 102572, 'sha256' => '762a91a1a3c00483b1c5a572f17b4659a328ee86cf832a281ef360aace6eecd1' ),
+				'avif'     => array( 'filename' => 'c99-science-syrian-bulgur-hydration-v01.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-hydration-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 48474, 'sha256' => 'b11d0a99c6fadf8ae2a65c442617226984e91b9468ba22f88ef600cb68056c5b' ),
+				'webp_768' => array( 'filename' => 'c99-science-syrian-bulgur-hydration-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-hydration-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 34876, 'sha256' => '4eade017a529f47d94fbb58044c06dbc6c1f79c836b2691b5dbe04af3fb927a1' ),
+				'avif_768' => array( 'filename' => 'c99-science-syrian-bulgur-hydration-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-bulgur-hydration-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 14353, 'sha256' => '0f1013188fb0a543509e32e5d3096b510c098b7ff647d3fe459b54cc0eca9ddc' ),
+			),
+			'prompt_en'  => 'Four-stage bulgur hydration study showing dry grain, water uptake, rested grain and final hydrated texture in identical bowls, controlled workspace, no ratios or instruction text.',
+			'negative_prompt_en' => $c99_syrian_shared_negative_prompt,
+			'caveat'     => array(
+				'he' => 'איור של שינויי מרקם, לא הוראת הכנה, יחס מים, זמן מנוחה או תוצאת ניסוי שנבדקה.',
+				'en' => 'Texture-change illustration, not a preparation instruction, water ratio, resting time or verified experiment result.',
+			),
+		)
+	),
+	$c99_syrian_science_asset(
+		array(
+			'stem'       => 'c99-science-syrian-kibbeh-cooking-v01',
+			'entity_id'  => 'technique-syrian-kibbeh-cooking',
+			'label'      => array( 'he' => 'שיטות בישול קובה', 'en' => 'Kibbeh cooking methods' ),
+			'alt'        => array(
+				'he' => 'ארבע תוצאות של קובה מבושלת לחלוטין בבישול לח, בצלייה, בטיגון וברוטב',
+				'en' => 'Four fully cooked kibbeh outcomes from moist cooking, grilling, frying and sauce cooking',
+			),
+			'source'     => array(
+				'generation_filename' => 'technique-syrian-kibbeh-cooking-source.png',
+				'sha256'             => '0c062a2d04ae4a0307f3af4366869f63e295d64bc99d10712fc016627693f0c3',
+				'bytes'              => 2221839,
+			),
+			'files'      => array(
+				'png'      => array( 'filename' => 'c99-science-syrian-kibbeh-cooking-v01.png', 'relative_path' => 'assets/images/science/c99-science-syrian-kibbeh-cooking-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2221839, 'sha256' => '0c062a2d04ae4a0307f3af4366869f63e295d64bc99d10712fc016627693f0c3' ),
+				'webp'     => array( 'filename' => 'c99-science-syrian-kibbeh-cooking-v01.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-kibbeh-cooking-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 85324, 'sha256' => 'c28467bb07a6900d22618b17791ae6c5eefee7d73bf3c5f1a75b4d4661db2d03' ),
+				'avif'     => array( 'filename' => 'c99-science-syrian-kibbeh-cooking-v01.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-kibbeh-cooking-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 39314, 'sha256' => '3b688c7cc264306637f5ed05104d1b6e244db2a099344be86042870b11213720' ),
+				'webp_768' => array( 'filename' => 'c99-science-syrian-kibbeh-cooking-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-syrian-kibbeh-cooking-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 28304, 'sha256' => '17bde0718851596d1499c5d9683da3c02e79e74ce7754207c37c9f3049667c2a' ),
+				'avif_768' => array( 'filename' => 'c99-science-syrian-kibbeh-cooking-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-syrian-kibbeh-cooking-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 12190, 'sha256' => 'ec4c53ada52785a9fa6c105536980b151e52b8492cb6d9fd9dd45cb496cf8368' ),
+			),
+			'prompt_en'  => 'Four fully cooked kibbeh outcomes from moist cooking, grilling, frying and sauce cooking, cut open with no pink/raw center, controlled culinary studio, no time-temperature text.',
+			'negative_prompt_en' => $c99_syrian_shared_negative_prompt,
+			'caveat'     => array(
+				'he' => 'איור השוואתי בלבד, לא הוראת בטיחות, זמן או טמפרטורה ולא תוצאה של מתכון שנבדק.',
+				'en' => 'Comparative illustration only, not a safety, time or temperature instruction or a tested recipe result.',
+			),
+		)
+	),
+	$c99_syrian_science_asset(
+		array(
+			'stem'       => 'c99-science-aleppan-jewish-foodways-v01',
+			'entity_id'  => 'tradition-aleppan-jewish-foodways',
+			'label'      => array( 'he' => 'מסורות האוכל היהודיות של חלב', 'en' => 'Aleppan Jewish foodways' ),
+			'alt'        => array(
+				'he' => 'שולחן מסורות אוכל של יהודי חלב עם קובה במרק, עוף צלוי ממולא ויברה לצד משמשים מיובשים',
+				'en' => 'Aleppan Jewish foodways table with kibbeh in broth, stuffed roast chicken and yebra beside dried apricots',
+			),
+			'source'     => array(
+				'generation_filename' => 'tradition-aleppan-jewish-foodways-source-v2.png',
+				'sha256'             => 'e3e3da6e28de043fa5f97e3803441c8e84798fab3ac8b810d70cccfe90c35418',
+				'bytes'              => 2680059,
+			),
+			'files'      => array(
+				'png'      => array( 'filename' => 'c99-science-aleppan-jewish-foodways-v01.png', 'relative_path' => 'assets/images/science/c99-science-aleppan-jewish-foodways-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2680059, 'sha256' => 'e3e3da6e28de043fa5f97e3803441c8e84798fab3ac8b810d70cccfe90c35418' ),
+				'webp'     => array( 'filename' => 'c99-science-aleppan-jewish-foodways-v01.webp', 'relative_path' => 'assets/images/science/c99-science-aleppan-jewish-foodways-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 130346, 'sha256' => '1160071fd8b80a9d11ad2792ed8b53643e2b086a4db3d81772ddedf98bba2797' ),
+				'avif'     => array( 'filename' => 'c99-science-aleppan-jewish-foodways-v01.avif', 'relative_path' => 'assets/images/science/c99-science-aleppan-jewish-foodways-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 55988, 'sha256' => '5302c91d7727a644426658560fa26e0c38ced0aeceaf25e1a1a3f93cb456e4f0' ),
+				'webp_768' => array( 'filename' => 'c99-science-aleppan-jewish-foodways-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-aleppan-jewish-foodways-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 38754, 'sha256' => 'aef249e5496dc5b5b5c4c1d80ff2967da0eef8fe7d263a2822a88f3a7ccadfa8' ),
+				'avif_768' => array( 'filename' => 'c99-science-aleppan-jewish-foodways-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-aleppan-jewish-foodways-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 14808, 'sha256' => '17a8e94db9630d7ffb1ecc8a860f3dcb46e7cbe16013b01ac51de4dc7144968a' ),
+			),
+			'prompt_en'  => 'Warm Aleppan Jewish family-food table with fully cooked kibbeh hamda in broth, stuffed roast chicken and family yebra beside dried apricots, separated dishes, documentary natural light, no ritual props/costumes/generalization.',
+			'negative_prompt_en' => $c99_syrian_shared_negative_prompt,
+			'caveat'     => array(
+				'he' => 'איור מערכתי ממוקד למאכלים מתועדים, לא צילום של משפחה מסוימת, טקס, כלל קהילתי, מתכון בדוק או מנה המוגשת כיום.',
+				'en' => 'Editorial illustration focused on documented foods, not a photograph of a particular family, ritual, community-wide rule, tested recipe or currently served dish.',
+			),
+		)
+	),
+);
+
+$c99_japanese_koji_shared_negative_prompt = 'No text, labels, logos, brands, certification marks, product packaging, numeric results, recipe instructions, people, health claims, unsafe mold, raw meat or watermark.';
+$c99_japanese_koji_science_records = array(
+	array(
+		'stem' => 'c99-science-shoyu-koji-substrate-v01',
+		'entity_id' => 'ingredient-shoyu-koji',
+		'label' => array( 'he' => 'קוג׳י לשויו', 'en' => 'Shoyu koji substrate' ),
+		'alt' => array( 'he' => 'מגש קוג׳י לשויו מסויה וחיטה עם מעטה קוג׳י בהיר', 'en' => 'Tray of soybean and wheat shoyu koji with a pale koji bloom' ),
+		'source' => array( 'generation_filename' => 'c99-science-shoyu-koji-substrate-v01.png', 'sha256' => '5cff891c9801e1bcd3c274284f82c580134a841246da444737d41058ca6b509a', 'bytes' => 2677419 ),
+		'files' => array(
+			'png' => array( 'filename' => 'c99-science-shoyu-koji-substrate-v01.png', 'relative_path' => 'assets/images/science/c99-science-shoyu-koji-substrate-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2677419, 'sha256' => '5cff891c9801e1bcd3c274284f82c580134a841246da444737d41058ca6b509a' ),
+			'webp' => array( 'filename' => 'c99-science-shoyu-koji-substrate-v01.webp', 'relative_path' => 'assets/images/science/c99-science-shoyu-koji-substrate-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 151948, 'sha256' => '1213fee79dbd9dfe3d597aaddb0011e57ed0bc014fdd13a83a23ccdf478f1319' ),
+			'avif' => array( 'filename' => 'c99-science-shoyu-koji-substrate-v01.avif', 'relative_path' => 'assets/images/science/c99-science-shoyu-koji-substrate-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 62876, 'sha256' => '4ad56ccb9768dc462e510c7ed08dc59d8e24ea74e7bed5c65385d920bb88f684' ),
+			'webp_768' => array( 'filename' => 'c99-science-shoyu-koji-substrate-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-shoyu-koji-substrate-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 61826, 'sha256' => 'a96cdda0342d6f4457a41b05833450a931ebb110f8855eae4ad7f844894e0a25' ),
+			'avif_768' => array( 'filename' => 'c99-science-shoyu-koji-substrate-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-shoyu-koji-substrate-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 24241, 'sha256' => '92602dd7b9e17bb813b237552443c0da52b7994887b3b1c211dcf6757aa3293a' ),
+		),
+		'prompt_en' => 'Museum-grade macro photograph of prepared soybeans and cracked roasted wheat under a delicate ivory shoyu-koji bloom in a clean unbranded cultivation tray.',
+		'negative_prompt_en' => $c99_japanese_koji_shared_negative_prompt,
+		'caveat' => array( 'he' => 'איור של קטגוריית מצע קוג׳י לשויו, לא צילום של מוצר, אצווה, תרבית, יחס או הוראת ייצור מסוימים.', 'en' => 'Shoyu-koji substrate illustration, not a specific product, lot, culture, ratio or production instruction.' ),
+	),
+	array(
+		'stem' => 'c99-science-kioke-wooden-barrel-v01',
+		'entity_id' => 'equipment-kioke',
+		'label' => array( 'he' => 'חבית קיוקה', 'en' => 'Kioke wooden barrel' ),
+		'alt' => array( 'he' => 'חבית קיוקה מעץ ארז עם חישוקי במבוק בסדנת תסיסה', 'en' => 'Cedar kioke barrel with bamboo hoops in a fermentation workshop' ),
+		'source' => array( 'generation_filename' => 'c99-science-kioke-wooden-barrel-v01.png', 'sha256' => '43508327f310be0c1875d3dd00a9d35daa0502152c659c9b706ff6fa81413ddd', 'bytes' => 2498585 ),
+		'files' => array(
+			'png' => array( 'filename' => 'c99-science-kioke-wooden-barrel-v01.png', 'relative_path' => 'assets/images/science/c99-science-kioke-wooden-barrel-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2498585, 'sha256' => '43508327f310be0c1875d3dd00a9d35daa0502152c659c9b706ff6fa81413ddd' ),
+			'webp' => array( 'filename' => 'c99-science-kioke-wooden-barrel-v01.webp', 'relative_path' => 'assets/images/science/c99-science-kioke-wooden-barrel-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 101652, 'sha256' => 'bafac22402602dbda38f512754a701a4388b262e89dda7e7cac68d6dd2616a23' ),
+			'avif' => array( 'filename' => 'c99-science-kioke-wooden-barrel-v01.avif', 'relative_path' => 'assets/images/science/c99-science-kioke-wooden-barrel-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 42001, 'sha256' => '253829c672293dcff4e96064a0c765b881fd600aaf22f074c9ed61175f2b27a8' ),
+			'webp_768' => array( 'filename' => 'c99-science-kioke-wooden-barrel-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-kioke-wooden-barrel-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 27124, 'sha256' => '9e1aded15a2ec45391299bbbeea6fc6ae6d84f4ac5e86020b49dfe4a3be19a0d' ),
+			'avif_768' => array( 'filename' => 'c99-science-kioke-wooden-barrel-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-kioke-wooden-barrel-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 11723, 'sha256' => '13092eee69ecf4b0a6d6da64346e30f07afe89e4734154cf61492df1e37ecbb5' ),
+		),
+		'prompt_en' => 'Documentary photograph of one maintained cedar kioke fermentation barrel with traditional bamboo hoops in a quiet unbranded workshop.',
+		'negative_prompt_en' => $c99_japanese_koji_shared_negative_prompt,
+		'caveat' => array( 'he' => 'איור ציוד כללי, לא חבית של יצרן מסוים ולא הוכחה לאיכות, לנפח, לגיל או לזמן יישון.', 'en' => 'General equipment illustration, not a particular producer barrel or proof of quality, capacity, age or maturation time.' ),
+	),
+	array(
+		'stem' => 'c99-science-koji-enzymes-hydrolysis-guide-v01',
+		'entity_id' => 'guide-koji-hydrolysis',
+		'label' => array( 'he' => 'מדריך הידרוליזה בקוג׳י', 'en' => 'Koji hydrolysis guide' ),
+		'alt' => array( 'he' => 'קוג׳י אורז וקוג׳י לשויו לצד המחשה מושגית של פירוק אנזימטי', 'en' => 'Rice koji and shoyu koji beside a conceptual enzymatic-breakdown illustration' ),
+		'source' => array( 'generation_filename' => 'c99-science-koji-enzymes-hydrolysis-guide-v01.png', 'sha256' => '69fa18417864c71b7d2b95c30c9febacb87d7430e8da6155b5484b05c307e06a', 'bytes' => 2871799 ),
+		'files' => array(
+			'png' => array( 'filename' => 'c99-science-koji-enzymes-hydrolysis-guide-v01.png', 'relative_path' => 'assets/images/science/c99-science-koji-enzymes-hydrolysis-guide-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2871799, 'sha256' => '69fa18417864c71b7d2b95c30c9febacb87d7430e8da6155b5484b05c307e06a' ),
+			'webp' => array( 'filename' => 'c99-science-koji-enzymes-hydrolysis-guide-v01.webp', 'relative_path' => 'assets/images/science/c99-science-koji-enzymes-hydrolysis-guide-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 138348, 'sha256' => '6bb6f6becd75c7e4fdeed3e76f70e616ed6fc8713b94163475f585c4ac0d1a77' ),
+			'avif' => array( 'filename' => 'c99-science-koji-enzymes-hydrolysis-guide-v01.avif', 'relative_path' => 'assets/images/science/c99-science-koji-enzymes-hydrolysis-guide-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 64625, 'sha256' => '278b633bfea9dbc7ce394a3084f6e3755b35d275b700ed4f488b7dcb9457fd87' ),
+			'webp_768' => array( 'filename' => 'c99-science-koji-enzymes-hydrolysis-guide-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-koji-enzymes-hydrolysis-guide-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 47580, 'sha256' => 'ba41228b267d28942a35125e16bd873f975f02af6c9f20faf06486582d86d428' ),
+			'avif_768' => array( 'filename' => 'c99-science-koji-enzymes-hydrolysis-guide-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-koji-enzymes-hydrolysis-guide-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 17226, 'sha256' => 'a37aff4fe4cd6d9972a867347fd5e9e4f27bc55a79a586c1f1d7640441dd0365' ),
+		),
+		'prompt_en' => 'Overhead museum comparison of rice koji and dry soybean-wheat shoyu koji with restrained translucent conceptual strands illustrating enzymatic breakdown.',
+		'negative_prompt_en' => $c99_japanese_koji_shared_negative_prompt,
+		'caveat' => array( 'he' => 'המחשה מושגית בלבד, לא מבנה מולקולרי, פרוטוקול תהליך, יחס, זמן, טמפרטורה או תוצאת מדידה.', 'en' => 'Conceptual illustration only, not a molecular structure, process protocol, ratio, time, temperature or measurement result.' ),
+	),
+	array(
+		'stem' => 'c99-science-koji-enzymatic-hydrolysis-v01',
+		'entity_id' => 'reaction-koji-enzymatic-hydrolysis',
+		'label' => array( 'he' => 'תגובה אנזימטית בקוג׳י', 'en' => 'Koji enzymatic hydrolysis' ),
+		'alt' => array( 'he' => 'שלושה רצפים מושגיים של שרשראות מזון המתפרקות מעל מצע קוג׳י לשויו', 'en' => 'Three conceptual food-chain breakdown sequences above shoyu koji substrate' ),
+		'source' => array( 'generation_filename' => 'c99-science-koji-enzymatic-hydrolysis-v01.png', 'sha256' => '737f0c74b8f0abce9921231e2c9185d73d33a74c836c029452085724e5e7a357', 'bytes' => 2739263 ),
+		'files' => array(
+			'png' => array( 'filename' => 'c99-science-koji-enzymatic-hydrolysis-v01.png', 'relative_path' => 'assets/images/science/c99-science-koji-enzymatic-hydrolysis-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2739263, 'sha256' => '737f0c74b8f0abce9921231e2c9185d73d33a74c836c029452085724e5e7a357' ),
+			'webp' => array( 'filename' => 'c99-science-koji-enzymatic-hydrolysis-v01.webp', 'relative_path' => 'assets/images/science/c99-science-koji-enzymatic-hydrolysis-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 104658, 'sha256' => '5978859d2161cbb6a41daddf52cc7402952a63068b9a0c0f684166237eee66a5' ),
+			'avif' => array( 'filename' => 'c99-science-koji-enzymatic-hydrolysis-v01.avif', 'relative_path' => 'assets/images/science/c99-science-koji-enzymatic-hydrolysis-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 50371, 'sha256' => '88bca6d0f57293e85be2ba32100bce0a1d6eedd1612c2c9a94604b4dfb61be78' ),
+			'webp_768' => array( 'filename' => 'c99-science-koji-enzymatic-hydrolysis-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-koji-enzymatic-hydrolysis-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 36764, 'sha256' => 'eb771026f662c8a664394b1d8a807cb65caec4b9951a3cd3fd821e584d3acee2' ),
+			'avif_768' => array( 'filename' => 'c99-science-koji-enzymatic-hydrolysis-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-koji-enzymatic-hydrolysis-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 17901, 'sha256' => '0157d0ad3875ffdf36a90e5c5a82c3bafb331c87897f564e5f7dae05f66d1ba8' ),
+		),
+		'prompt_en' => 'Three parallel conceptual sequences of translucent food-chain filaments becoming smaller fragments above real dry soybean-wheat koji substrate.',
+		'negative_prompt_en' => $c99_japanese_koji_shared_negative_prompt,
+		'caveat' => array( 'he' => 'המחשה מושגית של שונות ופירוק, לא מבנה כימי מדויק, דגימת Complete99, אצווה או תוצאת מבחן.', 'en' => 'Conceptual variability-and-breakdown illustration, not an exact chemical structure, Complete99 sample, lot or test result.' ),
+	),
+	array(
+		'stem' => 'c99-science-jas-1703-shoyu-standard-v01',
+		'entity_id' => 'standard-jas-shoyu-1703',
+		'label' => array( 'he' => 'תקן JAS לשויו', 'en' => 'JAS shoyu standard' ),
+		'alt' => array( 'he' => 'דוגמאות גוון כלליות של רוטב סויה לצד תיק תקן וכלי בדיקה לא מסומנים', 'en' => 'Generic soy-sauce color samples beside an unmarked standards folio and test glassware' ),
+		'source' => array( 'generation_filename' => 'c99-science-jas-1703-shoyu-standard-v01.png', 'sha256' => '4f0781828ba648106456db31012c6c664ed633104deea972493020925ba80672', 'bytes' => 2660520 ),
+		'files' => array(
+			'png' => array( 'filename' => 'c99-science-jas-1703-shoyu-standard-v01.png', 'relative_path' => 'assets/images/science/c99-science-jas-1703-shoyu-standard-v01.png', 'format' => 'PNG', 'width' => 1536, 'height' => 1024, 'bytes' => 2660520, 'sha256' => '4f0781828ba648106456db31012c6c664ed633104deea972493020925ba80672' ),
+			'webp' => array( 'filename' => 'c99-science-jas-1703-shoyu-standard-v01.webp', 'relative_path' => 'assets/images/science/c99-science-jas-1703-shoyu-standard-v01.webp', 'format' => 'WebP', 'width' => 1536, 'height' => 1024, 'bytes' => 76394, 'sha256' => '5a099802acabf8e704a03e5b254844519d2e32df0d8358d277b8594889e16ebf' ),
+			'avif' => array( 'filename' => 'c99-science-jas-1703-shoyu-standard-v01.avif', 'relative_path' => 'assets/images/science/c99-science-jas-1703-shoyu-standard-v01.avif', 'format' => 'AVIF', 'width' => 1536, 'height' => 1024, 'bytes' => 30904, 'sha256' => '67cf96aca9c4ea71ebff0612ca9d1f12aa7708f9acad8eb8458cd4952c47e3a8' ),
+			'webp_768' => array( 'filename' => 'c99-science-jas-1703-shoyu-standard-v01-768.webp', 'relative_path' => 'assets/images/science/c99-science-jas-1703-shoyu-standard-v01-768.webp', 'format' => 'WebP', 'width' => 768, 'height' => 512, 'bytes' => 16830, 'sha256' => '72a7aefb5b09dbb550bf537d18d04294a7a32dd93243e137814c813df568016c' ),
+			'avif_768' => array( 'filename' => 'c99-science-jas-1703-shoyu-standard-v01-768.avif', 'relative_path' => 'assets/images/science/c99-science-jas-1703-shoyu-standard-v01-768.avif', 'format' => 'AVIF', 'width' => 768, 'height' => 512, 'bytes' => 8414, 'sha256' => 'ee21cdaf8d480c7699072fed21a3bfe3e9aa49dcfb51711c82688591cb506d94' ),
+		),
+		'prompt_en' => 'Archival flat lay of generic soy-sauce color samples beside a blank standards folio, neutral color fan and empty unmarked test glassware.',
+		'negative_prompt_en' => $c99_japanese_koji_shared_negative_prompt,
+		'caveat' => array( 'he' => 'המחשת הקשר תקינה בלבד; אף מוצר, יצרן, משלוח או אצווה לא נבדקו, דורגו או הוסמכו בתמונה.', 'en' => 'Standards-context illustration only; no product, producer, shipment or lot was tested, graded or certified in this image.' ),
+	),
+);
+
+foreach ( $c99_japanese_koji_science_records as $c99_japanese_koji_science_record ) {
+	$c99_generated_asset_manifest['science_assets'][] = $c99_syrian_science_asset( $c99_japanese_koji_science_record );
+}
+
+$c99_publication_approval_file = __DIR__ . '/culinary-science-publication-approvals.php';
+$c99_publication_approval_registry = is_file( $c99_publication_approval_file )
+	? require $c99_publication_approval_file
+	: array();
+$c99_publication_required_ids = isset( $c99_publication_approval_registry['required_entity_ids'] ) && is_array( $c99_publication_approval_registry['required_entity_ids'] )
+	? $c99_publication_approval_registry['required_entity_ids']
+	: array();
+$c99_publication_pre_gate_entities = function_exists( 'complete99_owner_publication_cached_pre_gate_entities' )
+	? complete99_owner_publication_cached_pre_gate_entities()
+	: array();
+if ( empty( $c99_publication_pre_gate_entities ) && is_file( __DIR__ . '/culinary-science-pilot.php' ) ) {
+	// Build the exact pre-gate payload; a cached status is never authorization.
+	require __DIR__ . '/culinary-science-pilot.php';
+	$c99_publication_pre_gate_entities = function_exists( 'complete99_owner_publication_cached_pre_gate_entities' )
+		? complete99_owner_publication_cached_pre_gate_entities()
+		: array();
+}
+$c99_publication_approval_status = array();
+$c99_publication_registry_valid = function_exists( 'complete99_owner_publication_registry_shape_is_valid' )
+	&& complete99_owner_publication_registry_shape_is_valid( $c99_publication_approval_registry, $c99_publication_required_ids );
+if (
+	$c99_publication_registry_valid
+	&& function_exists( 'complete99_owner_publication_registry_status' )
+	&& function_exists( 'complete99_owner_publication_status_is_valid' )
+	&& array_keys( $c99_publication_pre_gate_entities ) === array_values( $c99_publication_required_ids )
+) {
+	$c99_publication_approval_status = complete99_owner_publication_registry_status(
+		$c99_publication_approval_registry,
+		$c99_publication_required_ids,
+		array_values( $c99_publication_pre_gate_entities ),
+		dirname( __DIR__ )
+	);
+	if ( ! complete99_owner_publication_status_is_valid( $c99_publication_approval_status, $c99_publication_required_ids ) ) {
+		$c99_publication_approval_status = array();
+	} elseif ( function_exists( 'complete99_owner_publication_cached_status' ) ) {
+		complete99_owner_publication_cached_status( $c99_publication_approval_status );
+	}
+}
+$c99_publication_approved_lookup = ! empty( $c99_publication_approval_status['approved_entity_ids'] )
+	? array_fill_keys( $c99_publication_approval_status['approved_entity_ids'], true )
+	: array();
+
+foreach ( $c99_generated_asset_manifest['science_assets'] as &$c99_science_asset_record ) {
+	$c99_science_entity_id = $c99_science_asset_record['related_entity_code'];
+	if ( ! isset( $c99_publication_approved_lookup[ $c99_science_entity_id ] ) ) {
+		continue;
+	}
+	$c99_science_decision = isset( $c99_publication_approval_status['decisions'][ $c99_science_entity_id ] )
+		? $c99_publication_approval_status['decisions'][ $c99_science_entity_id ]
+		: array();
+	$c99_science_candidate = isset( $c99_publication_approval_registry['candidates'][ $c99_science_entity_id ] )
+		? $c99_publication_approval_registry['candidates'][ $c99_science_entity_id ]
+		: array();
+	$c99_science_receipt = isset( $c99_publication_approval_registry['receipts'][ $c99_science_entity_id ] )
+		? $c99_publication_approval_registry['receipts'][ $c99_science_entity_id ]
+		: array();
+	$c99_science_approval_exact = true === ( $c99_science_decision['approved'] ?? null )
+		&& 'owner_approved_publication' === ( $c99_science_decision['state'] ?? '' )
+		&& 'exact_owner_receipt_and_delivery_verified' === ( $c99_science_decision['reason'] ?? '' )
+		&& 'exact' === ( $c99_science_decision['delivery_validation'] ?? '' )
+		&& ( $c99_science_candidate['candidate_sha256'] ?? '' ) === ( $c99_science_decision['candidate_sha256'] ?? '' )
+		&& ( $c99_science_receipt['receipt_id'] ?? '' ) === ( $c99_science_decision['receipt_id'] ?? '' )
+		&& ( $c99_science_receipt['receipt_sha256'] ?? '' ) === ( $c99_science_decision['receipt_sha256'] ?? '' )
+		&& function_exists( 'complete99_owner_publication_receipt_is_valid' )
+		&& complete99_owner_publication_receipt_is_valid( $c99_science_receipt, $c99_science_candidate, $c99_publication_approval_registry['trusted_owner_keys'] );
+	if ( ! $c99_science_approval_exact ) {
+		continue;
+	}
+	$c99_science_asset_record['review_state'] = 'owner_approved';
+	$c99_science_asset_record['usage_state'] = 'public';
+	$c99_science_asset_record['rights'] = 'OpenAI generated for Complete99; owner-authorized for this exact public editorial entity';
+	$c99_science_asset_record['presentation_scope'] = 'public_culinary_editorial_illustration';
+	$c99_science_asset_record['rights_receipt_digest'] = $c99_science_receipt['receipt_sha256'];
+	$c99_science_asset_record['publication_approval_state'] = 'owner_approved_publication';
+	$c99_science_asset_record['publication_approval_receipt_id'] = $c99_science_decision['receipt_id'];
+	$c99_science_asset_record['owner_authorized_at'] = substr( $c99_science_decision['approved_at'], 0, 10 );
+}
+unset( $c99_science_asset_record, $c99_science_entity_id, $c99_science_decision, $c99_science_candidate, $c99_science_receipt, $c99_science_approval_exact );
+
+unset( $c99_syrian_science_asset, $c99_syrian_shared_negative_prompt, $c99_japanese_koji_science_records, $c99_japanese_koji_science_record, $c99_japanese_koji_shared_negative_prompt );
+
 return $c99_generated_asset_manifest;

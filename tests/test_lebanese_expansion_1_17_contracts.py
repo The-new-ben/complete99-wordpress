@@ -163,9 +163,9 @@ def _new_entities(payload: dict) -> dict[str, dict]:
 def test_release_registry_module_and_source_counts_are_exact(payload: dict) -> None:
     registry = payload["registry"]
     modules = payload["modules"]
-    assert registry["version"] == "culinary-science-2026.08.07.v18"
+    assert registry["version"] == "culinary-science-2026.08.08.v20"
     assert len(registry["entities"]) == 672
-    assert len(registry["sources"]) == 370
+    assert len(registry["sources"]) == 375
     assert tuple(len(module["entities"]) for module in modules) == (
         EXPECTED_MODULE_COUNTS
     )
@@ -173,7 +173,7 @@ def test_release_registry_module_and_source_counts_are_exact(payload: dict) -> N
         EXPECTED_MODULE_SOURCE_COUNTS
     )
     assert all(
-        module["version"] == "culinary-science-2026.08.07.v18"
+        module["version"] == "culinary-science-2026.08.08.v20"
         for module in modules
     )
 

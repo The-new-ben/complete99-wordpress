@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.18.2
+Release target: Complete99 Platform 1.20.0
 
 ## Automated gates
 
@@ -25,7 +25,16 @@ Release target: Complete99 Platform 1.18.2
 - The install route refuses `package_base64`, requires a completed staged
   artifact, and rechecks its exact size and SHA-256 before and after claiming the
   deployment lease.
-- The public update manifest matches version 1.18.2 and its versioned package URL.
+- The public update manifest matches version 1.20.0 and its versioned package URL.
+- The generated-asset manifest is treated as an editorial evidence registry,
+  never as proof that a file is installed in the package.
+- The default-deny Science media policy inventories exactly 47 stems and 175
+  files: 28 public-delivery stems, 18 held repository-only stems and one approved
+  superseded archive stem. The ZIP contains exactly 70 public delivery files and
+  none of the 105 repository-only files: 78 held files, 24 active public PNG
+  source-evidence files and three archive files. All 60 held derivatives from the
+  earlier 1.20 candidate are absent, while the repository retains all 78 held
+  files as evidence.
 - The stored public read-model digest equals SHA-256 of the recursive canonical
   model after removing only the top-level `digest` field.
 - Canonicalization preserves ordered lists and sorts associative keys at every
@@ -77,17 +86,35 @@ Release target: Complete99 Platform 1.18.2
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
-- The thirty-eight bilingual culinary-science routes resolve from 27 public
-  entities through 19 canonical page owners per language,
-  emit canonical and hreflang metadata, remain `noindex,follow`, and are absent
-  from the museum sitemap provider until their separate index gate is approved.
+- The current 38 bilingual culinary-science routes resolve from exactly 27
+  public entities through 19 standalone page owners per language, emit
+  canonical and hreflang metadata, remain `noindex,follow`, and are absent from
+  the museum sitemap provider until their separate index gate is approved.
 - The cumulative registries identify themselves exactly as
-  `culinary-science-2026.08.07.v18` and
-  `culinary-commerce-2026.08.07.v12`.
-- The science registry contains exactly 672 entities and 370 sources. The
+  `culinary-science-2026.08.08.v20` under schema
+  `complete99-culinary-science-registry/v6` and
+  `culinary-commerce-2026.08.08.v14`.
+- The science registry contains exactly 672 entities and 375 sources. The
   Japanese cluster contains exactly 84 entities split into 24 public and 60
-  private records, while the public totals remain 19 canonical owners per
-  language and 38 bilingual routes.
+  private records, while the public totals are 19 standalone owners per
+  language and 38 bilingual routes. Exactly zero science records are indexable.
+- The five held Japanese editorial candidates are exactly shoyu koji, kioke,
+  the koji-hydrolysis guide, JAS 1703 shoyu standard context and the enzymatic-
+  hydrolysis reaction. They expose no anonymous route, bundle, relation or
+  asset. Producer and retail-listing records stay private.
+- Exactly three verified `literature_context` measurements remain private:
+  neutral protease 500-700 U/g, acidic protease 50-150 U/g and leucine
+  aminopeptidase 50-250 U/g. Each retains method, specimen scope, conditions,
+  confidence, source and measurement date; public projection renders none.
+- Cross-domain binding v3 contains exactly 95 unresolved records, split into 12
+  dishes, 47 dish-scoped components and 36 Woo products, plus 11 private
+  reciprocal Woo candidates. All five verified or public indexes are literally
+  empty and no source registry is mutated. Its valid private decision overlay
+  reports zero decisions and zero recognized reviewer authorities. The status
+  schema/version are `complete99-cross-domain-binding-registry/v3` and
+  `complete99-cross-domain-bindings-2026.08.08.v3`; the overlay schema/version
+  are `complete99-cross-domain-binding-decision-overlay/v1` and
+  `complete99-cross-domain-binding-decisions-2026.08.08.v1`.
 - Public museum responses cannot expose visual prompts, supplier terms, landed
   cost, margins, connector state, approval identities or private workflow data.
 - Entity Studio remains private, requires `manage_options`, creates no role,
@@ -102,8 +129,25 @@ Release target: Complete99 Platform 1.18.2
   ingredients, 25 regional or topic hubs, 30 techniques, 29 traditions, 16
   preparations, 10 guides, 11 culinary institutions, 5 markets, 6 restaurants
   and the preserved three private market records.
-  One safe consumer gateway is
-  `noindex,follow`; the other 281 Syrian entities remain private.
+  Exactly one Syrian cuisine root is a public `noindex,follow` discovery surface
+  and the other 281 Syrian identities remain private.
+- The seven held Syrian editorial candidates are exactly Aleppo, the Aleppine
+  kibbeh family, Syrian bulgur, Syrian lamb and beef, bulgur hydration, fully
+  cooked kibbeh methods and Aleppan Jewish foodways. Anonymous routes,
+  breadcrumbs, canonical output and semantic links expose none of them.
+- `dish-kibbeh-meshwiyyeh` remains private, has pending culinary-test status,
+  creates no public link and emits no Recipe schema. Public content provides no
+  raw kibbeh method.
+- The private `ingredient-syrian-bulgur` candidate records its relation to the
+  existing exact `product-bulgur-fine-500g` offer at ILS 5.90, but emits no
+  public link. Broad editorial candidates emit no Product or Offer schema.
+- The science-asset collection contains exactly twelve held, non-public
+  editorial entries: seven Syrian sets and five Japanese sets. The separate
+  generated catalog collection remains exactly 60 entries and retains its
+  product-image contract unchanged. Approval v2 binds the exact PNG source
+  evidence separately from all four deployable WebP/AVIF variants and complete
+  bilingual content. No trusted owner key or receipt exists; file receipts do
+  not imply owner approval.
 - The 86-identity Syrian expansion is exact: 30 west and central identities, 31
   east and south identities, and 25 community and institutional identities.
   All 86 are private, noindex and reference-only, with zero price, supplier,
@@ -311,6 +355,8 @@ Capture and review:
 - Dishes, Ingredients, Traditions, Knowledge, Pantry, About, Contact, Privacy,
   Terms and Accessibility;
 - the 12 known dish pages and at least one related product set;
+- the versioned menu-stated component section on all 12 dish pages, including
+  exactly seven rendered components on the Sabich page;
 - one unknown Hebrew and English dish route;
 - the live cart, plus checkout only after payment is approved.
 
@@ -330,7 +376,17 @@ Verify:
 
 ## Live operational checks
 
-- Selected HTTPS origin is the exact live UPress alias or final canonical domain.
+- No deployment or live-publication result is claimed by this checklist. Any
+  infrastructure deployment must use protected `main`, green required CI and
+  the controlled workflow, with all held Science content absent from the ZIP
+  and private at runtime.
+- Publication of any of the twelve held candidates remains blocked. Approval v2
+  requires a trusted owner key and signed receipt binding the exact PNG source
+  evidence separately from the four deployable WebP/AVIF variants and complete
+  bilingual content. A later approved candidate requires a newly reviewed and
+  rebuilt artifact containing those four exact delivery variants.
+
+- Selected HTTPS origin is the canonical production domain.
 - UPress REST is enabled.
 - Health returns expected component, version, deployment ID and database version.
 - Temporary deployment row is absent and its route returns 404.
@@ -338,14 +394,22 @@ Verify:
 - `robots.txt`, sitemap and public catalog return their managed state.
 - Public search does not expose products or private content types.
 - Anonymous public science readback contains exactly 27 entities across 19
-  canonical page owners per language. Only the reviewed Lebanese cuisine root
-  appears from the Lebanon graph. The three new Japanese records appear only as
-  reviewed sections inside their existing dashi and umami owners. No observed price, visual prompt, Product
-  schema or Offer schema appears in public API, search, sitemap, page source,
-  catalog or POS output.
+  standalone page owners per language and 38 bilingual routes. Only the
+  reviewed Lebanese cuisine root appears from the Lebanon graph. Only the
+  pre-existing Syrian cuisine root appears from the Syrian graph; the seven
+  Aleppo candidates remain absent. The three release-1.18 Japanese records
+  appear only as reviewed sections inside their existing dashi and umami
+  owners; the five release-1.20 Japanese candidates and all three private
+  measurements remain absent. No private price, visual prompt,
+  Product schema or Offer schema appears in public API, search, sitemap, page
+  source, catalog or POS output.
 - Cache-busting requests to the Hebrew and English Lebanon canonical paths
   render the reviewed cuisine gateway with reciprocal museum and Syria links,
   while child Lebanon paths remain unavailable publicly.
+- Cache-busting requests to all seven proposed Hebrew and English Syrian owners
+  must remain unavailable and render no candidate imagery, canonical, hreflang,
+  semantic continuation or Product/Offer output. The private bulgur relation
+  must not reach the existing offer publicly.
 - Authenticated private readback proves 203 Lebanon identities with the exact
   type counts, all six observation timestamps and no offer or WooCommerce code.
 - Authenticated private readiness and outbox routes are not publicly readable.

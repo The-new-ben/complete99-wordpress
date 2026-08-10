@@ -281,8 +281,8 @@ def test_v17_module_contract_is_exact(payload: dict, module: dict) -> None:
     assert module["schema"] == (
         "complete99-lebanese-regional-expansion-coast-north/v1"
     )
-    assert module["version"] == "culinary-science-2026.08.07.v18"
-    assert payload["registry_version"] == "culinary-science-2026.08.07.v18"
+    assert module["version"] == "culinary-science-2026.08.08.v20"
+    assert payload["registry_version"] == "culinary-science-2026.08.08.v20"
 
 
 def test_exact_entity_inventory_and_type_distribution(

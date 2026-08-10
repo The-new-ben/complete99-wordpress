@@ -18,6 +18,15 @@ final class Complete99_Culinary_Museum_Frontend {
 	const STYLESHEET_FILE = 'assets/css/culinary-museum.css';
 	const COLLECTION_SCHEMA       = 'complete99-culinary-collection-public/v1';
 	const COLLECTION_FILTER_QUERY = 'foundation-group';
+	const SYRIAN_PUBLIC_COHORT_IDS = array(
+		'region-syria-aleppo',
+		'hub-aleppine-kibbeh-family',
+		'ingredient-syrian-bulgur',
+		'ingredient-syrian-red-meat',
+		'technique-syrian-bulgur-hydration',
+		'technique-syrian-kibbeh-cooking',
+		'tradition-aleppan-jewish-foodways',
+	);
 
 	private static $booted      = false;
 	private static $bundle      = array();
@@ -260,6 +269,18 @@ final class Complete99_Culinary_Museum_Frontend {
 			self::render_museum_landing( $bundle );
 			return;
 		}
+		if ( 'cuisine-syrian-regional' === $bundle['entity']['id']
+			&& self::syrian_public_cohort_is_ready( $bundle ) ) {
+			self::render_syrian_landing( $bundle );
+			return;
+		}
+		if ( in_array( $bundle['entity']['id'], self::SYRIAN_PUBLIC_COHORT_IDS, true ) ) {
+			if ( ! self::authoritative_public_bundle_matches( $bundle, $bundle['entity']['id'] ) ) {
+				return;
+			}
+			self::render_syrian_consumer_page( $bundle );
+			return;
+		}
 		if ( 'cuisine-lebanese-regional' === $bundle['entity']['id'] ) {
 			self::render_lebanese_landing( $bundle );
 			return;
@@ -310,6 +331,66 @@ final class Complete99_Culinary_Museum_Frontend {
 			</aside>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Open the custom Syrian visit only when its complete seven-page journey is
+	 * available through the authoritative public Science projection.
+	 */
+	private static function syrian_public_cohort_is_ready( $bundle ) {
+		if ( ! is_array( $bundle )
+			|| ! isset( $bundle['entity']['id'], $bundle['language'], $bundle['version'] )
+			|| 'cuisine-syrian-regional' !== $bundle['entity']['id']
+			|| ! self::authoritative_public_bundle_matches( $bundle, 'cuisine-syrian-regional' ) ) {
+			return false;
+		}
+
+		foreach ( self::SYRIAN_PUBLIC_COHORT_IDS as $entity_id ) {
+			$candidate = self::authoritative_public_bundle_for_id( $entity_id, $bundle['language'] );
+			if ( empty( $candidate )
+				|| ! isset( $candidate['entity']['id'], $candidate['language'], $candidate['version'], $candidate['canonical_path'] )
+				|| $entity_id !== $candidate['entity']['id']
+				|| $bundle['language'] !== $candidate['language']
+				|| $bundle['version'] !== $candidate['version']
+				|| ! self::is_renderable_bundle( $candidate, $candidate['canonical_path'] ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Verify that a renderer input is the current bundle released by Science.
+	 */
+	private static function authoritative_public_bundle_matches( $bundle, $entity_id ) {
+		if ( ! is_array( $bundle )
+			|| ! isset( $bundle['language'] )
+			|| ! in_array( $bundle['language'], array( 'he', 'en' ), true ) ) {
+			return false;
+		}
+
+		$authoritative = self::authoritative_public_bundle_for_id( $entity_id, $bundle['language'] );
+		return ! empty( $authoritative ) && $authoritative === $bundle;
+	}
+
+	/**
+	 * Resolve through the public API only and fail closed on an unavailable or
+	 * malformed registry. No private registry record is read by this renderer.
+	 */
+	private static function authoritative_public_bundle_for_id( $entity_id, $language ) {
+		if ( ! class_exists( 'Complete99_Culinary_Science', false )
+			|| ! is_callable( array( 'Complete99_Culinary_Science', 'public_page_bundle_for_id' ) ) ) {
+			return array();
+		}
+
+		try {
+			$bundle = Complete99_Culinary_Science::public_page_bundle_for_id( $entity_id, $language );
+		} catch ( Throwable $error ) {
+			return array();
+		}
+
+		return is_array( $bundle ) ? $bundle : array();
 	}
 
 	/**
@@ -1038,7 +1119,7 @@ final class Complete99_Culinary_Museum_Frontend {
 							<span><?php echo esc_html( self::evidence_label( $fact['evidence_class'], $lang ) ); ?></span>
 						</div>
 						<p><?php echo esc_html( $fact['statement'] ); ?><?php self::render_source_markers( $fact['source_ids'], $source_map, $entity['id'] ); ?></p>
-						<?php self::render_scientific_measurements( $fact, $lang ); ?>
+						<?php self::render_scientific_measurements( $fact, $lang, $source_map, $entity['id'] ); ?>
 					</article>
 				<?php endforeach; ?>
 			</div>
@@ -1046,8 +1127,15 @@ final class Complete99_Culinary_Museum_Frontend {
 		<?php
 	}
 
-	private static function render_scientific_measurements( $fact, $lang ) {
-		$measurements = isset( $fact['scientific_measurements'] ) && is_array( $fact['scientific_measurements'] ) ? $fact['scientific_measurements'] : array();
+	/**
+	 * Render the complete public context for verified scientific measurements.
+	 *
+	 * The science projection already releases only verified measurements. This
+	 * renderer applies the same boundary again so a reviewed or pending record
+	 * cannot become public if a malformed page bundle reaches the template.
+	 */
+	private static function render_scientific_measurements( $fact, $lang, $source_map, $entity_id ) {
+		$measurements = self::verified_scientific_measurements( $fact, $source_map );
 		if ( empty( $measurements ) ) {
 			return;
 		}
@@ -1058,15 +1146,146 @@ final class Complete99_Culinary_Museum_Frontend {
 				$value = 'range' === $measurement['kind']
 					? self::format_number( $measurement['low'] ) . ' - ' . self::format_number( $measurement['high'] )
 					: self::format_number( $measurement['value'] );
+				$value_label = 'range' === $measurement['kind']
+					? ( 'he' === $lang ? 'טווח' : 'Range' )
+					: ( 'he' === $lang ? 'ערך' : 'Value' );
+				$measured_at = trim( (string) $measurement['measured_at'] );
 				?>
-				<dl>
-					<div><dt><?php echo esc_html( self::machine_label( $measurement['property'] ) ); ?></dt><dd><?php echo esc_html( trim( $value . ' ' . $measurement['unit'] ) ); ?></dd></div>
+				<dl data-c99-scientific-measurement="verified" data-c99-measurement-id="<?php echo esc_attr( $measurement['id'] ); ?>">
+					<div><dt><?php echo esc_html( 'he' === $lang ? 'מאפיין' : 'Property' ); ?></dt><dd><?php echo esc_html( self::measurement_property_label( $measurement['property'], $lang ) ); ?></dd></div>
+					<div><dt><?php echo esc_html( 'he' === $lang ? 'סוג מדידה' : 'Measurement type' ); ?></dt><dd><?php echo esc_html( self::measurement_kind_label( $measurement['kind'], $lang ) ); ?></dd></div>
+					<div><dt><?php echo esc_html( $value_label ); ?></dt><dd><?php echo esc_html( trim( $value . ' ' . $measurement['unit'] ) ); ?></dd></div>
 					<div><dt><?php echo esc_html( 'he' === $lang ? 'שיטה' : 'Method' ); ?></dt><dd><?php echo esc_html( $measurement['method'] ); ?></dd></div>
-					<div><dt><?php echo esc_html( 'he' === $lang ? 'היקף' : 'Scope' ); ?></dt><dd><?php echo esc_html( self::machine_label( $measurement['specimen_scope'] ) ); ?></dd></div>
+					<div><dt><?php echo esc_html( 'he' === $lang ? 'היקף הדגימה' : 'Specimen scope' ); ?></dt><dd><?php echo esc_html( self::measurement_scope_label( $measurement['specimen_scope'], $lang ) ); ?></dd></div>
+					<?php foreach ( $measurement['conditions'] as $condition => $condition_value ) : ?>
+						<div class="c99-museum-measurement-condition"><dt><?php echo esc_html( self::measurement_condition_label( $condition, $lang ) ); ?></dt><dd><?php echo esc_html( $condition_value ); ?></dd></div>
+					<?php endforeach; ?>
+					<div><dt><?php echo esc_html( 'he' === $lang ? 'רמת אמון' : 'Confidence' ); ?></dt><dd><?php echo esc_html( 'he' === $lang ? 'מאומת' : 'Verified' ); ?></dd></div>
+					<div><dt><?php echo esc_html( 'he' === $lang ? 'מקורות' : 'Sources' ); ?></dt><dd><?php self::render_source_markers( $measurement['source_ids'], $source_map, $entity_id ); ?></dd></div>
+					<div><dt><?php echo esc_html( 'he' === $lang ? 'מועד המדידה' : 'Measured at' ); ?></dt><dd><?php if ( '' !== $measured_at ) : ?><time datetime="<?php echo esc_attr( $measured_at ); ?>"><?php echo esc_html( $measured_at ); ?></time><?php else : ?><?php echo esc_html( 'he' === $lang ? 'ללא חותמת זמן נפרדת למדידה' : 'No separate measurement timestamp' ); ?><?php endif; ?></dd></div>
 				</dl>
 			<?php endforeach; ?>
 		</div>
 		<?php
+	}
+
+	private static function verified_scientific_measurements( $fact, $source_map ) {
+		$measurements = isset( $fact['scientific_measurements'] ) && is_array( $fact['scientific_measurements'] )
+			? $fact['scientific_measurements']
+			: array();
+		$verified = array();
+		foreach ( $measurements as $measurement ) {
+			if ( ! is_array( $measurement )
+				|| ! self::has_exact_keys(
+					$measurement,
+					array( 'id', 'property', 'kind', 'low', 'high', 'value', 'unit', 'method', 'specimen_scope', 'conditions', 'confidence', 'source_ids', 'measured_at' )
+				)
+				|| 'verified' !== $measurement['confidence']
+				|| ! is_string( $measurement['id'] )
+				|| ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $measurement['id'] )
+				|| ! is_string( $measurement['property'] )
+				|| ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $measurement['property'] )
+				|| ! in_array( $measurement['kind'], array( 'point', 'range' ), true )
+				|| ! is_string( $measurement['unit'] )
+				|| '' === trim( $measurement['unit'] )
+				|| ! is_string( $measurement['method'] )
+				|| '' === trim( $measurement['method'] )
+				|| ! in_array( $measurement['specimen_scope'], array( 'literature_context', 'recipe_batch', 'supplier_specification', 'lot_measurement' ), true )
+				|| ! is_array( $measurement['conditions'] )
+				|| ! is_array( $measurement['source_ids'] )
+				|| empty( $measurement['source_ids'] )
+				|| ! is_string( $measurement['measured_at'] )
+				|| ( '' !== $measurement['measured_at'] && ! preg_match( '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/', $measurement['measured_at'] ) ) ) {
+				continue;
+			}
+
+			$valid_sources = true;
+			foreach ( $measurement['source_ids'] as $source_id ) {
+				if ( ! is_string( $source_id )
+					|| ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $source_id )
+					|| ! isset( $source_map[ $source_id ] ) ) {
+					$valid_sources = false;
+					break;
+				}
+			}
+			$valid_conditions = true;
+			foreach ( $measurement['conditions'] as $condition => $condition_value ) {
+				if ( ! is_string( $condition )
+					|| ! preg_match( '/^[a-z0-9][a-z0-9_-]*$/', $condition )
+					|| ! is_string( $condition_value )
+					|| '' === trim( $condition_value ) ) {
+					$valid_conditions = false;
+					break;
+				}
+			}
+			if ( ! $valid_sources
+				|| ! $valid_conditions
+				|| ( 'literature_context' === $measurement['specimen_scope'] && empty( $measurement['conditions'] ) )
+				|| ( 'literature_context' === $measurement['specimen_scope'] && '' !== $measurement['measured_at'] )
+				|| ( 'lot_measurement' === $measurement['specimen_scope'] && '' === $measurement['measured_at'] ) ) {
+				continue;
+			}
+
+			$is_number = static function ( $value ) {
+				return is_int( $value ) || ( is_float( $value ) && is_finite( $value ) );
+			};
+			if ( 'point' === $measurement['kind'] ) {
+				if ( ! $is_number( $measurement['value'] ) || $measurement['value'] < 0 || null !== $measurement['low'] || null !== $measurement['high'] ) {
+					continue;
+				}
+			} elseif ( ! $is_number( $measurement['low'] )
+				|| ! $is_number( $measurement['high'] )
+				|| $measurement['low'] < 0
+				|| $measurement['high'] < 0
+				|| null !== $measurement['value']
+				|| $measurement['low'] > $measurement['high'] ) {
+				continue;
+			}
+			$verified[] = $measurement;
+		}
+		return $verified;
+	}
+
+	private static function measurement_property_label( $property, $lang ) {
+		$labels = array(
+			'neutral-protease-activity'       => array( 'פעילות פרוטאז ניטרלי', 'Neutral protease activity' ),
+			'acidic-protease-activity'        => array( 'פעילות פרוטאז חומצי', 'Acidic protease activity' ),
+			'leucine-aminopeptidase-activity' => array( 'פעילות לאוצין אמינופפטידאז', 'Leucine aminopeptidase activity' ),
+		);
+		return isset( $labels[ $property ] )
+			? $labels[ $property ][ 'he' === $lang ? 0 : 1 ]
+			: self::machine_label( $property );
+	}
+
+	private static function measurement_kind_label( $kind, $lang ) {
+		if ( 'range' === $kind ) {
+			return 'he' === $lang ? 'טווח' : 'Range';
+		}
+		return 'he' === $lang ? 'נקודה' : 'Point';
+	}
+
+	private static function measurement_scope_label( $scope, $lang ) {
+		$labels = array(
+			'literature_context'    => array( 'הקשר מספרות מחקרית', 'Literature context' ),
+			'recipe_batch'          => array( 'אצוות מתכון', 'Recipe batch' ),
+			'supplier_specification'=> array( 'מפרט ספק', 'Supplier specification' ),
+			'lot_measurement'       => array( 'מדידת אצווה', 'Lot measurement' ),
+		);
+		return isset( $labels[ $scope ] )
+			? $labels[ $scope ][ 'he' === $lang ? 0 : 1 ]
+			: self::machine_label( $scope );
+	}
+
+	private static function measurement_condition_label( $condition, $lang ) {
+		$labels = array(
+			'cohort'            => array( 'קבוצת המחקר', 'Cohort' ),
+			'fermentation-time' => array( 'משך התססה', 'Fermentation time' ),
+			'extraction'        => array( 'תנאי מיצוי', 'Extraction conditions' ),
+			'scope-boundary'    => array( 'גבול ההסקה', 'Scope boundary' ),
+		);
+		return isset( $labels[ $condition ] )
+			? $labels[ $condition ][ 'he' === $lang ? 0 : 1 ]
+			: ( 'he' === $lang ? 'תנאי: ' : 'Condition: ' ) . self::machine_label( $condition );
 	}
 
 	private static function render_sections( $sections, $bundle ) {
@@ -2039,6 +2258,523 @@ final class Complete99_Culinary_Museum_Frontend {
 			return $labels[ $key ][ 'he' === $lang ? 0 : 1 ];
 		}
 		return ucwords( trim( str_replace( '-', ' ', $key ) ) );
+	}
+
+	/**
+	 * Render the first Syrian public slice as a guided culinary visit.
+	 * The route order follows appetite and curiosity, while the sources stay
+	 * available in a closed drawer at the end of the visit.
+	 */
+	private static function render_syrian_landing( $bundle ) {
+		$entity  = $bundle['entity'];
+		$is_he   = 'he' === $bundle['language'];
+		$catalog = self::syrian_entity_catalog( $is_he );
+		$aleppo_url = self::syrian_entity_url( 'region-syria-aleppo', $bundle );
+		$paths   = $is_he
+			? array(
+				'lebanon'  => '/museum/lebanese-culinary-science/',
+				'museum'   => '/museum/',
+				'store'    => '/store/',
+				'knowledge'=> '/knowledge/',
+			)
+			: array(
+				'lebanon'  => '/en/museum/lebanese-culinary-science/',
+				'museum'   => '/en/museum/',
+				'store'    => '/en/store/',
+				'knowledge'=> '/en/knowledge/',
+			);
+		$urls = array();
+		foreach ( $paths as $key => $path ) {
+			$urls[ $key ] = self::internal_url( $path );
+		}
+		$continuations = array(
+			array(
+				'url'   => $urls['lebanon'],
+				'label' => $is_he ? 'מעבר לגבול' : 'Across the border',
+				'title' => $is_he ? 'ממשיכים אל המטבח הלבנוני' : 'Continue into Lebanese cooking',
+				'copy'  => $is_he ? 'עוקבים אחרי קובה, בורגול, עשבים ומזווה אזורי כשהם מקבלים אופי אחר.' : 'Follow kibbeh, bulgur, herbs and the regional pantry as they take on a different character.',
+			),
+			array(
+				'url'   => $urls['museum'],
+				'label' => $is_he ? 'עוד מטבחים' : 'More kitchens',
+				'title' => $is_he ? 'חוזרים למפת המוזיאון' : 'Return to the museum map',
+				'copy'  => $is_he ? 'בוחרים יעד קולינרי נוסף וממשיכים לטייל דרך הצלחת.' : 'Choose another culinary destination and keep travelling through the plate.',
+			),
+			array(
+				'url'   => $urls['store'],
+				'label' => $is_he ? 'המזווה' : 'The pantry',
+				'title' => $is_he ? 'מוצאים חומרי גלם בחנות' : 'Find ingredients in the store',
+				'copy'  => $is_he ? 'עוברים אל המוצרים שכבר נמצאים על המדף וזמינים לעיון.' : 'Move to the products already on the shelf and ready to browse.',
+			),
+			array(
+				'url'   => $urls['knowledge'],
+				'label' => $is_he ? 'לומדים לבשל' : 'Learn to cook',
+				'title' => $is_he ? 'פותחים את מרכז הידע' : 'Open the knowledge center',
+				'copy'  => $is_he ? 'ממשיכים למדריכים ולשיטות שעוזרים להבין חומרי גלם ותהליכים.' : 'Continue to guides and methods that make ingredients and processes easier to understand.',
+			),
+		);
+		?>
+		<div class="c99-syria-home" id="c99-syria-home">
+			<section class="c99-syria-hero" aria-labelledby="c99-syria-title">
+				<div class="c99-container">
+					<?php self::render_breadcrumbs( $entity, $bundle ); ?>
+					<div class="c99-syria-hero-grid">
+						<div class="c99-syria-hero-copy">
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'סוריה, עיר אחרי עיר ושולחן אחרי שולחן' : 'Syria, city by city and table by table' ); ?></p>
+							<h1 id="c99-syria-title"><?php echo esc_html( $entity['seo']['h1'] ); ?></h1>
+							<p class="c99-syria-intro"><?php echo esc_html( $is_he ? 'ריח של פלפל ופרי חמצמץ, קובה בצורות שונות, בורגול, בשר ושולחנות משפחתיים. מתחילים בחלב, טועמים שכבה אחת בכל פעם וממשיכים לכל מה שמסקרן.' : 'Red pepper and sour fruit, kibbeh in many forms, bulgur, meat and family tables. Begin in Aleppo, taste one layer at a time and follow whatever makes you curious.' ); ?></p>
+							<div class="c99-museum-home-actions">
+								<?php if ( '' !== $aleppo_url ) : ?><a class="c99-button c99-syria-button-primary" href="<?php echo esc_url( $aleppo_url ); ?>"><?php echo esc_html( $is_he ? 'להתחיל בחלב' : 'Begin in Aleppo' ); ?></a><?php endif; ?>
+								<a class="c99-button c99-syria-button-secondary" href="<?php echo esc_url( $urls['store'] ); ?>"><?php echo esc_html( $is_he ? 'לפתוח את המזווה' : 'Open the pantry' ); ?></a>
+							</div>
+						</div>
+						<div class="c99-syria-hero-media">
+							<?php self::render_visual( $entity, true ); ?>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section class="c99-syria-section c99-syria-aleppo" aria-labelledby="c99-syria-aleppo-title">
+				<div class="c99-container">
+					<div class="c99-syria-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'השער הראשון' : 'The first doorway' ); ?></p>
+							<h2 id="c99-syria-aleppo-title"><?php echo esc_html( $is_he ? 'נכנסים לחלב דרך הטעמים שלה' : 'Enter Aleppo through its flavors' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'עיר של שווקים, מסורות קהילתיות וטעם שמחבר חריפות, חמיצות, אגוזים, דגנים ובשר.' : 'A city of markets, community traditions and flavors that bring together heat, acidity, nuts, grains and meat.' ); ?></p>
+					</div>
+					<?php self::render_syrian_entity_card( $catalog['region-syria-aleppo'], $aleppo_url, 'feature' ); ?>
+				</div>
+			</section>
+
+			<section class="c99-syria-section c99-syria-kibbeh" aria-labelledby="c99-syria-kibbeh-title">
+				<div class="c99-container c99-syria-split">
+					<div class="c99-syria-section-copy">
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מה פוגשים בצלחת' : 'What you find on the plate' ); ?></p>
+						<h2 id="c99-syria-kibbeh-title"><?php echo esc_html( $is_he ? 'משפחת הקובה החלבית' : 'The Aleppine kibbeh family' ); ?></h2>
+						<p><?php echo esc_html( $is_he ? 'קובה אינה צורה אחת. היא יכולה להיות צלויה, מטוגנת, מבושלת ברוטב או מעוצבת במבנה אחר, והבורגול, המילוי והחום משנים בכל פעם את החוויה.' : 'Kibbeh is not one shape. It can be grilled, fried, cooked in sauce or formed in another way, while the bulgur, filling and heat reshape the experience each time.' ); ?></p>
+					</div>
+					<?php self::render_syrian_entity_card( $catalog['hub-aleppine-kibbeh-family'], self::syrian_entity_url( 'hub-aleppine-kibbeh-family', $bundle ), 'standard' ); ?>
+				</div>
+			</section>
+
+			<section class="c99-syria-section c99-syria-countertop" aria-labelledby="c99-syria-countertop-title">
+				<div class="c99-container">
+					<div class="c99-syria-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מה לשים על השיש' : 'What to gather' ); ?></p>
+							<h2 id="c99-syria-countertop-title"><?php echo esc_html( $is_he ? 'מתחילים משני חומרי יסוד' : 'Begin with two foundations' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'מכירים כל חומר גלם בפני עצמו לפני שמחברים אותו למעטפת, למילוי או למנה.' : 'Meet each ingredient on its own before bringing it into a shell, filling or finished dish.' ); ?></p>
+					</div>
+					<div class="c99-syria-card-grid c99-syria-card-grid-two">
+						<?php self::render_syrian_entity_card( $catalog['ingredient-syrian-bulgur'], self::syrian_entity_url( 'ingredient-syrian-bulgur', $bundle ), 'standard' ); ?>
+						<?php self::render_syrian_entity_card( $catalog['ingredient-syrian-red-meat'], self::syrian_entity_url( 'ingredient-syrian-red-meat', $bundle ), 'standard' ); ?>
+					</div>
+				</div>
+			</section>
+
+			<section class="c99-syria-section c99-syria-methods" aria-labelledby="c99-syria-methods-title">
+				<div class="c99-container">
+					<div class="c99-syria-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מה משפיע על הטעם והמרקם' : 'What shapes flavor and texture' ); ?></p>
+							<h2 id="c99-syria-methods-title"><?php echo esc_html( $is_he ? 'המים והחום משנים את הקובה' : 'Water and heat transform kibbeh' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'גודל הגרגר, ספיחת המים, צורת היחידה ושיטת הבישול קובעים אם המרקם יהיה עדין, יציב, עסיסי או פריך.' : 'Grain size, water uptake, shape and cooking method help determine whether the texture becomes delicate, firm, juicy or crisp.' ); ?></p>
+					</div>
+					<div class="c99-syria-card-grid c99-syria-card-grid-two">
+						<?php self::render_syrian_entity_card( $catalog['technique-syrian-bulgur-hydration'], self::syrian_entity_url( 'technique-syrian-bulgur-hydration', $bundle ), 'standard' ); ?>
+						<?php self::render_syrian_entity_card( $catalog['technique-syrian-kibbeh-cooking'], self::syrian_entity_url( 'technique-syrian-kibbeh-cooking', $bundle ), 'standard' ); ?>
+					</div>
+				</div>
+			</section>
+
+			<section class="c99-syria-section c99-syria-tradition" aria-labelledby="c99-syria-tradition-title">
+				<div class="c99-container c99-syria-split c99-syria-split-reverse">
+					<div class="c99-syria-section-copy">
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'שולחן, זיכרון וקהילה' : 'Table, memory and community' ); ?></p>
+						<h2 id="c99-syria-tradition-title"><?php echo esc_html( $is_he ? 'מסורות האוכל של יהודי חלב' : 'Aleppan Jewish foodways' ); ?></h2>
+						<p><?php echo esc_html( $is_he ? 'מנות משפחתיות עוברות בין דורות ובין ארצות, ומשמרות שמות, איזוני טעם ודרכי אירוח כחלק מן הפסיפס החַלבי הרחב.' : 'Family dishes move across generations and countries, carrying names, flavor balances and ways of gathering within Aleppo\'s wider culinary mosaic.' ); ?></p>
+					</div>
+					<?php self::render_syrian_entity_card( $catalog['tradition-aleppan-jewish-foodways'], self::syrian_entity_url( 'tradition-aleppan-jewish-foodways', $bundle ), 'standard' ); ?>
+				</div>
+			</section>
+
+			<section class="c99-syria-section c99-syria-continue" aria-labelledby="c99-syria-continue-title">
+				<div class="c99-container">
+					<div class="c99-syria-heading">
+						<div>
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'ממשיכים לגלות' : 'Keep exploring' ); ?></p>
+							<h2 id="c99-syria-continue-title"><?php echo esc_html( $is_he ? 'מהשולחן הסורי יוצאות עוד דרכים' : 'More paths leave the Syrian table' ); ?></h2>
+						</div>
+						<p><?php echo esc_html( $is_he ? 'אפשר להמשיך למטבח שכן, לבחור מטבח אחר, לפתוח מדריך או לחפש מוצר במזווה.' : 'Continue to a neighboring kitchen, choose another cuisine, open a guide or look for a pantry product.' ); ?></p>
+					</div>
+					<nav class="c99-syria-continue-grid" aria-label="<?php echo esc_attr( $is_he ? 'דרכים להמשך מהמטבח הסורי' : 'Ways to continue from Syrian cooking' ); ?>">
+						<?php foreach ( $continuations as $continuation ) : ?>
+							<a href="<?php echo esc_url( $continuation['url'] ); ?>">
+								<span><?php echo esc_html( $continuation['label'] ); ?></span>
+								<strong><?php echo esc_html( $continuation['title'] ); ?></strong>
+								<small><?php echo esc_html( $continuation['copy'] ); ?></small>
+								<b aria-hidden="true"><?php echo esc_html( $is_he ? '←' : '→' ); ?></b>
+							</a>
+						<?php endforeach; ?>
+					</nav>
+				</div>
+			</section>
+
+			<?php self::render_syrian_source_drawer( $entity, $is_he ); ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render one of the approved Aleppo and kibbeh entities without the generic
+	 * research dashboard, evidence labels or machine taxonomy.
+	 */
+	private static function render_syrian_consumer_page( $bundle ) {
+		$entity        = $bundle['entity'];
+		$is_he         = 'he' === $bundle['language'];
+		$catalog       = self::syrian_entity_catalog( $is_he );
+		$current_id    = $entity['id'];
+		$profiles      = isset( $entity['profiles'] ) && is_array( $entity['profiles'] ) ? $entity['profiles'] : array();
+		$facts         = isset( $entity['facts'] ) && is_array( $entity['facts'] ) ? $entity['facts'] : array();
+		$safety_notes  = isset( $entity['safety_notes'] ) && is_array( $entity['safety_notes'] ) ? $entity['safety_notes'] : array();
+		$countertop_ids = self::syrian_countertop_ids( $current_id );
+		$related_ids    = self::syrian_related_ids( $current_id );
+		$paths          = $is_he
+			? array(
+				'syria'    => '/museum/syrian-culinary-science/',
+				'store'    => '/store/',
+				'knowledge'=> '/knowledge/',
+			)
+			: array(
+				'syria'    => '/en/museum/syrian-culinary-science/',
+				'store'    => '/en/store/',
+				'knowledge'=> '/en/knowledge/',
+			);
+		$urls = array();
+		foreach ( $paths as $key => $path ) {
+			$urls[ $key ] = self::internal_url( $path );
+		}
+		?>
+		<article class="c99-syria-page" data-c99-syrian-entity="<?php echo esc_attr( $current_id ); ?>">
+			<section class="c99-syria-page-hero" aria-labelledby="c99-syria-page-title">
+				<div class="c99-container">
+					<?php self::render_breadcrumbs( $entity, $bundle ); ?>
+					<div class="c99-syria-page-hero-grid">
+						<div class="c99-syria-page-hero-copy">
+							<p class="c99-museum-kicker"><?php echo esc_html( isset( $catalog[ $current_id ]['eyebrow'] ) ? $catalog[ $current_id ]['eyebrow'] : ( $is_he ? 'מהמטבח הסורי' : 'From the Syrian kitchen' ) ); ?></p>
+							<h1 id="c99-syria-page-title"><?php echo esc_html( isset( $entity['seo']['h1'] ) ? $entity['seo']['h1'] : $entity['name'] ); ?></h1>
+							<p class="c99-syria-page-intro"><?php echo esc_html( isset( $entity['seo']['opening'] ) ? $entity['seo']['opening'] : $entity['summary'] ); ?></p>
+							<a class="c99-syria-back-link" href="<?php echo esc_url( $urls['syria'] ); ?>"><?php echo esc_html( $is_he ? 'לכל הטעמים של סוריה' : 'Explore all Syrian flavors' ); ?></a>
+						</div>
+						<div class="c99-syria-page-hero-media">
+							<?php self::render_visual( $entity, true ); ?>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<div class="c99-container c99-syria-page-body">
+				<section class="c99-syria-story-section" aria-labelledby="c99-syria-plate-title">
+					<div class="c99-syria-story-heading">
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מה פוגשים בצלחת' : 'What you find on the plate' ); ?></p>
+						<h2 id="c99-syria-plate-title"><?php echo esc_html( $is_he ? 'הטעם, הצורה והסיפור' : 'Flavor, form and story' ); ?></h2>
+					</div>
+					<p class="c99-syria-story-lede"><?php echo esc_html( $entity['summary'] ); ?></p>
+					<?php if ( ! empty( $facts ) ) : ?>
+						<div class="c99-syria-fact-grid">
+							<?php foreach ( $facts as $fact ) : ?>
+								<article>
+									<p><?php echo esc_html( $fact['statement'] ); ?></p>
+									<?php self::render_syrian_measurements( $fact ); ?>
+								</article>
+							<?php endforeach; ?>
+						</div>
+					<?php endif; ?>
+				</section>
+
+				<?php if ( ! empty( $profiles ) ) : ?>
+					<section class="c99-syria-story-section c99-syria-texture" aria-labelledby="c99-syria-texture-title">
+						<div class="c99-syria-story-heading">
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מה משפיע על הטעם והמרקם' : 'What shapes flavor and texture' ); ?></p>
+							<h2 id="c99-syria-texture-title"><?php echo esc_html( $is_he ? 'מסתכלים מקרוב על מה שקורה באוכל' : 'Look closely at what happens in the food' ); ?></h2>
+						</div>
+						<div class="c99-syria-profile-grid">
+							<?php foreach ( $profiles as $dimension => $profile ) : ?>
+								<article>
+									<h3><?php echo esc_html( self::syrian_profile_label( $dimension, $is_he ) ); ?></h3>
+									<p><?php echo esc_html( $profile['summary'] ); ?></p>
+								</article>
+							<?php endforeach; ?>
+						</div>
+					</section>
+				<?php endif; ?>
+
+				<?php if ( ! empty( $countertop_ids ) ) : ?>
+					<section class="c99-syria-story-section c99-syria-page-countertop" aria-labelledby="c99-syria-page-countertop-title">
+						<div class="c99-syria-story-heading">
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'מה לשים על השיש' : 'What to gather' ); ?></p>
+							<h2 id="c99-syria-page-countertop-title"><?php echo esc_html( $is_he ? 'חומרי הגלם שממשיכים מכאן' : 'Ingredients to explore next' ); ?></h2>
+						</div>
+						<div class="c99-syria-card-grid c99-syria-card-grid-two">
+							<?php foreach ( $countertop_ids as $target_id ) : ?>
+								<?php if ( isset( $catalog[ $target_id ] ) ) : ?>
+									<?php self::render_syrian_entity_card( $catalog[ $target_id ], self::syrian_entity_url( $target_id, $bundle ), 'compact' ); ?>
+								<?php endif; ?>
+							<?php endforeach; ?>
+						</div>
+					</section>
+				<?php endif; ?>
+
+				<div class="c99-syria-offer-wrap">
+					<?php self::render_offer( $entity ); ?>
+				</div>
+
+				<?php if ( ! empty( $safety_notes ) ) : ?>
+					<section class="c99-syria-story-section c99-syria-before" aria-labelledby="c99-syria-before-title">
+						<div class="c99-syria-story-heading">
+							<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'לפני שמתחילים' : 'Before you begin' ); ?></p>
+							<h2 id="c99-syria-before-title"><?php echo esc_html( $is_he ? 'עובדים בזהירות ושומרים על הטעם' : 'Cook with care and protect the flavor' ); ?></h2>
+						</div>
+						<ul>
+							<?php foreach ( $safety_notes as $note ) : ?>
+								<li><?php echo esc_html( self::clean_compliance_note( $note ) ); ?></li>
+							<?php endforeach; ?>
+						</ul>
+					</section>
+				<?php endif; ?>
+
+				<section class="c99-syria-story-section c99-syria-page-continue" aria-labelledby="c99-syria-page-continue-title">
+					<div class="c99-syria-story-heading">
+						<p class="c99-museum-kicker"><?php echo esc_html( $is_he ? 'ממשיכים לגלות' : 'Keep exploring' ); ?></p>
+						<h2 id="c99-syria-page-continue-title"><?php echo esc_html( $is_he ? 'הדף הבא כבר מחכה על המדף' : 'The next story is already on the shelf' ); ?></h2>
+					</div>
+					<div class="c99-syria-card-grid c99-syria-related-grid">
+						<?php foreach ( $related_ids as $target_id ) : ?>
+							<?php if ( isset( $catalog[ $target_id ] ) && $target_id !== $current_id ) : ?>
+								<?php self::render_syrian_entity_card( $catalog[ $target_id ], self::syrian_entity_url( $target_id, $bundle ), 'compact' ); ?>
+							<?php endif; ?>
+						<?php endforeach; ?>
+					</div>
+					<nav class="c99-syria-quick-links" aria-label="<?php echo esc_attr( $is_he ? 'קישורים נוספים להמשך' : 'More ways to keep exploring' ); ?>">
+						<a href="<?php echo esc_url( $urls['store'] ); ?>"><?php echo esc_html( $is_he ? 'למזווה ולחנות' : 'Pantry and store' ); ?></a>
+						<a href="<?php echo esc_url( $urls['knowledge'] ); ?>"><?php echo esc_html( $is_he ? 'למרכז הידע' : 'Knowledge center' ); ?></a>
+					</nav>
+				</section>
+
+				<?php self::render_syrian_source_drawer( $entity, $is_he ); ?>
+			</div>
+		</article>
+		<?php
+	}
+
+	private static function render_syrian_measurements( $fact ) {
+		$measurements = isset( $fact['scientific_measurements'] ) && is_array( $fact['scientific_measurements'] ) ? $fact['scientific_measurements'] : array();
+		if ( empty( $measurements ) ) {
+			return;
+		}
+		?>
+		<ul class="c99-syria-measurements">
+			<?php foreach ( $measurements as $measurement ) : ?>
+				<?php
+				$value = 'range' === $measurement['kind']
+					? self::format_number( $measurement['low'] ) . ' - ' . self::format_number( $measurement['high'] )
+					: self::format_number( $measurement['value'] );
+				?>
+				<li><strong><?php echo esc_html( self::machine_label( $measurement['property'] ) ); ?></strong><span><?php echo esc_html( trim( $value . ' ' . $measurement['unit'] ) ); ?></span></li>
+			<?php endforeach; ?>
+		</ul>
+		<?php
+	}
+
+	private static function render_syrian_source_drawer( $entity, $is_he ) {
+		$sources = isset( $entity['sources'] ) && is_array( $entity['sources'] ) ? $entity['sources'] : array();
+		if ( empty( $sources ) ) {
+			return;
+		}
+		?>
+		<section class="c99-syria-reading" aria-labelledby="c99-syria-reading-title">
+			<div class="c99-container">
+				<details>
+					<summary>
+						<strong id="c99-syria-reading-title"><?php echo esc_html( $is_he ? 'למי שרוצה להעמיק' : 'For readers who want to go deeper' ); ?></strong>
+						<span><?php echo esc_html( $is_he ? 'לפתוח את רשימת הקריאה' : 'Open the reading list' ); ?></span>
+					</summary>
+					<div class="c99-syria-reading-content">
+						<ol>
+							<?php foreach ( $sources as $source ) : ?>
+								<?php $url = self::external_url( isset( $source['url'] ) ? $source['url'] : '' ); ?>
+								<li>
+									<p><strong><?php echo esc_html( $source['publisher'] ); ?></strong> <?php echo esc_html( $source['title'] ); ?></p>
+									<?php if ( '' !== $url ) : ?><a href="<?php echo esc_url( $url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'לפתוח ולקרוא' : 'Open and read' ); ?></a><?php endif; ?>
+								</li>
+							<?php endforeach; ?>
+						</ol>
+					</div>
+				</details>
+			</div>
+		</section>
+		<?php
+	}
+
+	private static function render_syrian_entity_card( $card, $url, $layout ) {
+		if ( '' === $url || ! is_array( $card ) ) {
+			return;
+		}
+		?>
+		<a class="c99-syria-entity-card c99-syria-entity-card-<?php echo esc_attr( sanitize_html_class( $layout ) ); ?>" href="<?php echo esc_url( $url ); ?>">
+			<?php self::render_landing_picture( $card['image'], $card['alt'], 'shelf' ); ?>
+			<span class="c99-syria-card-copy">
+				<span class="c99-syria-card-eyebrow"><?php echo esc_html( $card['eyebrow'] ); ?></span>
+				<strong><?php echo esc_html( $card['name'] ); ?></strong>
+				<span><?php echo esc_html( $card['copy'] ); ?></span>
+				<b><?php echo esc_html( $card['cta'] ); ?></b>
+			</span>
+		</a>
+		<?php
+	}
+
+	private static function syrian_entity_url( $target_id, $bundle ) {
+		if ( ! in_array( $target_id, self::SYRIAN_PUBLIC_COHORT_IDS, true )
+			|| ! is_array( $bundle )
+			|| ! isset( $bundle['language'], $bundle['version'], $bundle['entity']['internal_links'] )
+			|| ! is_array( $bundle['entity']['internal_links'] ) ) {
+			return '';
+		}
+
+		$target = self::authoritative_public_bundle_for_id( $target_id, $bundle['language'] );
+		if ( empty( $target )
+			|| ! isset( $target['entity']['id'], $target['language'], $target['version'], $target['canonical_path'], $target['canonical_url'] )
+			|| $target_id !== $target['entity']['id']
+			|| $bundle['language'] !== $target['language']
+			|| $bundle['version'] !== $target['version']
+			|| ! self::is_renderable_bundle( $target, $target['canonical_path'] ) ) {
+			return '';
+		}
+
+		$links = $bundle['entity']['internal_links'];
+		foreach ( $links as $link ) {
+			if ( is_array( $link )
+				&& isset( $link['target_id'], $link['url'] )
+				&& $target_id === $link['target_id'] ) {
+				$url = self::internal_url( $link['url'] );
+				if ( '' !== $url && $target['canonical_url'] === $url ) {
+					return $url;
+				}
+			}
+		}
+		return '';
+	}
+
+	private static function syrian_countertop_ids( $entity_id ) {
+		$map = array(
+			'region-syria-aleppo'                 => array( 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat' ),
+			'hub-aleppine-kibbeh-family'          => array( 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat' ),
+			'ingredient-syrian-bulgur'            => array(),
+			'ingredient-syrian-red-meat'          => array(),
+			'technique-syrian-bulgur-hydration'   => array( 'ingredient-syrian-bulgur' ),
+			'technique-syrian-kibbeh-cooking'     => array( 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat' ),
+			'tradition-aleppan-jewish-foodways'   => array(),
+		);
+		return isset( $map[ $entity_id ] ) ? $map[ $entity_id ] : array();
+	}
+
+	private static function syrian_related_ids( $entity_id ) {
+		$map = array(
+			'region-syria-aleppo'                 => array( 'hub-aleppine-kibbeh-family', 'technique-syrian-bulgur-hydration', 'technique-syrian-kibbeh-cooking', 'tradition-aleppan-jewish-foodways' ),
+			'hub-aleppine-kibbeh-family'          => array( 'technique-syrian-bulgur-hydration', 'technique-syrian-kibbeh-cooking', 'region-syria-aleppo' ),
+			'ingredient-syrian-bulgur'            => array( 'technique-syrian-bulgur-hydration', 'hub-aleppine-kibbeh-family', 'technique-syrian-kibbeh-cooking', 'region-syria-aleppo' ),
+			'ingredient-syrian-red-meat'          => array( 'hub-aleppine-kibbeh-family', 'technique-syrian-kibbeh-cooking', 'region-syria-aleppo' ),
+			'technique-syrian-bulgur-hydration'   => array( 'hub-aleppine-kibbeh-family', 'technique-syrian-kibbeh-cooking', 'region-syria-aleppo' ),
+			'technique-syrian-kibbeh-cooking'     => array( 'hub-aleppine-kibbeh-family', 'technique-syrian-bulgur-hydration', 'region-syria-aleppo' ),
+			'tradition-aleppan-jewish-foodways'   => array( 'region-syria-aleppo' ),
+		);
+		return isset( $map[ $entity_id ] ) ? $map[ $entity_id ] : array();
+	}
+
+	private static function syrian_profile_label( $dimension, $is_he ) {
+		$labels = array(
+			'cultural'    => array( 'הטעם והמקום', 'Flavor and place' ),
+			'scientific'  => array( 'המרקם והתהליך', 'Texture and process' ),
+			'commercial'  => array( 'איך בוחרים', 'How to choose' ),
+			'institutional'=> array( 'על השולחן הגדול', 'At the larger table' ),
+			'economic'    => array( 'איכות וערך', 'Quality and value' ),
+		);
+		return isset( $labels[ $dimension ] )
+			? $labels[ $dimension ][ $is_he ? 0 : 1 ]
+			: ( $is_he ? 'עוד שכבה בטעם' : 'Another layer of flavor' );
+	}
+
+	private static function syrian_entity_catalog( $is_he ) {
+		$prefix = $is_he ? '' : '/en';
+		return array(
+			'region-syria-aleppo' => array(
+				'path'     => $prefix . '/museum/syrian-culinary-science/aleppo/',
+				'eyebrow'  => $is_he ? 'חלב' : 'Aleppo',
+				'name'     => $is_he ? 'הטעמים של חלב' : 'The flavors of Aleppo',
+				'copy'     => $is_he ? 'עיר של קובה, פלפל, פרי חמצמץ, מאפים ומסורות משפחתיות שמתחברות לשולחן עשיר.' : 'A city of kibbeh, pepper, sour fruit, pastries and family traditions gathered around a generous table.',
+				'cta'      => $is_he ? 'להיכנס לחלב' : 'Enter Aleppo',
+				'image'    => 'assets/images/science/c99-science-syrian-aleppo-table-v01',
+				'alt'      => $is_he ? 'שולחן חלבי עם קובה מבושלת, פלפל אדום, דובדבנים חמוצים, חבוש ובורגול' : 'Aleppine table with cooked kibbeh, red pepper, sour cherries, quince and bulgur',
+			),
+			'hub-aleppine-kibbeh-family' => array(
+				'path'     => $prefix . '/museum/syrian-culinary-science/aleppo/aleppine-kibbeh-family/',
+				'eyebrow'  => $is_he ? 'משפחת מנות' : 'Dish family',
+				'name'     => $is_he ? 'משפחת הקובה החלבית' : 'The Aleppine kibbeh family',
+				'copy'     => $is_he ? 'צורות, מילויים ושיטות חימום שמראות כמה עולמות יכולים להסתתר בשם קובה.' : 'Shapes, fillings and cooking methods reveal how many worlds can live inside the name kibbeh.',
+				'cta'      => $is_he ? 'לגלות את משפחת הקובה' : 'Discover the kibbeh family',
+				'image'    => 'assets/images/science/c99-science-aleppine-kibbeh-family-v01',
+				'alt'      => $is_he ? 'מבחר צורות קובה חלבית מבושלות, צלויות ומטוגנות על שולחן אבן' : 'A selection of cooked, grilled and fried Aleppine kibbeh forms on a stone table',
+			),
+			'ingredient-syrian-bulgur' => array(
+				'path'     => $prefix . '/ingredients/syrian-bulgur/',
+				'eyebrow'  => $is_he ? 'חומר גלם' : 'Ingredient',
+				'name'     => $is_he ? 'בורגול במטבח הסורי' : 'Bulgur in Syrian cooking',
+				'copy'     => $is_he ? 'גודל הגרגר וספיחת המים משפיעים על התחושה, האחיזה והעדינות של המעטפת.' : 'Grain size and water uptake influence the feel, strength and delicacy of the shell.',
+				'cta'      => $is_he ? 'להכיר את הבורגול' : 'Meet the bulgur',
+				'image'    => 'assets/images/science/c99-science-syrian-bulgur-v01',
+				'alt'      => $is_he ? 'גרגרי בורגול דק ובינוני בשתי קערות קרמיקה ללא אריזה' : 'Fine and medium bulgur grains in two unbranded ceramic bowls',
+			),
+			'ingredient-syrian-red-meat' => array(
+				'path'     => $prefix . '/ingredients/lamb-and-beef-in-syrian-cooking/',
+				'eyebrow'  => $is_he ? 'חומר גלם' : 'Ingredient',
+				'name'     => $is_he ? 'כבש ובקר בבישול הסורי' : 'Lamb and beef in Syrian cooking',
+				'copy'     => $is_he ? 'נתח, אחוז שומן, טחינה ובישול משנים את העסיסיות, המרקם וההתאמה למנה.' : 'Cut, fat, grind and cooking change juiciness, texture and the way meat fits a dish.',
+				'cta'      => $is_he ? 'להכיר את משפחת הבשר' : 'Explore the meat family',
+				'image'    => 'assets/images/science/c99-science-syrian-lamb-beef-family-v01',
+				'alt'      => $is_he ? 'דוגמאות מבושלות ונפרדות של כבש ובקר בכלי קרמיקה ניטרליים' : 'Separate fully cooked lamb and beef examples in neutral ceramic dishes',
+			),
+			'technique-syrian-bulgur-hydration' => array(
+				'path'     => $prefix . '/knowledge/how-to-hydrate-bulgur-for-kibbeh/',
+				'eyebrow'  => $is_he ? 'שיטה' : 'Method',
+				'name'     => $is_he ? 'איך בורגול סופח מים' : 'How bulgur takes up water',
+				'copy'     => $is_he ? 'עוקבים אחרי הגרגר מן המצב היבש ועד למרקם המוכן לעבודה, בלי להניח יחס אחד לכל מוצר.' : 'Follow the grain from dry to workable texture without assuming one ratio fits every product.',
+				'cta'      => $is_he ? 'להבין הידרציה' : 'Understand hydration',
+				'image'    => 'assets/images/science/c99-science-syrian-bulgur-hydration-v01',
+				'alt'      => $is_he ? 'ארבע קערות המציגות בורגול יבש, ספיחת מים, מנוחה ומרקם מוכן' : 'Four bowls showing dry bulgur, water uptake, resting and a workable final texture',
+			),
+			'technique-syrian-kibbeh-cooking' => array(
+				'path'     => $prefix . '/knowledge/how-to-cook-kibbeh-safely/',
+				'eyebrow'  => $is_he ? 'שיטה' : 'Method',
+				'name'     => $is_he ? 'בישול קובה עד המרכז' : 'Cooking kibbeh through to the center',
+				'copy'     => $is_he ? 'משווים צלייה, טיגון, בישול במים ובישול ברוטב ורואים איך החום מגיע לכל צורה.' : 'Compare grilling, frying, simmering and sauce cooking, and see how heat reaches each shape.',
+				'cta'      => $is_he ? 'ללמוד את שיטות הבישול' : 'Learn the cooking methods',
+				'image'    => 'assets/images/science/c99-science-syrian-kibbeh-cooking-v01',
+				'alt'      => $is_he ? 'ארבע תוצאות קובה מבושלות לחלוטין בצלייה, טיגון, מים ורוטב' : 'Four fully cooked kibbeh results from grilling, frying, simmering and sauce cooking',
+			),
+			'tradition-aleppan-jewish-foodways' => array(
+				'path'     => $prefix . '/traditions/aleppan-jewish-foodways/',
+				'eyebrow'  => $is_he ? 'מסורת וקהילה' : 'Tradition and community',
+				'name'     => $is_he ? 'מסורות האוכל של יהודי חלב' : 'Aleppan Jewish foodways',
+				'copy'     => $is_he ? 'מנות משפחתיות, איזוני חמוץ ומתוק ודרכי אירוח שנשאו זיכרון מחלב אל קהילות התפוצה.' : 'Family dishes, sweet-sour balances and ways of gathering that carried memories of Aleppo into diaspora communities.',
+				'cta'      => $is_he ? 'להיכנס לסיפור הקהילה' : 'Enter the community story',
+				'image'    => 'assets/images/science/c99-science-aleppan-jewish-foodways-v01',
+				'alt'      => $is_he ? 'שולחן משפחתי יהודי חלבי עם קובה מבושלת, עוף צלוי ועלי גפן ממולאים' : 'Aleppan Jewish family table with cooked kibbeh, roast chicken and stuffed grape leaves',
+			),
+		);
 	}
 
 	private static function format_number( $value ) {

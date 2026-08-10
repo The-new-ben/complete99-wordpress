@@ -11,9 +11,91 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.18.2`. Production truth comes
+The source tree targets Complete99 Platform `1.20.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.20.0 advances a bounded bilingual Japanese koji and shoyu research
+journey without publishing it. Shoyu koji, kioke, a koji-hydrolysis guide, JAS
+1703 shoyu standard context and the koji enzymatic-hydrolysis reaction are five
+editorial candidates. The first four are proposed standalone Hebrew and English
+owners; the reaction is a proposed section of the guide. They remain private
+because no owner publication receipt exists. The current public science graph
+therefore remains exactly 27 entities, 19 standalone page owners per language
+and 38 bilingual routes. Every public science route remains `noindex,follow`,
+outside the sitemap, and zero are indexable.
+
+The culinary-science registry uses schema
+`complete99-culinary-science-registry/v6` and version
+`culinary-science-2026.08.08.v20`. It remains at 672 identities, grows to 375
+sources and keeps Entity Studio at 728 subjects. The 84-identity Japanese
+cluster remains split into 24 public and 60 private records. Exactly three
+private `literature_context` measurements are verified from one source-scoped study of
+three *Aspergillus oryzae* strains after 46 hours: neutral protease 500-700 U/g,
+acidic protease 50-150 U/g and leucine aminopeptidase 50-250 U/g. These ranges
+report the cited assay context; they are not recipe, production or safety
+targets and cannot enter the public projection while their parent candidate is
+held.
+
+Cross-domain binding registry v3 records the complete unresolved census of 95
+records: 12 dishes, 47 dish-scoped components and 36 WooCommerce products. It
+also retains 11 private reciprocal Woo candidate records for human review. All
+five verified or public indexes are literally empty, so this registry publishes
+no relation, mutates no source record and creates no product or offer. Culinary
+commerce v14 binds science v20 while preserving the exact 36 WooCommerce
+products, 56 product identities, 20 private planning prices, live prices, stock
+authority, cart behavior and disabled payment state.
+
+Its private decision overlay is valid but contains zero decisions and zero
+recognized reviewer authorities. A candidate therefore cannot become linked or
+public merely because its identity or evidence exists.
+
+The generated-asset manifest is an editorial evidence registry, not an inventory
+of files installed by the plugin. It keeps 60 catalog assets separate from 12
+science editorial candidates, seven Syrian and five Japanese. Approval v2 binds
+each candidate's exact PNG source evidence separately from its four deployable
+WebP/AVIF variants and complete Hebrew and English content. No trusted owner key
+or receipt exists, so all twelve candidates and their media remain held and
+private.
+
+The 1.20 Science media package is default-deny. Its exact policy classifies 47
+stems and 175 repository files: 28 public-delivery stems, 18 held
+repository-only stems and one approved superseded archive stem. A rebuilt ZIP
+ships exactly 70 public delivery files and excludes 105 repository-only files:
+78 held files, 24 active public PNG source-evidence files and three superseded
+archive files. This removes all 60 held derivatives that the earlier 1.20
+candidate packaged while retaining all 78 held files as repository evidence.
+
+This infrastructure candidate does not authorize held publication and this
+repository state is not a live or deployment claim. It may move only through
+protected `main`, green CI and the controlled release workflow while the held
+content remains absent. Any later owner-approved candidate requires a newly
+reviewed and rebuilt artifact containing the exact four approved delivery
+variants, followed by fresh anonymous and Chrome acceptance.
+
+Release 1.19.0 prepared a bounded, bilingual Aleppo discovery candidate inside
+the existing Syrian cuisine cluster. Its frozen artifact encoded Aleppo, the
+Aleppine kibbeh family, Syrian bulgur, cooked lamb and beef, bulgur hydration,
+fully cooked kibbeh methods and Aleppan Jewish foodways as seven public/noindex
+routes with responsive image sets, producing artifact counts of 34 entities, 26
+standalone owners per language and 52 bilingual routes. No owner publication
+receipt was recorded and the artifact was never deployed, so it did not enlarge
+the live public graph beyond 27 entities, 19 standalone owners and 38 routes.
+
+The frozen candidate also restored the versioned dish-component projection on
+all 12 bilingual menu pages. The current 1.20 held overlay withholds Syrian
+continuation links because their targets are not approved for publication.
+Structural breadcrumbs remain visible and are governed separately from
+journey-link parity.
+
+The frozen registry remains at 672 science identities and grows to 374 sources;
+Entity Studio remains at 728 subjects. The artifact's complete Syrian cluster
+contains 282 identities, split into 8 public/noindex and 274 private records. The
+untested `dish-kibbeh-meshwiyyeh` record stays private and pending. The proposed
+`ingredient-syrian-bulgur` relation to the already-authorized WooCommerce offer
+`product-bulgur-fine-500g` remains private and creates no public continuation.
+The 36 products, 56 product identities, 20 private planning prices, stock
+authority, cart and disabled payment state remain unchanged.
 
 Release 1.18.2 is a bounded mobile acceptance patch. It compacts the pantry
 masthead and shelf introduction at widths up to 700 pixels so the first product
@@ -104,12 +186,15 @@ identities remain private, `noindex` and reference-only. The exact 36-product
 public store, 23 public science identities, prices, stock, cart, public routes,
 payment-disabled state and no-role boundary remain unchanged.
 
-The commerce registry is version 12 and binds culinary-science registry version
-18. It preserves the 56 existing product identities, 36 public WooCommerce
-products and 20 private planning prices. The Lebanese expansion adds no retail
-listing, price observation, product identity, offer, supplier, stock record or
-purchasing route. The earlier Syrian and Iraqi trade boundaries, Lebanese retail
-observations, pomegranate-concentrate
+The current commerce registry is version 14 and binds culinary-science registry
+version 20. It preserves the 56 existing product identities, 36 public
+WooCommerce products and 20 private planning prices. It retains the version 13
+Syrian bulgur-to-product relationship as private editorial evidence only; it
+creates no public edge, product, price or stock record. The five held Japanese
+candidates create no product, price, stock, supplier or offer. The
+Lebanese expansion adds no retail listing, price observation, product identity,
+offer, supplier, stock record or purchasing route. The earlier Syrian and Iraqi
+trade boundaries, Lebanese retail observations, pomegranate-concentrate
 identity boundary, comparison-only treatment of pomegranate molasses, exclusion
 of techniques from product cross-sells and separation of registry validity from
 active-offer readiness remain in force.
@@ -156,14 +241,24 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The 1.18.2 release retains the culinary-science registry at 672 bounded entities. The
-Syrian graph contains 282 identities, the Lebanese graph contains 203 and the
-Iraqi graph contains 96. All 121 new Lebanese identities, the other 81
-Lebanese foundation identities, and all 96 Iraqi identities are
-private, `noindex` and reference-only. The 86 Syrian identities added in
-1.16.0 remain private under their existing release boundary.
-Twenty-seven public entities project through 19 canonical page owners per
-language, for 38 distinct Hebrew and English routes. Shared page
+The 1.20.0 source retains the culinary-science registry at 672 bounded entities
+and records 375 sources. The Japanese graph contains 84 identities split into
+24 public and 60 private records. The current public projection remains exactly
+27 entities through 19 standalone page owners per language and 38 distinct
+Hebrew and English routes. Every public science route remains `noindex,follow`
+and outside the sitemap. The cross-domain v3 registry remains a private
+unresolved review surface and contributes no public edge.
+
+The frozen 1.19.0 candidate retained the culinary-science registry at 672 bounded
+entities and recorded 374 sources. The Syrian graph contains 282 identities,
+the Lebanese graph contains 203 and the Iraqi graph contains 96. Inside that
+artifact, the Syrian graph is split into 8 public/noindex and 274 private
+records. All
+121 new Lebanese identities, the other 81 Lebanese foundation identities, and
+all 96 Iraqi identities remain private, `noindex` and reference-only. The
+artifact projection contains 34 entities through 26 standalone page owners per
+language and 52 distinct Hebrew and English routes. The artifact was never
+deployed or owner-approved, so the live projection stayed at 27/19/38. Shared page
 ownership prevents closely related entities from competing for the same search
 intent. The current pages remain `noindex,follow` and outside the sitemap until
 the separate long-form editorial and search-intent gate passes.
@@ -316,6 +411,8 @@ label or disclaimer.
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Cross-domain culinary binding registry](docs/cross-domain-binding-registry.md)
+- [Japanese koji public-vertical source and claim ledger](docs/japanese-koji-public-vertical-source-claim-ledger-2026-08-08.md)
 - [Complete99 operating brief](docs/complete99-operating-brief.md)
 - [Consumer site and commerce runbook](docs/consumer-commerce-runbook.md)
 - [Editorial and SEO governance](docs/editorial-governance.md)

@@ -85,6 +85,15 @@ only other public entities. Public taxonomy is emitted from explicit category,
 attribute and tag allowlists. Prompts, cost plans and private evidence remain in
 the administrator surface.
 
+Schema v6 adds typed measurements to atomic facts. A measurement retains its
+verification state, value or range, unit, assay method, specimen scope,
+conditions, confidence, source reference and measurement date. Release v20
+uses this model for exactly three verified `literature_context` assay ranges
+from one 46-hour, three-strain *Aspergillus oryzae* study. Their parent Japanese
+candidate is held without an owner publication receipt, so all three remain
+private and public projection fails closed. They are literature evidence rather
+than recipe, production or safety targets.
+
 ## Commerce and monetization graph
 
 Knowledge does not become a sellable item by implication. The commerce registry
@@ -140,6 +149,23 @@ spacing and repeated supporting labels while retaining the complete copy in the
 server-rendered document. The first product card must enter the 390 by 844
 initial viewport, all interaction targets remain at least 44 by 44 CSS pixels,
 and no desktop rule changes.
+
+Release 1.19.0 uses culinary-commerce registry version 13 bound to
+culinary-science registry version 19. The dependency adds one explicit
+editorial-to-commerce edge from `ingredient-syrian-bulgur` to the existing
+`product-bulgur-fine-500g` WooCommerce identity. The frozen artifact encoded the
+ingredient as public/noindex, but it lacked owner approval and was never
+deployed. The product remains the sole owner of Product and Offer facts,
+including the live ILS 5.90 price. Current v20 holds the Syrian candidate and
+emits no public navigation. Product, price, stock, supplier, cart and payment
+state otherwise remain unchanged.
+
+Release 1.20.0 uses culinary-commerce registry version 14 bound to
+culinary-science schema v6 and registry version 20. It adds no product identity,
+effective offer or public commercial edge. The exact 36 WooCommerce products,
+20 private planning prices, prices, stock, cart and disabled payment state remain
+unchanged. Eleven cross-domain Woo candidates remain private review inputs and
+cannot create a Product or Offer projection.
 
 ## Private Entity Studio
 
@@ -199,6 +225,36 @@ records remain held. None adds a product code, offer, stock, supplier,
 landed-cost, margin or public route. Price-basis coverage remains 56 of 56: 36
 unchanged public WooCommerce prices and 20 private planning prices. Payment
 remains disabled and no role is installed or assigned.
+
+Release 1.19.0 keeps Entity Studio at 728 subjects: the same 672 science
+identities and 56 product identities. The source register grows from 370 to
+374. Its frozen artifact encodes seven editorial asset records with public usage
+in a dedicated science-asset collection, while the 60-entry catalog collection
+and its product-image semantics remain unchanged. No owner publication receipt
+was recorded and the artifact was never deployed. Current v20 holds those seven
+assets with the five Japanese candidates.
+
+Release 1.20.0 keeps Entity Studio at 728 subjects and the science registry at
+672 identities. The source register grows from 374 to 375. Five Japanese koji
+and shoyu identities join that dedicated collection as held editorial
+candidates, bringing it to twelve assets separate from the 60 catalog assets.
+Producer and retail-listing records remain private. Cross-domain v3 review
+records do not become Entity Studio subjects and cannot write to their source
+registries.
+
+The generated-asset manifest is an editorial evidence registry, not an
+installed-file inventory. Owner-publication approval v2 binds the exact PNG
+source evidence separately from the four deployable WebP/AVIF variants and the
+complete bilingual content. There is no trusted owner key or receipt, so all
+twelve Syrian and Japanese candidates fail closed.
+
+Science media export is a separate default-deny boundary. The 1.20 policy
+classifies exactly 47 stems and 175 repository files: 28 public-delivery stems,
+18 held repository-only stems and one approved superseded archive stem. The ZIP
+allowlist contains exactly 70 delivery files. Exactly 105 files remain
+repository-only: 78 held files, 24 active public PNG source-evidence files and
+three archive files. The policy removes all 60 held derivatives present in the
+earlier 1.20 candidate package without deleting the 78 held repository files.
 
 Commerce status separates `registry_valid` from `commerce_ready`. A valid
 private graph keeps health checks and migrations operational. It does not claim
@@ -273,6 +329,25 @@ page-aware product anchors and progressively disclosed specifications.
 Release 1.18.2 preserves the same counts, routes and shelf behavior. Its only
 runtime change is mobile store spacing.
 
+Release 1.19.0 keeps the cumulative registry at 672 identities and Entity
+Studio at 728 subjects. Its frozen artifact encodes seven Syrian records as
+public/noindex discoveries, producing 34 entities, 26 standalone page owners
+per language, 52 bilingual routes, and a Syrian split of 8 public/noindex to 274
+private records. Zero science entities are indexable and the science sitemap is
+empty. No owner receipt existed and the artifact was never deployed, so the
+live public graph remained exactly 27/19/38. Current v20 holds all seven. The
+other cuisine totals and the exact 36-product WooCommerce catalog remain
+unchanged.
+
+Release 1.20.0 keeps the cumulative registry at 672 identities and Entity
+Studio at 728 subjects. Five Japanese identities become held editorial
+candidates. Four are proposed standalone page owners and the
+enzymatic-hydrolysis reaction is a proposed section of the koji-hydrolysis
+guide. The public graph remains exactly 27 entities, 19 standalone page owners
+per language and 38 bilingual routes. The Japanese cluster remains at 24 public
+and 60 private records. All 27 public entities remain outside the sitemap and
+zero science entities are indexable.
+
 ## Syria regional and community boundary
 
 The Syrian graph is organized by source-scoped regions and communities rather
@@ -293,6 +368,16 @@ operation, recipe testing or image rights. Four unresolved records remain held
 until botanical identity, toxicity reduction, preservation controls or exact
 product identity can be verified. None of the 86 new records enters the public
 API, public sitemap, WooCommerce catalog, POS catalog or ordering flow.
+
+The frozen 1.19.0 artifact encodes a narrow public/noindex path through the
+already-modeled Syrian graph: Aleppo, the Aleppine kibbeh family, Syrian bulgur,
+cooked lamb and beef, bulgur hydration, fully cooked kibbeh methods and Aleppan
+Jewish foodways. No owner receipt existed and the artifact was never deployed,
+so only the pre-existing cuisine root remained live. Current v20 holds all seven. The
+pending `dish-kibbeh-meshwiyyeh` record remains private with no Recipe schema.
+Candidate cooking content prohibits raw kibbeh and keeps ground-meat guidance
+within a fully cooked boundary. Source-scoped Jewish foodways sit alongside the
+broader regional account and do not replace it.
 
 ## Iraq research and trade boundary
 
@@ -476,3 +561,55 @@ integrity metadata is isolated in `complete99-platform-integrity.json`.
 
 The package is uploaded directly by the authenticated workflow. No mutable
 public raw-branch ZIP is used.
+
+The 1.20 infrastructure artifact may proceed only through protected `main`, a
+green required CI result and this controlled workflow; that path does not
+publish held Science content. A later valid owner receipt requires a newly
+reviewed and rebuilt artifact with all four exact approved delivery variants.
+Nothing in the source or package contract is evidence that a deployment or live
+publication occurred.
+
+## Cross-domain culinary bindings
+
+The consumer menu, dish component trees, culinary-science registry and Woo
+catalog remain separate authorities. The v3 binding registry pins Culinary
+Science schema `complete99-culinary-science-registry/v6` and version
+`culinary-science-2026.08.08.v20`; it may connect records, but it cannot rename,
+merge or replace a source record. Its contract preserves exactly 12 menu
+dishes, 47 dish-scoped component subjects and 36 Woo product subjects. The
+binding status identifies itself as
+`complete99-cross-domain-binding-registry/v3` and
+`complete99-cross-domain-bindings-2026.08.08.v3`. The
+component census is the stable union,
+within each dish, of recursively declared component-tree codes and explicit
+`relations.ingredient_codes`; the same global code may therefore appear under
+more than one dish scope.
+
+Every binding record is one of `linked`, `no_match` or `unresolved`. The v3 seed
+contains exactly 95 unresolved records: 12 dishes, 47 dish-scoped components and
+36 Woo products. Eleven reciprocal Woo candidates remain private review inputs
+and are created
+only from an explicit source edge. Names, slugs and labels never generate a
+candidate, and no relation may be inferred transitively through another
+registry. Reviewer identities, decision notes, evidence references and rejected
+candidates stay on capability-gated editorial surfaces.
+
+The private decision overlay uses schema
+`complete99-cross-domain-binding-decision-overlay/v1` and version
+`complete99-cross-domain-binding-decisions-2026.08.08.v1`. Its current valid
+snapshot contains zero decisions and zero recognized reviewer authorities, so
+all eleven candidates remain pending and no public or commerce projection can
+be created.
+
+The registry byte-binds six canonical logical payloads from the four source
+systems. Product seed identity, live product policy and the live-catalog
+relation map are separate contracts; the last supplies the reciprocal edge. A
+missing record, extra record, stale source digest, duplicate subject, invalid
+target, vocabulary change or incomplete review makes the binding index invalid.
+Invalid or unresolved data yields five literally empty verified or public
+indexes while the independently valid
+menu, museum and store continue to render from their own authorities. Public
+navigation is possible only for a verified `linked` record whose projection is
+explicitly public and whose science target is independently approved for public
+discovery. This fail-closed layer does not publish a dish, approve a product,
+enable checkout or create a WooCommerce identity.

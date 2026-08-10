@@ -14,6 +14,828 @@
 	--c99-museum-small-shadow: 0 14px 34px rgba(22, 49, 39, .09);
 }
 
+/* Syrian public journey */
+.c99-syria-home,
+.c99-syria-page {
+	--c99-syria-wine: #4d1720;
+	--c99-syria-red: #9b332f;
+	--c99-syria-saffron: #e3a937;
+	--c99-syria-pistachio: #6c7e3a;
+	--c99-syria-ink: #251817;
+	--c99-syria-cream: #fff8ec;
+	color: var(--c99-syria-ink);
+	overflow: clip;
+}
+
+.c99-syria-hero {
+	position: relative;
+	padding: clamp(24px, 4vw, 52px) 0 clamp(64px, 8vw, 112px);
+	background: var(--c99-syria-wine);
+	color: #fff8ec;
+	overflow: hidden;
+}
+
+.c99-syria-hero::before,
+.c99-syria-page-hero::before {
+	position: absolute;
+	width: 320px;
+	height: 320px;
+	inset-block-start: -188px;
+	inset-inline-end: -76px;
+	border: 46px solid rgba(227, 169, 55, .18);
+	border-radius: 50%;
+	box-shadow: 0 0 0 30px rgba(255, 248, 236, .05);
+	content: "";
+	pointer-events: none;
+}
+
+.c99-syria-hero .c99-container,
+.c99-syria-page-hero .c99-container {
+	position: relative;
+	z-index: 1;
+}
+
+.c99-syria-hero .c99-museum-breadcrumbs a,
+.c99-syria-hero .c99-museum-breadcrumbs span[aria-current="page"] {
+	color: #fff8ec;
+}
+
+.c99-syria-hero .c99-museum-breadcrumbs li:not(:last-child)::after {
+	color: var(--c99-syria-saffron);
+}
+
+.c99-syria-hero-grid,
+.c99-syria-page-hero-grid {
+	display: grid;
+	min-width: 0;
+	align-items: center;
+	gap: clamp(34px, 6vw, 84px);
+	grid-template-columns: minmax(0, .9fr) minmax(480px, 1.1fr);
+}
+
+.c99-syria-hero-copy,
+.c99-syria-page-hero-copy,
+.c99-syria-hero-media,
+.c99-syria-page-hero-media {
+	min-width: 0;
+}
+
+.c99-syria-hero .c99-museum-kicker {
+	color: #f0c767;
+}
+
+.c99-syria-hero h1,
+.c99-syria-page-hero h1 {
+	max-width: 14ch;
+	margin: 0 0 24px;
+	font-size: clamp(2.7rem, 5.3vw, 5.6rem);
+	line-height: .98;
+	overflow-wrap: anywhere;
+}
+
+.c99-syria-hero h1 {
+	color: #fff8ec;
+}
+
+[dir="rtl"] .c99-syria-hero h1,
+[dir="rtl"] .c99-syria-page-hero h1,
+[dir="rtl"] .c99-syria-heading h2,
+[dir="rtl"] .c99-syria-story-heading h2 {
+	letter-spacing: -.035em;
+}
+
+.c99-syria-intro,
+.c99-syria-page-intro {
+	max-width: 61ch;
+	margin: 0 0 28px;
+	font-size: clamp(1.08rem, 1.6vw, 1.34rem);
+	line-height: 1.72;
+}
+
+.c99-syria-intro {
+	color: rgba(255, 248, 236, .88);
+}
+
+.c99-syria-button-primary,
+.c99-syria-button-secondary,
+.c99-syria-back-link,
+.c99-syria-quick-links a,
+.c99-syria-reading summary,
+.c99-syria-reading a {
+	min-height: 44px;
+}
+
+.c99-syria-button-primary {
+	background: var(--c99-syria-saffron);
+	color: #24140d;
+}
+
+.c99-syria-button-primary:hover {
+	background: #f1c45b;
+	color: #24140d;
+}
+
+.c99-syria-button-secondary {
+	border: 2px solid rgba(255, 248, 236, .56);
+	border-color: rgba(255, 248, 236, .56) !important;
+	background: transparent;
+	color: #fff8ec;
+}
+
+.c99-syria-button-secondary:hover {
+	border-color: #fff8ec !important;
+	background: rgba(255, 248, 236, .1);
+	color: #fff8ec;
+}
+
+.c99-syria-hero-media,
+.c99-syria-page-hero-media {
+	position: relative;
+	padding: clamp(8px, 1.5vw, 18px);
+}
+
+.c99-syria-hero-media::after,
+.c99-syria-page-hero-media::after {
+	position: absolute;
+	inset: auto -14px -14px auto;
+	width: 43%;
+	height: 43%;
+	border: 3px solid var(--c99-syria-saffron);
+	border-block-start: 0;
+	border-inline-start: 0;
+	content: "";
+	pointer-events: none;
+}
+
+.c99-syria-hero .c99-museum-visual,
+.c99-syria-page-hero .c99-museum-visual {
+	margin: 0;
+}
+
+.c99-syria-hero .c99-museum-visual img,
+.c99-syria-page-hero .c99-museum-visual img {
+	display: block;
+	width: 100%;
+	height: clamp(340px, 43vw, 620px);
+	border-radius: 28px 8px 28px 8px;
+	box-shadow: 0 30px 70px rgba(24, 5, 8, .32);
+	object-fit: cover;
+}
+
+.c99-syria-section {
+	padding: clamp(66px, 8vw, 112px) 0;
+}
+
+.c99-syria-section:nth-of-type(odd) {
+	background: #fffaf0;
+}
+
+.c99-syria-heading,
+.c99-syria-story-heading {
+	display: grid;
+	min-width: 0;
+	margin-bottom: clamp(28px, 4vw, 50px);
+	align-items: end;
+	gap: 24px 56px;
+	grid-template-columns: minmax(0, .95fr) minmax(280px, .65fr);
+}
+
+.c99-syria-heading h2,
+.c99-syria-story-heading h2 {
+	max-width: 17ch;
+	margin: 0;
+	color: var(--c99-syria-wine);
+	font-size: clamp(2rem, 3.8vw, 3.75rem);
+	line-height: 1.04;
+	overflow-wrap: anywhere;
+}
+
+.c99-syria-heading > p {
+	max-width: 59ch;
+	margin: 0;
+	color: #675451;
+	font-size: 1.05rem;
+	line-height: 1.72;
+}
+
+.c99-syria-entity-card {
+	display: grid;
+	min-width: 0;
+	min-height: 320px;
+	border: 1px solid rgba(77, 23, 32, .13);
+	border-radius: 24px;
+	background: #fff;
+	box-shadow: 0 18px 48px rgba(77, 23, 32, .1);
+	color: var(--c99-syria-ink);
+	grid-template-rows: auto 1fr;
+	overflow: hidden;
+	text-decoration: none;
+	transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.c99-syria-entity-card:hover {
+	box-shadow: 0 26px 58px rgba(77, 23, 32, .16);
+	color: var(--c99-syria-ink);
+	transform: translateY(-4px);
+}
+
+.c99-syria-entity-card-feature {
+	min-height: 420px;
+	grid-template-columns: minmax(0, 1.16fr) minmax(320px, .84fr);
+	grid-template-rows: 1fr;
+}
+
+.c99-syria-entity-card .c99-museum-home-picture {
+	min-width: 0;
+	height: 260px;
+	margin: 0;
+	overflow: hidden;
+}
+
+.c99-syria-entity-card-feature .c99-museum-home-picture {
+	height: 100%;
+	min-height: 420px;
+}
+
+.c99-syria-entity-card .c99-museum-home-picture img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	transition: transform .3s ease;
+}
+
+.c99-syria-entity-card:hover .c99-museum-home-picture img {
+	transform: scale(1.025);
+}
+
+.c99-syria-card-copy {
+	display: flex;
+	min-width: 0;
+	padding: clamp(24px, 3vw, 40px);
+	align-items: flex-start;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.c99-syria-card-eyebrow {
+	margin-bottom: 12px;
+	color: var(--c99-syria-red);
+	font-size: .77rem;
+	font-weight: 900;
+	letter-spacing: .1em;
+	text-transform: uppercase;
+}
+
+[dir="rtl"] .c99-syria-card-eyebrow {
+	letter-spacing: .025em;
+}
+
+.c99-syria-card-copy > strong {
+	margin-bottom: 14px;
+	color: var(--c99-syria-wine);
+	font-size: clamp(1.45rem, 2.2vw, 2.2rem);
+	line-height: 1.12;
+	overflow-wrap: anywhere;
+}
+
+.c99-syria-card-copy > span:not(.c99-syria-card-eyebrow) {
+	color: #66524f;
+	font-size: 1rem;
+	line-height: 1.7;
+}
+
+.c99-syria-card-copy > b {
+	display: inline-flex;
+	min-height: 44px;
+	margin-top: 18px;
+	align-items: center;
+	color: var(--c99-syria-red);
+	font-size: .95rem;
+	font-weight: 900;
+}
+
+.c99-syria-split {
+	display: grid;
+	min-width: 0;
+	align-items: center;
+	gap: clamp(34px, 6vw, 80px);
+	grid-template-columns: minmax(280px, .72fr) minmax(0, 1.28fr);
+}
+
+.c99-syria-split-reverse {
+	grid-template-columns: minmax(0, 1.28fr) minmax(280px, .72fr);
+}
+
+.c99-syria-split-reverse .c99-syria-section-copy {
+	grid-column: 2;
+	grid-row: 1;
+}
+
+.c99-syria-section-copy h2 {
+	margin: 0 0 22px;
+	color: var(--c99-syria-wine);
+	font-size: clamp(2.1rem, 4vw, 4rem);
+	line-height: 1.03;
+}
+
+.c99-syria-section-copy > p:last-child {
+	color: #66524f;
+	font-size: 1.08rem;
+	line-height: 1.74;
+}
+
+.c99-syria-card-grid {
+	display: grid;
+	min-width: 0;
+	gap: clamp(22px, 3vw, 36px);
+}
+
+.c99-syria-card-grid-two {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.c99-syria-methods {
+	background: #f0e2ca;
+}
+
+.c99-syria-tradition {
+	background: #fffaf0;
+}
+
+.c99-syria-continue {
+	background: var(--c99-syria-wine);
+	color: #fff8ec;
+}
+
+.c99-syria-continue .c99-museum-kicker,
+.c99-syria-continue .c99-syria-heading h2 {
+	color: #f0c767;
+}
+
+.c99-syria-continue .c99-syria-heading > p {
+	color: rgba(255, 248, 236, .82);
+}
+
+.c99-syria-continue-grid {
+	display: grid;
+	min-width: 0;
+	gap: 18px;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.c99-syria-continue-grid a {
+	display: flex;
+	min-width: 0;
+	min-height: 250px;
+	padding: 26px;
+	border: 1px solid rgba(255, 248, 236, .2);
+	border-radius: 20px;
+	background: rgba(255, 248, 236, .07);
+	color: #fff8ec;
+	flex-direction: column;
+	text-decoration: none;
+	transition: background .2s ease, transform .2s ease;
+}
+
+.c99-syria-continue-grid a:hover {
+	background: rgba(255, 248, 236, .13);
+	color: #fff8ec;
+	transform: translateY(-3px);
+}
+
+.c99-syria-continue-grid a > span {
+	margin-bottom: 14px;
+	color: #f0c767;
+	font-size: .76rem;
+	font-weight: 900;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+}
+
+.c99-syria-continue-grid a > strong {
+	margin-bottom: 12px;
+	font-size: 1.28rem;
+	line-height: 1.2;
+}
+
+.c99-syria-continue-grid a > small {
+	color: rgba(255, 248, 236, .78);
+	font-size: .95rem;
+	line-height: 1.62;
+}
+
+.c99-syria-continue-grid a > b {
+	margin-top: auto;
+	padding-top: 20px;
+	color: #f0c767;
+	font-size: 1.5rem;
+}
+
+.c99-syria-reading {
+	padding: clamp(42px, 6vw, 78px) 0;
+	background: #291014;
+	color: #fff8ec;
+}
+
+.c99-syria-page-body > .c99-syria-reading {
+	margin-inline: calc(50% - 50vw);
+	padding-inline: max(24px, calc((100vw - min(1320px, calc(100vw - 48px))) / 2));
+}
+
+.c99-syria-page-body > .c99-syria-reading .c99-container {
+	width: 100%;
+}
+
+.c99-syria-reading details {
+	border: 1px solid rgba(255, 248, 236, .18);
+	border-radius: 20px;
+	background: rgba(255, 248, 236, .05);
+}
+
+.c99-syria-reading summary {
+	display: flex;
+	padding: 20px 24px;
+	align-items: center;
+	justify-content: space-between;
+	gap: 18px;
+	cursor: pointer;
+	list-style-position: inside;
+}
+
+.c99-syria-reading summary strong {
+	font-size: clamp(1.25rem, 2vw, 1.75rem);
+}
+
+.c99-syria-reading summary span {
+	color: #f0c767;
+	font-size: .95rem;
+	font-weight: 800;
+}
+
+.c99-syria-reading-content {
+	padding: 0 24px 26px;
+}
+
+.c99-syria-reading-content ol {
+	display: grid;
+	margin: 0;
+	padding: 0;
+	gap: 14px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	list-style-position: inside;
+}
+
+.c99-syria-reading-content li {
+	min-width: 0;
+	padding: 16px;
+	border-radius: 14px;
+	background: rgba(255, 248, 236, .06);
+}
+
+.c99-syria-reading-content p {
+	margin: 0 0 8px;
+	color: rgba(255, 248, 236, .84);
+	font-size: 1rem;
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+
+.c99-syria-reading-content a {
+	display: inline-flex;
+	align-items: center;
+	color: #f0c767;
+	font-weight: 800;
+}
+
+/* Syrian entity pages */
+.c99-syria-page-hero {
+	position: relative;
+	padding: clamp(24px, 4vw, 52px) 0 clamp(58px, 7vw, 94px);
+	background: #f2dfbd;
+	overflow: hidden;
+}
+
+.c99-syria-page-hero .c99-museum-breadcrumbs a {
+	color: var(--c99-syria-wine);
+}
+
+.c99-syria-page-hero .c99-museum-kicker {
+	color: var(--c99-syria-red);
+}
+
+.c99-syria-page-hero h1 {
+	color: var(--c99-syria-wine);
+}
+
+.c99-syria-page-intro {
+	color: #584542;
+}
+
+.c99-syria-back-link {
+	display: inline-flex;
+	padding: 8px 14px;
+	align-items: center;
+	border: 1px solid rgba(77, 23, 32, .22);
+	border-radius: 999px;
+	color: var(--c99-syria-wine);
+	font-weight: 850;
+	text-decoration: none;
+}
+
+.c99-syria-back-link:hover {
+	background: rgba(77, 23, 32, .08);
+	color: var(--c99-syria-wine);
+}
+
+.c99-syria-page-body {
+	padding-top: clamp(54px, 7vw, 92px);
+}
+
+.c99-syria-story-section {
+	padding-bottom: clamp(58px, 7vw, 96px);
+}
+
+.c99-syria-story-heading {
+	grid-template-columns: 1fr;
+	margin-bottom: 26px;
+}
+
+.c99-syria-story-lede {
+	max-width: 74ch;
+	margin: 0 0 34px;
+	color: #594744;
+	font-size: clamp(1.08rem, 1.5vw, 1.25rem);
+	line-height: 1.76;
+}
+
+.c99-syria-fact-grid,
+.c99-syria-profile-grid {
+	display: grid;
+	min-width: 0;
+	gap: 18px;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.c99-syria-fact-grid article,
+.c99-syria-profile-grid article {
+	min-width: 0;
+	padding: clamp(22px, 3vw, 34px);
+	border: 1px solid rgba(77, 23, 32, .12);
+	border-radius: 20px;
+	background: #fffaf0;
+}
+
+.c99-syria-fact-grid p,
+.c99-syria-profile-grid p {
+	margin: 0;
+	color: #55423f;
+	font-size: 1rem;
+	line-height: 1.72;
+}
+
+.c99-syria-profile-grid h3 {
+	margin: 0 0 12px;
+	color: var(--c99-syria-wine);
+	font-size: 1.28rem;
+}
+
+.c99-syria-measurements {
+	display: flex;
+	margin: 20px 0 0;
+	padding: 0;
+	flex-wrap: wrap;
+	gap: 8px;
+	list-style: none;
+}
+
+.c99-syria-measurements li {
+	display: inline-flex;
+	min-height: 44px;
+	padding: 8px 12px;
+	align-items: center;
+	gap: 7px;
+	border-radius: 999px;
+	background: #efe0c6;
+	color: var(--c99-syria-wine);
+	font-size: .92rem;
+}
+
+.c99-syria-measurements span {
+	font-variant-numeric: tabular-nums;
+}
+
+.c99-syria-entity-card-compact {
+	min-height: 280px;
+}
+
+.c99-syria-entity-card-compact .c99-museum-home-picture {
+	height: 210px;
+}
+
+.c99-syria-entity-card-compact .c99-syria-card-copy {
+	padding: 24px;
+}
+
+.c99-syria-entity-card-compact .c99-syria-card-copy > strong {
+	font-size: 1.45rem;
+}
+
+.c99-syria-offer-wrap:not(:empty) {
+	margin-bottom: clamp(58px, 7vw, 96px);
+}
+
+.c99-syria-offer-wrap .c99-museum-offer {
+	max-width: 620px;
+	border-color: rgba(108, 126, 58, .28);
+	background: #f1f0d9;
+}
+
+.c99-syria-before {
+	padding: clamp(28px, 4vw, 48px);
+	margin-bottom: clamp(58px, 7vw, 96px);
+	border-inline-start: 6px solid var(--c99-syria-saffron);
+	border-radius: 18px;
+	background: #fff1d6;
+}
+
+.c99-syria-before ul {
+	margin: 0;
+	padding-inline-start: 1.3em;
+}
+
+.c99-syria-before li {
+	margin-block: 10px;
+	font-size: 1rem;
+	line-height: 1.7;
+}
+
+.c99-syria-related-grid {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.c99-syria-quick-links {
+	display: flex;
+	margin-top: 26px;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.c99-syria-quick-links a {
+	display: inline-flex;
+	padding: 8px 15px;
+	align-items: center;
+	border: 1px solid rgba(77, 23, 32, .2);
+	border-radius: 999px;
+	color: var(--c99-syria-wine);
+	font-weight: 850;
+	text-decoration: none;
+}
+
+.c99-syria-quick-links a:hover {
+	background: var(--c99-syria-wine);
+	color: #fff8ec;
+}
+
+.c99-syria-entity-card:focus-visible,
+.c99-syria-continue-grid a:focus-visible,
+.c99-syria-button-primary:focus-visible,
+.c99-syria-button-secondary:focus-visible,
+.c99-syria-back-link:focus-visible,
+.c99-syria-quick-links a:focus-visible,
+.c99-syria-reading summary:focus-visible,
+.c99-syria-reading a:focus-visible {
+	outline: 3px solid var(--c99-syria-saffron);
+	outline-offset: 4px;
+}
+
+@media (max-width: 1080px) {
+	.c99-syria-continue-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.c99-syria-related-grid {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+}
+
+@media (max-width: 920px) {
+	.c99-syria-hero-grid,
+	.c99-syria-page-hero-grid,
+	.c99-syria-split,
+	.c99-syria-split-reverse,
+	.c99-syria-heading {
+		grid-template-columns: 1fr;
+	}
+
+	.c99-syria-split-reverse .c99-syria-section-copy {
+		grid-column: auto;
+		grid-row: auto;
+	}
+
+	.c99-syria-hero-copy,
+	.c99-syria-page-hero-copy {
+		max-width: 720px;
+	}
+
+	.c99-syria-hero .c99-museum-visual img,
+	.c99-syria-page-hero .c99-museum-visual img {
+		height: min(68vw, 590px);
+	}
+
+	.c99-syria-entity-card-feature {
+		grid-template-columns: 1fr;
+		grid-template-rows: auto 1fr;
+	}
+
+	.c99-syria-entity-card-feature .c99-museum-home-picture {
+		height: min(56vw, 430px);
+		min-height: 0;
+	}
+}
+
+@media (max-width: 680px) {
+	.c99-syria-home .c99-container,
+	.c99-syria-page .c99-container {
+		width: min(100% - 40px, 1320px);
+	}
+
+	.c99-syria-hero,
+	.c99-syria-page-hero {
+		padding-block-start: 18px;
+	}
+
+	.c99-syria-hero h1,
+	.c99-syria-page-hero h1 {
+		font-size: clamp(2.35rem, 12vw, 3.6rem);
+	}
+
+	.c99-syria-hero .c99-museum-visual img,
+	.c99-syria-page-hero .c99-museum-visual img {
+		height: 72vw;
+		min-height: 280px;
+		max-height: 430px;
+	}
+
+	.c99-syria-section {
+		padding-block: 60px;
+	}
+
+	.c99-syria-card-grid-two,
+	.c99-syria-continue-grid,
+	.c99-syria-fact-grid,
+	.c99-syria-profile-grid,
+	.c99-syria-related-grid,
+	.c99-syria-reading-content ol {
+		grid-template-columns: 1fr;
+	}
+
+	.c99-syria-entity-card,
+	.c99-syria-entity-card-feature,
+	.c99-syria-entity-card-compact {
+		min-height: 0;
+	}
+
+	.c99-syria-entity-card .c99-museum-home-picture,
+	.c99-syria-entity-card-feature .c99-museum-home-picture,
+	.c99-syria-entity-card-compact .c99-museum-home-picture {
+		height: 64vw;
+		min-height: 230px;
+		max-height: 360px;
+	}
+
+	.c99-syria-continue-grid a {
+		min-height: 210px;
+	}
+
+	.c99-syria-reading summary {
+		align-items: flex-start;
+		flex-direction: column;
+	}
+
+	.c99-syria-page-body > .c99-syria-reading {
+		padding-inline: 20px;
+	}
+
+	.c99-syria-before {
+		padding: 24px 20px;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.c99-syria-entity-card,
+	.c99-syria-entity-card .c99-museum-home-picture img,
+	.c99-syria-continue-grid a {
+		transition: none;
+	}
+
+	.c99-syria-entity-card:hover,
+	.c99-syria-entity-card:hover .c99-museum-home-picture img,
+	.c99-syria-continue-grid a:hover {
+		transform: none;
+	}
+}
+
 body.c99-culinary-museum {
 	background:
 		radial-gradient(circle at 12% 4%, rgba(229, 184, 61, .13), transparent 22rem),

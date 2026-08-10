@@ -51,6 +51,73 @@ final class Complete99_Review_Lab {
 		$culinary_commerce_registry = isset( $culinary_commerce_snapshot['registry'] ) && is_array( $culinary_commerce_snapshot['registry'] )
 			? $culinary_commerce_snapshot['registry']
 			: array();
+		$cross_domain_bindings = class_exists( 'Complete99_Cross_Domain_Bindings', false )
+			&& is_callable( array( 'Complete99_Cross_Domain_Bindings', 'editorial_snapshot' ) )
+			? Complete99_Cross_Domain_Bindings::editorial_snapshot()
+			: array();
+		$cross_domain_bindings = is_array( $cross_domain_bindings ) ? $cross_domain_bindings : array();
+		$owner_publication_registry = self::load_data_file( 'culinary-science-publication-approvals.php' );
+		$owner_publication_pre_gate_entities = function_exists( 'complete99_owner_publication_cached_pre_gate_entities' )
+			? complete99_owner_publication_cached_pre_gate_entities()
+			: array();
+		$owner_publication_required_ids = isset( $owner_publication_registry['required_entity_ids'] ) && is_array( $owner_publication_registry['required_entity_ids'] )
+			? $owner_publication_registry['required_entity_ids']
+			: array();
+		$owner_publication_registry_valid = function_exists( 'complete99_owner_publication_registry_shape_is_valid' )
+			&& 12 === count( $owner_publication_required_ids )
+			&& complete99_owner_publication_registry_shape_is_valid( $owner_publication_registry, $owner_publication_required_ids );
+		$owner_publication_pre_gate_entities_valid = $owner_publication_registry_valid
+			&& array_keys( $owner_publication_pre_gate_entities ) === array_values( $owner_publication_required_ids );
+		$owner_publication_status = $owner_publication_pre_gate_entities_valid
+			&& function_exists( 'complete99_owner_publication_registry_status' )
+			? complete99_owner_publication_registry_status(
+				$owner_publication_registry,
+				$owner_publication_required_ids,
+				array_values( $owner_publication_pre_gate_entities ),
+				rtrim( COMPLETE99_PLATFORM_DIR, '/\\' )
+			)
+			: array();
+		$owner_publication_status_valid = $owner_publication_pre_gate_entities_valid
+			&& function_exists( 'complete99_owner_publication_status_is_valid' )
+			&& complete99_owner_publication_status_is_valid( $owner_publication_status, $owner_publication_required_ids );
+		$owner_publication_decisions = $owner_publication_status_valid && isset( $owner_publication_status['decisions'] ) && is_array( $owner_publication_status['decisions'] )
+			? $owner_publication_status['decisions']
+			: array();
+		$owner_publication_owner_pending_count = 0;
+		$owner_publication_delivery_pending_count = 0;
+		$owner_publication_candidates = array();
+		$raw_owner_publication_candidates = isset( $owner_publication_registry['candidates'] ) && is_array( $owner_publication_registry['candidates'] )
+			? array_slice( $owner_publication_registry['candidates'], 0, 20, true )
+			: array();
+		foreach ( $raw_owner_publication_candidates as $entity_id => $candidate ) {
+			if ( ! is_array( $candidate ) ) {
+				continue;
+			}
+			$decision = isset( $owner_publication_decisions[ $entity_id ] ) && is_array( $owner_publication_decisions[ $entity_id ] )
+				? $owner_publication_decisions[ $entity_id ]
+				: array();
+			$delivery_files = isset( $candidate['delivery_files'] ) && is_array( $candidate['delivery_files'] )
+				? $candidate['delivery_files']
+				: array();
+			$source_evidence_file_count = isset( $candidate['source_asset'] ) && is_array( $candidate['source_asset'] ) ? 1 : 0;
+			if ( 'held_pending_owner_approval' === ( $decision['state'] ?? '' ) ) {
+				++$owner_publication_owner_pending_count;
+			} elseif ( 'held_pending_exact_asset_delivery' === ( $decision['state'] ?? '' ) ) {
+				++$owner_publication_delivery_pending_count;
+			}
+			$owner_publication_candidates[] = array(
+				'entity_id'         => (string) $entity_id,
+				'candidate_id'      => isset( $candidate['candidate_id'] ) ? (string) $candidate['candidate_id'] : '',
+				'candidate_sha256'  => isset( $candidate['candidate_sha256'] ) ? (string) $candidate['candidate_sha256'] : '',
+				'content_sha256'    => isset( $candidate['bilingual_content']['sha256'] ) ? (string) $candidate['bilingual_content']['sha256'] : '',
+				'source_evidence_file_count' => $source_evidence_file_count,
+				'delivery_file_count' => count( $delivery_files ),
+				'approved'          => true === ( $decision['approved'] ?? false ),
+				'state'             => isset( $decision['state'] ) ? (string) $decision['state'] : 'held_pending_owner_approval',
+				'reason'            => isset( $decision['reason'] ) ? (string) $decision['reason'] : 'status_unavailable',
+				'delivery_validation' => isset( $decision['delivery_validation'] ) ? (string) $decision['delivery_validation'] : 'not_evaluated',
+			);
+		}
 
 		$dishes = isset( $dish_bundle['dishes'] ) && is_array( $dish_bundle['dishes'] )
 			? array_slice( $dish_bundle['dishes'], 0, 100 )
@@ -106,6 +173,20 @@ final class Complete99_Review_Lab {
 				'connector_profiles'  => isset( $culinary_commerce_registry['connector_profiles'] ) && is_array( $culinary_commerce_registry['connector_profiles'] ) ? array_slice( $culinary_commerce_registry['connector_profiles'], 0, 50 ) : array(),
 				'integration_consumers' => isset( $culinary_commerce_registry['integration_consumers'] ) && is_array( $culinary_commerce_registry['integration_consumers'] ) ? array_slice( $culinary_commerce_registry['integration_consumers'], 0, 100 ) : array(),
 			),
+			'cross_domain_bindings' => $cross_domain_bindings,
+			'owner_publication_approvals' => array(
+				'schema'                  => 'complete99-review-lab-owner-publication-queue/v2',
+				'registry_valid'          => $owner_publication_registry_valid,
+				'status_valid'            => $owner_publication_status_valid,
+				'candidate_count'         => $owner_publication_status_valid ? (int) $owner_publication_status['candidate_count'] : count( $owner_publication_candidates ),
+				'approved_count'          => $owner_publication_status_valid ? (int) $owner_publication_status['approved_count'] : 0,
+				'held_count'              => $owner_publication_status_valid ? (int) $owner_publication_status['held_count'] : count( $owner_publication_candidates ),
+				'owner_pending_count'     => $owner_publication_status_valid ? $owner_publication_owner_pending_count : count( $owner_publication_candidates ),
+				'delivery_pending_count'  => $owner_publication_status_valid ? $owner_publication_delivery_pending_count : 0,
+				'trusted_owner_key_count' => isset( $owner_publication_registry['trusted_owner_keys'] ) && is_array( $owner_publication_registry['trusted_owner_keys'] ) ? count( $owner_publication_registry['trusted_owner_keys'] ) : 0,
+				'receipt_count'           => isset( $owner_publication_registry['receipts'] ) && is_array( $owner_publication_registry['receipts'] ) ? count( $owner_publication_registry['receipts'] ) : 0,
+				'candidates'              => $owner_publication_candidates,
+			),
 		);
 	}
 
@@ -120,7 +201,11 @@ final class Complete99_Review_Lab {
 			return array();
 		}
 
-		$data = require $path;
+		try {
+			$data = require $path;
+		} catch ( Throwable $error ) {
+			return array();
+		}
 		return is_array( $data ) ? $data : array();
 	}
 
@@ -244,6 +329,33 @@ final class Complete99_Review_Lab {
 		$graph_bundles = isset( $commerce_graph['bundles'] ) && is_array( $commerce_graph['bundles'] ) ? $commerce_graph['bundles'] : array();
 		$graph_connector_profiles = isset( $commerce_graph['connector_profiles'] ) && is_array( $commerce_graph['connector_profiles'] ) ? $commerce_graph['connector_profiles'] : array();
 		$graph_integration_consumers = isset( $commerce_graph['integration_consumers'] ) && is_array( $commerce_graph['integration_consumers'] ) ? $commerce_graph['integration_consumers'] : array();
+		$cross_domain_bindings = isset( $snapshot['cross_domain_bindings'] ) && is_array( $snapshot['cross_domain_bindings'] )
+			? $snapshot['cross_domain_bindings']
+			: array();
+		$binding_status = isset( $cross_domain_bindings['status'] ) && is_array( $cross_domain_bindings['status'] )
+			? $cross_domain_bindings['status']
+			: array();
+		$binding_decision_overlay = isset( $cross_domain_bindings['decision_overlay'] ) && is_array( $cross_domain_bindings['decision_overlay'] )
+			? $cross_domain_bindings['decision_overlay']
+			: array();
+		$binding_registry = isset( $cross_domain_bindings['registry'] ) && is_array( $cross_domain_bindings['registry'] )
+			? $cross_domain_bindings['registry']
+			: array();
+		$binding_records = isset( $binding_registry['records'] ) && is_array( $binding_registry['records'] )
+			? array_slice( $binding_registry['records'], 0, 100 )
+			: array();
+		$binding_candidate_count = 0;
+		foreach ( $binding_records as $binding_record ) {
+			$binding_candidate_count += isset( $binding_record['candidates'] ) && is_array( $binding_record['candidates'] )
+				? count( $binding_record['candidates'] )
+				: 0;
+		}
+		$owner_publication_queue = isset( $snapshot['owner_publication_approvals'] ) && is_array( $snapshot['owner_publication_approvals'] )
+			? $snapshot['owner_publication_approvals']
+			: array();
+		$owner_publication_candidates = isset( $owner_publication_queue['candidates'] ) && is_array( $owner_publication_queue['candidates'] )
+			? $owner_publication_queue['candidates']
+			: array();
 		$variants_by_product = array();
 		foreach ( $graph_variants as $variant ) {
 			$variant_product_id = isset( $variant['product_id'] ) ? (string) $variant['product_id'] : '';
@@ -324,7 +436,45 @@ final class Complete99_Review_Lab {
 				<div class="c99-review-card"><strong>חבילות מסחר מתוכננות</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_bundles ) ); ?></span></div>
 				<div class="c99-review-card"><strong>הצעות ערוץ פעילות</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_active_offers ) ); ?></span></div>
 				<div class="c99-review-card"><strong>מחברי קופות וצרכני API</strong><span class="c99-review-number"><?php echo esc_html( count( $graph_connector_profiles ) . ' / ' . count( $graph_integration_consumers ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Binding registry</strong><span class="c99-review-number"><?php self::badge( ! empty( $binding_status['registry_valid'] ), 'Valid', 'Held' ); ?></span></div>
+				<div class="c99-review-card"><strong>Binding subjects</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $binding_status['record_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Binding decisions</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $binding_decision_overlay['decision_count'] ?? ( $binding_status['decision_count'] ?? 0 ) ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Recognized binding reviewers</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $binding_decision_overlay['recognized_reviewer_authority_count'] ?? ( $binding_status['recognized_reviewer_authority_count'] ?? 0 ) ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Menu dish subjects</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $binding_status['dish_subject_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Scoped component subjects</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $binding_status['component_subject_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Woo product subjects</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $binding_status['product_subject_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Unresolved bindings</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $binding_status['unresolved_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Explicit candidates</strong><span class="c99-review-number"><?php echo esc_html( $binding_candidate_count ); ?></span></div>
+				<div class="c99-review-card"><strong>Owner publication registry</strong><span class="c99-review-number"><?php self::badge( ! empty( $owner_publication_queue['registry_valid'] ), 'Valid', 'Held' ); ?></span></div>
+				<div class="c99-review-card"><strong>Publication candidates</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $owner_publication_queue['candidate_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Held publication candidates</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $owner_publication_queue['held_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Pending owner receipts</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $owner_publication_queue['owner_pending_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Pending exact delivery</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $owner_publication_queue['delivery_pending_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Approved publication receipts</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $owner_publication_queue['approved_count'] ?? 0 ) ); ?></span></div>
+				<div class="c99-review-card"><strong>Trusted owner signing keys</strong><span class="c99-review-number"><?php echo esc_html( (int) ( $owner_publication_queue['trusted_owner_key_count'] ?? 0 ) ); ?></span></div>
 			</div>
+
+			<section class="c99-review-section">
+				<h2>Owner publication queue</h2>
+				<p class="c99-review-note">Read-only evidence view. This screen cannot enroll a signing key, create an owner receipt, approve a route or publish an asset.</p>
+				<table class="widefat striped c99-review-table">
+					<thead><tr><th>Entity</th><th>Candidate</th><th>Source evidence</th><th>Delivery files</th><th>Content digest</th><th>State</th><th>Reason</th><th>Delivery</th></tr></thead>
+					<tbody>
+					<?php foreach ( $owner_publication_candidates as $publication_candidate ) : ?>
+						<tr>
+							<td class="c99-review-code"><?php echo esc_html( (string) ( $publication_candidate['entity_id'] ?? '' ) ); ?></td>
+							<td class="c99-review-code"><?php echo esc_html( (string) ( $publication_candidate['candidate_id'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( (int) ( $publication_candidate['source_evidence_file_count'] ?? 0 ) ); ?></td>
+							<td><?php echo esc_html( (int) ( $publication_candidate['delivery_file_count'] ?? 0 ) ); ?></td>
+							<td class="c99-review-code"><?php echo esc_html( (string) ( $publication_candidate['content_sha256'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $publication_candidate['state'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $publication_candidate['reason'] ?? '' ) ); ?></td>
+							<td><?php echo esc_html( (string) ( $publication_candidate['delivery_validation'] ?? '' ) ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+					</tbody>
+				</table>
+			</section>
 
 			<section class="c99-review-section">
 				<h2>גרף מסחרי מודולרי</h2>

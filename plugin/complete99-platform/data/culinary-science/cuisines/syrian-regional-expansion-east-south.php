@@ -1049,7 +1049,7 @@ $c99_syrian_east_south_counts = array_count_values( array_column( $c99_syrian_ea
 
 return array(
 	'schema' => 'complete99-syrian-regional-expansion-east-south-module/v1',
-	'version' => 'culinary-science-2026.08.07.v18',
+	'version' => 'culinary-science-2026.08.08.v20',
 	'sources' => $c99_syrian_east_south_sources,
 	'entities' => $c99_syrian_east_south_entities,
 	'private_entity_ids' => $c99_syrian_east_south_ids,

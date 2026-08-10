@@ -224,7 +224,7 @@ def _relation(entity: dict, relation_type: str, target_id: str) -> dict:
 def test_exact_private_iraqi_foundation_membership(
     registry: dict, iraqi_entities: dict[str, dict]
 ) -> None:
-    assert registry["version"] == "culinary-science-2026.08.07.v18"
+    assert registry["version"] == "culinary-science-2026.08.08.v20"
     assert len(registry["entities"]) == 672
     assert all(module.is_file() for module in IRAQI_MODULES)
     loader = SCIENCE_DATA.read_text(encoding="utf-8")
