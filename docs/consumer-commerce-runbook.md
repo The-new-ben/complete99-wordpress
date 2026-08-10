@@ -1,18 +1,29 @@
 # Consumer site and commerce runbook
 
-Last reviewed: 2026-08-08
-Release target: Complete99 Platform 1.20.0
+Last reviewed: 2026-08-11
+Release target: Complete99 Platform 1.21.0
 
-## Current 1.20.0 Japanese koji and measurement boundary
+## Current 1.21.0 WordPress, Museum and transaction-truth boundary
 
-Release 1.20.0 keeps the culinary-science registry at 672 identities and Entity
+Release 1.21.0 keeps the culinary-science registry at 672 identities and Entity
 Studio at 728 subjects, and expands the source register to 375. Science schema
 `complete99-culinary-science-registry/v6` and version
 `culinary-science-2026.08.08.v20` bind to culinary-commerce
-`culinary-commerce-2026.08.08.v14`. The current public graph remains exactly 27
+`culinary-commerce-2026.08.08.v14`. The raw public graph remains exactly 27
 entities across 19 standalone page owners per language and 38 bilingual routes.
-All public science records remain `noindex,follow`, outside the sitemap, with
-zero indexable science records.
+A separate digest-pinned, fail-closed activation makes exactly 18 reviewed
+standalone owners and 36 bilingual canonical routes effectively indexable and
+adds those routes to the WordPress sitemap. The untested ichiban-dashi owner,
+all eight section-only records, query states and every held, private or draft
+record remain excluded or `noindex,follow`.
+
+The release also introduces the read-only P1 Complete99 OS foundation inside
+WordPress. Its private Today shell and status endpoint use WordPress sessions,
+capabilities and REST nonces; seven durable operations tables are prepared, but
+no legacy operational data or write command is imported or enabled. Catalog
+Product schema stays visible while Offer schema remains absent until checkout
+and cart readiness both pass. The 36 WooCommerce products, live prices, stock
+authority and disabled payment state remain unchanged.
 
 The five held Japanese editorial candidates are exactly shoyu koji, kioke, the
 koji-hydrolysis guide, JAS 1703 shoyu standard context and the koji

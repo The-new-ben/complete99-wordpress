@@ -2258,40 +2258,37 @@ def observe_orphaned_rollback(
         proof,
     )
     manifest = status.get("database_manifest")
-    expected_manifest_keys = {
-        "schema",
-        "sync_secret_existed",
-        "sync_secret_configured",
-        "options_without_deployment_marker_count",
-        "options_without_deployment_marker_sha256",
-        "posts_count",
-        "posts_sha256",
-        "postmeta_count",
-        "postmeta_sha256",
-        "seed_ids_count",
-        "seed_ids_sha256",
-        "evaluation_ids_count",
-        "evaluation_ids_sha256",
-    }
-    if not isinstance(manifest, dict) or set(manifest) != expected_manifest_keys:
-        raise DeployError("Orphaned rollback database manifest is invalid")
-    if manifest.get("schema") != "complete99-database-snapshot-manifest/v1":
-        raise DeployError("Orphaned rollback database manifest schema is invalid")
-    if (
-        manifest.get("sync_secret_existed") is not True
-        or manifest.get("sync_secret_configured") is not True
-    ):
-        raise DeployError("Orphaned rollback database manifest lost sync identity")
-    for component in (
+    components = [
         "options_without_deployment_marker",
         "posts",
         "postmeta",
         "seed_ids",
         "evaluation_ids",
+    ]
+    schema = manifest.get("schema") if isinstance(manifest, dict) else None
+    if schema == "complete99-database-snapshot-manifest/v2":
+        components.append("ops_tables")
+    elif schema != "complete99-database-snapshot-manifest/v1":
+        raise DeployError("Orphaned rollback database manifest schema is invalid")
+    expected_manifest_keys = {
+        "schema",
+        "sync_secret_existed",
+        "sync_secret_configured",
+    }
+    for component in components:
+        expected_manifest_keys.add(f"{component}_count")
+        expected_manifest_keys.add(f"{component}_sha256")
+    if not isinstance(manifest, dict) or set(manifest) != expected_manifest_keys:
+        raise DeployError("Orphaned rollback database manifest is invalid")
+    if (
+        manifest.get("sync_secret_existed") is not True
+        or manifest.get("sync_secret_configured") is not True
     ):
+        raise DeployError("Orphaned rollback database manifest lost sync identity")
+    for component in components:
         count = manifest.get(f"{component}_count")
         digest = manifest.get(f"{component}_sha256")
-        if type(count) is not int or count < 0:
+        if type(count) is not int or count < 0 or (component == "ops_tables" and count != 7):
             raise DeployError(
                 f"Orphaned rollback database manifest count is invalid for {component}"
             )

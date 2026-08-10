@@ -16,10 +16,17 @@ final class Complete99_Culinary_Science {
 	const REGISTRY_SCHEMA = 'complete99-culinary-science-registry/v6';
 	const REST_NAMESPACE  = 'complete99/v1';
 	const DATA_FILE       = 'culinary-science-pilot.php';
+	const SEARCH_ACTIVATION_FILE = 'culinary-science-search-activation.php';
+	const SEARCH_ACTIVATION_SCHEMA = 'complete99-culinary-science-search-activation/v1';
+	const SEARCH_ACTIVATION_VERSION = 'culinary-science-search-activation-2026.08.11.v1';
+	const SEARCH_ACTIVATION_PAYLOAD_SHA256 = '0b191bef1612e56f2e97c1e4e5d15ab4f651d8e658e2eb742aea72cc2a2ac6e7';
+	const PINNED_REGISTRY_VERSION = 'culinary-science-2026.08.08.v20';
+	const PINNED_REGISTRY_PAYLOAD_SHA256 = '677273756cc55f6f2e941c9aa411c522de28dc3da0c6a26bc1f8b6bc2661cc54';
 
-	private static $booted         = false;
-	private static $registry_cache = null;
+	private static $booted            = false;
+	private static $registry_cache    = null;
 	private static $public_index_cache = array();
+	private static $search_activation_cache = null;
 
 	/**
 	 * Register REST routes without creating roles or public posts.
@@ -151,14 +158,16 @@ final class Complete99_Culinary_Science {
 
 		self::$registry_cache = $registry;
 		if ( $fresh ) {
-			self::$public_index_cache = array();
+			self::$public_index_cache      = array();
+			self::$search_activation_cache = null;
 		}
 		return self::$registry_cache;
 	}
 
 	private static function clear_caches() {
-		self::$registry_cache     = null;
-		self::$public_index_cache = array();
+		self::$registry_cache          = null;
+		self::$public_index_cache      = array();
+		self::$search_activation_cache = null;
 	}
 
 	private static function invalid_registry_error() {
@@ -1445,6 +1454,19 @@ final class Complete99_Culinary_Science {
 		if ( is_wp_error( $registry ) ) {
 			throw new RuntimeException( 'culinary-science-registry-invariants' );
 		}
+		$search_activation = self::search_activation_status();
+		if ( true !== $search_activation['ready']
+			|| 'active' !== $search_activation['effective_index_state']
+			|| self::SEARCH_ACTIVATION_SCHEMA !== $search_activation['schema']
+			|| self::SEARCH_ACTIVATION_VERSION !== $search_activation['version']
+			|| self::PINNED_REGISTRY_VERSION !== $search_activation['registry_version']
+			|| ! hash_equals( self::PINNED_REGISTRY_PAYLOAD_SHA256, $search_activation['registry_digest'] )
+			|| ! hash_equals( self::SEARCH_ACTIVATION_PAYLOAD_SHA256, $search_activation['policy_digest'] )
+			|| 18 !== $search_activation['owner_count']
+			|| 36 !== $search_activation['route_count']
+			|| 1 !== $search_activation['excluded_owner_count'] ) {
+			throw new RuntimeException( 'culinary-science-search-activation-invariants' );
+		}
 		return true;
 	}
 
@@ -1455,12 +1477,13 @@ final class Complete99_Culinary_Science {
 		$registry = self::registry();
 		if ( is_wp_error( $registry ) ) {
 			return array(
-				'ready'         => false,
-				'version'       => '',
-				'entity_count'  => 0,
-				'public_count'  => 0,
-				'cluster_count' => 0,
-				'digest'        => '',
+				'ready'             => false,
+				'version'           => '',
+				'entity_count'      => 0,
+				'public_count'      => 0,
+				'cluster_count'     => 0,
+				'digest'            => '',
+				'search_activation' => self::search_activation_failure_status( '', '' ),
 			);
 		}
 		$public = self::public_entities( $registry );
@@ -1469,13 +1492,271 @@ final class Complete99_Culinary_Science {
 			$clusters[ $entity['seo']['cluster_id'] ] = true;
 		}
 		return array(
-			'ready'         => true,
-			'version'       => $registry['version'],
-			'entity_count'  => count( $registry['entities'] ),
-			'public_count'  => count( $public ),
-			'cluster_count' => count( $clusters ),
-			'digest'        => self::registry_digest( $registry ),
+			'ready'             => true,
+			'version'           => $registry['version'],
+			'entity_count'      => count( $registry['entities'] ),
+			'public_count'      => count( $public ),
+			'cluster_count'     => count( $clusters ),
+			'digest'            => self::registry_digest( $registry ),
+			'search_activation' => self::search_activation_status(),
 		);
+	}
+
+	/**
+	 * Return the effective search state without exposing editorial data.
+	 *
+	 * A missing, stale or altered overlay always reports fail_closed and yields
+	 * zero indexable owners and routes while approved public pages keep serving.
+	 *
+	 * @return array
+	 */
+	public static function search_activation_status() {
+		$registry = self::registry();
+		if ( is_wp_error( $registry ) ) {
+			return self::search_activation_failure_status( '', '' );
+		}
+		$registry_digest = self::registry_digest( $registry );
+		$policy = self::search_activation_policy( $registry );
+		if ( is_wp_error( $policy ) ) {
+			return self::search_activation_failure_status( $registry['version'], $registry_digest );
+		}
+		return array(
+			'ready'                 => true,
+			'effective_index_state' => 'active',
+			'schema'                => $policy['schema'],
+			'version'               => $policy['version'],
+			'registry_version'      => $registry['version'],
+			'registry_digest'       => $registry_digest,
+			'policy_digest'         => self::registry_digest( $policy ),
+			'owner_count'           => $policy['activation']['owner_count'],
+			'route_count'           => $policy['activation']['route_count'],
+			'excluded_owner_count'  => count( $policy['exclusions']['owner_ids'] ),
+		);
+	}
+
+	private static function search_activation_failure_status( $registry_version, $registry_digest ) {
+		return array(
+			'ready'                 => false,
+			'effective_index_state' => 'fail_closed',
+			'schema'                => self::SEARCH_ACTIVATION_SCHEMA,
+			'version'               => '',
+			'registry_version'      => (string) $registry_version,
+			'registry_digest'       => (string) $registry_digest,
+			'policy_digest'         => '',
+			'owner_count'           => 0,
+			'route_count'           => 0,
+			'excluded_owner_count'  => 0,
+		);
+	}
+
+	/**
+	 * Validate a candidate activation overlay against the exact registry.
+	 *
+	 * @param mixed $policy Candidate policy.
+	 * @param mixed $registry Validated culinary-science registry.
+	 * @param bool  $require_pinned_digest Require the shipped overlay digest.
+	 * @return true|WP_Error
+	 */
+	public static function validate_search_activation_policy( $policy, $registry, $require_pinned_digest = true ) {
+		try {
+			self::assert_search_activation_policy_valid( $policy, $registry, $require_pinned_digest );
+		} catch ( Throwable $error ) {
+			return new WP_Error(
+				'complete99_science_search_activation_invalid',
+				'The culinary science search activation failed its policy contract.',
+				array( 'path' => $error->getMessage() )
+			);
+		}
+		return true;
+	}
+
+	private static function search_activation_policy( $registry ) {
+		if ( is_array( self::$search_activation_cache ) ) {
+			return self::$search_activation_cache;
+		}
+		if ( ! defined( 'COMPLETE99_PLATFORM_DIR' ) ) {
+			return self::invalid_search_activation_error();
+		}
+		$path = COMPLETE99_PLATFORM_DIR . 'data/' . self::SEARCH_ACTIVATION_FILE;
+		if ( ! is_readable( $path ) ) {
+			return self::invalid_search_activation_error();
+		}
+		try {
+			$policy = require $path;
+			$valid = self::validate_search_activation_policy( $policy, $registry, true );
+			if ( is_wp_error( $valid ) ) {
+				return self::invalid_search_activation_error();
+			}
+		} catch ( Throwable $error ) {
+			return self::invalid_search_activation_error();
+		}
+		self::$search_activation_cache = $policy;
+		return self::$search_activation_cache;
+	}
+
+	private static function invalid_search_activation_error() {
+		return new WP_Error(
+			'complete99_science_search_activation_invalid',
+			'The culinary science search activation is unavailable.',
+			array( 'status' => 500 )
+		);
+	}
+
+	private static function assert_search_activation_policy_valid( $policy, $registry, $require_pinned_digest ) {
+		self::assert_exact_keys(
+			$policy,
+			array( 'schema', 'version', 'activated_at', 'authorization', 'registry_contract', 'activation', 'exclusions' ),
+			'search_activation'
+		);
+		if ( self::SEARCH_ACTIVATION_SCHEMA !== $policy['schema']
+			|| self::SEARCH_ACTIVATION_VERSION !== $policy['version'] ) {
+			throw new RuntimeException( 'search_activation.identity' );
+		}
+		self::assert_date( $policy['activated_at'], 'search_activation.activated_at' );
+		if ( '2026-08-11' !== $policy['activated_at'] ) {
+			throw new RuntimeException( 'search_activation.activated_at' );
+		}
+
+		self::assert_exact_keys( $policy['authorization'], array( 'basis', 'recorded_at' ), 'search_activation.authorization' );
+		if ( 'owner_authorized_search_activation' !== $policy['authorization']['basis'] ) {
+			throw new RuntimeException( 'search_activation.authorization.basis' );
+		}
+		self::assert_date( $policy['authorization']['recorded_at'], 'search_activation.authorization.recorded_at' );
+		if ( $policy['activated_at'] !== $policy['authorization']['recorded_at'] ) {
+			throw new RuntimeException( 'search_activation.authorization.recorded_at' );
+		}
+
+		self::assert_exact_keys( $policy['registry_contract'], array( 'schema', 'version', 'payload_sha256' ), 'search_activation.registry_contract' );
+		if ( ! is_array( $registry )
+			|| self::REGISTRY_SCHEMA !== $registry['schema']
+			|| self::PINNED_REGISTRY_VERSION !== $registry['version']
+			|| self::REGISTRY_SCHEMA !== $policy['registry_contract']['schema']
+			|| self::PINNED_REGISTRY_VERSION !== $policy['registry_contract']['version']
+			|| self::PINNED_REGISTRY_PAYLOAD_SHA256 !== $policy['registry_contract']['payload_sha256']
+			|| ! hash_equals( self::PINNED_REGISTRY_PAYLOAD_SHA256, self::registry_digest( $registry ) ) ) {
+			throw new RuntimeException( 'search_activation.registry_contract' );
+		}
+
+		self::assert_exact_keys( $policy['activation'], array( 'state', 'owner_count', 'route_count', 'locales', 'owner_ids' ), 'search_activation.activation' );
+		$expected_owner_ids = self::expected_search_activation_owner_ids();
+		if ( 'approved' !== $policy['activation']['state']
+			|| ! is_int( $policy['activation']['owner_count'] )
+			|| count( $expected_owner_ids ) !== $policy['activation']['owner_count']
+			|| ! is_int( $policy['activation']['route_count'] )
+			|| 2 * count( $expected_owner_ids ) !== $policy['activation']['route_count'] ) {
+			throw new RuntimeException( 'search_activation.activation.counts' );
+		}
+		self::assert_exact_list( $policy['activation']['locales'], array( 'he', 'en' ), 'search_activation.activation.locales' );
+		self::assert_exact_list( $policy['activation']['owner_ids'], $expected_owner_ids, 'search_activation.activation.owner_ids' );
+
+		self::assert_exact_keys( $policy['exclusions'], array( 'owner_ids', 'owner_reason', 'section_state', 'query_state', 'nonpublic_state' ), 'search_activation.exclusions' );
+		self::assert_exact_list( $policy['exclusions']['owner_ids'], array( 'preparation-ichiban-dashi' ), 'search_activation.exclusions.owner_ids' );
+		if ( 'culinary_test_not_verified' !== $policy['exclusions']['owner_reason']
+			|| 'owner_canonical_only' !== $policy['exclusions']['section_state']
+			|| 'noindex_follow' !== $policy['exclusions']['query_state']
+			|| 'excluded' !== $policy['exclusions']['nonpublic_state'] ) {
+			throw new RuntimeException( 'search_activation.exclusions.state' );
+		}
+
+		$entities_by_id = array();
+		$standalone_public_ids = array();
+		foreach ( $registry['entities'] as $entity ) {
+			$entities_by_id[ $entity['id'] ] = $entity;
+			if ( self::is_public_entity( $entity )
+				&& 'standalone' === $entity['seo']['route_mode']
+				&& $entity['id'] === $entity['seo']['owner_entity_id'] ) {
+				$standalone_public_ids[] = $entity['id'];
+			}
+		}
+		$expected_standalone = array_merge( $expected_owner_ids, $policy['exclusions']['owner_ids'] );
+		sort( $expected_standalone, SORT_STRING );
+		sort( $standalone_public_ids, SORT_STRING );
+		self::assert_exact_list( $standalone_public_ids, $expected_standalone, 'search_activation.standalone_public_ids' );
+
+		foreach ( $expected_owner_ids as $owner_id ) {
+			if ( ! isset( $entities_by_id[ $owner_id ] ) ) {
+				throw new RuntimeException( 'search_activation.owner.unknown.' . $owner_id );
+			}
+			$denial_reason = self::search_activation_denial_reason( $entities_by_id[ $owner_id ] );
+			if ( '' !== $denial_reason ) {
+				throw new RuntimeException( 'search_activation.owner.denied.' . $owner_id . '.' . $denial_reason );
+			}
+		}
+		$excluded_owner = $entities_by_id['preparation-ichiban-dashi'];
+		if ( 'culinary_test' !== self::search_activation_denial_reason( $excluded_owner ) ) {
+			throw new RuntimeException( 'search_activation.exclusions.owner_gate' );
+		}
+
+		if ( $require_pinned_digest
+			&& ! hash_equals( self::SEARCH_ACTIVATION_PAYLOAD_SHA256, self::registry_digest( $policy ) ) ) {
+			throw new RuntimeException( 'search_activation.payload_sha256' );
+		}
+	}
+
+	private static function expected_search_activation_owner_ids() {
+		return array(
+			'cuisine-japanese-washoku',
+			'cuisine-lebanese-regional',
+			'cuisine-syrian-regional',
+			'equipment-wasabi-grater',
+			'guide-umami-synergy',
+			'guide-wasabi-aitc',
+			'hub-japanese-foundations-lab',
+			'ingredient-fresh-dutch-wasabi',
+			'ingredient-fresh-wasabi',
+			'ingredient-hon-mirin',
+			'ingredient-katsuobushi',
+			'ingredient-kioke-shoyu',
+			'ingredient-kito-yuzu',
+			'ingredient-koji-starter-culture',
+			'ingredient-kombu',
+			'ingredient-kome-koji',
+			'ingredient-koshihikari-rice',
+			'museum-culinary-science',
+		);
+	}
+
+	private static function search_activation_denial_reason( $entity ) {
+		if ( ! self::is_public_entity( $entity )
+			|| 'public_discovery' !== $entity['surface_class']
+			|| 'approved_public' !== $entity['publication']['state']
+			|| true !== $entity['publication']['public_api']
+			|| true !== $entity['publication']['public_page'] ) {
+			return 'public_contract';
+		}
+		if ( false !== $entity['publication']['search_index']
+			|| 'noindex_until_longform_review' !== $entity['index_policy'] ) {
+			return 'immutable_registry_pair';
+		}
+		if ( 'standalone' !== $entity['seo']['route_mode']
+			|| $entity['id'] !== $entity['seo']['owner_entity_id'] ) {
+			return 'canonical_owner';
+		}
+		if ( in_array( $entity['type'], array( 'dish', 'preparation' ), true )
+			&& 'tested' !== $entity['review']['culinary_test_status'] ) {
+			return 'culinary_test';
+		}
+		if ( $entity['seo']['canonical_path']['he'] === $entity['seo']['canonical_path']['en'] ) {
+			return 'locale_canonical';
+		}
+		$has_public_fact = false;
+		foreach ( $entity['facts'] as $fact ) {
+			if ( true !== $fact['public_safe'] ) {
+				continue;
+			}
+			$has_public_fact = true;
+			if ( 'editorial_inference' === $fact['evidence_class'] || empty( $fact['source_ids'] ) ) {
+				return 'public_evidence';
+			}
+		}
+		return $has_public_fact ? '' : 'public_evidence';
+	}
+
+	private static function is_effectively_search_indexable_entity( $entity, $registry ) {
+		$policy = self::search_activation_policy( $registry );
+		return ! is_wp_error( $policy )
+			&& in_array( $entity['id'], $policy['activation']['owner_ids'], true )
+			&& '' === self::search_activation_denial_reason( $entity );
 	}
 
 	public static function rest_public_collection( WP_REST_Request $request ) {
@@ -1732,9 +2013,7 @@ final class Complete99_Culinary_Science {
 		}
 		$records = array();
 		foreach ( self::public_entity_index( $registry ) as $entity ) {
-			if ( 'standalone' !== $entity['seo']['route_mode']
-				|| true !== $entity['publication']['search_index']
-				|| 'index' !== $entity['index_policy'] ) {
+			if ( ! self::is_effectively_search_indexable_entity( $entity, $registry ) ) {
 				continue;
 			}
 			foreach ( $languages as $language ) {
@@ -1793,7 +2072,7 @@ final class Complete99_Culinary_Science {
 			'canonical_path' => $owner['seo']['canonical_path'][ $lang ],
 			'canonical_url'  => 'he' === $lang ? $he_url : $en_url,
 			'alternates'     => array( 'he' => $he_url, 'en' => $en_url, 'x-default' => $he_url ),
-			'indexable'      => true === $owner['publication']['search_index'] && 'index' === $owner['index_policy'],
+			'indexable'      => self::is_effectively_search_indexable_entity( $owner, $registry ),
 		);
 		$collection = self::public_collection_projection_for_owner( $owner['id'], $registry, $lang );
 		if ( ! empty( $collection ) ) {
@@ -1871,6 +2150,7 @@ final class Complete99_Culinary_Science {
 	}
 
 	private static function public_projection( $entity, $registry, $lang ) {
+		$effective_search_index = self::is_effectively_search_indexable_entity( $entity, $registry );
 		$public_facts = array();
 		$public_fact_ids = array();
 		$source_ids   = array();
@@ -2060,8 +2340,8 @@ final class Complete99_Culinary_Science {
 			'parent_id'    => $entity['parent_id'],
 			'name'         => $entity['name'][ $lang ],
 			'summary'      => $entity['summary'][ $lang ],
-			'index_policy' => $entity['index_policy'],
-			'search_index' => true === $entity['publication']['search_index'],
+			'index_policy' => $effective_search_index ? 'index' : $entity['index_policy'],
+			'search_index' => $effective_search_index,
 			'seo'          => array(
 				'page_role'         => $entity['seo']['page_role'],
 				'route_mode'        => $entity['seo']['route_mode'],

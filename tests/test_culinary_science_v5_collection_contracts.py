@@ -228,6 +228,8 @@ def test_collection_projection_is_locale_paired_and_private_wrapper_free(
     }
     he = v5_payload["he_bundle"]["collection"]
     en = v5_payload["en_bundle"]["collection"]
+    assert v5_payload["he_bundle"]["indexable"] is True
+    assert v5_payload["en_bundle"]["indexable"] is True
     assert he["language"] == "he"
     assert en["language"] == "en"
     assert he["canonical_path"] == en["alternate_path"]

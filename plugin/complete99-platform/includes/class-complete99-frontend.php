@@ -849,9 +849,14 @@ final class Complete99_Frontend {
 			if ( 1 < $product_page ) {
 				$page_name .= sprintf( 'he' === $lang ? ', עמוד %d' : ', Page %d', $product_page );
 			}
-			$page_description = 'he' === $lang
-				? 'חומרי גלם וציוד למטבח של קומפלט 99 עם מחיר, מפרט, מלאי והוספה לסל.'
-				: 'Complete99 food ingredients and kitchen equipment with price, specifications, stock and add-to-cart.';
+			$checkout_ready = Complete99_Commerce::is_ready();
+			$page_description = $checkout_ready
+				? ( 'he' === $lang
+					? 'חומרי גלם וציוד למטבח של קומפלט 99 עם מחיר, מפרט, מלאי והוספה לסל.'
+					: 'Complete99 food ingredients and kitchen equipment with price, specifications, stock and add-to-cart.' )
+				: ( 'he' === $lang
+					? 'קטלוג חומרי גלם וציוד למטבח של קומפלט 99 עם מחיר, מפרט ומלאי לעיון; הרכישה והתשלום באתר מושהים כעת.'
+					: 'Browse the Complete99 catalog of food ingredients and kitchen equipment with prices, specifications and stock; on-site checkout and payment are currently paused.' );
 		}
 		$page_id = $url . '#webpage';
 		$graph   = array(
@@ -1032,7 +1037,10 @@ final class Complete99_Frontend {
 			'sku'                => (string) $product->get_sku(),
 			'weight'             => $weight_schema,
 			'additionalProperty' => $additional_properties,
-			'offers'             => array(
+		);
+		$checkout_ready = Complete99_Commerce::is_ready();
+		if ( $checkout_ready ) {
+			$schema['offers'] = array(
 				'@type'         => 'Offer',
 				'url'           => $product_url,
 				'priceCurrency' => (string) get_woocommerce_currency(),
@@ -1040,8 +1048,8 @@ final class Complete99_Frontend {
 				'availability'  => $product->is_in_stock() ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
 				'itemCondition' => 'https://schema.org/NewCondition',
 				'seller'        => array( '@id' => home_url( '/#organization' ) ),
-			),
-		);
+			);
+		}
 		if ( class_exists( 'Complete99_Live_Catalog' ) ) {
 			$relations = Complete99_Live_Catalog::relations_for_product_code( $product_code );
 			$dish_urls = array();

@@ -185,14 +185,31 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("added no WooCommerce offers, stock, supplier claims", changelog)
         self.assertIn("payment activation or role assignments", changelog)
 
-    def test_release_1_20_0_manifest_describes_held_science_and_preserves_history(self) -> None:
+    def test_release_1_21_0_manifest_describes_migration_search_and_store_truth(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
-        self.assertTrue(changelog.startswith("<h4>1.20.0</h4>"))
+        self.assertTrue(changelog.startswith("<h4>1.21.0</h4>"))
+        self.assertIn("private, WordPress-authenticated Complete99 OS Today shell", changelog)
+        self.assertIn("exact seven-table durable operations schema", changelog)
+        self.assertIn("no ChatGPT login requirement", changelog)
+        self.assertIn("P1 remains deliberately read-only", changelog)
+        self.assertIn("table-aware deployment manifest v2 rollback", changelog)
+        self.assertIn("authenticated historical v1 recovery", changelog)
+        self.assertIn("zero-residue preflight and finalization gates", changelog)
+        self.assertIn("18 reviewed Culinary Science and Museum canonical owners", changelog)
+        self.assertIn("36 Hebrew and English URLs", changelog)
+        self.assertIn("digest-pinned fail-closed overlay", changelog)
+        self.assertIn("untested ichiban-dashi preparation", changelog)
+        self.assertIn("eight section-only entities", changelog)
+        self.assertIn("Offer schema appears only when both checkout and cart readiness pass", changelog)
+        self.assertIn("exact legacy ChatGPT Sites application and asset defaults", changelog)
+        self.assertIn("exact 36 WooCommerce products", changelog)
+        self.assertIn("disabled payment state", changelog)
+        self.assertIn("<h4>1.20.0</h4>", changelog)
         self.assertIn(
             "Held exactly twelve Syrian and Japanese science editorial candidates: "
             "approval v2 binds the exact PNG source evidence separately from the "

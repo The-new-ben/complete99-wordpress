@@ -315,13 +315,21 @@ def load_reviewed_proof(
 
 def validate_database_manifest(value: Any, digest: Any, label: str) -> None:
     manifest = require_mapping(value, label)
-    components = (
+    components = [
         "options_without_deployment_marker",
         "posts",
         "postmeta",
         "seed_ids",
         "evaluation_ids",
-    )
+    ]
+    schema = manifest.get("schema")
+    if schema == "complete99-database-snapshot-manifest/v2":
+        components.append("ops_tables")
+    else:
+        require(
+            schema == "complete99-database-snapshot-manifest/v1",
+            f"{label} schema is invalid",
+        )
     expected_keys = {
         "schema",
         "sync_secret_existed",
@@ -332,10 +340,6 @@ def validate_database_manifest(value: Any, digest: Any, label: str) -> None:
         expected_keys.add(f"{component}_sha256")
     require(set(manifest) == expected_keys, f"{label} fields are invalid")
     require(
-        manifest.get("schema") == "complete99-database-snapshot-manifest/v1",
-        f"{label} schema is invalid",
-    )
-    require(
         manifest.get("sync_secret_existed") is True
         and manifest.get("sync_secret_configured") is True,
         f"{label} sync identity is invalid",
@@ -343,7 +347,9 @@ def validate_database_manifest(value: Any, digest: Any, label: str) -> None:
     for component in components:
         count = manifest.get(f"{component}_count")
         require(
-            type(count) is int and count >= 0,
+            type(count) is int
+            and count >= 0
+            and (component != "ops_tables" or count == 7),
             f"{label} count is invalid for {component}",
         )
         require_digest(

@@ -861,8 +861,11 @@ class C99_Test_Filesystem {{
 
 class C99_Test_Wpdb {{
     public bool $is_mysql = true;
+    public string $prefix = 'wp_';
     public string $options = 'wp_options';
+    public string $last_error = '';
     public function prepare($query, ...$args) {{ return array('query' => $query, 'args' => $args); }}
+    public function get_col($prepared) {{ return array(); }}
     public function query($prepared) {{
         $query = (string) $prepared['query'];
         $args = $prepared['args'];

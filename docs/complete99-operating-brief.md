@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
-Last updated: 2026-08-08
-Status: source release target 1.20.0, with private v20/v6 Japanese koji and shoyu research, culinary-commerce v14, 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 672 science identities, 375 sources, 728 Entity Studio subjects and an unchanged public Science projection of exactly 27 entities across 19 standalone page owners per language and 38 bilingual routes, with zero indexable science records; all 12 Syrian and Japanese editorial candidates remain held without a trusted owner key or receipt
+Last updated: 2026-08-11
+Status: source release target 1.21.0, with a read-only WordPress-native Complete99 OS P1 foundation, an exact seven-table private operations schema, table-aware rollback, digest-pinned search activation for 18 reviewed Science/Museum owners across 36 bilingual canonical routes, truthful Product/Offer gating, 36 unchanged public products and disabled payments; all held, private, section-only, query-state and untested-preparation boundaries remain fail closed
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -227,10 +227,20 @@ uses schema `complete99-culinary-science-registry/v6` and version
 science v20. Exactly five Japanese koji and shoyu identities become reviewed
 private editorial candidates. Shoyu koji, kioke, the koji-hydrolysis guide and
 JAS 1703 standard context are proposed standalone owners, while the
-enzymatic-hydrolysis reaction is a proposed section of the guide. The current
-public graph remains exactly 27 entities, 19 standalone page owners per
-language and 38 bilingual routes, while zero science records are indexable. The
+enzymatic-hydrolysis reaction is a proposed section of the guide. That release's
+public graph remained exactly 27 entities, 19 standalone page owners per
+language and 38 bilingual routes, while zero science records were indexable. The
 Japanese cluster remains split into 24 public and 60 private records.
+
+Release 1.21.0 keeps that v20 registry and its raw publication flags unchanged,
+but binds a separate fail-closed activation to its exact canonical digest.
+Exactly 18 reviewed standalone owners and 36 Hebrew/English canonical routes
+become effectively indexable and enter the WordPress sitemap. The untested
+ichiban-dashi owner, eight section-only entities, query states and every held,
+private or draft record remain excluded or noindex. The release also begins the
+private application migration with a WordPress-authenticated, read-only Today
+shell and seven durable operations tables; it imports no legacy rows and enables
+no write command in P1.
 
 The release verifies exactly three private source-scoped `literature_context` ranges
 from one 46-hour study of three *Aspergillus oryzae* strains: neutral protease
@@ -462,15 +472,15 @@ pending `dish-kibbeh-meshwiyyeh` record also stays private, with no raw-kibbeh
 method or Recipe schema. Family testimony remains bounded to the named family
 or community and never becomes a universal claim about Aleppo or Syria.
 
-Release 1.20.0 prepares five reviewed Japanese koji and shoyu records as held
+Release 1.20.0 prepared five reviewed Japanese koji and shoyu records as held
 editorial candidates. Four are proposed standalone bilingual pages and the
 reaction is a proposed section inside the koji-hydrolysis guide. Producer and
 retail-listing identities remain private. The three verified literature
 measurements, unverified reaction-to-product and shoyu-to-dish hypotheses, and
-all cross-domain v3 unresolved or candidate records remain private. The active
-public Science surface stays at 27 entities, 19 standalone owners per language
-and 38 bilingual routes; every public science page remains `noindex,follow` and
-outside the sitemap.
+all cross-domain v3 unresolved or candidate records remain private. Before the
+separate 1.21 activation, its public Science surface stayed at 27 entities, 19
+standalone owners per language and 38 bilingual routes, with every route
+`noindex,follow` and outside the sitemap.
 
 ## 9. Integrations and future hardware
 

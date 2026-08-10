@@ -29,6 +29,24 @@ Large raw media streams may use purpose-built storage, and credentials stay in
 server-side secret stores. WordPress retains the canonical entity identity,
 evidence reference, authorization state and publication decision.
 
+## WordPress-native operations foundation
+
+Release 1.21.0 begins the private application migration inside the plugin. The
+Complete99 OS Today shell is an authenticated wp-admin surface governed by the
+dedicated `complete99_view_operations` capability. Its read-only REST status
+requires a WordPress session, the same capability and a valid WordPress REST
+nonce. It never accepts an operational mutation in P1 and does not represent
+legacy external records as imported.
+
+Seven plugin-owned InnoDB tables establish durable identities for locations,
+memberships, tasks, issues, commands, mutation receipts and append-only audit
+events. Their schema marker and administrator capability are installed within
+the platform migration boundary. Missing tables, wrong engines, missing unique
+keys, capability drift or version drift fail the operations invariant and block
+release stabilization. Exact legacy ChatGPT Sites defaults move to WordPress-
+owned application and asset destinations, while an owner-configured canonical
+HTTPS value is preserved.
+
 Release 1.12.0 does not install or assign Complete99 worker roles. Commerce
 order, refund, fulfilment and stock events use an unassigned private outbox
 until a later operating decision.
@@ -75,6 +93,15 @@ one declared owner. Query variants, multilingual term variants, semantic entity
 links, protected exclusions, expected children, breadcrumbs and contextual link
 plans are validated as one graph. Duplicate query owners, broken parents,
 cycles, unresolved links and conflicting canonical owners fail the registry.
+
+Release 1.21.0 derives effective search state through a separate activation
+policy pinned to the unchanged canonical v20 registry digest. The validated
+allowlist contains exactly 18 standalone owners and yields 36 Hebrew and English
+canonical sitemap URLs. The untested ichiban-dashi preparation stays noindex;
+eight section entities remain owner-canonical-only; query/filter states and all
+held, private or draft records remain excluded. A missing, altered, stale or
+over-broad policy fails closed to zero indexable routes and fails the migration
+invariant, so deployment cannot stabilize with a silently disabled overlay.
 
 The public API is a projection, never the source registry. An entity enters that
 projection only when it has reviewed bilingual content, reviewed evidence, at
@@ -339,14 +366,20 @@ live public graph remained exactly 27/19/38. Current v20 holds all seven. The
 other cuisine totals and the exact 36-product WooCommerce catalog remain
 unchanged.
 
-Release 1.20.0 keeps the cumulative registry at 672 identities and Entity
+Release 1.20.0 kept the cumulative registry at 672 identities and Entity
 Studio at 728 subjects. Five Japanese identities become held editorial
 candidates. Four are proposed standalone page owners and the
 enzymatic-hydrolysis reaction is a proposed section of the koji-hydrolysis
-guide. The public graph remains exactly 27 entities, 19 standalone page owners
+guide. Its public graph remained exactly 27 entities, 19 standalone page owners
 per language and 38 bilingual routes. The Japanese cluster remains at 24 public
-and 60 private records. All 27 public entities remain outside the sitemap and
-zero science entities are indexable.
+and 60 private records. All 27 public entities remained outside the sitemap and
+zero science entities were indexable before the separate 1.21 activation.
+
+Release 1.21.0 leaves those 27 public entities, 19 raw standalone owners and the
+entire v20 registry unchanged. The digest-pinned overlay activates exactly 18
+qualified standalone owners and 36 canonical routes. The nineteenth owner,
+`preparation-ichiban-dashi`, remains noindex because its culinary test is not
+verified.
 
 ## Syria regional and community boundary
 
@@ -562,12 +595,21 @@ integrity metadata is isolated in `complete99-platform-integrity.json`.
 The package is uploaded directly by the authenticated workflow. No mutable
 public raw-branch ZIP is used.
 
-The 1.20 infrastructure artifact may proceed only through protected `main`, a
-green required CI result and this controlled workflow; that path does not
-publish held Science content. A later valid owner receipt requires a newly
-reviewed and rebuilt artifact with all four exact approved delivery variants.
-Nothing in the source or package contract is evidence that a deployment or live
-publication occurred.
+Database rollback snapshots use an exact schema boundary. Historical snapshots
+without operations tables retain manifest v1. Current snapshots use manifest v2
+and add one component for the seven private `c99_ops_*` tables plus their schema
+marker in the option journal. Candidate-created first-install tables are moved
+atomically to deterministic quarantine names before the core WordPress rollback
+transaction. They are dropped only after exact baseline readback. A table that
+existed at baseline must remain unchanged, and any ambiguous retry or quarantine
+residue blocks finalization and the next deployment.
+
+The 1.21 artifact may proceed only through protected `main`, a green required CI
+result and this controlled workflow. It activates only the exact reviewed
+search-policy allowlist; it does not publish held Science content. A later valid
+owner receipt requires a newly reviewed and rebuilt artifact with all four exact
+approved delivery variants. Nothing in the source or package contract is
+evidence that a deployment or live publication occurred.
 
 ## Cross-domain culinary bindings
 

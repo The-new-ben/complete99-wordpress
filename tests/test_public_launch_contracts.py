@@ -21,7 +21,7 @@ NOT_FOUND_TEMPLATE = PLUGIN / "templates" / "not-found.php"
 DISH_SEEDS = PLUGIN / "data" / "dish-seeds.php"
 LAUNCH_CONTENT = PLUGIN / "data" / "launch-content.php"
 PRIVATE_OS_HOST = "complete99-os.benben777.chatgpt.site"
-PUBLIC_SITE = "https://complete99-public.benben777.chatgpt.site"
+LEGACY_PUBLIC_SITE = "https://complete99-public.benben777.chatgpt.site"
 
 
 def constant(text: str, name: str) -> str:
@@ -32,18 +32,29 @@ def constant(text: str, name: str) -> str:
 
 
 class Complete99PublicLaunchContracts(unittest.TestCase):
-    def test_public_demo_and_asset_defaults_are_separate(self) -> None:
+    def test_operations_and_asset_defaults_are_wordpress_owned(self) -> None:
         settings = SETTINGS.read_text(encoding="utf-8")
         frontend = FRONTEND.read_text(encoding="utf-8")
 
-        self.assertEqual(PUBLIC_SITE, constant(settings, "DEFAULT_PUBLIC_SITE_URL"))
-        self.assertEqual(f"{PUBLIC_SITE}/platform", constant(settings, "DEFAULT_APP_URL"))
-        self.assertEqual(f"{PUBLIC_SITE}/en/platform", constant(settings, "DEFAULT_APP_URL_EN"))
-        self.assertEqual(PUBLIC_SITE, constant(settings, "DEFAULT_ASSET_URL"))
+        self.assertEqual(
+            f"{LEGACY_PUBLIC_SITE}/platform",
+            constant(settings, "LEGACY_DEFAULT_APP_URL"),
+        )
+        self.assertEqual(
+            f"{LEGACY_PUBLIC_SITE}/en/platform",
+            constant(settings, "LEGACY_DEFAULT_APP_URL_EN"),
+        )
+        self.assertEqual(
+            LEGACY_PUBLIC_SITE, constant(settings, "LEGACY_DEFAULT_ASSET_URL")
+        )
         self.assertIn(
-            "self::install_default( self::OPTION_ASSET_URL, self::DEFAULT_ASSET_URL )",
+            "public static function default_app_url()",
             settings,
         )
+        self.assertIn("admin.php?page=complete99-os", settings)
+        self.assertIn("COMPLETE99_PLATFORM_URL . 'assets/images/original'", settings)
+        self.assertIn("private static function upgrade_legacy_default", settings)
+        self.assertNotRegex(settings, r"const\s+DEFAULT_(?:APP|ASSET|PUBLIC_SITE)_URL")
         self.assertIn("public static function app_url( $language = 'he' )", settings)
         self.assertIn("Complete99_Settings::app_url( $lang )", frontend)
         self.assertNotIn(PRIVATE_OS_HOST, settings)
@@ -398,7 +409,6 @@ echo json_encode($results, JSON_UNESCAPED_UNICODE);
     def test_referenced_asset_names_match_public_inventory(self) -> None:
         frontend = FRONTEND.read_text(encoding="utf-8")
         dishes = DISH_SEEDS.read_text(encoding="utf-8")
-        settings = SETTINGS.read_text(encoding="utf-8")
         launch = LAUNCH_CONTENT.read_text(encoding="utf-8")
         combined = "\n".join((frontend, dishes, launch))
         assets = set(
@@ -422,7 +432,10 @@ echo json_encode($results, JSON_UNESCAPED_UNICODE);
             "c99-food-sabich-plate-gallery-2021-wp-v01.jpg",
             combined,
         )
-        self.assertEqual(PUBLIC_SITE, constant(settings, "DEFAULT_ASSET_URL"))
+        self.assertIn(
+            "COMPLETE99_PLATFORM_URL . 'assets/images/original'",
+            SETTINGS.read_text(encoding="utf-8"),
+        )
         self.assertGreaterEqual(len(assets), 8)
 
     def test_public_cta_is_an_overview_not_a_private_application_claim(self) -> None:
@@ -435,21 +448,26 @@ echo json_encode($results, JSON_UNESCAPED_UNICODE);
         os.environ.get("COMPLETE99_VERIFY_PUBLIC_URLS") == "1",
         "Set COMPLETE99_VERIFY_PUBLIC_URLS=1 for anonymous public-host verification.",
     )
-    def test_every_public_launch_url_returns_anonymous_200(self) -> None:
-        settings = SETTINGS.read_text(encoding="utf-8")
+    def test_every_plugin_owned_launch_asset_returns_anonymous_200(self) -> None:
+        public_site = os.environ.get(
+            "COMPLETE99_PUBLIC_SITE_URL", "https://complete99.co.il"
+        ).rstrip("/")
         combined = "\n".join(
             path.read_text(encoding="utf-8")
             for path in (FRONTEND, DISH_SEEDS, LAUNCH_CONTENT)
         )
-        asset_base = constant(settings, "DEFAULT_ASSET_URL")
-        urls = {
-            constant(settings, "DEFAULT_APP_URL"): "text/html",
-            constant(settings, "DEFAULT_APP_URL_EN"): "text/html",
-        }
+        asset_base = (
+            f"{public_site}/wp-content/plugins/complete99-platform/"
+            "assets/images/original"
+        )
+        urls = {}
         for filename in set(
             re.findall(r"c99-[a-z0-9-]+\.(?:jpg|jpeg|png|webp|avif)", combined)
         ):
-            urls[f"{asset_base}/assets/original/{quote(filename)}"] = "image/"
+            stem = Path(filename).stem
+            webp = PLUGIN / "assets" / "images" / "original" / f"{stem}.webp"
+            if webp.is_file():
+                urls[f"{asset_base}/{quote(webp.name)}"] = "image/"
 
         def verify(item: tuple[str, str]) -> tuple[str, int, str]:
             url, expected_type = item

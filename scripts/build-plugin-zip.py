@@ -20,7 +20,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-08 09:37:00"
+RELEASE_LAST_UPDATED = "2026-08-11 00:37:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -588,6 +588,15 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Began the owner-authorized migration of Complete99 operations into WordPress with a private, WordPress-authenticated Complete99 OS Today shell, an exact seven-table durable operations schema, capability- and nonce-protected status, and no ChatGPT login requirement. P1 remains deliberately read-only and imports no legacy operational records.</li>"
+                "<li>Added table-aware deployment manifest v2 rollback for the seven operations tables, including bounded encrypted snapshots, deterministic first-install quarantine and cleanup, unchanged baseline-present refusal, authenticated historical v1 recovery, and zero-residue preflight and finalization gates.</li>"
+                "<li>Activated search eligibility for 18 reviewed Culinary Science and Museum canonical owners across 36 Hebrew and English URLs through a digest-pinned fail-closed overlay. The unchanged v20 registry, untested ichiban-dashi preparation, eight section-only entities, query states and all held or private records retain their existing boundaries.</li>"
+                "<li>Made Product structured data truthful while checkout is held: public catalog products retain Product schema, but Offer schema appears only when both checkout and cart readiness pass.</li>"
+                "<li>Replaced only the exact legacy ChatGPT Sites application and asset defaults with WordPress-owned destinations while preserving any owner-configured canonical HTTPS value.</li>"
+                "<li>Preserved the exact 36 WooCommerce products, prices, stock authority, catalog visibility and disabled payment state, with no new product, supplier, imported legacy record or checkout activation.</li>"
+                "</ul>"
+                "<h4>1.20.0</h4>"
                 "<ul>"
                 "<li>Held exactly twelve Syrian and Japanese science editorial candidates: approval v2 binds the exact PNG source evidence separately from the four deployable WebP/AVIF variants and complete bilingual content; no trusted owner key or receipt is present.</li>"
                 "<li>Made the 1.20 Science media package default-deny: exactly 70 approved delivery derivatives ship, while 78 held files, 24 active PNG source-evidence files and the three-file superseded museum archive remain repository-only under an exact receipt policy.</li>"

@@ -608,7 +608,7 @@ class Complete99_Culinary_Science {{
                 'en' => 'https://complete99.example/en/ingredients/kombu/',
                 'x-default' => 'https://complete99.example/ingredients/kombu/',
             ),
-            'indexable' => false,
+            'indexable' => true,
         );
     }}
 }}
@@ -632,6 +632,8 @@ $robots = Complete99_Culinary_Museum_Frontend::robots(array('index' => true));
 ob_start();
 Complete99_Culinary_Museum_Frontend::head_metadata();
 $head = ob_get_clean();
+$query = resolve_museum('GET', '/ingredients/kombu/?foundation-group=ingredients');
+$query_robots = Complete99_Culinary_Museum_Frontend::robots(array('index' => true));
 $post = resolve_museum('POST', '/ingredients/kombu/');
 $case = resolve_museum('GET', '/Ingredients/kombu/');
 $double = resolve_museum('GET', '/ingredients//kombu/');
@@ -642,6 +644,8 @@ echo json_encode(array(
     'title' => $title,
     'robots' => $robots,
     'head' => $head,
+    'query' => $query,
+    'query_robots' => $query_robots,
     'post' => $post,
     'case' => $case,
     'double' => $double,
@@ -663,9 +667,13 @@ echo json_encode(array(
         self.assertTrue(result["exact"]["active"])
         self.assertEqual("ingredient-kombu", result["exact"]["query"]["complete99_culinary_museum"])
         self.assertEqual("Kombu | Complete99", result["title"])
-        self.assertTrue(result["robots"]["noindex"])
+        self.assertTrue(result["robots"]["index"])
         self.assertTrue(result["robots"]["follow"])
-        self.assertNotIn("index", result["robots"])
+        self.assertNotIn("noindex", result["robots"])
+        self.assertTrue(result["query"]["active"])
+        self.assertTrue(result["query_robots"]["noindex"])
+        self.assertTrue(result["query_robots"]["follow"])
+        self.assertNotIn("index", result["query_robots"])
         self.assertIn('rel="canonical"', result["head"])
         self.assertEqual(3, result["head"].count('rel="alternate"'))
         self.assertIn('type="application/ld+json"', result["head"])

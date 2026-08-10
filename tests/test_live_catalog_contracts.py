@@ -523,11 +523,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_20_0(self) -> None:
+    def test_release_version_is_exact_1_21_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.20\.0$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.20.0' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.20.0' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.21\.0$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.21.0' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.21.0' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -1467,7 +1467,7 @@ echo wp_json_encode(array(
         self.assertNotIn("<figcaption", dish_page)
         self.assertNotIn("<figcaption", product_card)
 
-    def test_catalog_and_cart_readiness_are_separate_from_payment_checkout(self) -> None:
+    def test_catalog_stays_public_while_transaction_controls_follow_checkout_readiness(self) -> None:
         public_status = self.commerce.split("public static function public_status", 1)[1].split(
             "public static function private_readiness", 1
         )[0]
@@ -1506,10 +1506,17 @@ echo wp_json_encode(array(
         self.assertIn("if ( $cart_ready )", live_store)
         self.assertIn("self::render_store_cart_feedback( $lang, $cart_url )", live_store)
         self.assertIn("if ( $checkout_ready )", live_store)
+        self.assertIn("if ( $checkout_ready && $cart_ready )", live_store)
+        self.assertIn("Catalog available to browse", live_store)
+        self.assertIn("On-site checkout and payment are currently paused", live_store)
+        self.assertIn("Complete99_Commerce::order_url( $lang )", live_store)
+        self.assertIn("Order prepared dishes on Wolt", live_store)
+        self.assertIn('target="_blank" rel="noopener noreferrer"', live_store)
+        self.assertIn("$checkout_ready && $cart_ready", live_store)
         self.assertIn("'add-to-cart' => absint( $product_id )", product_card)
-        self.assertIn("Complete99_Commerce::cart_is_ready()", product_card)
+        self.assertIn("$on_site_checkout_ready", product_card)
         self.assertIn("Add to cart", product_card)
-        self.assertNotIn("$checkout_ready", product_card)
+        self.assertIn("On-site checkout paused", product_card)
 
         cart_feedback = self.consumer.split("private static function render_store_cart_feedback", 1)[
             1
@@ -1611,7 +1618,7 @@ echo wp_json_encode(array(
             1
         ].split("private static function render_related_store_products", 1)[0]
         self.assertIn(
-            "$can_purchase = Complete99_Commerce::cart_is_ready() && $product->is_in_stock() && $product->is_purchasable();",
+            "$can_purchase = $on_site_checkout_ready && $product->is_in_stock() && $product->is_purchasable();",
             product_card,
         )
         purchase = product_card.split('<div class="c99-store-product-purchase">', 1)[1]
@@ -1624,7 +1631,104 @@ echo wp_json_encode(array(
         self.assertIn('rel="nofollow"', available)
         self.assertNotIn("$action_url", unavailable)
         self.assertNotIn("Add to cart", unavailable)
+        self.assertIn("On-site checkout paused", unavailable)
         self.assertIn('aria-disabled="true"', unavailable)
+
+    def test_store_metadata_and_seed_copy_do_not_promise_checkout_while_held(self) -> None:
+        schema = self.frontend.split("private static function schema_graph", 1)[1].split(
+            "private static function store_product_schema", 1
+        )[0]
+        store_seed = (PLUGIN / "data" / "consumer-content.php").read_text(encoding="utf-8").split(
+            "'store' => array(", 1
+        )[1].split("'privacy' => array(", 1)[0]
+
+        self.assertIn("$checkout_ready = Complete99_Commerce::is_ready();", schema)
+        self.assertIn("on-site checkout and payment are currently paused", schema)
+        self.assertIn("מצב הזמנה עדכני", store_seed)
+        self.assertIn("current ordering status", store_seed)
+        self.assertNotIn("add-to-cart", store_seed)
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required")
+    def test_product_schema_omits_offer_while_held_and_restores_it_when_ready(self) -> None:
+        frontend_path = json.dumps(FRONTEND.as_posix())
+        script = f"""
+define('ABSPATH', __DIR__);
+define('COMPLETE99_PLATFORM_URL', 'https://complete99.test/wp-content/plugins/complete99-platform/');
+$GLOBALS['checkout_ready'] = false;
+class Complete99_Commerce {{
+    const NAME_HE = '_name_he';
+    const NAME_EN = '_name_en';
+    const DESCRIPTION_HE = '_description_he';
+    const DESCRIPTION_EN = '_description_en';
+    const INGREDIENTS_HE = '_ingredients_he';
+    const INGREDIENTS_EN = '_ingredients_en';
+    const ALLERGENS_HE = '_allergens_he';
+    const ALLERGENS_EN = '_allergens_en';
+    const STORAGE_HE = '_storage_he';
+    const STORAGE_EN = '_storage_en';
+    const FULFILMENT_HE = '_fulfilment_he';
+    const FULFILMENT_EN = '_fulfilment_en';
+    public static function storefront_product_url($code, $lang, $type = 'all') {{
+        return 'https://complete99.test/en/store/#' . $code;
+    }}
+    public static function is_ready() {{ return !empty($GLOBALS['checkout_ready']); }}
+}}
+class ProductSchemaStub {{
+    public function get_image_id() {{ return 44; }}
+    public function get_weight() {{ return '0.5'; }}
+    public function get_sku() {{ return 'C99-TEST-001'; }}
+    public function get_price() {{ return '19.90'; }}
+    public function is_in_stock() {{ return true; }}
+}}
+function absint($value) {{ return abs((int) $value); }}
+function wc_get_product($id) {{ return 99 === $id ? new ProductSchemaStub() : null; }}
+function sanitize_key($value) {{ return preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $value)); }}
+function sanitize_html_class($value) {{ return preg_replace('/[^A-Za-z0-9_-]/', '', (string) $value); }}
+function get_post_meta($id, $key, $single = false) {{
+    $values = array(
+        '_name_en' => 'Verified pantry item',
+        '_description_en' => 'A truthful product detail description.',
+        '_ingredients_en' => 'Ingredient one',
+        '_allergens_en' => 'None declared',
+        '_storage_en' => 'Store dry',
+        '_fulfilment_en' => 'Pickup after confirmation',
+        '_complete99_catalog_product_code' => 'product-test-item',
+        '_complete99_product_kind' => 'food',
+    );
+    return $values[$key] ?? '';
+}}
+function wp_get_attachment_image_url($id, $size) {{ return 'https://complete99.test/product.webp'; }}
+function get_option($name, $fallback = false) {{ return 'woocommerce_weight_unit' === $name ? 'kg' : $fallback; }}
+function get_woocommerce_currency() {{ return 'ILS'; }}
+function home_url($path = '/') {{ return 'https://complete99.test' . $path; }}
+require {frontend_path};
+$method = new ReflectionMethod('Complete99_Frontend', 'store_product_schema');
+$method->setAccessible(true);
+$held = $method->invoke(null, 99, 'en', 'all');
+$GLOBALS['checkout_ready'] = true;
+$ready = $method->invoke(null, 99, 'en', 'all');
+echo json_encode(array('held' => $held, 'ready' => $ready), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+"""
+        completed = subprocess.run(
+            ["php", "-r", script],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=15,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        schemas = json.loads(completed.stdout)
+        self.assertEqual("Product", schemas["held"]["@type"])
+        self.assertEqual("Verified pantry item", schemas["held"]["name"])
+        self.assertNotIn("offers", schemas["held"])
+        self.assertEqual("Offer", schemas["ready"]["offers"]["@type"])
+        self.assertEqual(
+            "https://schema.org/InStock",
+            schemas["ready"]["offers"]["availability"],
+        )
 
     def test_brand_icon_is_emitted_before_every_head_metadata_branch(self) -> None:
         head_metadata = self.frontend.split("public static function head_metadata", 1)[1].split(
@@ -1699,7 +1803,7 @@ echo wp_json_encode(array(
             self.assertIn("Complete99_REST::public_indexable_items()", source)
         self.assertIn("Complete99_REST::public_indexable_item_by_slug", robots)
 
-    def test_consumer_copy_describes_live_catalog_cart_and_phone_confirmation(self) -> None:
+    def test_consumer_copy_describes_catalog_and_readiness_gated_checkout(self) -> None:
         for stale in (
             "there are currently no products for sale",
             "there are currently no products for purchase",
@@ -1711,13 +1815,13 @@ echo wp_json_encode(array(
             self.assertNotIn(stale, self.consumer_content.lower())
         for current in (
             "The pantry presents culinary products",
-            "Products can be added to the cart",
-            "Build your pantry basket on the site and complete confirmation by phone",
-            "the Complete99 team confirms stock, the fulfilment method and the final amount by phone",
+            "current ordering status",
+            "Purchase and checkout controls are shown only after",
+            "when they are paused, purchase and checkout controls are not shown",
             "המזווה מציג מוצרי קולינריה",
-            "אפשר להוסיף מוצרים לסל",
-            "אפשר להכין סל באתר ולסיים את האישור בשיחה",
-            "צוות קומפלט 99 מאשר בשיחה את המלאי, אופן הקבלה והסכום הסופי",
+            "מצב הזמנה עדכני",
+            "כפתורי רכישה ותשלום מוצגים רק כאשר",
+            "לא מוצגים כפתורי רכישה או תשלום",
         ):
             self.assertIn(current, self.consumer_content)
         for construction_status in (

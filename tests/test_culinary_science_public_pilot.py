@@ -45,6 +45,26 @@ PUBLIC_IDS = {
     "technique-dashi-extraction",
     "equipment-wasabi-grater",
 }
+INDEXABLE_OWNER_IDS = {
+    "museum-culinary-science",
+    "cuisine-japanese-washoku",
+    "cuisine-syrian-regional",
+    "cuisine-lebanese-regional",
+    "hub-japanese-foundations-lab",
+    "guide-umami-synergy",
+    "guide-wasabi-aitc",
+    "ingredient-kombu",
+    "ingredient-katsuobushi",
+    "ingredient-kioke-shoyu",
+    "ingredient-kome-koji",
+    "ingredient-koji-starter-culture",
+    "ingredient-koshihikari-rice",
+    "ingredient-fresh-wasabi",
+    "ingredient-fresh-dutch-wasabi",
+    "ingredient-kito-yuzu",
+    "ingredient-hon-mirin",
+    "equipment-wasabi-grater",
+}
 PUBLIC_ASSET_STEMS = {
     "cuisine-syrian-regional": "syrian-regional-table",
     "cuisine-lebanese-regional": "lebanese-regional-table",
@@ -292,7 +312,7 @@ echo json_encode(array(
     return json.loads(completed.stdout)
 
 
-def test_exact_reviewed_public_cohort_and_noindex_boundary(pilot_payload: dict) -> None:
+def test_exact_reviewed_public_cohort_and_index_boundary(pilot_payload: dict) -> None:
     registry = pilot_payload["registry"]
     public = {
         entity["id"]
@@ -301,7 +321,16 @@ def test_exact_reviewed_public_cohort_and_noindex_boundary(pilot_payload: dict) 
     }
     assert public == PUBLIC_IDS
     assert pilot_payload["status"]["public_count"] == len(PUBLIC_IDS)
-    assert pilot_payload["indexable"] == []
+    search_status = pilot_payload["status"]["search_activation"]
+    assert search_status["ready"] is True
+    assert search_status["effective_index_state"] == "active"
+    assert search_status["owner_count"] == len(INDEXABLE_OWNER_IDS)
+    assert search_status["route_count"] == 2 * len(INDEXABLE_OWNER_IDS)
+    assert search_status["excluded_owner_count"] == 1
+    assert len(pilot_payload["indexable"]) == 2 * len(INDEXABLE_OWNER_IDS)
+    assert {
+        row["entity"]["id"] for row in pilot_payload["indexable"]
+    } == INDEXABLE_OWNER_IDS
     for entity in registry["entities"]:
         if entity["id"] in PUBLIC_IDS:
             assert entity["publication"]["search_index"] is False
@@ -318,11 +347,13 @@ def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict)
         and entity["seo"]["route_mode"] == "standalone"
     }
     assert len(public_standalone) == 19
+    assert public_standalone == INDEXABLE_OWNER_IDS | {"preparation-ichiban-dashi"}
     assert len(pilot_payload["bundles"]) == 2 * len(public_standalone)
     for path, bundle in pilot_payload["bundles"].items():
         assert bundle["canonical_path"] == path
         assert bundle["canonical_url"] == "https://complete99.test" + path
-        assert bundle["indexable"] is False
+        expected_indexable = bundle["entity"]["id"] in INDEXABLE_OWNER_IDS
+        assert bundle["indexable"] is expected_indexable
         assert bundle["language"] == ("en" if path.startswith("/en/") else "he")
         expected_bundle_keys = {
             "schema",
@@ -340,7 +371,7 @@ def test_exact_bilingual_routes_and_projection_only_bundles(pilot_payload: dict)
         assert set(bundle) == expected_bundle_keys
         entity = bundle["entity"]
         assert set(entity) == PUBLIC_PROJECTION_KEYS
-        assert entity["search_index"] is False
+        assert entity["search_index"] is expected_indexable
 
 
 def test_foundations_lab_collection_is_bilingual_presentation_only(
@@ -451,6 +482,7 @@ def test_foundations_lab_does_not_reparent_or_take_member_intents(
         "canonical_path"
     ]
     assert by_id[owner_id]["publication"]["search_index"] is False
+    assert by_id[owner_id]["index_policy"] == "noindex_until_longform_review"
     for member_id in member_ids:
         member = by_id[member_id]
         assert member["parent_id"] != owner_id

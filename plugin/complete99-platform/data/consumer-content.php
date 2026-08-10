@@ -939,12 +939,12 @@ return array(
 	'store' => array(
 		'title'   => array( 'he' => 'המזווה של קומפלט 99', 'en' => 'The Complete99 pantry' ),
 		'excerpt' => array(
-			'he' => 'מוצרי מזווה וחומרי גלם עם תמונה, מחיר, כמות נטו, רכיבים, אלרגנים, מלאי והוספה לסל.',
-			'en' => 'Shop pantry goods and ingredients with an image, price, net quantity, ingredients, allergens, stock and add-to-cart.',
+			'he' => 'קטלוג מוצרי מזווה וחומרי גלם עם תמונה, מחיר, כמות נטו, רכיבים, אלרגנים, מלאי ומצב הזמנה עדכני.',
+			'en' => 'Browse pantry goods and ingredients with an image, price, net quantity, ingredients, allergens, stock and current ordering status.',
 		),
 		'content' => array(
 			'he' => $c99_consumer_page(
-				'המזווה מחבר בין חומרי הגלם שעל המדף לבין המנות של קומפלט 99. אפשר לעבור ממוצר למנה קשורה, לבדוק את פרטי המוצר ולהוסיף אותו לסל.',
+				'המזווה מחבר בין חומרי הגלם שעל המדף לבין המנות של קומפלט 99. אפשר לעבור ממוצר למנה קשורה, לעיין במחיר ובפרטים ולבדוק את מצב ההזמנה העדכני.',
 				array(
 					array(
 						'מה מוצג לכל מוצר',
@@ -954,10 +954,10 @@ return array(
 						)
 					),
 					array(
-						'איך הסל עובד',
+						'מצב ההזמנה באתר',
 						array(
-							'אפשר להוסיף מוצרים, לשנות כמויות ולהסיר פריטים. המחיר והמלאי נבדקים שוב לפני אישור ההזמנה.',
-							'אפשר להכין סל באתר ולסיים את האישור בשיחה עם צוות קומפלט 99, לאחר בדיקת המחיר והמלאי.',
+							'בראש הקטלוג מוצג אם הרכישה והתשלום באתר פעילים או מושהים.',
+							'כאשר הרכישה באתר מושהית, הקטלוג והמחירים נשארים זמינים לעיון ולא מוצגים כפתורי רכישה או תשלום.',
 						)
 					),
 					array(
@@ -969,7 +969,7 @@ return array(
 				)
 			),
 			'en' => $c99_consumer_page(
-				'The pantry connects shelf ingredients with Complete99 dishes. You can move from a product to related dishes, review its details and add it to the cart.',
+				'The pantry connects shelf ingredients with Complete99 dishes. You can move from a product to related dishes, browse its price and details, and check the current ordering status.',
 				array(
 					array(
 						'What every product shows',
@@ -979,10 +979,10 @@ return array(
 						)
 					),
 					array(
-						'How the cart works',
+						'Ordering status on the site',
 						array(
-							'Add products, change quantities and remove items. Price and stock are checked again before the order is confirmed.',
-							'Build your pantry basket on the site and complete confirmation by phone with the Complete99 team after price and stock are checked.',
+							'The top of the catalog states whether on-site purchasing and payment are active or paused.',
+							'When on-site purchasing is paused, the catalog and prices remain available to browse and purchase or checkout controls are not shown.',
 						)
 					),
 					array(
@@ -1005,13 +1005,13 @@ return array(
 		),
 		'content' => array(
 			'he' => $c99_consumer_page(
-				'המדיניות הזאת מתייחסת לאתר הציבורי של קומפלט 99, לרבות קטלוג המזווה, סל הקניות וטופסי יצירת הקשר. שירות Wolt הוא שירות חיצוני עם מדיניות נפרדת.',
+				'המדיניות הזאת מתייחסת לאתר הציבורי של קומפלט 99, לרבות קטלוג המזווה, מצב ההזמנה וטופסי יצירת הקשר. שירות Wolt הוא שירות חיצוני עם מדיניות נפרדת.',
 				array(
 					array(
 						'מידע שנוצר בזמן גלישה',
 						array(
 							'ספקי האחסון והאבטחה עשויים לעבד כתובת רשת, זמן ביקור, העמוד שנפתח, סוג דפדפן ואירועי אבטחה. המידע משמש להפעלת האתר, לאבחון תקלה ולהגנה מפני שימוש לרעה.',
-							'סל המזווה עשוי לשמור מזהי מוצר, כמויות, שפה ומידע טכני הדרוש לשמירת הסל בין עמודים. אין להזין בסל פרטי כרטיס תשלום.',
+							'כאשר פונקציית סל פעילה, היא עשויה לשמור מזהי מוצר, כמויות, שפה ומידע טכני הדרוש לשמירת הסל בין עמודים. אין להזין פרטי כרטיס תשלום מחוץ למסך תשלום פעיל ומאובטח.',
 							'אין לשלוח דרך ערוץ ציבורי מידע רפואי, צילום תעודה, סיסמה או פרטים שאינם נחוצים לשאלה או להזמנה.',
 						)
 					),
@@ -1023,9 +1023,9 @@ return array(
 						)
 					),
 					array(
-						'סל המזווה ושירות Wolt',
+						'הזמנה מהמזווה ושירות Wolt',
 						array(
-							'מוצרי המזווה מתווספים לסל באתר. האישור נעשה בשיחה עם צוות קומפלט 99 לאחר בדיקת המחיר, המלאי ואופן הקבלה, והסל משמש להכנת רשימת המוצרים והכמויות.',
+							'עמוד הקטלוג מציג את מצב ההזמנה העדכני. כאשר הרכישה והתשלום באתר מושהים, לא מוצג כפתור רכישה למוצר.',
 							'מנות מוכנות מזמינים דרך Wolt. לאחר מעבר ל-Wolt, החשבון, התשלום, המשלוח והפרטיות כפופים לתנאים ולמדיניות של Wolt. קישור חיצוני אינו מעביר אלינו אוטומטית את פרטי החשבון או התשלום שלכם.',
 						)
 					),
@@ -1044,13 +1044,13 @@ return array(
 				)
 			),
 			'en' => $c99_consumer_page(
-				'This policy covers the Complete99 public website, including the pantry catalog, shopping cart and contact forms. Wolt is an external service with its own policy.',
+				'This policy covers the Complete99 public website, including the pantry catalog, ordering status and contact forms. Wolt is an external service with its own policy.',
 				array(
 					array(
 						'Information created during a visit',
 						array(
 							'Hosting and security providers may process a network address, visit time, requested page, browser type and security events. This information is used to operate the site, diagnose faults and protect it from misuse.',
-							'The pantry cart may store product identifiers, quantities, language and technical data needed to keep the cart between pages. Do not enter card details in the cart.',
+							'When cart functionality is active, it may store product identifiers, quantities, language and technical data needed to keep the cart between pages. Do not enter card details outside an active, secure payment screen.',
 							'Do not send medical information, an identity document, a password or information that is not needed for your question or order through a public channel.',
 						)
 					),
@@ -1062,9 +1062,9 @@ return array(
 						)
 					),
 					array(
-						'The pantry cart and Wolt',
+						'Pantry ordering and Wolt',
 						array(
-							'Pantry goods are added to the cart on this site. Confirmation takes place by phone with the Complete99 team after price, stock and fulfilment are checked, and the cart prepares the product and quantity list.',
+							'The catalog page shows the current ordering status. When on-site purchasing and payment are paused, no public purchase control is offered for a product.',
 							'Prepared dishes are ordered through Wolt. After you continue to Wolt, account data, payment, delivery and privacy are governed by Wolt terms and policy. Opening that external link does not automatically give Complete99 your account or payment details.',
 						)
 					),
@@ -1104,7 +1104,7 @@ return array(
 					array(
 						'שני מסלולי הזמנה',
 						array(
-							'מוצרי מזווה וחומרי גלם נבחרים באתר ונוספים לסל מקומי. המחיר, המלאי והאיסוף העצמי נבדקים שוב לפני אישור ההזמנה.',
+							'קטלוג המזווה זמין לעיון באתר. בראש העמוד מוצג אם הרכישה והתשלום באתר פעילים; כאשר הם מושהים, לא מוצגים כפתורי רכישה או תשלום.',
 							'מנות מוכנות מזמינים דרך Wolt. החשבון, התשלום, המשלוח, הביטול וההחזר במסלול זה כפופים למידע ולתנאים שמוצגים ב-Wolt בזמן הפעולה.',
 						)
 					),
@@ -1118,8 +1118,8 @@ return array(
 					array(
 						'חנות המזווה',
 						array(
-							'המזווה מציג מוצרי קולינריה עם תמונה, מחיר, מפרט שמתאים לסוג המוצר ומלאי. אפשר להוסיף מוצרים לסל, לשנות כמויות ולהסיר פריטים.',
-							'לאחר הכנת הסל, צוות קומפלט 99 מאשר בשיחה את המלאי, אופן הקבלה והסכום הסופי.',
+							'המזווה מציג מוצרי קולינריה עם תמונה, מחיר, מפרט שמתאים לסוג המוצר, מלאי ומצב הזמנה עדכני.',
+							'כפתורי רכישה ותשלום מוצגים רק כאשר שער המוכנות לרכישה באתר מאשר שהמסלול פעיל.',
 						)
 					),
 					array(
@@ -1143,7 +1143,7 @@ return array(
 					array(
 						'Two ordering routes',
 						array(
-							'Culinary pantry goods and preparation equipment are selected on this site and added to its cart. Price, stock and pickup are checked again before the order is confirmed.',
+							'The pantry catalog is available to browse on this site. The top of the page states whether on-site purchasing and payment are active; when they are paused, purchase and checkout controls are not shown.',
 							'Prepared dishes are ordered through Wolt. Account data, payment, delivery, cancellation and refund on that route are governed by the information and terms shown by Wolt during the transaction.',
 						)
 					),
@@ -1157,8 +1157,8 @@ return array(
 					array(
 						'The pantry shop',
 						array(
-							'The pantry presents culinary products with an image, price, type-specific details and stock. Products can be added to the cart, quantities changed and items removed.',
-							'After the basket is prepared, the Complete99 team confirms stock, the fulfilment method and the final amount by phone.',
+							'The pantry presents culinary products with an image, price, type-specific details, stock and current ordering status.',
+							'Purchase and checkout controls are shown only after the on-site readiness gate confirms that the transaction route is active.',
 						)
 					),
 					array(

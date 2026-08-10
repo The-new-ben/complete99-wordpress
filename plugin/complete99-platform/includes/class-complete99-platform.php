@@ -33,6 +33,7 @@ final class Complete99_Platform {
 
 		Complete99_Content::boot_governance();
 		Complete99_Settings::boot();
+		Complete99_Ops::boot();
 		Complete99_Leads::boot();
 		Complete99_REST::boot();
 		Complete99_Commerce::boot();
@@ -299,9 +300,10 @@ final class Complete99_Platform {
 	 * Run every plugin-owned database mutation in one transaction.
 	 *
 	 * An interrupted connection rolls back seed posts, metadata and options
-	 * together. Role definitions remain dormant until a later explicit activation.
-	 * The deployment bridge separately verifies that the affected WordPress tables
-	 * use transactional storage.
+	 * together. Role definitions remain dormant until a later explicit activation;
+	 * P1 grants only the administrator capability for its read-only OS shell. The
+	 * deployment bridge separately verifies that the affected WordPress tables use
+	 * transactional storage.
 	 *
 	 * @param bool $hard_flush Whether to write a full rewrite-rule refresh.
 	 * @return true|\WP_Error
@@ -324,6 +326,7 @@ final class Complete99_Platform {
 			if ( '' === $deployment_id ) {
 				$deployment_id = COMPLETE99_PLATFORM_DEPLOYMENT_ID;
 			}
+			Complete99_Ops::prepare_schema();
 			if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
 				throw new \RuntimeException( 'transaction' );
 			}
@@ -339,6 +342,7 @@ final class Complete99_Platform {
 			Complete99_Catalog_Graph::register_meta();
 			Complete99_Evaluation_Catalog::register_meta();
 			Complete99_Inventory_Bridge::register_meta();
+			Complete99_Ops::install();
 			Complete99_Settings::install_defaults();
 			Complete99_Content::seed_launch_content();
 			$evaluation = Complete99_Evaluation_Catalog::materialize(
@@ -348,6 +352,7 @@ final class Complete99_Platform {
 				throw new \RuntimeException( 'evaluation-catalog-materialization' );
 			}
 			Complete99_Content::assert_migration_invariants();
+			Complete99_Ops::assert_invariants();
 			Complete99_Settings::assert_defaults();
 			self::assert_evaluation_catalog_invariants();
 			Complete99_Culinary_Science::assert_invariants();
