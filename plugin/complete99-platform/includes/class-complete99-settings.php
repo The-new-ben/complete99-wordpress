@@ -8,10 +8,9 @@ final class Complete99_Settings {
 	const OPTION_APP_URL   = 'complete99_os_url';
 	const OPTION_ASSET_URL = 'complete99_os_public_url';
 	const OPTION_SECRET    = 'complete99_sync_secret';
-	const DEFAULT_PUBLIC_SITE_URL = 'https://complete99-public.benben777.chatgpt.site';
-	const DEFAULT_APP_URL         = 'https://complete99-public.benben777.chatgpt.site/platform';
-	const DEFAULT_APP_URL_EN      = 'https://complete99-public.benben777.chatgpt.site/en/platform';
-	const DEFAULT_ASSET_URL       = 'https://complete99-public.benben777.chatgpt.site';
+	const LEGACY_DEFAULT_APP_URL    = 'https://complete99-public.benben777.chatgpt.site/platform';
+	const LEGACY_DEFAULT_APP_URL_EN = 'https://complete99-public.benben777.chatgpt.site/en/platform';
+	const LEGACY_DEFAULT_ASSET_URL  = 'https://complete99-public.benben777.chatgpt.site';
 
 	public static function boot() {
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
@@ -19,10 +18,57 @@ final class Complete99_Settings {
 	}
 
 	public static function install_defaults() {
-		self::install_default( self::OPTION_APP_URL, self::DEFAULT_APP_URL );
-		self::install_default( self::OPTION_ASSET_URL, self::DEFAULT_ASSET_URL );
+		$default_app_url   = self::default_app_url();
+		$default_asset_url = self::default_asset_url();
+		if ( '' === $default_app_url || '' === $default_asset_url ) {
+			throw new \RuntimeException( 'WordPress-owned Complete99 URLs could not be established.' );
+		}
+
+		self::upgrade_legacy_default(
+			self::OPTION_APP_URL,
+			array( self::LEGACY_DEFAULT_APP_URL, self::LEGACY_DEFAULT_APP_URL_EN ),
+			$default_app_url
+		);
+		self::upgrade_legacy_default(
+			self::OPTION_ASSET_URL,
+			array( self::LEGACY_DEFAULT_ASSET_URL ),
+			$default_asset_url
+		);
+		self::install_default( self::OPTION_APP_URL, $default_app_url );
+		self::install_default( self::OPTION_ASSET_URL, $default_asset_url );
 		self::install_default( self::OPTION_SECRET, '' );
 		self::assert_defaults();
+	}
+
+	/**
+	 * Upgrade only known plugin defaults, preserving every owner-configured URL.
+	 *
+	 * @param string $name          Option name.
+	 * @param array  $legacy_values Exact historical defaults.
+	 * @param string $replacement   WordPress-owned replacement.
+	 */
+	private static function upgrade_legacy_default( $name, $legacy_values, $replacement ) {
+		$stored = self::read_persisted_option( $name, false );
+		if ( ! is_string( $stored ) ) {
+			return;
+		}
+
+		$should_upgrade = false;
+		foreach ( $legacy_values as $legacy_value ) {
+			if ( is_string( $legacy_value ) && hash_equals( $legacy_value, $stored ) ) {
+				$should_upgrade = true;
+				break;
+			}
+		}
+		if ( ! $should_upgrade ) {
+			return;
+		}
+
+		update_option( $name, $replacement, false );
+		$readback = self::read_persisted_option( $name, true );
+		if ( ! is_string( $readback ) || ! hash_equals( $replacement, $readback ) ) {
+			throw new \RuntimeException( 'A legacy Complete99 URL could not be upgraded safely.' );
+		}
 	}
 
 	/**
@@ -52,6 +98,13 @@ final class Complete99_Settings {
 			if ( '' === $canonical || ! hash_equals( $canonical, (string) $value ) ) {
 				throw new \RuntimeException( 'A required Complete99 HTTPS option is invalid.' );
 			}
+		}
+		$app_url   = (string) self::read_persisted_option( self::OPTION_APP_URL, true );
+		$asset_url = (string) self::read_persisted_option( self::OPTION_ASSET_URL, true );
+		if ( hash_equals( self::LEGACY_DEFAULT_APP_URL, $app_url )
+			|| hash_equals( self::LEGACY_DEFAULT_APP_URL_EN, $app_url )
+			|| hash_equals( self::LEGACY_DEFAULT_ASSET_URL, $asset_url ) ) {
+			throw new \RuntimeException( 'A legacy ChatGPT Sites default remains configured.' );
 		}
 
 		if ( ! is_string( self::read_persisted_option( self::OPTION_SECRET, true ) ) ) {
@@ -107,7 +160,7 @@ final class Complete99_Settings {
 			array(
 				'type'              => 'string',
 				'sanitize_callback' => array( __CLASS__, 'sanitize_app_url' ),
-				'default'           => self::DEFAULT_APP_URL,
+				'default'           => self::default_app_url(),
 			)
 		);
 		register_setting(
@@ -116,7 +169,7 @@ final class Complete99_Settings {
 			array(
 				'type'              => 'string',
 				'sanitize_callback' => array( __CLASS__, 'sanitize_asset_url' ),
-				'default'           => self::DEFAULT_ASSET_URL,
+				'default'           => self::default_asset_url(),
 			)
 		);
 		register_setting(
@@ -166,18 +219,18 @@ final class Complete99_Settings {
 			add_settings_error(
 				'complete99_platform',
 				'complete99_https_required',
-				__( 'Complete99 public URLs must use canonical HTTPS with a public hostname.', 'complete99-platform' )
+				__( 'Complete99 URLs must use canonical HTTPS with a public hostname.', 'complete99-platform' )
 			);
 		}
 		return $value;
 	}
 
 	public static function sanitize_app_url( $value ) {
-		return self::sanitize_url_option( $value, self::OPTION_APP_URL, self::DEFAULT_APP_URL );
+		return self::sanitize_url_option( $value, self::OPTION_APP_URL, self::default_app_url() );
 	}
 
 	public static function sanitize_asset_url( $value ) {
-		return self::sanitize_url_option( $value, self::OPTION_ASSET_URL, self::DEFAULT_ASSET_URL );
+		return self::sanitize_url_option( $value, self::OPTION_ASSET_URL, self::default_asset_url() );
 	}
 
 	private static function sanitize_url_option( $value, $option, $fallback ) {
@@ -255,7 +308,7 @@ final class Complete99_Settings {
 
 	public static function render_section() {
 		echo '<p>';
-		echo esc_html__( 'Use only public HTTPS destinations that open without private workspace access. The secret is never printed back to the browser and is used only to verify signed server-to-server updates.', 'complete99-platform' );
+		echo esc_html__( 'The operations URL defaults to the private WordPress OS shell, and owned assets default to this plugin. An owner-configured canonical HTTPS destination is preserved. The sync secret is never printed back to the browser.', 'complete99-platform' );
 		echo '</p>';
 	}
 
@@ -301,14 +354,29 @@ final class Complete99_Settings {
 	}
 
 	public static function app_url( $language = 'he' ) {
-		$url = self::canonical_https_url( get_option( self::OPTION_APP_URL, self::DEFAULT_APP_URL ) );
+		unset( $language );
+		$default = self::default_app_url();
+		$url     = self::canonical_https_url( get_option( self::OPTION_APP_URL, $default ) );
 		if ( '' === $url ) {
-			$url = self::DEFAULT_APP_URL;
-		}
-		if ( 'en' === $language && hash_equals( self::DEFAULT_APP_URL, $url ) ) {
-			return self::DEFAULT_APP_URL_EN;
+			$url = $default;
 		}
 		return $url;
+	}
+
+	/**
+	 * Return the private WordPress-owned operations shell URL.
+	 */
+	public static function default_app_url() {
+		$url = set_url_scheme( admin_url( 'admin.php?page=complete99-os' ), 'https' );
+		return self::canonical_https_url( $url );
+	}
+
+	/**
+	 * Return the plugin-owned original-asset directory.
+	 */
+	public static function default_asset_url() {
+		$url = set_url_scheme( COMPLETE99_PLATFORM_URL . 'assets/images/original', 'https' );
+		return self::canonical_https_url( $url );
 	}
 
 	public static function owned_asset_url( $filename ) {
@@ -316,10 +384,42 @@ final class Complete99_Settings {
 		if ( 0 !== strpos( $filename, 'c99-' ) || ! preg_match( '/\.(?:jpe?g|png|webp|avif)$/i', $filename ) ) {
 			return '';
 		}
-		$base = self::canonical_https_url( get_option( self::OPTION_ASSET_URL, self::DEFAULT_ASSET_URL ) );
+		$default = self::default_asset_url();
+		$base    = self::canonical_https_url( get_option( self::OPTION_ASSET_URL, $default ) );
 		if ( '' === $base ) {
-			$base = self::DEFAULT_ASSET_URL;
+			$base = $default;
+		}
+		if ( '' === $base ) {
+			return '';
+		}
+		if ( hash_equals( $default, $base ) ) {
+			$owned_filename = self::plugin_owned_asset_filename( $filename );
+			return '' !== $owned_filename ? trailingslashit( $base ) . rawurlencode( $owned_filename ) : '';
 		}
 		return trailingslashit( $base ) . 'assets/original/' . rawurlencode( $filename );
+	}
+
+	/**
+	 * Resolve a requested legacy filename to a file actually owned by the plugin.
+	 *
+	 * The bundled source set is optimized to WebP/AVIF. Unknown legacy files fail
+	 * closed instead of producing a broken or externally hosted URL.
+	 */
+	private static function plugin_owned_asset_filename( $filename ) {
+		$filename  = sanitize_file_name( (string) $filename );
+		$directory = trailingslashit( COMPLETE99_PLATFORM_DIR . 'assets/images/original' );
+		$candidates = array( $filename );
+		$extension  = strtolower( (string) pathinfo( $filename, PATHINFO_EXTENSION ) );
+		$stem       = (string) pathinfo( $filename, PATHINFO_FILENAME );
+		if ( in_array( $extension, array( 'jpg', 'jpeg', 'png' ), true ) && '' !== $stem ) {
+			$candidates[] = $stem . '.webp';
+			$candidates[] = $stem . '.avif';
+		}
+		foreach ( array_unique( $candidates ) as $candidate ) {
+			if ( is_file( $directory . $candidate ) ) {
+				return $candidate;
+			}
+		}
+		return '';
 	}
 }

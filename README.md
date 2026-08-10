@@ -11,19 +11,41 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.20.0`. Production truth comes
+The source tree targets Complete99 Platform `1.21.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
 
-Release 1.20.0 advances a bounded bilingual Japanese koji and shoyu research
+Release 1.21.0 begins the owner-authorized operational migration into
+WordPress. It adds a private Complete99 OS Today shell, WordPress authentication
+and capability checks, a read-only status API and seven durable operations
+tables for locations, memberships, tasks, issues, commands, mutation receipts
+and append-only audit events. This is the P1 foundation: it accepts no
+operational commands and imports no legacy records yet. Staff do not need a
+ChatGPT login for this WordPress-native surface.
+
+The same release adds a fail-closed search activation policy pinned to the
+unchanged v20 culinary-science registry digest. Exactly 18 reviewed standalone
+Museum and Culinary Science owners, or 36 Hebrew and English canonical URLs,
+become effectively indexable and enter the WordPress sitemap. The untested
+ichiban-dashi preparation remains `noindex,follow`; all eight section-only
+entities remain owner-canonical-only; query states and all held, private or
+draft records remain excluded. A missing, altered or stale activation policy
+yields zero indexable Science URLs and blocks release finalization.
+
+Product structured data now follows transaction truth: a held catalog item
+retains Product schema, but Offer schema is emitted only when both checkout and
+cart readiness pass. The 36-product WooCommerce catalog, prices, stock authority
+and disabled payment state remain unchanged.
+
+Release 1.20.0 advanced a bounded bilingual Japanese koji and shoyu research
 journey without publishing it. Shoyu koji, kioke, a koji-hydrolysis guide, JAS
 1703 shoyu standard context and the koji enzymatic-hydrolysis reaction are five
 editorial candidates. The first four are proposed standalone Hebrew and English
 owners; the reaction is a proposed section of the guide. They remain private
-because no owner publication receipt exists. The current public science graph
-therefore remains exactly 27 entities, 19 standalone page owners per language
-and 38 bilingual routes. Every public science route remains `noindex,follow`,
-outside the sitemap, and zero are indexable.
+because no owner publication receipt exists. That release kept the public
+science graph at exactly 27 entities, 19 standalone page owners per language
+and 38 bilingual routes, with every public Science route `noindex,follow` and
+outside the sitemap before the separate 1.21 activation policy.
 
 The culinary-science registry uses schema
 `complete99-culinary-science-registry/v6` and version
@@ -241,12 +263,12 @@ commercial links. Public prices are not presented as supplier costs. Landed
 cost and gross margin remain unset until invoices, freight, tax and handling
 evidence exist. Every payment gateway remains disabled.
 
-The 1.20.0 source retains the culinary-science registry at 672 bounded entities
-and records 375 sources. The Japanese graph contains 84 identities split into
-24 public and 60 private records. The current public projection remains exactly
+The frozen 1.20.0 release retained the culinary-science registry at 672 bounded entities
+and recorded 375 sources. The Japanese graph contains 84 identities split into
+24 public and 60 private records. Its public projection contained exactly
 27 entities through 19 standalone page owners per language and 38 distinct
-Hebrew and English routes. Every public science route remains `noindex,follow`
-and outside the sitemap. The cross-domain v3 registry remains a private
+Hebrew and English routes, all `noindex,follow` and outside the sitemap. The
+cross-domain v3 registry remains a private
 unresolved review surface and contributes no public edge.
 
 The frozen 1.19.0 candidate retained the culinary-science registry at 672 bounded
@@ -260,8 +282,9 @@ artifact projection contains 34 entities through 26 standalone page owners per
 language and 52 distinct Hebrew and English routes. The artifact was never
 deployed or owner-approved, so the live projection stayed at 27/19/38. Shared page
 ownership prevents closely related entities from competing for the same search
-intent. The current pages remain `noindex,follow` and outside the sitemap until
-the separate long-form editorial and search-intent gate passes.
+intent. Those frozen candidate pages remained `noindex,follow` and outside the
+sitemap; the later 1.21 activation governs only its exact reviewed owner
+allowlist.
 
 Previous release 1.8.0 introduced the integrity-only public read-model
 boundary. The server derives the stored read-model SHA-256 from a

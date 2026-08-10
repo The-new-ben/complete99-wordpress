@@ -11,6 +11,21 @@ Define a retention period with the business owner before public launch. Until a
 policy is approved, access is restricted to WordPress administrators and deletion is
 manual and auditable.
 
+## Private WordPress operations boundary
+
+Release 1.21.0 adds a private, read-only Complete99 OS foundation in wp-admin.
+Access requires an authenticated WordPress user with the exact
+`complete99_view_operations` capability. Its REST status route additionally
+requires a valid `wp_rest` nonce and accepts only reads. Anonymous requests,
+logged-in users without the capability and missing or invalid nonces fail
+closed. The P1 shell imports no legacy records and enables no task, issue or
+command mutation.
+
+Seven plugin-owned operations tables retain only private application state.
+Schema/capability drift fails the migration invariant. Deployment snapshots are
+encrypted, bounded and restricted to this exact table allowlist; ambiguous
+quarantine residue or an altered baseline blocks deployment finalization.
+
 ## OS read-model signature
 
 The OS sends:
@@ -133,6 +148,12 @@ Japanese koji and shoyu discoveries create no product code, supplier, offer,
 price, stock record, checkout path or POS row. Eleven reciprocal Woo candidates
 remain private review inputs. Payment remains disabled.
 
+Release 1.21.0 preserves those product, price, stock and payment boundaries.
+Product structured data is present for catalog truth, but Offer structured data
+is withheld until both checkout and cart readiness pass. A public catalog item
+therefore cannot imply a presently actionable on-site offer while transaction
+controls are held.
+
 The health response reports culinary-commerce registry validity separately
 from active-offer readiness. Registry validation may be true while readiness is
 false. This prevents a well-formed research graph from being mistaken for a
@@ -150,13 +171,15 @@ The current science registry contains 672 entities and 375 sources. All 121 new
 Lebanese records, the other 81 Lebanese foundation records and the 96-identity
 Iraqi foundation are private under their respective release boundaries,
 `noindex` and reference-only. One reviewed Lebanese cuisine root is eligible
-for a noindex public page and bounded public API projection. It carries no
+for a bounded public page and public API projection. It carries no
 offer, price, stock, supplier or Product schema. The complete public science
 graph remains exactly 27 entities resolving through 19 standalone page owners
-per language and 38 bilingual routes. Zero science records are indexable. The
-84-identity Japanese cluster contains 24 public and 60 private records. The
-282-identity Syrian cluster contains exactly one public cuisine root and 281
-private records.
+per language and 38 bilingual routes. The separate 1.21 search policy activates
+exactly 18 reviewed standalone owners and 36 canonical routes. The untested
+ichiban-dashi owner remains `noindex,follow`; eight section-only records, query
+states and every held or private record remain excluded. The 84-identity
+Japanese cluster contains 24 public and 60 private records. The 282-identity
+Syrian cluster contains exactly one public cuisine root and 281 private records.
 
 Exactly five Japanese records are held editorial candidates, not public
 discovery surfaces. Producer and retail-listing records remain private. Exactly

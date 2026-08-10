@@ -175,7 +175,7 @@ final class Complete99_Culinary_Museum_Frontend {
 		foreach ( array( 'index', 'noindex', 'follow', 'nofollow', 'max-image-preview', 'max-snippet', 'max-video-preview' ) as $directive ) {
 			unset( $robots[ $directive ] );
 		}
-		if ( true === self::$bundle['indexable'] ) {
+		if ( true === self::$bundle['indexable'] && ! self::request_has_query_state() ) {
 			$robots['index']             = true;
 			$robots['follow']            = true;
 			$robots['max-image-preview'] = 'large';
@@ -186,6 +186,16 @@ final class Complete99_Culinary_Museum_Frontend {
 			$robots['follow']  = true;
 		}
 		return $robots;
+	}
+
+	/**
+	 * Query and filter states share the clean canonical owner's content but are
+	 * not independent search results. Keep every such request noindex,follow.
+	 */
+	private static function request_has_query_state() {
+		$uri   = isset( $_SERVER['REQUEST_URI'] ) ? (string) wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$query = wp_parse_url( $uri, PHP_URL_QUERY );
+		return is_string( $query ) && '' !== trim( $query );
 	}
 
 	public static function enqueue() {

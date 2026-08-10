@@ -694,6 +694,7 @@ final class Complete99_Consumer {
 		$checkout_ready = Complete99_Commerce::is_ready();
 		$cart_url       = Complete99_Commerce::transaction_url( 'cart', $lang );
 		$checkout_url   = Complete99_Commerce::transaction_url( 'checkout', $lang );
+		$order_url      = Complete99_Commerce::order_url( $lang );
 		self::render_simple_breadcrumb( $post, $lang );
 		?>
 		<section class="c99-consumer-page-hero c99-live-store-hero c99-live-store-masthead">
@@ -701,22 +702,23 @@ final class Complete99_Consumer {
 				<?php if ( Complete99_Commerce::can_preview_commerce() && ! $catalog_ready ) : ?>
 					<p class="c99-commerce-preview-note"><?php echo esc_html( $is_he ? 'תצוגת קבלה פרטית. החנות עדיין סגורה לציבור.' : 'Private acceptance preview. The store is still closed to the public.' ); ?></p>
 				<?php endif; ?>
-				<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'החנות פתוחה' : 'The store is open' ); ?></p>
+				<p class="c99-eyebrow"><?php echo esc_html( $checkout_ready ? ( $is_he ? 'החנות פתוחה' : 'The store is open' ) : ( $is_he ? 'הקטלוג זמין לעיון' : 'Catalog available to browse' ) ); ?></p>
 				<h1><?php echo esc_html( $post->post_title ); ?></h1>
-				<p class="c99-hero-summary"><?php echo esc_html( $is_he ? 'חומרי גלם וציוד למטבח עם מחיר, מפרט, מלאי ותנאי קבלה עדכניים.' : 'Food ingredients and kitchen equipment with current price, specifications, stock and fulfilment details.' ); ?></p>
+				<p class="c99-hero-summary"><?php echo esc_html( $checkout_ready ? ( $is_he ? 'חומרי גלם וציוד למטבח עם מחיר, מפרט, מלאי ותנאי קבלה עדכניים.' : 'Food ingredients and kitchen equipment with current price, specifications, stock and fulfilment details.' ) : ( $is_he ? 'הקטלוג, המחירים ופרטי המוצרים זמינים לעיון. התשלום והרכישה באתר מושהים כעת; מנות מוכנות מזמינים ב-Wolt.' : 'The catalog, prices and product details remain available to browse. On-site checkout and payment are currently paused; prepared dishes can be ordered on Wolt.' ) ); ?></p>
 				<div class="c99-hero-actions">
-					<?php if ( $cart_ready ) : ?>
-					<a class="c99-button c99-button-primary" href="<?php echo esc_url( $cart_url ); ?>"><?php echo esc_html( $is_he ? 'לסל' : 'View cart' ); ?></a>
-					<?php else : ?>
-						<a class="c99-button c99-button-primary" href="tel:035231810"><?php echo esc_html( $is_he ? 'הזמנה בטלפון' : 'Order by phone' ); ?></a>
-					<?php endif; ?>
 					<?php if ( $checkout_ready ) : ?>
+						<?php if ( $cart_ready ) : ?>
+							<a class="c99-button c99-button-primary" href="<?php echo esc_url( $cart_url ); ?>"><?php echo esc_html( $is_he ? 'לסל' : 'View cart' ); ?></a>
+						<?php else : ?>
+							<a class="c99-button c99-button-primary" href="tel:035231810"><?php echo esc_html( $is_he ? 'הזמנה בטלפון' : 'Order by phone' ); ?></a>
+						<?php endif; ?>
 						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( $checkout_url ); ?>"><?php echo esc_html( $is_he ? 'לתשלום' : 'Checkout' ); ?></a>
 					<?php else : ?>
-						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( self::route( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'למנות המוכנות' : 'Prepared dishes' ); ?></a>
+						<a class="c99-button c99-button-primary" href="#c99-live-store-products"><?php echo esc_html( $is_he ? 'לעיון בקטלוג' : 'Browse the catalog' ); ?></a>
+						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( $order_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'להזמנת מנות ב-Wolt' : 'Order prepared dishes on Wolt' ); ?></a>
 					<?php endif; ?>
 				</div>
-				<?php if ( $cart_ready ) : ?>
+				<?php if ( $checkout_ready && $cart_ready ) : ?>
 					<?php self::render_store_cart_feedback( $lang, $cart_url ); ?>
 				<?php endif; ?>
 			</div>
@@ -733,7 +735,7 @@ final class Complete99_Consumer {
 				<?php self::render_store_filters( $lang, $listing ); ?>
 				<div class="c99-live-store-grid" data-c99-product-grid>
 					<?php foreach ( $product_ids as $product_index => $product_id ) : ?>
-						<?php self::render_store_product_card( $product_id, $lang, $product_index, $listing['product_type'], $listing['product_page'] ); ?>
+						<?php self::render_store_product_card( $product_id, $lang, $product_index, $listing['product_type'], $listing['product_page'], $checkout_ready && $cart_ready ); ?>
 					<?php endforeach; ?>
 				</div>
 				<?php if ( empty( $product_ids ) ) : ?><p class="c99-product-filter-empty" role="status"><?php echo esc_html( $is_he ? 'לא נמצאו מוצרים בסינון הזה.' : 'No products matched this filter.' ); ?></p><?php endif; ?>
@@ -862,7 +864,7 @@ final class Complete99_Consumer {
 		<?php
 	}
 
-	private static function render_store_product_card( $product_id, $lang, $card_index = 0, $product_type = 'all', $product_page = 1 ) {
+	private static function render_store_product_card( $product_id, $lang, $card_index = 0, $product_type = 'all', $product_page = 1, $on_site_checkout_ready = false ) {
 		$product = function_exists( 'wc_get_product' ) ? wc_get_product( absint( $product_id ) ) : false;
 		if ( ! $product ) {
 			return;
@@ -901,7 +903,7 @@ final class Complete99_Consumer {
 				$guide_url = home_url( $science_bundle['canonical_path'] );
 			}
 		}
-		$can_purchase = Complete99_Commerce::cart_is_ready() && $product->is_in_stock() && $product->is_purchasable();
+		$can_purchase = $on_site_checkout_ready && $product->is_in_stock() && $product->is_purchasable();
 		$image_alt    = (string) get_post_meta( $product->get_image_id(), $is_he ? '_complete99_attachment_alt_he' : '_complete99_attachment_alt_en', true );
 		if ( '' === trim( $image_alt ) ) {
 			$image_alt = $name;
@@ -991,7 +993,7 @@ final class Complete99_Consumer {
 					<?php if ( $can_purchase ) : ?>
 						<a class="c99-button c99-button-primary" href="<?php echo esc_url( $action_url ); ?>" rel="nofollow"><?php echo esc_html( $is_he ? 'הוספה לסל' : 'Add to cart' ); ?></a>
 					<?php else : ?>
-						<span class="c99-button c99-button-secondary" aria-disabled="true"><?php echo esc_html( $product->is_in_stock() ? ( $is_he ? 'לא זמין לרכישה' : 'Unavailable for purchase' ) : ( $is_he ? 'אזל זמנית' : 'Temporarily out of stock' ) ); ?></span>
+						<span class="c99-button c99-button-secondary" aria-disabled="true"><?php echo esc_html( ! $on_site_checkout_ready ? ( $is_he ? 'הרכישה באתר מושהית' : 'On-site checkout paused' ) : ( $product->is_in_stock() ? ( $is_he ? 'לא זמין לרכישה' : 'Unavailable for purchase' ) : ( $is_he ? 'אזל זמנית' : 'Temporarily out of stock' ) ) ); ?></span>
 					<?php endif; ?>
 				</div>
 			</div>
@@ -1079,7 +1081,8 @@ final class Complete99_Consumer {
 	}
 
 	private static function render_pantry_teaser( $lang ) {
-		$is_he = 'he' === $lang;
+		$is_he          = 'he' === $lang;
+		$checkout_ready = Complete99_Commerce::is_ready();
 		if ( Complete99_Commerce::catalog_is_ready() || Complete99_Commerce::can_preview_commerce() ) {
 			$product_ids = Complete99_Commerce::storefront_product_ids();
 			$product_id  = ! empty( $product_ids ) ? absint( $product_ids[0] ) : 0;
@@ -1091,10 +1094,10 @@ final class Complete99_Consumer {
 			<section class="c99-home-pantry c99-home-pantry-live">
 				<div class="c99-container c99-home-pantry-grid">
 					<div>
-						<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'המזווה פתוח' : 'The pantry is open' ); ?></p>
+						<p class="c99-eyebrow"><?php echo esc_html( $checkout_ready ? ( $is_he ? 'המזווה פתוח' : 'The pantry is open' ) : ( $is_he ? 'קטלוג המזווה' : 'The pantry catalog' ) ); ?></p>
 						<h2><?php echo esc_html( $is_he ? 'מוצרים אמיתיים לקחת הביתה' : 'Real pantry goods to take home' ); ?></h2>
-						<p><?php echo esc_html( $is_he ? 'לכל מוצר מוצגים מחיר, משקל, רכיבים, אלרגנים, אחסון ותנאי איסוף עצמי.' : 'Every product shows its price, weight, ingredients, allergens, storage and pickup terms.' ); ?></p>
-						<a class="c99-button c99-button-primary" href="<?php echo esc_url( self::route( 'store', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'למוצרי המזווה' : 'Shop the pantry' ); ?></a>
+						<p><?php echo esc_html( $checkout_ready ? ( $is_he ? 'לכל מוצר מוצגים מחיר, משקל, רכיבים, אלרגנים, אחסון ותנאי איסוף עצמי.' : 'Every product shows its price, weight, ingredients, allergens, storage and pickup terms.' ) : ( $is_he ? 'מחירים, משקלים, רכיבים ופרטי אחסון זמינים לעיון. הרכישה והתשלום באתר מושהים כעת.' : 'Prices, weights, ingredients and storage details remain available to browse. On-site checkout and payment are currently paused.' ) ); ?></p>
+						<a class="c99-button c99-button-primary" href="<?php echo esc_url( self::route( 'store', $lang ) ); ?>"><?php echo esc_html( $checkout_ready ? ( $is_he ? 'למוצרי המזווה' : 'Shop the pantry' ) : ( $is_he ? 'לעיון בקטלוג המזווה' : 'Browse the pantry catalog' ) ); ?></a>
 					</div>
 					<?php if ( $product ) : ?><figure><?php echo wp_get_attachment_image( $product->get_image_id(), 'large', false, array( 'alt' => $name, 'loading' => 'lazy', 'decoding' => 'async' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><figcaption><?php echo esc_html( $name ); ?></figcaption></figure><?php endif; ?>
 				</div>

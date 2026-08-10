@@ -181,6 +181,9 @@ class Complete99ScalableStoreShelfContracts(unittest.TestCase):
         self.assertRegex(product_filter.group(1), r"margin-bottom:\s*16px")
         self.assertRegex(mobile_button.group(1), r"min-height:\s*44px")
         self.assertIn("The store is open", self.consumer)
+        self.assertIn("Catalog available to browse", self.consumer)
+        self.assertIn("On-site checkout and payment are currently paused", self.consumer)
+        self.assertIn("Order prepared dishes on Wolt", self.consumer)
         self.assertIn("What you can bring into the kitchen", self.consumer)
         self.assertIn("Back to the dishes", self.consumer)
 

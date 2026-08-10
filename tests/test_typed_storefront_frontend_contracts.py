@@ -145,6 +145,7 @@ class Complete99_Commerce {{
     public static function storefront_product_url($product_code, $lang, $filter = 'all') {{
         return 'https://complete99.example/en/store/?product-page=3#c99-product-code-' . $product_code;
     }}
+    public static function is_ready() {{ return true; }}
 }}
 class Complete99_Live_Catalog {{
     const META_WEIGHT_MIN_KG = '_complete99_live_catalog_weight_min_kg';

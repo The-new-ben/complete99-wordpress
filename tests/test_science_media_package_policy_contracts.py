@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = (
     ROOT
     / "release-policies"
-    / "complete99-platform-1.20.0-science-media.json"
+    / "complete99-platform-1.21.0-science-media.json"
 )
 HELD_STEMS = {
     "c99-science-aleppan-jewish-foodways-v01",
@@ -63,8 +63,8 @@ class ScienceMediaPackagePolicyContracts(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
-        cls.builder_contract = BUILD.science_media_policy_contract("1.20.0")
-        cls.validator_contract = VALIDATE.science_media_policy_contract("1.20.0")
+        cls.builder_contract = BUILD.science_media_policy_contract("1.21.0")
+        cls.validator_contract = VALIDATE.science_media_policy_contract("1.21.0")
 
     def write_policy(self, directory: Path, policy: dict[str, object]) -> Path:
         path = directory / "science-media-policy.json"
@@ -93,7 +93,7 @@ class ScienceMediaPackagePolicyContracts(unittest.TestCase):
                 with self.subTest(module=module.__name__):
                     with self.assertRaises(SystemExit) as caught:
                         module.science_media_policy_contract(
-                            "1.20.0",
+                            "1.21.0",
                             policy_path=policy_path,
                         )
                     self.assertIn(expected_message, str(caught.exception))
@@ -220,7 +220,7 @@ class ScienceMediaPackagePolicyContracts(unittest.TestCase):
                 with self.subTest(module=module.__name__):
                     with self.assertRaises(SystemExit) as caught:
                         module.science_media_policy_contract(
-                            "1.20.0",
+                            "1.21.0",
                             source_root=source,
                             policy_path=policy_path,
                         )
@@ -237,7 +237,7 @@ class ScienceMediaPackagePolicyContracts(unittest.TestCase):
                 with self.subTest(module=module.__name__):
                     with self.assertRaises(SystemExit) as caught:
                         module.science_media_policy_contract(
-                            "1.20.0",
+                            "1.21.0",
                             source_root=source,
                             policy_path=POLICY_PATH,
                         )

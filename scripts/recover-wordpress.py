@@ -78,13 +78,18 @@ def validate_database_manifest(
     manifest_sha256: Any,
     label: str,
 ) -> None:
-    components = (
+    components = [
         "options_without_deployment_marker",
         "posts",
         "postmeta",
         "seed_ids",
         "evaluation_ids",
-    )
+    ]
+    schema = manifest.get("schema") if isinstance(manifest, dict) else None
+    if schema == "complete99-database-snapshot-manifest/v2":
+        components.append("ops_tables")
+    elif schema != "complete99-database-snapshot-manifest/v1":
+        raise deployer.DeployError(f"{label} manifest identity is invalid")
     expected_keys = {
         "schema",
         "sync_secret_existed",
@@ -97,8 +102,6 @@ def validate_database_manifest(
     if (
         not isinstance(manifest, dict)
         or set(manifest) != expected_keys
-        or manifest.get("schema")
-        != "complete99-database-snapshot-manifest/v1"
         or manifest.get("sync_secret_existed") is not True
         or manifest.get("sync_secret_configured") is not True
         or type(manifest_sha256) is not str
@@ -111,6 +114,7 @@ def validate_database_manifest(
         if (
             type(count) is not int
             or count < 0
+            or (component == "ops_tables" and count != 7)
             or type(component_sha256) is not str
             or digest.fullmatch(component_sha256) is None
         ):

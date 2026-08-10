@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.20.0
+Release target: Complete99 Platform 1.21.0
 
 ## Automated gates
 
@@ -25,7 +25,25 @@ Release target: Complete99 Platform 1.20.0
 - The install route refuses `package_base64`, requires a completed staged
   artifact, and rechecks its exact size and SHA-256 before and after claiming the
   deployment lease.
-- The public update manifest matches version 1.20.0 and its versioned package URL.
+- The database snapshot manifest accepts exact historical v1 records and exact
+  v2 records only. V2 adds one `ops_tables` component with count exactly seven;
+  v1/v2 hybrids, missing components and extra components are rejected.
+- Operations rollback capture includes the seven allowlisted `c99_ops_*` tables,
+  the `complete99_ops_schema_version` marker, normalized schema digests and rows
+  ordered by `id`, with 5,000 rows per table and 8 MiB total as hard ceilings.
+- A first-install rollback proves the absent baseline, atomically quarantines
+  candidate tables before the core database transaction, restores the exact
+  baseline, removes only the proven quarantine and leaves zero `c99rb_*`
+  residue. An identical redeploy recreates exactly seven transactional tables.
+- A baseline-present retry is accepted only when every pre-existing operations
+  table has unchanged schema and rows. Status exposes rollback residue, while
+  preflight, install and finalization refuse residue or an unproven forward
+  digest.
+- Every fresh/status/interrupted-forward/stabilize/finalize checkpoint requires
+  and calls both the Complete99 operations invariant and the Culinary Science
+  invariant. Missing operations storage/capability or a fail-closed zero-route
+  Museum overlay cannot finalize after a database-version short circuit.
+- The public update manifest matches version 1.21.0 and its versioned package URL.
 - The generated-asset manifest is treated as an editorial evidence registry,
   never as proof that a file is installed in the package.
 - The default-deny Science media policy inventories exactly 47 stems and 175
@@ -63,6 +81,9 @@ Release target: Complete99 Platform 1.20.0
   x-default alternates reflect the exact validated state.
 - Product schema contains only the current page's products. Every first-party
   product continuation resolves to the page that contains its stable anchor.
+- Held catalog products emit Product schema without Offer. Offer appears only
+  when both checkout and cart readiness pass; checkout and payments remain
+  disabled in the 1.21 release state.
 - The first product image on each shelf page is eager and high priority; later
   product images remain lazy.
 - Add-to-cart from a filtered or paginated shelf returns to that same shelf
@@ -86,10 +107,15 @@ Release target: Complete99 Platform 1.20.0
 - The package contains no credential material, reference-image path or
   development dependency.
 - The public source and documentation contain no em dash character.
-- The current 38 bilingual culinary-science routes resolve from exactly 27
-  public entities through 19 standalone page owners per language, emit
-  canonical and hreflang metadata, remain `noindex,follow`, and are absent from
-  the museum sitemap provider until their separate index gate is approved.
+- The unchanged raw v20 graph resolves 38 bilingual culinary-science routes from
+  exactly 27 public entities through 19 standalone page owners per language and
+  emits canonical and hreflang metadata.
+- The digest-pinned search activation makes exactly 18 reviewed standalone
+  owners and 36 bilingual canonical routes effectively indexable and includes
+  those exact URLs in the Museum sitemap. The policy schema/version/digest are
+  `complete99-culinary-science-search-activation/v1`,
+  `culinary-science-search-activation-2026.08.11.v1` and
+  `0b191bef1612e56f2e97c1e4e5d15ab4f651d8e658e2eb742aea72cc2a2ac6e7`.
 - The cumulative registries identify themselves exactly as
   `culinary-science-2026.08.08.v20` under schema
   `complete99-culinary-science-registry/v6` and
@@ -97,7 +123,10 @@ Release target: Complete99 Platform 1.20.0
 - The science registry contains exactly 672 entities and 375 sources. The
   Japanese cluster contains exactly 84 entities split into 24 public and 60
   private records, while the public totals are 19 standalone owners per
-  language and 38 bilingual routes. Exactly zero science records are indexable.
+  language and 38 bilingual routes. Effective search activation is exactly 18
+  owners and 36 routes. `preparation-ichiban-dashi` remains `noindex,follow`;
+  all eight section-only entities, query states and held/private records remain
+  excluded. Missing or tampered policy state yields zero indexable routes.
 - The five held Japanese editorial candidates are exactly shoyu koji, kioke,
   the koji-hydrolysis guide, JAS 1703 shoyu standard context and the enzymatic-
   hydrolysis reaction. They expose no anonymous route, bundle, relation or

@@ -101,9 +101,9 @@ echo json_encode($selected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         ).lower()
         for marker in (
             "מוצרי מזווה וחומרי גלם",
-            "shop pantry goods and ingredients",
-            "add products, change quantities and remove items",
-            "complete confirmation by phone with the complete99 team",
+            "browse pantry goods and ingredients",
+            "on-site purchasing and payment are active or paused",
+            "purchase or checkout controls are not shown",
         ):
             self.assertIn(marker, store_public)
         for stale in (

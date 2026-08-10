@@ -222,6 +222,37 @@ backup, releases the lock, permanently deletes the temporary Code Snippets datab
 row through the protected bridge, independently proves that exact row is absent,
 and then proves the route returns 404.
 
+### Operations foundation rollback gate
+
+Any release that introduces the private Complete99 operations foundation must
+pass the database snapshot manifest v2 gate. The encrypted journal contains the
+exact seven `c99_ops_*` table identities, transactional engine and normalized
+schema digest, rows ordered by `id`, and the
+`complete99_ops_schema_version` option. Capture is bounded to 5,000 rows per
+table and 8 MiB across all seven tables. A larger state is rejected before the
+plugin is changed.
+
+For a first installation, all seven tables must be absent in the authenticated
+baseline. Rollback atomically renames candidate-created tables into a
+deployment-specific quarantine before restoring transaction-bound WordPress
+options, posts and postmeta. It then proves the exact baseline fingerprint,
+drops only the proven quarantine tables, proves zero residue, and only then may
+report `rolled_back` or finalize. The identical artifact redeploy must recreate
+exactly seven InnoDB tables and the schema marker.
+
+If any operations table existed at baseline, rollback is deliberately narrower:
+the candidate may not change its schema or rows. Any difference fails closed
+before plugin or database mutation. Interrupted retries reconstruct the exact
+recorded forward table digest from canonical and quarantined copies; ambiguous,
+missing or changed copies are refused. Historical manifest-v1 journals remain
+recoverable only with their exact authenticated legacy shape and an explicit
+seven-table absent baseline. An unexpected operations table is never inferred
+to be disposable.
+
+Status reports operations quarantine residue. Preflight, `/run` and finalization
+all refuse to proceed while any reserved `c99rb_*` table remains, so a redeploy
+cannot hide or inherit an unfinished rollback.
+
 Managed-host requests use a normal browser request signature with only standard
 `Accept`, `Authorization`, `Content-Type` and `User-Agent` headers. Do not add an
 `X-*` deployment header or send HTML/multipart bodies: UPress can reject those at
@@ -314,9 +345,52 @@ earlier probe-finalize response was lost, the next run waits for that unstarted
 probe lease, releases only its exact state-free reservation, and repeats the full
 attestation under a new probe.
 
+## Release 1.21.0 WordPress migration and search activation verification
+
+Release 1.21.0 begins the owner-authorized application migration without
+claiming that the external operating system or its historic records are already
+ported. Before accepting the artifact locally:
+
+1. Confirm the plugin header, update manifest, deployment marker and integrity
+   metadata all report `1.21.0`, and confirm every frozen 1.20 artifact,
+   checksum, integrity record and media policy remains byte-identical.
+2. Confirm the private Complete99 OS Today shell uses WordPress authentication,
+   the exact operations capability and a REST nonce, remains read-only, and
+   reports all seven required operations tables with schema
+   `complete99-ops-schema/v1`.
+3. Confirm fresh/status/interrupted-forward/stabilize/finalize checkpoints call
+   both operations and Culinary Science invariants, so missing operations state
+   or a fail-closed search overlay cannot finalize after a version short circuit.
+4. Confirm database manifest v2 captures only the exact seven operations tables
+   and schema marker within its row/byte ceilings. Exercise first-install
+   quarantine cleanup, unchanged baseline-present retry, historical v1 recovery
+   and residue refusal; no `c99rb_*` table may remain before redeploy or finalize.
+5. Confirm the search overlay schema/version/digest are
+   `complete99-culinary-science-search-activation/v1`,
+   `culinary-science-search-activation-2026.08.11.v1` and
+   `0b191bef1612e56f2e97c1e4e5d15ab4f651d8e658e2eb742aea72cc2a2ac6e7`,
+   pinned to unchanged v20 digest
+   `677273756cc55f6f2e941c9aa411c522de28dc3da0c6a26bc1f8b6bc2661cc54`.
+6. Confirm effective activation is exactly 18 standalone owners and 36 unique
+   Hebrew/English canonical sitemap URLs. Keep `preparation-ichiban-dashi`
+   noindex, all eight section entities owner-canonical-only, query/filter states
+   noindex and every held/private record excluded.
+7. Confirm held products retain Product schema but emit no Offer until checkout
+   and cart readiness both pass. Confirm all 36 WooCommerce products, prices,
+   stock authority, cart behavior and disabled payment state remain unchanged.
+8. Confirm exact legacy ChatGPT Sites defaults move to WordPress-owned app and
+   asset destinations while any owner-configured canonical HTTPS value remains
+   untouched.
+
+After controlled deployment and cache purge, verify the private OS surface with
+an authorized WordPress account, verify the 36 activated canonical routes and
+sitemap entries anonymously, verify dashi/query/private negative cases, and run
+fresh Hebrew/English Chrome acceptance. Search Console submission and coverage
+measurement are post-deploy operational evidence, not package assumptions.
+
 ## Release 1.20.0 infrastructure and held-publication verification
 
-The current source is an infrastructure release candidate, not authorization
+The frozen 1.20 source was an infrastructure release candidate, not authorization
 to publish the seven Syrian or five Japanese editorial candidates. No trusted
 owner key or receipt exists. It may proceed only through protected `main`, a
 green required CI result and the controlled WordPress workflow, and only while
@@ -600,7 +674,8 @@ A production release is complete only when the non-secret audit JSON shows:
   commerce v14, with 672 science identities, 375 sources, 56 product identities and 728
   Entity Studio subjects;
 - exact 56 of 56 product price-basis coverage, comprising 36 live prices and 20
-  private planning prices, with zero active or draft offer added by 1.20.0;
+  private planning prices, with no product, supplier, stock or checkout
+  activation added by 1.21.0 and no Offer schema while readiness is held;
 - exact 282-identity Syrian type counts, including one public cuisine root and
   281 private identities, the 86 release-1.16 private identities and four exact
   held safety records, with the seven Aleppo editorial candidates and bulgur
@@ -614,9 +689,11 @@ A production release is complete only when the non-secret audit JSON shows:
   private, noindex and reference-only;
 - six dated Lebanese retail observations with no product identity, offer,
   stock, supplier, import route, landed cost or public price projection;
-- exactly 27 public science entities, 19 standalone page owners per language
+- exactly 27 raw public science entities, 19 standalone page owners per language
   and 38 bilingual routes, with the 84-identity Japanese cluster split into 24
-  public and 60 private records and zero indexable science records;
+  public and 60 private records; effective activation must be exactly 18 owners
+  and 36 canonical sitemap routes, with dashi, eight section entities, query
+  states and held/private records excluded;
 - positive public evidence only for the pre-existing Syrian cuisine root and
   reviewed Lebanese root; negative evidence for the seven Aleppo and five
   Japanese editorial candidates, all 281 private Syrian records and every

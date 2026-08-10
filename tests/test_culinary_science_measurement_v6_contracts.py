@@ -736,6 +736,18 @@ echo json_encode(array(
         "public_count": 0,
         "cluster_count": 0,
         "digest": "",
+        "search_activation": {
+            "ready": False,
+            "effective_index_state": "fail_closed",
+            "schema": "complete99-culinary-science-search-activation/v1",
+            "version": "",
+            "registry_version": "",
+            "registry_digest": "",
+            "policy_digest": "",
+            "owner_count": 0,
+            "route_count": 0,
+            "excluded_owner_count": 0,
+        },
     }
 
 
@@ -782,6 +794,18 @@ echo json_encode(array(
         "public_count": 0,
         "cluster_count": 0,
         "digest": "",
+        "search_activation": {
+            "ready": False,
+            "effective_index_state": "fail_closed",
+            "schema": "complete99-culinary-science-search-activation/v1",
+            "version": "",
+            "registry_version": "",
+            "registry_digest": "",
+            "policy_digest": "",
+            "owner_count": 0,
+            "route_count": 0,
+            "excluded_owner_count": 0,
+        },
     }
     assert result["public_bundle"] == []
 

@@ -100,6 +100,11 @@ class Complete99_Settings {{
     public static function install_defaults() {{}}
     public static function assert_defaults() {{}}
 }}
+class Complete99_Ops {{
+    public static function prepare_schema() {{}}
+    public static function install() {{}}
+    public static function assert_invariants() {{}}
+}}
 class Complete99_Commerce {{
     public static function register_product_planning_type() {{}}
 }}
@@ -240,6 +245,11 @@ class Complete99_Leads {{
 class Complete99_Settings {{
     public static function install_defaults() {{}}
     public static function assert_defaults() {{}}
+}}
+class Complete99_Ops {{
+    public static function prepare_schema() {{}}
+    public static function install() {{}}
+    public static function assert_invariants() {{}}
 }}
 class Complete99_Commerce {{
     public static function register_product_planning_type() {{}}
@@ -485,6 +495,9 @@ class Complete99_Content {{
 }}
 class Complete99_Leads {{}}
 class Complete99_Settings {{}}
+class Complete99_Ops {{
+    public static function prepare_schema() {{}}
+}}
 
 class MigrationWpdbStub {{
     public $prefix = 'wp_';
