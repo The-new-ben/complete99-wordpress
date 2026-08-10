@@ -209,10 +209,10 @@ def test_module_is_loaded_and_owns_one_gateway_plus_private_foundation(
     loader = SCIENCE_DATA.read_text(encoding="utf-8")
     module = LEBANESE_MODULE.read_text(encoding="utf-8")
     assert "lebanese-foundations.php" in loader
-    assert "culinary-science-2026.08.07.v18" in module
+    assert "culinary-science-2026.08.08.v20" in module
     assert "'public_gateway_ids' => array( 'cuisine-lebanese-regional' )" in module
     assert "'private_entity_ids' => array_values(" in module
-    assert registry["version"] == "culinary-science-2026.08.07.v18"
+    assert registry["version"] == "culinary-science-2026.08.08.v20"
     assert set(lebanese_entities) == EXPECTED_IDS
     assert len(lebanese_entities) == 82
     assert Counter(entity["type"] for entity in lebanese_entities.values()) == {

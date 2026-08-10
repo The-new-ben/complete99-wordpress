@@ -28,7 +28,7 @@ return array(
 		'product-parsley-100g'       => array( 'ingredient_code' => 'ingredient-parsley', 'dish_slugs' => array( 'aja-herb-omelet', 'fish-patties' ) ),
 		'product-chickpeas-dry-500g' => array( 'ingredient_code' => 'ingredient-chickpea', 'dish_slugs' => array( 'couscous' ) ),
 		'product-beetroot-1kg'       => array( 'ingredient_code' => 'ingredient-beet', 'dish_slugs' => array( 'beet-kubbeh' ) ),
-		'product-bulgur-fine-500g'   => array( 'ingredient_code' => 'ingredient-bulgur', 'dish_slugs' => array( 'couscous' ) ),
+		'product-bulgur-fine-500g'   => array( 'ingredient_code' => 'ingredient-bulgur', 'dish_slugs' => array( 'couscous' ), 'science_entity_id' => 'ingredient-syrian-bulgur' ),
 		'product-couscous-1kg'       => array( 'ingredient_code' => 'ingredient-couscous', 'dish_slugs' => array( 'couscous' ) ),
 		'product-chicken-breast-1kg' => array( 'ingredient_code' => 'ingredient-chicken-breast', 'dish_slugs' => array( 'schnitzel', 'grilled-chicken' ) ),
 		'product-breadcrumbs-500g'   => array( 'ingredient_code' => 'ingredient-breadcrumbs', 'dish_slugs' => array( 'schnitzel' ) ),

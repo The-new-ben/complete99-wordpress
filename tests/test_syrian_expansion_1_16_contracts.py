@@ -131,7 +131,7 @@ echo json_encode(array(
 def test_release_registry_and_module_membership_are_exact(payload: dict) -> None:
     registry = payload["registry"]
     modules = payload["modules"]
-    assert registry["version"] == "culinary-science-2026.08.07.v18"
+    assert registry["version"] == "culinary-science-2026.08.08.v20"
     assert len(registry["entities"]) == 672
     assert tuple(len(module["entities"]) for module in modules) == (
         EXPECTED_MODULE_COUNTS

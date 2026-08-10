@@ -2,9 +2,10 @@
 /**
  * Complete99 Syrian regional cuisine foundations.
  *
- * This module is an editorial research tranche. Every entity remains private,
- * noindex and non-commercial until culinary, language, rights and source review
- * gates are completed in the main registry.
+ * This module is an editorial research tranche. The main registry may expose a
+ * small, explicitly reviewed noindex subset; every other entity remains private
+ * and non-commercial until its culinary, language, rights and source review is
+ * complete.
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -91,6 +92,26 @@ $c99_syrian_sources = array(
 		'type' => 'official_organization', 'publisher' => 'The Aleppo Project',
 		'title' => 'Aleppo Cuisine',
 		'url' => 'https://www.thealeppoproject.com/wp-content/uploads/2017/08/Cuisine-Final.pdf', 'published_at' => '2017-08-01', 'retrieved_at' => '2026-08-06',
+	),
+	'unesco-ancient-city-aleppo' => array(
+		'type' => 'official_organization', 'publisher' => 'UNESCO World Heritage Centre',
+		'title' => 'Ancient City of Aleppo',
+		'url' => 'https://whc.unesco.org/en/list/21/', 'published_at' => '', 'retrieved_at' => '2026-08-08',
+	),
+	'georgetown-making-levantine-cuisine' => array(
+		'type' => 'official_organization', 'publisher' => 'Georgetown University Center for Contemporary Arab Studies',
+		'title' => 'On Making Levantine Cuisine',
+		'url' => 'https://ccas.georgetown.edu/ccas-newsmagazine/on-making-levantine-cuisine/', 'published_at' => '', 'retrieved_at' => '2026-08-08',
+	),
+	'simon-schuster-aleppo-cookbook' => array(
+		'type' => 'official_business', 'publisher' => 'Simon & Schuster',
+		'title' => 'The Aleppo Cookbook by Marlene Matar',
+		'url' => 'https://www.simonandschuster.com/books/The-Aleppo-Cookbook/Marlene-Matar/9781566569866', 'published_at' => '', 'retrieved_at' => '2026-08-08',
+	),
+	'bulgur-hydration-cereal-chemistry' => array(
+		'type' => 'peer_reviewed_paper', 'publisher' => 'Cereal Chemistry',
+		'title' => 'Effect of Hydration Temperature and Time on Bulgur Quality',
+		'url' => 'https://doi.org/10.1002/cche.10427', 'published_at' => '', 'retrieved_at' => '2026-08-08',
 	),
 	'lal-scents-flavors' => array(
 		'type' => 'official_organization', 'publisher' => 'Library of Arabic Literature',
@@ -188,9 +209,9 @@ $c99_syrian_sources = array(
 		'url' => 'https://www.fda.gov/inspections-compliance-enforcement-and-criminal-investigations/inspection-technical-guides/water-activity-aw-foods', 'published_at' => '', 'retrieved_at' => '2026-08-06',
 	),
 	'foodsafety-safe-temperatures' => array(
-		'type' => 'official_government', 'publisher' => 'FoodSafety.gov',
-		'title' => 'Safe Minimum Internal Temperatures',
-		'url' => 'https://www.foodsafety.gov/food-safety-charts/safe-minimum-internal-temperatures', 'published_at' => '', 'retrieved_at' => '2026-08-06',
+		'type' => 'official_government', 'publisher' => 'United States Department of Agriculture, Food Safety and Inspection Service',
+		'title' => 'Safe Temperature Chart',
+		'url' => 'https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart', 'published_at' => '', 'retrieved_at' => '2026-08-08',
 	),
 	'cdc-raw-kibbeh-salmonella-2013' => array(
 		'type' => 'official_government', 'publisher' => 'United States Centers for Disease Control and Prevention',
@@ -380,11 +401,16 @@ $c99_syrian_entities[] = $c99_syrian_entity( array(
 $c99_syrian_region_specs = array(
 	array(
 		'id' => 'region-syria-aleppo', 'slug' => 'aleppo', 'region' => 'aleppo',
-		'name_he' => 'חלב', 'name_en' => 'Aleppo',
-		'summary_he' => 'מרכז מחקר למנות חלביות שבהן פלפל אדום, אגוז, מולסה, פרי חמוץ, בורגול ובשר מקבלים שילובים מובחנים, לצד מסורות יהודיות, ארמניות וכורדיות הקשורות לעיר ולמחוז.',
-		'summary_en' => 'A research hub for Aleppan dishes in which red pepper, walnut, molasses, sour fruit, bulgur and meat form distinctive combinations, alongside Jewish, Armenian and Kurdish foodways connected to the city and governorate.',
-		'sources' => array( 'avs-mirvet-aleppo', 'aleppo-project-cuisine-2017' ),
-		'visual' => 'Aleppo culinary research table with cooked kibbeh forms, red pepper and walnut spread, sour cherries, quince and flatbread, each item visually separated',
+		'name_he' => 'חלב: עיר של קובה, פלפל ופירות חמוצים', 'name_en' => 'Aleppo: a city of kibbeh, pepper and sour fruit',
+		'summary_he' => 'בחלב הדרך אל השולחן עוברת דרך בורגול, פלפל אדום, אגוזים, רימון, חבוש ודובדבן חמוץ. מתחילים במשפחת הקובה החלבית, ממשיכים לחומרי הגלם ומגלים גם את מסורות האוכל של יהודי חלב שנישאו מן העיר אל התפוצות.',
+		'summary_en' => 'Aleppo opens onto a table of bulgur, red pepper, nuts, pomegranate, quince and sour cherry. Begin with the Aleppine kibbeh family, continue to its ingredients and discover the Jewish foodways carried from the city into diaspora kitchens.',
+		'fact_he' => 'אונסק״ו מתארת את חלב העתיקה כעיר שנבנתה בצומת נתיבי מסחר ושכבות תרבות. זה אינו מוכיח שמנה מסוימת נולדה בחלב, אבל הוא מסביר מדוע נכון לקרוא את מטבח העיר כמפגש מתמשך של חומרי גלם, קהילות ושיטות.',
+		'fact_en' => 'UNESCO describes ancient Aleppo as a city shaped at the crossroads of trade routes and cultural layers. That does not prove that a particular dish originated in Aleppo, but it helps explain why the city cuisine is best explored as an evolving meeting of ingredients, communities and methods.',
+		'sources' => array( 'unesco-ancient-city-aleppo', 'georgetown-making-levantine-cuisine', 'avs-mirvet-aleppo', 'aleppo-project-cuisine-2017' ),
+		'intent_he' => 'לגלות את טעמי חלב דרך קובה, חומרי גלם ומסורות קהילתיות.',
+		'intent_en' => 'Discover Aleppo through kibbeh, ingredients and community foodways.',
+		'keyword_he' => 'המטבח החַלבי', 'keyword_en' => 'Aleppo cuisine',
+		'visual' => 'an abundant Aleppo table with fully cooked kibbeh, separate bowls of fine bulgur and red pepper walnut spread, sour cherries, quince and warm flatbread, inviting natural window light and no labels',
 	),
 	array(
 		'id' => 'region-syria-damascus', 'slug' => 'damascus', 'region' => 'damascus',
@@ -461,18 +487,24 @@ foreach ( $c99_syrian_region_specs as $region_spec ) {
 		'name' => $c99_text( $region_spec['name_he'], $region_spec['name_en'] ),
 		'summary' => $c99_text( $region_spec['summary_he'], $region_spec['summary_en'] ),
 		'region' => $region_spec['region'],
-		'primary_intent' => $c99_text( 'להכיר מנות, חומרי גלם וקהילות של ' . $region_spec['name_he'] . ' בלי למחוק הבדלים מקומיים.', 'Explore dishes, ingredients and communities of ' . $region_spec['name_en'] . ' without erasing local differences.' ),
-		'primary_keyword' => $c99_text( 'המטבח של ' . $region_spec['name_he'], $region_spec['name_en'] . ' regional cuisine' ),
+		'primary_intent' => $c99_text(
+			isset( $region_spec['intent_he'] ) ? $region_spec['intent_he'] : 'להכיר מנות, חומרי גלם וקהילות של ' . $region_spec['name_he'] . ' בלי למחוק הבדלים מקומיים.',
+			isset( $region_spec['intent_en'] ) ? $region_spec['intent_en'] : 'Explore dishes, ingredients and communities of ' . $region_spec['name_en'] . ' without erasing local differences.'
+		),
+		'primary_keyword' => $c99_text(
+			isset( $region_spec['keyword_he'] ) ? $region_spec['keyword_he'] : 'המטבח של ' . $region_spec['name_he'],
+			isset( $region_spec['keyword_en'] ) ? $region_spec['keyword_en'] : $region_spec['name_en'] . ' regional cuisine'
+		),
 		'schema_type' => 'CollectionPage',
 		'facts' => array(
 			$c99_syrian_fact(
 				'fact-' . $region_spec['slug'] . '-regional-testimony-boundary', 'cultural',
-				'המרכז האזורי מבוסס על מקור או עדות מזוהים. הוא מתעד נקודת מבט תחומה ואינו טוען שכל משקי הבית באזור מבשלים באותו אופן.',
-				'This regional hub is based on identified sources or testimony. It documents a bounded viewpoint and does not claim that every household in the region cooks in the same way.',
+				isset( $region_spec['fact_he'] ) ? $region_spec['fact_he'] : 'המרכז האזורי מבוסס על מקור או עדות מזוהים. הוא מתעד נקודת מבט תחומה ואינו טוען שכל משקי הבית באזור מבשלים באותו אופן.',
+				isset( $region_spec['fact_en'] ) ? $region_spec['fact_en'] : 'This regional hub is based on identified sources or testimony. It documents a bounded viewpoint and does not claim that every household in the region cooks in the same way.',
 				'official_source', 'category', $region_spec['sources']
 			),
 		),
-		'prompt_en' => 'Private editorial atlas plate for ' . $region_spec['visual'] . ', natural light, neutral background, accurate food textures and no decorative stereotypes.',
+		'prompt_en' => ( 'region-syria-aleppo' === $region_spec['id'] ? 'Commercial culinary editorial photograph of ' : 'Private editorial atlas plate for ' ) . $region_spec['visual'] . ', accurate food textures and no decorative stereotypes.',
 	) );
 }
 
@@ -864,7 +896,7 @@ foreach ( $c99_syrian_dish_specs as $dish_spec ) {
 }
 
 $c99_syrian_ingredient_specs = array(
-	array( 'id' => 'ingredient-syrian-bulgur', 'slug' => 'syrian-bulgur', 'he' => 'בורגול במטבח הסורי', 'en' => 'Bulgur in Syrian Cuisine', 'region' => 'syria-national', 'fact_he' => 'בורגול מופיע במקורות האזוריים כמבנה גרעיני מרכזי לקובה ולמנות נוספות. הוא נשמר בנפרד מג׳ריש ומפריקה.', 'fact_en' => 'Bulgur appears in regional sources as a central grain structure for kibbeh and other dishes. It remains distinct from jreesh and freekeh.', 'sources' => array( 'avs-mirvet-aleppo', 'aleppo-project-cuisine-2017' ), 'used_in' => 'dish-kibbeh-meshwiyyeh', 'used_in_sources' => array( 'avs-mirvet-aleppo' ), 'visual' => 'fine and medium Syrian-use bulgur grains shown in separate unbranded bowls' ),
+	array( 'id' => 'ingredient-syrian-bulgur', 'slug' => 'syrian-bulgur', 'he' => 'בורגול לקובה ולמטבח הסורי', 'en' => 'Bulgur for Kibbeh and Syrian Cooking', 'region' => 'syria-national', 'summary_he' => 'בורגול הוא הגרגר שמעניק למעטפת הקובה את הגוף, האחיזה והמרקם. גודל הגרגר, משך ההשריה וכמות המים משנים את התוצאה, ולכן מתחילים בבורגול המתאים למנה ולא ביחס מים אחד שמתיימר להתאים לכולם.', 'summary_en' => 'Bulgur gives a kibbeh shell its body, cohesion and texture. Grain size, soaking time and water uptake change the result, so the journey begins with bulgur suited to the preparation rather than one ratio claimed to fit every grain.', 'fact_he' => 'בורגול מופיע במקורות החלביים כחומר גלם מרכזי במשפחת הקובה. הוא נשאר נפרד מג׳ריש ומפריקה, שנבדלים ממנו בשם, במבנה ובשימושים המתועדים.', 'fact_en' => 'Aleppine sources place bulgur at the heart of the kibbeh family. It remains distinct from jreesh and freekeh, which carry their own documented names, structures and uses.', 'sources' => array( 'avs-mirvet-aleppo', 'aleppo-project-cuisine-2017', 'simon-schuster-aleppo-cookbook' ), 'used_in' => 'dish-kibbeh-meshwiyyeh', 'used_in_sources' => array( 'avs-mirvet-aleppo' ), 'intent_he' => 'לבחור בורגול מתאים לקובה ולהבין כיצד גודל גרגר והשריה משפיעים על המרקם.', 'intent_en' => 'Choose bulgur for kibbeh and understand how grain size and hydration shape texture.', 'keyword_he' => 'בורגול לקובה', 'keyword_en' => 'bulgur for kibbeh', 'visual' => 'dry fine and medium bulgur grains in separate warm ceramic bowls, tactile grain detail, no hydrated grain and no packaging' ),
 	array( 'id' => 'ingredient-syrian-jreesh', 'slug' => 'syrian-jreesh', 'he' => 'ג׳ריש במטבח הסורי', 'en' => 'Jreesh in Syrian Cuisine', 'region' => 'homs-and-southern-syria', 'fact_he' => 'ג׳ריש נשמר כחומר גלם בשם נפרד בעדויות מחומס ומדרום סוריה. המערכת אינה מחליפה אותו אוטומטית בבורגול.', 'fact_en' => 'Jreesh is retained as a separately named ingredient in testimony from Homs and southern Syria. The system does not automatically substitute bulgur for it.', 'sources' => array( 'avs-nariman-homs', 'avs-ghaimana-suwayda', 'avs-shahla-hauran' ), 'visual' => 'coarse jreesh grains in one plain bowl beside an empty comparison space, no bulgur label inside the image' ),
 	array( 'id' => 'ingredient-syrian-freekeh', 'slug' => 'syrian-freekeh', 'he' => 'פריקה במטבח הסורי', 'en' => 'Freekeh in Syrian Cuisine', 'region' => 'northern-and-eastern-syria', 'fact_he' => 'פריקה מתועדת כחומר גלם גרעיני בשם עצמאי. היא נשמרת בנפרד מבורגול ומג׳ריש, וכל טענת עיבוד או מקור דורשת מוצר ומקור מתאימים.', 'fact_en' => 'Freekeh is documented as a separately named grain ingredient. It remains distinct from bulgur and jreesh, and every processing or origin claim requires appropriate product evidence.', 'sources' => array( 'avs-rahma-idlib', 'avs-heart-to-hearth' ), 'visual' => 'whole and cracked freekeh grains in unbranded bowls with visible green-brown variation, no origin seal' ),
 	array( 'id' => 'ingredient-syrian-rice', 'slug' => 'syrian-rice', 'he' => 'אורז במטבח הסורי', 'en' => 'Rice in Syrian Cuisine', 'region' => 'syria-national', 'fact_he' => 'אורז מתועד במנות דמשקאיות, מזרחיות ודרומיות. זן, אורך גרגר ויחס מים אינם נקבעים מן הקטגוריה.', 'fact_en' => 'Rice is documented in Damascene, eastern and southern dishes. Cultivar, grain length and water ratio are not established by the category.', 'sources' => array( 'avs-razan-damascus', 'avs-buthaina-east', 'avs-ghaimana-suwayda' ), 'used_in' => 'dish-ouzi-damascene', 'used_in_sources' => array( 'avs-razan-damascus' ), 'visual' => 'uncooked white rice grains and a separate bowl of fully cooked rice, no cultivar claim' ),
@@ -902,7 +934,7 @@ $c99_syrian_ingredient_specs = array(
 	array( 'id' => 'ingredient-syrian-haqt', 'slug' => 'syrian-haqt', 'he' => 'הקט בהקשר קמישלי', 'en' => 'Haqt in Qamishli Context', 'region' => 'qamishli-jazira', 'fact_he' => 'הקט מתועד בעדות משפחתית הקשורה לקמישלי. זהותו נשמרת לפי שם המשפחה ואינה מאוחדת עם קישק או מוצרי יוגורט דרומיים.', 'fact_en' => 'Haqt is documented in family testimony associated with Qamishli. Its identity follows the family term and is not merged with kishk or southern dried-yogurt products.', 'sources' => array( 'avs-samar-qamishli' ), 'used_in' => 'dish-kubaybat-haqt-qamishli', 'used_in_sources' => array( 'avs-samar-qamishli' ), 'visual' => 'a neutral ingredient study labeled only in metadata as the family-transmitted haqt target, no speculative components' ),
 	array( 'id' => 'ingredient-syrian-olive-oil', 'slug' => 'syrian-olive-oil', 'he' => 'שמן זית במטבח הסורי', 'en' => 'Olive Oil in Syrian Cuisine', 'region' => 'syria-national', 'fact_he' => 'שמן זית מתועד בבישול ובשימור מזון סורי. זן, מסיק, חומציות ודרגת מוצר דורשים תווית או בדיקה מתאימה.', 'fact_en' => 'Olive oil is documented in Syrian cooking and preservation. Cultivar, harvest, acidity and grade require an appropriate label or test.', 'sources' => array( 'avs-zainab-coast', 'avs-amani-afrin', 'unesco-syrian-ich-survey-2017' ), 'used_in' => 'dish-sayadiyah-syrian-coast', 'used_in_sources' => array( 'avs-zainab-coast' ), 'visual' => 'golden olive oil in an unbranded glass cruet and a measured plain dish, no purity or wellness symbols' ),
 	array( 'id' => 'ingredient-syrian-samn', 'slug' => 'syrian-samn', 'he' => 'סמנה במטבח הסורי', 'en' => 'Samn in Syrian Cuisine', 'region' => 'syria-national', 'fact_he' => 'סמנה או שומן מזוכך מופיעים בעדויות אזוריות. מקור החלב או השומן, אלרגן ותהליך דורשים זיהוי מוצר.', 'fact_en' => 'Samn or clarified cooking fat appears in regional testimony. Dairy or fat source, allergen status and process require product identification.', 'sources' => array( 'avs-razan-damascus', 'avs-ghaimana-suwayda', 'lal-scents-flavors' ), 'visual' => 'clarified cooking fat in an unbranded jar and spoon, pale golden texture and no butter-origin claim' ),
-	array( 'id' => 'ingredient-syrian-red-meat', 'slug' => 'syrian-lamb-beef-family', 'he' => 'משפחת כבש ובקר במטבח הסורי', 'en' => 'Lamb and Beef Family in Syrian Cuisine', 'region' => 'syria-national', 'fact_he' => 'עדויות המנות משתמשות בבשר אדום בצורות שונות. כבש ובקר נשמרים כמשפחת קטגוריה בלבד ואינם תחליפים אוטומטיים במנה או במוצר.', 'fact_en' => 'Dish testimonies use red meat in different forms. Lamb and beef remain a category family only and are not automatic substitutes in a dish or product.', 'sources' => array( 'avs-mirvet-aleppo', 'aleppo-project-cuisine-2017' ), 'used_in' => 'dish-kibbeh-meshwiyyeh', 'used_in_sources' => array( 'avs-mirvet-aleppo' ), 'visual' => 'fully cooked lamb and beef examples kept in separate neutral dishes, no raw mince and no equivalence cue' ),
+	array( 'id' => 'ingredient-syrian-red-meat', 'slug' => 'syrian-lamb-beef-family', 'he' => 'כבש ובקר בקובה ובמטבח הסורי', 'en' => 'Lamb and Beef in Kibbeh and Syrian Cooking', 'region' => 'syria-national', 'summary_he' => 'כשמנה כוללת בשר, חשוב לשאול איזה נתח או טחינה, מה אחוז השומן ואיך מבשלים אותו. כבש ובקר מוצגים כאן זה לצד זה כדי להבין את האפשרויות, לא כהחלפה אוטומטית בכל קובה או תבשיל.', 'summary_en' => 'When a dish includes meat, the useful questions are the cut or grind, fat level and cooking method. Lamb and beef sit side by side here as choices to understand, not as automatic substitutes in every kibbeh or stew.', 'fact_he' => 'מקורות מחלב מתעדים בשר במגוון צורות של קובה ומנות נוספות. סוג הבשר המדויק נשאר חלק מזהות המנה והגרסה המשפחתית, ולכן אין להחליף בין כבש לבקר בלי להבין את המתכון.', 'fact_en' => 'Aleppine sources document meat across multiple kibbeh forms and other dishes. The exact meat remains part of the dish and family version, so lamb and beef should not be exchanged without understanding the preparation.', 'sources' => array( 'avs-mirvet-aleppo', 'aleppo-project-cuisine-2017', 'simon-schuster-aleppo-cookbook' ), 'used_in' => 'dish-kibbeh-meshwiyyeh', 'used_in_sources' => array( 'avs-mirvet-aleppo' ), 'intent_he' => 'להבין את ההבדלים בין כבש לבקר בקובה ובבישול הסורי.', 'intent_en' => 'Understand the role of lamb and beef in kibbeh and Syrian cooking.', 'keyword_he' => 'בשר לקובה', 'keyword_en' => 'meat for kibbeh', 'visual' => 'fully cooked lamb and beef examples in separate neutral dishes, warm natural light, no raw mince and no equivalence cue' ),
 	array( 'id' => 'ingredient-syrian-whole-chicken', 'slug' => 'aleppan-jewish-whole-chicken', 'he' => 'עוף שלם בדג׳אג׳ משווי משפחתי', 'en' => 'Whole Chicken in Family Aleppan Jewish Dajaj Mashwi', 'region' => 'aleppo-diaspora', 'fact_he' => 'מתכון FOODISH המשפחתי מתעד עוף שלם ממולא בדג׳אג׳ משווי. משקל העוף, מקורו וזמן הבישול דורשים אימות וניסוי בטיחות.', 'fact_en' => 'The FOODISH family recipe documents a stuffed whole chicken in dajaj mashwi. Chicken weight, origin and cooking time require verification and a safety trial.', 'sources' => array( 'foodish-dajaj-mashwi' ), 'used_in' => 'dish-dajaj-mashwi-aleppan-jewish', 'used_in_sources' => array( 'foodish-dajaj-mashwi' ), 'visual' => 'one fully cooked whole stuffed chicken with no pink meat, no raw poultry and no garnish claims' ),
 	array( 'id' => 'ingredient-syrian-coastal-fish', 'slug' => 'syrian-coastal-fish-family', 'he' => 'דגי החוף הסורי', 'en' => 'Syrian Coastal Fish Family', 'region' => 'syrian-coast', 'fact_he' => 'העדות החופית מתעדת דגים במנות מקומיות, אך אינה הופכת מין אחד לברירת מחדל. כל מוצר דורש זיהוי מין, מקור וקירור.', 'fact_en' => 'Coastal testimony documents fish in local dishes but does not make one species the default. Every product requires species, origin and cold-chain identification.', 'sources' => array( 'avs-zainab-coast' ), 'used_in' => 'dish-sayadiyah-syrian-coast', 'used_in_sources' => array( 'avs-zainab-coast' ), 'visual' => 'fully cooked generic coastal fish portions and a separate species-verification card area, no raw fish and no invented species' ),
 	array( 'id' => 'ingredient-syrian-garlic', 'slug' => 'syrian-garlic', 'he' => 'שום במטבח הסורי', 'en' => 'Garlic in Syrian Cuisine', 'region' => 'syria-national', 'fact_he' => 'שום מתועד בהכנת יבראק דמשקאית וביברה משפחתית של יהודי חלב. זן, מצב טרי או מיובש וכמות דורשים בדיקה ברמת ההכנה והמוצר.', 'fact_en' => 'Garlic is documented in a Damascene yabraq preparation and an Aleppan Jewish family yebra. Variety, fresh or dried state and quantity require preparation-level and product-level review.', 'sources' => array( 'avs-razan-damascus', 'jfs-yebra-apricots' ), 'used_in' => 'dish-yabraq-yebra', 'used_in_sources' => array( 'avs-razan-damascus', 'jfs-yebra-apricots' ), 'visual' => 'whole garlic bulb and separated fresh cloves in a plain unbranded dish, no powdered-garlic equivalence cue' ),
@@ -921,7 +953,7 @@ foreach ( $c99_syrian_ingredient_specs as $ingredient_spec ) {
 		),
 	);
 	if ( 'ingredient-syrian-bulgur' === $ingredient_spec['id'] ) {
-		$facts[] = $c99_syrian_fact( 'fact-syrian-bulgur-hydration-category-context', 'scientific', 'מחקר הידרציה של בורגול תומך בבחינת זמן, מים ומרקם ברמת קטגוריה. הוא אינו קובע יחס מים לכל גרגר, יצרן או מנת קובה.', 'Bulgur hydration research supports category-level review of time, water and texture. It does not establish a water ratio for every grain, maker or kibbeh dish.', 'peer_reviewed_context', 'category', array( 'bulgur-hydration-2025' ) );
+		$facts[] = $c99_syrian_fact( 'fact-syrian-bulgur-hydration-category-context', 'scientific', 'מחקרי הידרציה מראים שספיחת המים והמרקם משתנים עם הזמן, הטמפרטורה ומאפייני הגרגר. הם עוזרים להבין מה למדוד, אך אינם מספקים יחס מים אוניברסלי לכל בורגול או לכל קובה.', 'Hydration studies show that water uptake and texture change with time, temperature and grain characteristics. They clarify what to observe but do not provide one universal water ratio for every bulgur or kibbeh.', 'peer_reviewed_context', 'category', array( 'bulgur-hydration-2025', 'bulgur-hydration-cereal-chemistry' ) );
 	}
 	if ( 'ingredient-syrian-fresh-yogurt' === $ingredient_spec['id'] ) {
 		$facts[] = $c99_syrian_fact( 'fact-syrian-yogurt-structure-category-context', 'scientific', 'מחקר מבנה חלבון ביוגורט מספק הקשר ליציבות רוטב בלבד; הוא אינו מודד את היוגורט או המנה ברשומה.', 'Yogurt protein-structure research supplies sauce-stability context only; it does not measure the yogurt or dish in this record.', 'peer_reviewed_context', 'category', array( 'yogurt-protein-structure-2023' ) );
@@ -950,13 +982,22 @@ foreach ( $c99_syrian_ingredient_specs as $ingredient_spec ) {
 	}
 	$compliance = array();
 	if ( in_array( $ingredient_spec['id'], array( 'ingredient-syrian-bulgur', 'ingredient-syrian-jreesh', 'ingredient-syrian-freekeh', 'ingredient-syrian-tahini', 'ingredient-syrian-walnuts', 'ingredient-syrian-unspecified-nuts', 'ingredient-syrian-pistachios', 'ingredient-syrian-matzah', 'ingredient-syrian-cheese', 'ingredient-syrian-semolina', 'ingredient-syrian-qeshta-cream', 'ingredient-syrian-fresh-yogurt', 'ingredient-syrian-kishk', 'ingredient-syrian-jameed', 'ingredient-syrian-higet', 'ingredient-syrian-samn', 'ingredient-syrian-coastal-fish' ), true ) ) {
-		$compliance[] = $c99_compliance( 'product-allergen-verification', 'יש לבדוק תווית מוצר ומגע צולב לאלרגן הרלוונטי לפני כל שימוש מסחרי או פרסום.', 'Verify the product label and relevant allergen cross-contact before any commercial use or publication.', array( 'israel-moh-allergen-survey-2024' ), false );
+		$allergen_note_he = 'ingredient-syrian-bulgur' === $ingredient_spec['id']
+			? 'בורגול הוא מוצר חיטה. יש לבדוק את תווית האריזה המדויקת ואת סיכוני המגע הצולב בסביבת העבודה כאשר חיטה או גלוטן הם שיקול.'
+			: 'יש לבדוק את תווית המוצר ואת סביבת העבודה כאשר קיים אלרגן רלוונטי.';
+		$allergen_note_en = 'ingredient-syrian-bulgur' === $ingredient_spec['id']
+			? 'Bulgur is a wheat product. Check the exact pack label and cross-contact risks in the preparation environment when wheat or gluten is a concern.'
+			: 'Check the product label and preparation environment when a relevant allergen is a concern.';
+		$allergen_source_ids = 'ingredient-syrian-bulgur' === $ingredient_spec['id']
+			? array( 'israel-moh-food-allergen-labeling-2026', 'israel-moh-allergen-survey-2024' )
+			: array( 'israel-moh-allergen-survey-2024' );
+		$compliance[] = $c99_compliance( 'product-allergen-verification', $allergen_note_he, $allergen_note_en, $allergen_source_ids, false );
 	}
 	if ( 'ingredient-pomegranate-concentrate' === $ingredient_spec['id'] ) {
 		$compliance[] = $c99_compliance( 'pomegranate-concentrate-identity-review', 'יש לאמת את רשימת הרכיבים, תוספת הסוכר, הריכוז, האלרגנים, חיי המדף והאחסון של המוצר המדויק לפני הפעלה.', 'Verify ingredients, added sugar, concentration, allergens, shelf life and storage for the exact product before activation.', array( 'tamar-hst-keter-harimon-pomegranate-concentrate-250ml-listing-2026' ), false );
 	}
 	if ( 'ingredient-syrian-red-meat' === $ingredient_spec['id'] ) {
-		$compliance[] = $c99_compliance( 'no-raw-ground-meat-guidance', 'אין להציג הוראות לבשר טחון נא. כל יישום מנה דורש בישול לפי תוכנית היגיינה והנחיית טמפרטורה מאומתת.', 'Do not present raw-ground-meat instructions. Every dish application requires cooking under a hygiene plan and validated temperature guidance.', array( 'cdc-raw-kibbeh-salmonella-2013', 'foodsafety-safe-temperatures', 'israel-moh-food-hygiene' ), false );
+		$compliance[] = $c99_compliance( 'no-raw-ground-meat-guidance', 'אין כאן המלצה לאכול בשר טחון נא. בבשר טחון מכבש או בקר יש להגיע ל-71.1°C במרכז ולבדוק במדחום מזון, לא לפי הצבע בלבד.', 'This page does not recommend eating raw ground meat. Ground lamb or beef should reach 71.1°C at the center and be checked with a food thermometer rather than color alone.', array( 'cdc-raw-kibbeh-salmonella-2013', 'foodsafety-safe-temperatures', 'israel-moh-food-hygiene' ), false );
 	}
 	if ( 'ingredient-syrian-whole-chicken' === $ingredient_spec['id'] ) {
 		$compliance[] = $c99_compliance( 'fully-cooked-whole-poultry', 'יש לבשל עוף שלם ומילויו לפי תוכנית בטיחות והנחיית טמפרטורה מאומתת, בלי לפרסם זמן אוניברסלי.', 'Cook whole poultry and its stuffing under a safety plan and validated temperature guidance without publishing a universal time.', array( 'foodsafety-safe-temperatures', 'israel-moh-food-hygiene' ), false );
@@ -967,30 +1008,42 @@ foreach ( $c99_syrian_ingredient_specs as $ingredient_spec ) {
 		'slug' => $ingredient_spec['slug'],
 		'parent_id' => 'cuisine-syrian-regional',
 		'name' => $c99_text( $ingredient_spec['he'], $ingredient_spec['en'] ),
-		'summary' => $c99_text( $ingredient_spec['fact_he'] . ' הרשומה מיועדת לבחירת חומר גלם מושכלת ואינה הצעת מוצר.', $ingredient_spec['fact_en'] . ' The record supports informed ingredient selection and is not a product offer.' ),
+		'summary' => $c99_text(
+			isset( $ingredient_spec['summary_he'] ) ? $ingredient_spec['summary_he'] : $ingredient_spec['fact_he'] . ' הרשומה מיועדת לבחירת חומר גלם מושכלת ואינה הצעת מוצר.',
+			isset( $ingredient_spec['summary_en'] ) ? $ingredient_spec['summary_en'] : $ingredient_spec['fact_en'] . ' The record supports informed ingredient selection and is not a product offer.'
+		),
 		'region' => $ingredient_spec['region'],
-		'primary_intent' => $c99_text( 'להבין את הזהות, התפקיד והבדיקות הנדרשות עבור ' . $ingredient_spec['he'] . '.', 'Understand the identity, role and required checks for ' . $ingredient_spec['en'] . '.' ),
-		'primary_keyword' => $c99_text( 'מדריך ' . $ingredient_spec['he'], $ingredient_spec['en'] . ' ingredient guide' ),
+		'primary_intent' => $c99_text(
+			isset( $ingredient_spec['intent_he'] ) ? $ingredient_spec['intent_he'] : 'להבין את הזהות, התפקיד והבדיקות הנדרשות עבור ' . $ingredient_spec['he'] . '.',
+			isset( $ingredient_spec['intent_en'] ) ? $ingredient_spec['intent_en'] : 'Understand the identity, role and required checks for ' . $ingredient_spec['en'] . '.'
+		),
+		'primary_keyword' => $c99_text(
+			isset( $ingredient_spec['keyword_he'] ) ? $ingredient_spec['keyword_he'] : 'מדריך ' . $ingredient_spec['he'],
+			isset( $ingredient_spec['keyword_en'] ) ? $ingredient_spec['keyword_en'] : $ingredient_spec['en'] . ' ingredient guide'
+		),
 		'schema_type' => 'Article',
 		'facts' => $facts,
 		'relations' => $c99_syrian_relations,
 		'compliance' => $compliance,
-		'prompt_en' => 'Private editorial ingredient plate of ' . $ingredient_spec['visual'] . ', accurate scale, neutral daylight and food-safe styling.',
+		'prompt_en' => ( in_array( $ingredient_spec['id'], array( 'ingredient-syrian-bulgur', 'ingredient-syrian-red-meat' ), true ) ? 'Commercial culinary editorial photograph of ' : 'Private editorial ingredient plate of ' ) . $ingredient_spec['visual'] . ', accurate scale, neutral daylight and food-safe styling.',
 	) );
 }
 
 $c99_syrian_technique_specs = array(
 	array(
-		'id' => 'technique-syrian-bulgur-hydration', 'slug' => 'syrian-bulgur-hydration', 'he' => 'הידרציית בורגול', 'en' => 'Bulgur Hydration', 'region' => 'syria-national',
-		'summary_he' => 'מיפוי של ספיחת מים בבורגול לפי גודל גרגר, זמן ושימוש. הערכים דורשים ניסוי במוצר ובמנה בפועל.',
-		'summary_en' => 'A map of bulgur water uptake by grain size, time and use. Values require testing with the actual product and dish.',
-		'fact_he' => 'מחקר הידרציה תומך במדידת זמן, מים ומרקם, אך אינו מספק יחס אוניברסלי לקובה סורית או לכל סוג בורגול.',
-		'fact_en' => 'Hydration research supports measuring time, water and texture, but does not supply a universal ratio for Syrian kibbeh or every bulgur type.',
-		'dimension' => 'scientific', 'evidence' => 'peer_reviewed_context', 'sources' => array( 'bulgur-hydration-2025', 'avs-mirvet-aleppo' ),
+		'id' => 'technique-syrian-bulgur-hydration', 'slug' => 'syrian-bulgur-hydration', 'he' => 'איך מרטיבים בורגול לקובה', 'en' => 'How to Hydrate Bulgur for Kibbeh', 'region' => 'syria-national',
+		'summary_he' => 'בורגול יבש, בורגול רטוב ובורגול שנח אינם אותו חומר ביד. גודל הגרגר, טמפרטורת המים, זמן המנוחה והסחיטה משנים את היכולת לעצב מעטפת קובה. המדריך מלמד מה לראות ולהרגיש, בלי להבטיח יחס קסם שמתאים לכל שקית.',
+		'summary_en' => 'Dry bulgur, freshly moistened bulgur and rested bulgur behave differently in the hand. Grain size, water temperature, resting time and draining shape the ability to form a kibbeh shell. This guide explains what to observe without promising one magic ratio for every pack.',
+		'fact_he' => 'מחקרי הידרציה של בורגול מודדים ספיחת מים לאורך זמן ובתנאים שונים. הם תומכים בעבודה מדודה עם זמן, טמפרטורה ומרקם, אך אינם קובעים יחס אוניברסלי לקובה חלבית.',
+		'fact_en' => 'Bulgur hydration studies measure water uptake over time and under different conditions. They support deliberate attention to time, temperature and texture but do not establish one universal ratio for Aleppine kibbeh.',
+		'dimension' => 'scientific', 'evidence' => 'peer_reviewed_context', 'sources' => array( 'bulgur-hydration-2025', 'bulgur-hydration-cereal-chemistry', 'avs-mirvet-aleppo' ),
 		'target' => 'dish-kibbeh-meshwiyyeh', 'ingredients' => array( 'ingredient-syrian-bulgur' ),
 		'target_sources' => array( 'avs-mirvet-aleppo' ),
 		'ingredient_sources' => array( 'ingredient-syrian-bulgur' => array( 'avs-mirvet-aleppo' ) ),
-		'visual' => 'a four-stage bulgur hydration study showing dry grain, measured water uptake, rested grain and final texture in identical bowls',
+		'intent_he' => 'להבין כיצד להרטיב בורגול לקובה לפי מרקם ולא לפי יחס אוניברסלי.',
+		'intent_en' => 'Learn how to hydrate bulgur for kibbeh by texture rather than a universal ratio.',
+		'keyword_he' => 'איך משרים בורגול לקובה', 'keyword_en' => 'how to hydrate bulgur for kibbeh',
+		'visual' => 'a tactile four-stage bulgur hydration sequence showing dry grain, measured moistening, rested grain and cohesive final texture in identical handmade bowls, no ratios or text',
 	),
 	array(
 		'id' => 'technique-syrian-kibbeh-shell-shaping', 'slug' => 'syrian-kibbeh-shell-shaping', 'he' => 'עיצוב מעטפת קובה', 'en' => 'Kibbeh Shell Shaping', 'region' => 'syria-national',
@@ -1008,11 +1061,11 @@ $c99_syrian_technique_specs = array(
 		'visual' => 'a fully cooked kibbeh cross-section study that makes shell thickness, seam and filling cavity visible, no raw meat handling scene',
 	),
 	array(
-		'id' => 'technique-syrian-kibbeh-cooking', 'slug' => 'syrian-kibbeh-cooking', 'he' => 'בישול בטוח של קובה', 'en' => 'Safe Kibbeh Cooking', 'region' => 'syria-national',
-		'summary_he' => 'מסגרת לבישול, צלייה, טיגון או בישול ברוטב של קובה עד תוצאה מבושלת לחלוטין. אין במסלול הוראות להכנה נאה.',
-		'summary_en' => 'A framework for boiling, grilling, frying or sauce-cooking kibbeh to a fully cooked result. The pathway contains no raw preparation instructions.',
-		'fact_he' => 'הנחיות בטיחות ממשלתיות והתפרצות מתועדת של קובה מבשר נא מחייבות הפרדה בין הקשר היסטורי לבין הוראות בישול בטוחות.',
-		'fact_en' => 'Government safety guidance and a documented outbreak involving raw-meat kibbeh require separation between historical context and safe cooking instructions.',
+		'id' => 'technique-syrian-kibbeh-cooking', 'slug' => 'syrian-kibbeh-cooking', 'he' => 'איך מבשלים קובה בבטחה', 'en' => 'How to Cook Kibbeh Safely', 'region' => 'syria-national',
+		'summary_he' => 'קובה יכולה להיכנס לשמן, לגריל, לסיר מים או לרוטב, וכל שיטה יוצרת מעטפת ומרכז שונים. המטרה המשותפת היא קובה מבושלת היטב, עסיסית ובעלת מרקם ברור, עם בדיקת טמפרטורה במקום ניחוש לפי צבע.',
+		'summary_en' => 'Kibbeh may meet hot oil, a grill, simmering water or sauce, and each path creates a different shell and center. The shared goal is a fully cooked, juicy kibbeh with a clear texture, checked by temperature rather than guessed from color.',
+		'fact_he' => 'לפי הנחיות USDA, בשר טחון מכבש או בקר צריך להגיע ל-71.1°C במרכז ולהיבדק במדחום מזון. תיעוד התפרצות שנקשרה לקובה מבשר טחון נא מסביר מדוע המסלול הזה עוסק רק בקובה מבושלת.',
+		'fact_en' => 'USDA guidance calls for ground lamb or beef to reach 71.1°C at the center and be checked with a food thermometer. A documented outbreak linked to raw ground-meat kibbeh is why this pathway covers cooked kibbeh only.',
 		'dimension' => 'scientific', 'evidence' => 'regulatory_standard', 'sources' => array( 'foodsafety-safe-temperatures', 'cdc-raw-kibbeh-salmonella-2013', 'israel-moh-food-hygiene', 'avs-mirvet-aleppo' ),
 		'target' => 'dish-kibbeh-meshwiyyeh', 'ingredients' => array( 'ingredient-syrian-red-meat', 'ingredient-syrian-bulgur' ),
 		'target_sources' => array( 'avs-mirvet-aleppo' ),
@@ -1020,8 +1073,11 @@ $c99_syrian_technique_specs = array(
 			'ingredient-syrian-red-meat' => array( 'avs-mirvet-aleppo' ),
 			'ingredient-syrian-bulgur' => array( 'avs-mirvet-aleppo' ),
 		),
-		'visual' => 'four fully cooked kibbeh outcomes for boiling, grilling, frying and sauce cooking, each cut open with no pink or raw center',
-		'compliance' => array( $c99_compliance( 'raw-kibbeh-prohibited', 'אין לפרסם מתכון, שלבי הכנה או המלצת צריכה לקובה מבשר נא. יש לפתח רק גרסה מבושלת לפי תוכנית בטיחות.', 'Do not publish a recipe, preparation steps or consumption recommendation for raw-meat kibbeh. Develop only a cooked version under a safety plan.', array( 'cdc-raw-kibbeh-salmonella-2013', 'foodsafety-safe-temperatures', 'israel-moh-food-hygiene' ), false ) ),
+		'intent_he' => 'להכיר שיטות בישול לקובה ולבדוק שהיא מבושלת בבטחה.',
+		'intent_en' => 'Explore kibbeh cooking methods and verify a safely cooked center.',
+		'keyword_he' => 'איך מבשלים קובה', 'keyword_en' => 'how to cook kibbeh safely',
+		'visual' => 'four appetizing fully cooked kibbeh outcomes for simmering, grilling, frying and sauce cooking, each cut open with no pink center and no time or temperature text',
+		'compliance' => array( $c99_compliance( 'raw-kibbeh-prohibited', 'המסלול אינו ממליץ על אכילת קובה מבשר נא. בקובה עם בשר טחון מכבש או בקר יש להגיע ל-71.1°C במרכז ולבדוק במדחום מזון.', 'This pathway does not recommend eating raw-meat kibbeh. Kibbeh containing ground lamb or beef should reach 71.1°C at the center and be checked with a food thermometer.', array( 'cdc-raw-kibbeh-salmonella-2013', 'foodsafety-safe-temperatures', 'israel-moh-food-hygiene' ), false ) ),
 	),
 	array(
 		'id' => 'technique-syrian-yogurt-sauce-stability', 'slug' => 'syrian-yogurt-sauce-stability', 'he' => 'יציבות רוטב יוגורט', 'en' => 'Yogurt Sauce Stability', 'region' => 'homs',
@@ -1184,14 +1240,20 @@ foreach ( $c99_syrian_technique_specs as $technique_spec ) {
 		'name' => $c99_text( $technique_spec['he'], $technique_spec['en'] ),
 		'summary' => $c99_text( $technique_spec['summary_he'], $technique_spec['summary_en'] ),
 		'region' => $technique_spec['region'],
-		'primary_intent' => $c99_text( 'להבין מה השיטה עושה, אילו משתנים יש לבדוק ומה אסור להסיק לפני ניסוי.', 'Understand what the technique does, which variables need testing and what cannot be inferred before a trial.' ),
-		'primary_keyword' => $c99_text( 'טכניקת ' . $technique_spec['he'] . ' במטבח הסורי', $technique_spec['en'] . ' in Syrian cooking' ),
+		'primary_intent' => $c99_text(
+			isset( $technique_spec['intent_he'] ) ? $technique_spec['intent_he'] : 'להבין מה השיטה עושה, אילו משתנים יש לבדוק ומה אסור להסיק לפני ניסוי.',
+			isset( $technique_spec['intent_en'] ) ? $technique_spec['intent_en'] : 'Understand what the technique does, which variables need testing and what cannot be inferred before a trial.'
+		),
+		'primary_keyword' => $c99_text(
+			isset( $technique_spec['keyword_he'] ) ? $technique_spec['keyword_he'] : 'טכניקת ' . $technique_spec['he'] . ' במטבח הסורי',
+			isset( $technique_spec['keyword_en'] ) ? $technique_spec['keyword_en'] : $technique_spec['en'] . ' in Syrian cooking'
+		),
 		'schema_type' => 'Article',
 		'facts' => $c99_syrian_facts,
 		'relations' => $c99_syrian_relations,
 		'cross_sell_ids' => isset( $technique_spec['cross_sell_ids'] ) ? $technique_spec['cross_sell_ids'] : $technique_spec['ingredients'],
 		'compliance' => isset( $technique_spec['compliance'] ) ? $technique_spec['compliance'] : array(),
-		'prompt_en' => 'Private editorial process plate of ' . $technique_spec['visual'] . ', accurate food texture, controlled workspace and no embedded instruction text.',
+		'prompt_en' => ( in_array( $technique_spec['id'], array( 'technique-syrian-bulgur-hydration', 'technique-syrian-kibbeh-cooking' ), true ) ? 'Commercial culinary editorial photograph of ' : 'Private editorial process plate of ' ) . $technique_spec['visual'] . ', accurate food texture, controlled workspace and no embedded instruction text.',
 	) );
 }
 
@@ -1229,12 +1291,15 @@ $c99_syrian_tradition_specs = array(
 	array(
 		'id' => 'tradition-aleppan-jewish-foodways', 'slug' => 'aleppan-jewish-foodways', 'he' => 'מסורות האוכל של יהודי חלב', 'en' => 'Aleppan Jewish Foodways',
 		'parent' => 'region-syria-aleppo', 'region' => 'aleppo', 'community' => 'aleppan-jewish',
-		'summary_he' => 'מסורת קהילתית חשובה הכוללת מנות משפחתיות, פסח והעברה בתפוצה. היא מתועדת בתוך הפסיפס החַלבי והסורי, לא כתחליף לכלל המטבח.',
-		'summary_en' => 'An important community tradition spanning family dishes, Passover and transmission in diaspora. It is documented within the Aleppan and Syrian mosaic, not as a substitute for the whole cuisine.',
-		'fact_he' => 'מקורות קהילה ומזון מתעדים המשכיות של יהודי חלב ומנות כגון קובה חמודה, דג׳אג׳ משווי ויברה משפחתית; הטענות נשמרות ברמת קהילה ומשפחה.',
-		'fact_en' => 'Community and food sources document Aleppan Jewish continuity and dishes such as kibbeh hamda, dajaj mashwi and a family yebra; claims remain at community and family scope.',
+		'summary_he' => 'מתכונים של משפחות יהודיות מחלב ממשיכים לחיות בתפוצות, בארוחות שבת וחג וגם במטבח היומיומי. כאן פוגשים קובה חמודה, דג׳אג׳ משווי ויברה עם משמשים מיובשים דרך סיפורים משפחתיים, בלי להפוך משפחה אחת לקול של קהילה שלמה.',
+		'summary_en' => 'Recipes from Aleppan Jewish families continue in diaspora kitchens, at Shabbat and holiday tables and in everyday cooking. Meet kibbeh hamda, dajaj mashwi and yebra with dried apricots through family stories, without making one family the voice of an entire community.',
+		'fact_he' => 'אנו, מוזיאון העם היהודי, והספרייה הלאומית מתעדים את קהילת יהודי סוריה ואת מסורת חלב. ארכיוני אוכל משפחתיים מוסיפים מנות וקולות אישיים, ובהם קובה חמודה, דג׳אג׳ משווי ויברה. יחד הם מציגים המשכיות עשירה, לא תפריט אחיד לכל יהודי חלב.',
+		'fact_en' => 'ANU, Museum of the Jewish People, and the National Library of Israel document Syrian Jewry and Aleppan tradition. Family food archives add individual dishes and voices, including kibbeh hamda, dajaj mashwi and yebra. Together they show rich continuity rather than one uniform menu for all Aleppan Jews.',
 		'sources' => array( 'anu-syrian-jewish-community', 'nli-aleppo-tradition', 'jfs-kibbeh-hamda', 'foodish-dajaj-mashwi', 'jfs-yebra-apricots' ), 'target' => 'dish-kibbeh-hamda-aleppan-jewish', 'target_sources' => array( 'jfs-kibbeh-hamda' ),
-		'visual' => 'an Aleppan Jewish family-food research table with fully cooked kibbeh hamda, roast chicken and family yebra in separate dishes, no synagogue or holiday props',
+		'intent_he' => 'לגלות את מסורות האוכל של יהודי חלב דרך מנות וסיפורים משפחתיים.',
+		'intent_en' => 'Discover Aleppan Jewish foodways through dishes and family stories.',
+		'keyword_he' => 'מאכלי יהודי חלב', 'keyword_en' => 'Aleppan Jewish foodways',
+		'visual' => 'an inviting Aleppan Jewish family table with fully cooked kibbeh hamda in its broth, stuffed roast chicken and yebra with visible dried apricots in separate dishes, no synagogue, ritual or holiday props',
 	),
 	array(
 		'id' => 'tradition-damascene-jewish-foodways', 'slug' => 'damascene-jewish-foodways', 'he' => 'מסורות האוכל של יהודי דמשק', 'en' => 'Damascene Jewish Foodways',
@@ -1288,8 +1353,14 @@ foreach ( $c99_syrian_tradition_specs as $tradition_spec ) {
 		'summary' => $c99_text( $tradition_spec['summary_he'], $tradition_spec['summary_en'] ),
 		'region' => $tradition_spec['region'],
 		'community' => $tradition_spec['community'],
-		'primary_intent' => $c99_text( 'להכיר את המסורת, את היקף העדות ואת הקשריה למנות בלי להכליל מעבר למקור.', 'Understand the tradition, evidence scope and dish connections without generalizing beyond the source.' ),
-		'primary_keyword' => $c99_text( $tradition_spec['he'] . ' מחקר', $tradition_spec['en'] . ' research guide' ),
+		'primary_intent' => $c99_text(
+			isset( $tradition_spec['intent_he'] ) ? $tradition_spec['intent_he'] : 'להכיר את המסורת, את היקף העדות ואת הקשריה למנות בלי להכליל מעבר למקור.',
+			isset( $tradition_spec['intent_en'] ) ? $tradition_spec['intent_en'] : 'Understand the tradition, evidence scope and dish connections without generalizing beyond the source.'
+		),
+		'primary_keyword' => $c99_text(
+			isset( $tradition_spec['keyword_he'] ) ? $tradition_spec['keyword_he'] : $tradition_spec['he'] . ' מחקר',
+			isset( $tradition_spec['keyword_en'] ) ? $tradition_spec['keyword_en'] : $tradition_spec['en'] . ' research guide'
+		),
 		'schema_type' => 'Article',
 		'facts' => array(
 			$c99_syrian_fact( 'fact-' . $tradition_spec['slug'] . '-community-scope', 'cultural', $tradition_spec['fact_he'], $tradition_spec['fact_en'], 'official_source', 'category', $tradition_spec['sources'] ),
@@ -1297,7 +1368,7 @@ foreach ( $c99_syrian_tradition_specs as $tradition_spec ) {
 		'relations' => array(
 			$c99_relation( 'references', $tradition_spec['target'], 'המסורת מקושרת ליעד תוכן תחום ומבוסס מקור.', 'The tradition links to a bounded, source-backed content target.', false, isset( $tradition_spec['target_sources'] ) ? $tradition_spec['target_sources'] : $tradition_spec['sources'], 'official_source' ),
 		),
-		'prompt_en' => 'Private editorial tradition plate of ' . $tradition_spec['visual'] . ', documentary natural light and no decorative stereotypes.',
+		'prompt_en' => ( 'tradition-aleppan-jewish-foodways' === $tradition_spec['id'] ? 'Commercial culinary editorial photograph of ' : 'Private editorial tradition plate of ' ) . $tradition_spec['visual'] . ', documentary natural light and no decorative stereotypes.',
 	) );
 }
 
@@ -1678,7 +1749,7 @@ $c99_syrian_private_entity_ids = array_column( $c99_syrian_entities, 'id' );
 
 return array(
 	'schema' => 'complete99-syrian-foundations-module/v1',
-	'version' => 'culinary-science-2026.08.07.v18',
+	'version' => 'culinary-science-2026.08.08.v20',
 	'sources' => $c99_syrian_sources,
 	'entities' => $c99_syrian_entities,
 	'private_entity_ids' => $c99_syrian_private_entity_ids,

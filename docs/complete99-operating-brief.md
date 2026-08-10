@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-08
-Status: source release target 1.18.2, with a bounded mobile pantry acceptance patch, 12 public dishes, 36 unchanged public products presented in twelve-product server-rendered shelf pages, 56 product identities, 20 private planning prices, 672 science identities, 728 Entity Studio subjects and 27 public science entities across 19 page owners per language
+Status: source release target 1.20.0, with private v20/v6 Japanese koji and shoyu research, culinary-commerce v14, 12 public dishes, 36 unchanged public products, 56 product identities, 20 private planning prices, 672 science identities, 375 sources, 728 Entity Studio subjects and an unchanged public Science projection of exactly 27 entities across 19 standalone page owners per language and 38 bilingual routes, with zero indexable science records; all 12 Syrian and Japanese editorial candidates remain held without a trusted owner key or receipt
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future
@@ -209,6 +209,62 @@ culinary-commerce registry is version 12 and binds culinary-science version 18.
 The catalog, prices, stock authority, disabled payments and private operating
 boundary remain unchanged.
 
+Release 1.19.0 keeps Entity Studio at 728 subjects and the science registry at
+672 identities while increasing the source register to 374. Its frozen artifact
+encoded seven Syrian records and seven science image sets as public/noindex,
+producing 34 entities, 26 standalone owners per language, 52 bilingual routes,
+and a Syrian split of 8 public/noindex to 274 private records. No owner receipt
+was recorded and the artifact was never deployed, so the live graph stayed at
+27 entities, 19 standalone owners and 38 routes. The science-asset collection
+remained separate from the 60 catalog assets. Commerce v13 encoded the Syrian
+bulgur relation without creating a product, price, supplier, stock record or
+payment path; current v20 holds that relation from public projection.
+
+Release 1.20.0 keeps Entity Studio at 728 subjects and the science registry at
+672 identities while increasing the source register to 375. Culinary science
+uses schema `complete99-culinary-science-registry/v6` and version
+`culinary-science-2026.08.08.v20`; culinary commerce is version 14 and binds
+science v20. Exactly five Japanese koji and shoyu identities become reviewed
+private editorial candidates. Shoyu koji, kioke, the koji-hydrolysis guide and
+JAS 1703 standard context are proposed standalone owners, while the
+enzymatic-hydrolysis reaction is a proposed section of the guide. The current
+public graph remains exactly 27 entities, 19 standalone page owners per
+language and 38 bilingual routes, while zero science records are indexable. The
+Japanese cluster remains split into 24 public and 60 private records.
+
+The release verifies exactly three private source-scoped `literature_context` ranges
+from one 46-hour study of three *Aspergillus oryzae* strains: neutral protease
+500-700 U/g, acidic protease 50-150 U/g and leucine aminopeptidase 50-250 U/g.
+They are study measurements, not recipe, production or safety targets, and are
+withheld from public projection with their parent candidate.
+Cross-domain binding registry v3 records exactly 95 unresolved census records
+and 11 private reciprocal Woo candidates. Its valid private decision overlay
+contains zero decisions and zero recognized reviewer authorities. Its five
+verified or public indexes remain literally empty; it publishes no relation and
+mutates no science, commerce or WooCommerce record. The 36 products, prices,
+stock authority, cart and disabled payment state remain unchanged.
+
+The generated-asset manifest is an editorial evidence registry, not an
+installed-file inventory. Local packaging does not authorize live publication.
+All twelve science editorial candidates, seven Syrian and five Japanese, remain
+held. Approval v2 requires a trusted owner key and signed receipt binding the
+exact PNG source evidence separately from the four deployable WebP/AVIF variants
+and complete bilingual content; neither a trusted key nor a receipt exists.
+
+The default-deny Science media policy classifies exactly 47 stems and 175 files:
+28 public-delivery stems, 18 held repository-only stems and one approved
+superseded archive stem. A rebuilt package ships exactly 70 delivery files and
+keeps exactly 105 files out of the ZIP: 78 held files, 24 active public PNG
+source-evidence files and three archive files. All 60 held derivatives formerly
+present in the 1.20 candidate package are excluded, while all 78 held files
+remain retained as repository evidence.
+
+The infrastructure candidate may proceed only through protected `main`, green
+CI and the controlled WordPress workflow, without publishing held content. Any
+later approved candidate needs a newly reviewed and rebuilt artifact containing
+the four exact delivery variants and fresh acceptance. This brief makes no
+deployment or live-publication claim.
+
 - WordPress keeps consumer publishing and commerce readiness metadata.
 - WooCommerce is the product, cart and stock authority. It becomes the payment
   authority only after gateway credentials and live acceptance.
@@ -255,6 +311,12 @@ keeps all 17 earlier private draft offers inactive and adds three private Syrian
 planning-price observations without creating a WooCommerce product, channel
 offer, stock record or supplier claim. The result is 36 live prices and 20
 private planning prices across 56 product identities. Payment remains disabled.
+
+Release 1.20.0 likewise preserves the exact 36 WooCommerce products, 56 product
+identities and 20 private planning prices. Commerce v14 changes only the
+immutable science dependency to v20. The five held Japanese candidates and
+11 private cross-domain candidates create no product, price, stock, supplier,
+offer, checkout path or payment activation.
 
 - merchant identity and contact details;
 - payment provider and live-account verification;
@@ -390,6 +452,26 @@ and Palestinian records. The expansion adds explicit molecular, reaction,
 technique, equipment and safety layers. No community record replaces the wider
 cuisine. Twelve unresolved evidence or handling records remain held.
 
+The frozen 1.19.0 artifact encoded seven reviewed Syrian records around Aleppo
+and the Aleppine kibbeh family as public/noindex candidates. They include Syrian
+bulgur, cooked lamb and beef, hydration principles, fully cooked kibbeh methods
+and source-scoped Aleppan Jewish foodways. No owner receipt existed and the
+artifact was never deployed, so none enlarged the live one-record Syrian public
+projection. Current v20 holds all seven as private editorial candidates. The
+pending `dish-kibbeh-meshwiyyeh` record also stays private, with no raw-kibbeh
+method or Recipe schema. Family testimony remains bounded to the named family
+or community and never becomes a universal claim about Aleppo or Syria.
+
+Release 1.20.0 prepares five reviewed Japanese koji and shoyu records as held
+editorial candidates. Four are proposed standalone bilingual pages and the
+reaction is a proposed section inside the koji-hydrolysis guide. Producer and
+retail-listing identities remain private. The three verified literature
+measurements, unverified reaction-to-product and shoyu-to-dish hypotheses, and
+all cross-domain v3 unresolved or candidate records remain private. The active
+public Science surface stays at 27 entities, 19 standalone owners per language
+and 38 bilingual routes; every public science page remains `noindex,follow` and
+outside the sitemap.
+
 ## 9. Integrations and future hardware
 
 The public WordPress site is the discovery and publishing layer. Sensitive
@@ -438,8 +520,9 @@ Every production release must preserve:
 - keyboard navigation, visible focus, console, overflow, and control-size checks;
 - a recoverable rollback path and a periodic exercised rollback.
 
-Current live alias: `https://a235232-tmp.s1242.upress.link/`
-Future canonical domain: `complete99.co.il` after registration and DNS/SSL.
+Canonical production domain: `https://complete99.co.il/`
+The former UPress temporary alias is historical deployment evidence only and
+must not be presented as the current public address.
 
 ## 11. Evidence-backed sources
 

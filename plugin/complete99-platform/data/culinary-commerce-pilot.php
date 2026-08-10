@@ -521,9 +521,9 @@ foreach ( $c99_japanese_premium_commerce['offer_configs'] as $premium_offer_conf
 
 return array(
 	'schema'                     => 'complete99-culinary-commerce-registry/v2',
-	'version'                    => 'culinary-commerce-2026.08.07.v12',
-	'generated_at'               => '2026-08-07',
-	'knowledge_registry_version' => 'culinary-science-2026.08.07.v18',
+	'version'                    => 'culinary-commerce-2026.08.08.v14',
+	'generated_at'               => '2026-08-08',
+	'knowledge_registry_version' => 'culinary-science-2026.08.08.v20',
 	'controlled_vocabulary'      => array(
 		'product_states'           => array( 'research_candidate', 'verified_product', 'active', 'retired' ),
 		'variant_states'           => array( 'research_candidate', 'verified_variant', 'active', 'retired' ),

@@ -98,9 +98,9 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    transaction rollback with cache invalidation, exact revision and source-base
    conflicts, explicit draft-only rebase, history-chain tamper detection,
    bounded API pagination, orphan-dossier audit access and fail-closed
-   observation identity collisions. Require the cumulative 672-entity
-   `culinary-science-2026.08.07.v18` registry, the
-   `culinary-commerce-2026.08.07.v12` registry and the exact 728-subject Entity
+    observation identity collisions. Require the cumulative 672-entity,
+    375-source `culinary-science-2026.08.08.v20` schema-v6 registry, the
+    `culinary-commerce-2026.08.08.v14` registry and the exact 728-subject Entity
    Studio index: 672 science identities plus 56 product identities. Require
    exact evidence chronology and evidence-class alignment with each source
    type. Require the Lebanese expansion to contain exactly 121 identities in
@@ -133,8 +133,10 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    Syrian graph at exactly 282 identities, including 77 dishes, 69 ingredients,
    25 regional or topic hubs, 30 techniques, 29 traditions, 16 preparations,
    10 guides, 11 culinary institutions, 5 markets, 6 restaurants and the three
-   preserved private market records. One safe Syrian consumer gateway remains
-   `noindex,follow`; the other 281 Syrian entities remain private. Confirm the
+   preserved private market records. Require exactly one Syrian public record,
+   the pre-existing cuisine root, and exactly 281 private records. Confirm the
+   seven Aleppo editorial candidates remain private. All public records remain
+   `noindex,follow`. Confirm the
    86 new records contain no price, supplier, stock, product, offer or public
    route, and confirm the four exact held identities. Confirm all
    202 Lebanese and all 96 Iraqi identities remain private, noindex and
@@ -147,8 +149,20 @@ exact non-JSON 403 signature, then keeps using query transport for the run. A JS
    WooCommerce price, offer, stock, supplier, import route, landed-cost or POS
    row. Confirm only
    the exact explicit `public_market_projection=public` value can enter the
-   public projection, and require 27 public science entities across 19
-   canonical page owners per language.
+    public projection, and require 27 public science entities across 19
+    standalone page owners per language and 38 bilingual routes. Require zero
+    indexable science records and an empty science sitemap. Confirm the Syrian
+    bulgur-to-product relation remains private, with no public edge, new offer,
+    price or stock record. Confirm the Japanese cluster contains exactly 24
+    public and 60 private records. Require the five exact Japanese koji and
+    shoyu candidates to remain private, including their four proposed
+    standalone owners and one proposed section owner. Require exactly three
+    verified literature-context assay ranges with their unit, method, specimen
+    scope, conditions and source to remain private. Require cross-domain v3 to
+    contain exactly 95 unresolved census records plus 11 private Woo candidates
+    and five literally empty verified or public indexes. Require its valid
+    private decision overlay to report zero decisions and zero recognized
+    reviewer authorities.
    Require the Lebanon contracts to prove the March 2026 direct and indirect
    trade boundary, separate shared Levantine identities, no raw-meat recipe or
    consumption guidance, validated-process gates for fermentation and
@@ -300,7 +314,84 @@ earlier probe-finalize response was lost, the next run waits for that unstarted
 probe lease, releases only its exact state-free reservation, and repeats the full
 attestation under a new probe.
 
-## Release 1.18.2 live verification
+## Release 1.20.0 infrastructure and held-publication verification
+
+The current source is an infrastructure release candidate, not authorization
+to publish the seven Syrian or five Japanese editorial candidates. No trusted
+owner key or receipt exists. It may proceed only through protected `main`, a
+green required CI result and the controlled WordPress workflow, and only while
+the default-deny package keeps all held content private. This runbook records no
+deployment or live-publication claim.
+
+Before accepting the held candidate locally:
+
+1. Confirm the artifact, manifest and deployment marker all report `1.20.0`.
+2. Confirm science schema v6 and v20 contain exactly 672 entities and 375
+   sources, commerce v14 binds to science v20, and Entity Studio resolves 728
+   subjects.
+3. Confirm the anonymous public projection remains exactly 27 science records,
+   19 standalone owners per language and 38 bilingual routes, with zero
+   indexable records.
+4. Confirm the Japanese cluster is split into 24 public and 60 private records,
+   and that the exact five koji and shoyu candidates expose no route, bundle,
+   relation, measurement or asset.
+5. Confirm the Syrian cluster is split into one public cuisine root and 281
+   private records, and that the exact seven Aleppo candidates expose no route,
+   bundle, relation or asset.
+6. Confirm exactly three verified literature-context ranges remain private:
+   neutral protease 500-700 U/g, acidic protease 50-150 U/g and leucine
+   aminopeptidase 50-250 U/g.
+7. Confirm the generated-asset manifest, which is an editorial evidence registry
+   rather than an installed-file inventory, contains 60 catalog entries and
+   twelve separately classified, held Science editorial entries. A file receipt
+   must not be treated as publication approval.
+8. Confirm the default-deny Science media policy inventories exactly 47 stems
+   and 175 repository files: 28 public-delivery stems, 18 held repository-only
+   stems and one approved superseded archive stem. The ZIP must contain exactly
+   70 public delivery files and exclude all 105 repository-only files: 78 held,
+   24 active public PNG source-evidence and three archive files. Confirm all 60
+   formerly packaged held derivatives are absent while all 78 held files remain
+   available as repository evidence.
+9. Confirm cross-domain v3 contains exactly 95 unresolved census records and 11
+   private reciprocal Woo candidates. Require all five verified or public
+   indexes to be literally empty and the valid private decision overlay to
+   report zero decisions and zero recognized reviewer authorities.
+10. Confirm the exact 36 products, 56 product identities, 20 private planning
+   prices, stock, cart and disabled payment state are unchanged.
+
+Before publishing any held Science candidate in the future:
+
+1. Establish the trusted owner key and record a valid approval-v2 receipt for
+   each candidate proposed for publication. The receipt must bind the exact PNG
+   source evidence separately from all four deployable WebP/AVIF variants and
+   the complete Hebrew and English content.
+2. Update the explicit publication-decision records and prove that unapproved,
+   missing, malformed or stale receipts fail closed.
+3. Build and independently validate a newly reviewed artifact containing the
+   four exact approved delivery variants. Do not reinterpret an earlier held
+   package as approved.
+4. Deploy only through the controlled WordPress workflow, then verify anonymous
+   health, exact approved routes, negative private-route evidence, asset
+   identity, schema, sitemap, WooCommerce and disabled-payment state.
+5. Run real Chrome acceptance in Hebrew and English at desktop and 390 CSS
+   pixels, and prove bridge deletion, row absence and route 404.
+
+## Preserved release 1.19.0 artifact audit, not live publication
+
+The immutable 1.19.0 artifact may be retained and hash-audited, but it is not
+evidence that its seven Syrian candidates were approved, installed or live. Do
+not deploy or modify the historical artifact. An audit may confirm that it
+encoded science v19 with 672 identities and 374 sources, commerce v13, 728
+Entity Studio subjects, 34 public/noindex entities, 26 standalone owners per
+language, 52 bilingual routes, a Syrian split of 8 public/noindex and 274
+private records, seven science asset entries and the unchanged 60 catalog
+assets. The absence of an owner receipt and live deployment means the
+authoritative live boundary remained the 1.18 baseline of 27 entities, 19
+standalone owners per language and 38 bilingual routes. Current v20 holds the
+seven Syrian candidates and bulgur relation. The exact 36 products, prices,
+stock, cart and disabled payment state were unchanged.
+
+## Preserved release 1.18.2 live verification
 
 Before installation:
 
@@ -505,14 +596,15 @@ A production release is complete only when the non-secret audit JSON shows:
   version 1.9.0 additions;
 - a private Entity Studio registration and invariant check with no public route,
   no new role and no WooCommerce write;
-- exact registry receipts for culinary science v18 and culinary commerce v12,
-  with 672 science identities, 56 product identities and 728 Entity Studio
-  subjects;
+- exact registry receipts for culinary science schema v6 and v20 and culinary
+  commerce v14, with 672 science identities, 375 sources, 56 product identities and 728
+  Entity Studio subjects;
 - exact 56 of 56 product price-basis coverage, comprising 36 live prices and 20
-  private planning prices, with zero active or draft offer added by 1.18.2;
-- exact 282-identity Syrian type counts, including the 86 new private identities
-  and four exact held records, with no price, product, offer, supplier, stock or
-  public projection;
+  private planning prices, with zero active or draft offer added by 1.20.0;
+- exact 282-identity Syrian type counts, including one public cuisine root and
+  281 private identities, the 86 release-1.16 private identities and four exact
+  held safety records, with the seven Aleppo editorial candidates and bulgur
+  relation private and no new price, product, offer, supplier or stock record;
 - exact 96-identity Iraqi type counts and proof that all 96 remain private,
   noindex and reference-only, with no price observation, offer, stock, supplier
   or public projection;
@@ -522,12 +614,29 @@ A production release is complete only when the non-secret audit JSON shows:
   private, noindex and reference-only;
 - six dated Lebanese retail observations with no product identity, offer,
   stock, supplier, import route, landed cost or public price projection;
-- 27 public science entities, 19 public canonical page owners per language and
-  38 bilingual routes, with the 84-identity Japanese cluster split into 24
-  public and 60 private records;
-- negative public evidence for every Syrian expansion record and every Lebanon
-  child across API, search, sitemap, rendered routes, public catalog, POS and
-  structured data, with positive evidence only for the reviewed Lebanon root;
+- exactly 27 public science entities, 19 standalone page owners per language
+  and 38 bilingual routes, with the 84-identity Japanese cluster split into 24
+  public and 60 private records and zero indexable science records;
+- positive public evidence only for the pre-existing Syrian cuisine root and
+  reviewed Lebanese root; negative evidence for the seven Aleppo and five
+  Japanese editorial candidates, all 281 private Syrian records and every
+  Lebanese child across API, search, sitemap, rendered routes, public catalog,
+  POS and structured data;
+- twelve exact held Science editorial evidence records, including seven Syrian
+  and five Japanese sets, kept separate from the unchanged 60-entry generated
+  catalog register and never interpreted as owner approval;
+- approval-v2 status proving that no trusted owner key or receipt exists and
+  that the PNG source-evidence receipts are distinct from the four deployable
+  WebP/AVIF receipts and complete bilingual content;
+- the exact default-deny Science media inventory of 47 stems and 175 files, with
+  70 delivery files in the ZIP and 105 repository-only files absent, including
+  all 78 held files, 24 active public PNG sources and the three-file superseded
+  archive;
+- exactly three private verified literature-context ranges with complete method
+  and source scope, and zero public measurement rendering from the held cohort;
+- cross-domain v3 with exactly 95 unresolved census records, 11 private Woo
+  candidates, five literally empty verified or public indexes, zero decisions
+  and zero recognized reviewer authorities;
 - `sync_configured: true` after an exact secret checkpoint, without exposing the
   value;
 - anonymous `robots.txt` content and SHA-256 matching the managed policy;

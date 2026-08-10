@@ -55,6 +55,10 @@ final class Complete99_REST {
 		$model_digest = $model_integrity_valid ? self::stored_read_model_digest( $model ) : '';
 		$science_loaded = class_exists( 'Complete99_Culinary_Science', false );
 		$science        = $science_loaded ? Complete99_Culinary_Science::status() : array();
+		$bindings_loaded = class_exists( 'Complete99_Cross_Domain_Bindings', false )
+			&& is_callable( array( 'Complete99_Cross_Domain_Bindings', 'status' ) );
+		$bindings = $bindings_loaded ? Complete99_Cross_Domain_Bindings::status() : array();
+		$bindings = is_array( $bindings ) ? $bindings : array();
 		$commerce_graph_loaded = class_exists( 'Complete99_Culinary_Commerce', false );
 		$commerce_graph = $commerce_graph_loaded ? Complete99_Culinary_Commerce::status() : array();
 		$commerce_registry_valid = $commerce_graph_loaded && ! empty( $commerce_graph['registry_valid'] );
@@ -93,6 +97,8 @@ final class Complete99_REST {
 					'ttl_seconds' => self::PUBLIC_MODEL_TTL,
 				),
 				'culinary_science_ready' => $science_loaded && ! empty( $science['ready'] ),
+				'cross_domain_bindings_valid' => $bindings_loaded && ! empty( $bindings['registry_valid'] ),
+				'cross_domain_bindings_version' => isset( $bindings['version'] ) ? (string) $bindings['version'] : '',
 				'culinary_commerce_registry_valid' => $commerce_registry_valid,
 				'culinary_commerce_ready' => $commerce_graph_loaded && ! empty( $commerce_graph['commerce_ready'] ),
 			)

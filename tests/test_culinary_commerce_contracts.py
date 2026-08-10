@@ -27,7 +27,7 @@ SYRIAN_COMMERCE_DATA = (
 )
 
 EXPECTED_SCHEMA = "complete99-culinary-commerce-registry/v2"
-EXPECTED_VERSION = "culinary-commerce-2026.08.07.v12"
+EXPECTED_VERSION = "culinary-commerce-2026.08.08.v14"
 EXPECTED_COUNTS = {
     "countries": 5,
     "currencies": 5,
@@ -1701,8 +1701,8 @@ def test_fresh_commerce_registry_refreshes_its_science_dependency() -> None:
     result = json.loads(payload)
     assert result == {
         "is_error": False,
-        "knowledge_version": "culinary-science-2026.08.07.v18",
-        "science_version": "culinary-science-2026.08.07.v18",
+        "knowledge_version": "culinary-science-2026.08.08.v20",
+        "science_version": "culinary-science-2026.08.08.v20",
     }
 
 

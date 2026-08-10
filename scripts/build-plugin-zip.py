@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import stat
 import tempfile
 import zipfile
 from pathlib import Path, PurePath, PurePosixPath
@@ -19,13 +20,36 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-08 07:30:00"
+RELEASE_LAST_UPDATED = "2026-08-08 09:37:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
 GENERATED_SOURCE_ROOT = PurePath("assets/images/generated")
 SCIENCE_SOURCE_ROOT = PurePath("assets/images/science")
-SOURCE_ONLY_PNG_ROOTS = {GENERATED_SOURCE_ROOT, SCIENCE_SOURCE_ROOT}
+SOURCE_ONLY_PNG_ROOTS = {GENERATED_SOURCE_ROOT}
+SCIENCE_MEDIA_POLICY_SCHEMA = "complete99-science-media-package-policy/v1"
+SCIENCE_MEDIA_POLICY_DIR = ROOT / "release-policies"
+SCIENCE_MEDIA_STATES = {
+    "public_delivery",
+    "held_repository_only",
+    "source_evidence_repository_only",
+    "approved_archive_repository_only",
+}
+SCIENCE_MEDIA_STEM_STATES = SCIENCE_MEDIA_STATES - {
+    "source_evidence_repository_only",
+}
+SCIENCE_MEDIA_EXPECTED_COUNTS = {
+    "stem_count": 47,
+    "public_delivery_stem_count": 28,
+    "held_repository_only_stem_count": 18,
+    "approved_archive_repository_only_stem_count": 1,
+    "source_file_count": 175,
+    "delivery_file_count": 70,
+    "held_repository_file_count": 78,
+    "source_evidence_repository_file_count": 24,
+    "repository_only_file_count": 105,
+    "superseded_archive_file_count": 3,
+}
 FORBIDDEN_SECRET_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
 FORBIDDEN_SECRET_EXACT_NAMES = {"id_rsa", "id_ed25519"}
 FORBIDDEN_JSON_NAME = re.compile(
@@ -92,6 +116,289 @@ def canonical_contents(path: Path) -> bytes:
     return raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
 
 
+def reject_duplicate_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Reject duplicate keys before a release policy can be interpreted."""
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"Duplicate JSON key: {key}")
+        result[key] = value
+    return result
+
+
+def science_media_policy_path(version: str) -> Path:
+    return SCIENCE_MEDIA_POLICY_DIR / f"{SLUG}-{version}-science-media.json"
+
+
+def science_media_policy_digest(policy: dict[str, object]) -> str:
+    canonical = json.dumps(
+        policy,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(
+        SCIENCE_MEDIA_POLICY_SCHEMA.encode("ascii") + b"\0" + canonical
+    ).hexdigest()
+
+
+def _exact_keys(value: object, expected: set[str], label: str) -> dict[str, object]:
+    if not isinstance(value, dict) or set(value) != expected:
+        raise SystemExit(f"Invalid {label} keys")
+    return value
+
+
+def science_source_inventory(source_root: Path) -> dict[str, Path]:
+    """Return direct regular Science files after rejecting filesystem indirection."""
+    science_root = source_root / Path(*SCIENCE_SOURCE_ROOT.parts)
+    try:
+        root_stat = science_root.lstat()
+        resolved_root = science_root.resolve(strict=True)
+    except OSError as error:
+        raise SystemExit("Science media source root is missing") from error
+    reparse_flag = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
+    if (
+        not stat.S_ISDIR(root_stat.st_mode)
+        or science_root.is_symlink()
+        or bool(getattr(root_stat, "st_file_attributes", 0) & reparse_flag)
+    ):
+        raise SystemExit("Science media source root is indirect or not a directory")
+    inventory: dict[str, Path] = {}
+    try:
+        entries = list(science_root.iterdir())
+    except OSError as error:
+        raise SystemExit("Science media source root could not be enumerated") from error
+    for path in entries:
+        try:
+            path_stat = path.lstat()
+            resolved = path.resolve(strict=True)
+        except OSError as error:
+            raise SystemExit("Science media source entry could not be resolved safely") from error
+        if (
+            not stat.S_ISREG(path_stat.st_mode)
+            or path.is_symlink()
+            or bool(getattr(path_stat, "st_file_attributes", 0) & reparse_flag)
+            or resolved.parent != resolved_root
+        ):
+            raise SystemExit("Science media source contains an indirect or special entry")
+        relative = path.relative_to(source_root).as_posix()
+        inventory[relative] = path
+    return inventory
+
+
+def science_media_policy_contract(
+    version: str | None = None,
+    *,
+    source_root: Path | None = None,
+    policy_path: Path | None = None,
+) -> dict[str, object]:
+    """Validate the complete default-deny Science media export contract."""
+    if version is None:
+        version = version_contract()[0]
+    source_root = SOURCE if source_root is None else source_root
+    policy_path = science_media_policy_path(version) if policy_path is None else policy_path
+    try:
+        policy = json.loads(
+            policy_path.read_text(encoding="utf-8"),
+            object_pairs_hook=reject_duplicate_json_object,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
+        raise SystemExit("Science media package policy could not be read safely") from error
+    policy = _exact_keys(
+        policy,
+        {
+            "schema",
+            "release_version",
+            "plugin_slug",
+            "approval_registry",
+            "expected_counts",
+            "stems",
+            "files",
+        },
+        "Science media policy",
+    )
+    expected_counts = _exact_keys(
+        policy["expected_counts"],
+        set(SCIENCE_MEDIA_EXPECTED_COUNTS),
+        "Science media expected counts",
+    )
+    if (
+        policy["schema"] != SCIENCE_MEDIA_POLICY_SCHEMA
+        or policy["release_version"] != version
+        or policy["plugin_slug"] != SLUG
+        or any(type(value) is not int for value in expected_counts.values())
+        or expected_counts != SCIENCE_MEDIA_EXPECTED_COUNTS
+    ):
+        raise SystemExit("Science media package policy identity/count contract is invalid")
+
+    source_inventory = science_source_inventory(source_root)
+
+    approval = _exact_keys(
+        policy["approval_registry"],
+        {"relative_path", "bytes", "sha256"},
+        "Science media approval registry receipt",
+    )
+    if approval["relative_path"] != "data/culinary-science-publication-approvals.php":
+        raise SystemExit("Science media approval registry path is invalid")
+    approval_path = source_root / str(approval["relative_path"])
+    try:
+        approval_contents = canonical_contents(approval_path)
+    except OSError as error:
+        raise SystemExit("Science media approval registry is missing") from error
+    if (
+        not isinstance(approval["bytes"], int)
+        or isinstance(approval["bytes"], bool)
+        or approval["bytes"] != len(approval_contents)
+        or not isinstance(approval["sha256"], str)
+        or not re.fullmatch(r"[a-f0-9]{64}", approval["sha256"])
+        or approval["sha256"] != hashlib.sha256(approval_contents).hexdigest()
+    ):
+        raise SystemExit("Science media approval registry receipt drifted")
+
+    stems = policy["stems"]
+    files = policy["files"]
+    if not isinstance(stems, list) or not isinstance(files, list):
+        raise SystemExit("Science media policy collections are invalid")
+    stem_records: dict[str, dict[str, object]] = {}
+    previous_stem = ""
+    for raw_stem in stems:
+        stem = _exact_keys(
+            raw_stem,
+            {"stem", "state", "binding_id", "reason"},
+            "Science media stem",
+        )
+        stem_name = stem["stem"]
+        if (
+            not isinstance(stem_name, str)
+            or not re.fullmatch(r"c99-science-[a-z0-9-]+-v[0-9]{2}", stem_name)
+            or stem_name <= previous_stem
+            or not isinstance(stem["state"], str)
+            or stem["state"] not in SCIENCE_MEDIA_STEM_STATES
+            or not isinstance(stem["binding_id"], str)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9:-]+", stem["binding_id"])
+            or not isinstance(stem["reason"], str)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9_]+", stem["reason"])
+        ):
+            raise SystemExit("Science media stem contract is invalid or unsorted")
+        stem_records[stem_name] = stem
+        previous_stem = stem_name
+
+    policy_paths: set[str] = set()
+    delivery_paths: set[str] = set()
+    state_counts = {state: 0 for state in SCIENCE_MEDIA_STATES}
+    superseded_archive_count = 0
+    previous_path = ""
+    allowed_filenames: dict[str, set[str]] = {}
+    for stem_name in stem_records:
+        allowed_filenames[stem_name] = {
+            f"{stem_name}.png",
+            f"{stem_name}.webp",
+            f"{stem_name}.avif",
+            f"{stem_name}-768.webp",
+            f"{stem_name}-768.avif",
+        }
+    for raw_file in files:
+        record = _exact_keys(
+            raw_file,
+            {"stem", "relative_path", "bytes", "sha256", "state", "reason"},
+            "Science media file",
+        )
+        relative = record["relative_path"]
+        stem_name = record["stem"]
+        if (
+            not isinstance(relative, str)
+            or not isinstance(stem_name, str)
+            or stem_name not in stem_records
+            or relative <= previous_path
+        ):
+            raise SystemExit("Science media file contract is invalid or unsorted")
+        posix = PurePosixPath(relative)
+        if (
+            posix.is_absolute()
+            or ".." in posix.parts
+            or posix.parent != PurePosixPath(SCIENCE_SOURCE_ROOT.as_posix())
+            or posix.name not in allowed_filenames[stem_name]
+            or relative in policy_paths
+            or not isinstance(record["state"], str)
+            or record["state"] not in SCIENCE_MEDIA_STATES
+            or not isinstance(record["reason"], str)
+            or not re.fullmatch(r"[a-z0-9][a-z0-9_]+", record["reason"])
+            or not isinstance(record["bytes"], int)
+            or isinstance(record["bytes"], bool)
+            or record["bytes"] < 1
+            or not isinstance(record["sha256"], str)
+            or not re.fullmatch(r"[a-f0-9]{64}", record["sha256"])
+        ):
+            raise SystemExit("Science media file receipt is invalid")
+        stem_state = stem_records[stem_name]["state"]
+        file_state = record["state"]
+        if stem_state == "held_repository_only" and file_state != stem_state:
+            raise SystemExit("Held Science media stem contains a deliverable file")
+        if stem_state == "approved_archive_repository_only" and file_state != stem_state:
+            raise SystemExit("Archived Science media stem contains a deliverable file")
+        if stem_state == "public_delivery":
+            if posix.suffix == ".png" and file_state != "source_evidence_repository_only":
+                raise SystemExit("Public Science PNG source is not repository-only evidence")
+            if posix.suffix != ".png" and file_state != "public_delivery":
+                raise SystemExit("Public Science delivery derivative is not allowlisted")
+        if record["reason"] == "superseded_public_asset":
+            if file_state != "approved_archive_repository_only":
+                raise SystemExit("Superseded Science media is not archive-only")
+            superseded_archive_count += 1
+        source_path = source_inventory.get(relative)
+        if source_path is None:
+            raise SystemExit(f"Science media source is missing: {relative}")
+        try:
+            raw = source_path.read_bytes()
+        except OSError as error:
+            raise SystemExit(f"Science media source is missing: {relative}") from error
+        if len(raw) != record["bytes"] or hashlib.sha256(raw).hexdigest() != record["sha256"]:
+            raise SystemExit(f"Science media source receipt drifted: {relative}")
+        policy_paths.add(relative)
+        state_counts[str(file_state)] += 1
+        if file_state == "public_delivery":
+            delivery_paths.add(relative)
+        previous_path = relative
+
+    actual_paths = set(source_inventory)
+    if actual_paths != policy_paths:
+        raise SystemExit("Science media policy has missing or unclassified source files")
+    counts = {
+        "stem_count": len(stem_records),
+        "public_delivery_stem_count": sum(
+            record["state"] == "public_delivery" for record in stem_records.values()
+        ),
+        "held_repository_only_stem_count": sum(
+            record["state"] == "held_repository_only" for record in stem_records.values()
+        ),
+        "approved_archive_repository_only_stem_count": sum(
+            record["state"] == "approved_archive_repository_only"
+            for record in stem_records.values()
+        ),
+        "source_file_count": len(policy_paths),
+        "delivery_file_count": len(delivery_paths),
+        "held_repository_file_count": state_counts["held_repository_only"],
+        "source_evidence_repository_file_count": state_counts[
+            "source_evidence_repository_only"
+        ],
+        "repository_only_file_count": (
+            state_counts["held_repository_only"]
+            + state_counts["source_evidence_repository_only"]
+            + state_counts["approved_archive_repository_only"]
+        ),
+        "superseded_archive_file_count": superseded_archive_count,
+    }
+    if counts != SCIENCE_MEDIA_EXPECTED_COUNTS:
+        raise SystemExit("Science media resolved counts do not match the release contract")
+    return {
+        "policy": policy,
+        "policy_sha256": science_media_policy_digest(policy),
+        "delivery_paths": frozenset(delivery_paths),
+        "counts": counts,
+        "approval_registry_sha256": approval["sha256"],
+    }
+
+
 def version_contract() -> tuple[str, str]:
     text = MAIN.read_text(encoding="utf-8")
     header = re.search(r"^\s*\*\s*Version:\s*([0-9]+\.[0-9]+\.[0-9]+)\s*$", text, re.MULTILINE)
@@ -111,6 +418,7 @@ def version_contract() -> tuple[str, str]:
 
 def source_files() -> list[Path]:
     files: list[Path] = []
+    science_candidates: list[Path] = []
     for path in SOURCE.rglob("*"):
         if not path.is_file():
             continue
@@ -126,6 +434,22 @@ def source_files() -> list[Path]:
                 f"{relative.as_posix()} ({forbidden_reason})"
             )
         if path.name in EXCLUDED_NAMES:
+            continue
+        if relative.parent.as_posix() == SCIENCE_SOURCE_ROOT.as_posix():
+            science_candidates.append(path)
+            continue
+        signature = credential_signature_label(path.read_bytes())
+        if signature:
+            raise SystemExit(
+                f"Refusing to package credential signature in "
+                f"{relative.as_posix()} ({signature})"
+            )
+        files.append(path)
+    contract = science_media_policy_contract()
+    delivery_paths = contract["delivery_paths"]
+    for path in science_candidates:
+        relative = path.relative_to(SOURCE)
+        if relative.as_posix() not in delivery_paths:
             continue
         signature = credential_signature_label(path.read_bytes())
         if signature:
@@ -194,6 +518,7 @@ def main() -> int:
     args = parser.parse_args()
 
     version, deployment_id = version_contract()
+    science_media = science_media_policy_contract(version)
     dist = args.dist.resolve()
     artifact = dist / f"{SLUG}-{version}.zip"
 
@@ -215,6 +540,33 @@ def main() -> int:
         "artifact": artifact.name,
         "deployment_id": deployment_id,
         "installed_sha256": installed_digest(artifact),
+        "science_media_approval_registry_sha256": science_media["approval_registry_sha256"],
+        "science_media_approved_archive_repository_only_stem_count": science_media[
+            "counts"
+        ]["approved_archive_repository_only_stem_count"],
+        "science_media_delivery_file_count": science_media["counts"]["delivery_file_count"],
+        "science_media_held_repository_only_stem_count": science_media["counts"][
+            "held_repository_only_stem_count"
+        ],
+        "science_media_held_repository_file_count": science_media["counts"][
+            "held_repository_file_count"
+        ],
+        "science_media_policy_schema": SCIENCE_MEDIA_POLICY_SCHEMA,
+        "science_media_policy_sha256": science_media["policy_sha256"],
+        "science_media_public_delivery_stem_count": science_media["counts"][
+            "public_delivery_stem_count"
+        ],
+        "science_media_repository_only_file_count": science_media["counts"][
+            "repository_only_file_count"
+        ],
+        "science_media_source_file_count": science_media["counts"]["source_file_count"],
+        "science_media_source_evidence_repository_file_count": science_media["counts"][
+            "source_evidence_repository_file_count"
+        ],
+        "science_media_stem_count": science_media["counts"]["stem_count"],
+        "science_media_superseded_archive_file_count": science_media["counts"][
+            "superseded_archive_file_count"
+        ],
         "sha256": digest,
         "size": len(raw),
         "slug": SLUG,
@@ -236,6 +588,25 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Held exactly twelve Syrian and Japanese science editorial candidates: approval v2 binds the exact PNG source evidence separately from the four deployable WebP/AVIF variants and complete bilingual content; no trusted owner key or receipt is present.</li>"
+                "<li>Made the 1.20 Science media package default-deny: exactly 70 approved delivery derivatives ship, while 78 held files, 24 active PNG source-evidence files and the three-file superseded museum archive remain repository-only under an exact receipt policy.</li>"
+                "<li>Versioned the 672-identity culinary-science registry as schema v6 and release v20 with 375 sources, and versioned the unchanged 56-identity culinary-commerce registry as v14 bound to science v20.</li>"
+                "<li>Kept the live public science graph at exactly 27 entities across 19 standalone page owners per language and 38 bilingual routes, with zero indexable science records.</li>"
+                "<li>Kept exactly three verified literature-context assay ranges private: neutral protease 500-700 U/g, acidic protease 50-150 U/g and leucine aminopeptidase 50-250 U/g from one source-scoped 46-hour, three-strain Aspergillus oryzae study. These are reported study measurements, not operating targets.</li>"
+                "<li>Added cross-domain binding registry v3 with exactly 95 unresolved census records and 11 private reciprocal Woo candidate records; its separate decision overlay has zero decisions and zero recognized reviewer authorities, all five indexes remain literally empty and no source registry is mutated.</li>"
+                "<li>Preserved the exact 36 WooCommerce products, prices, stock authority, cart behavior, 20 private planning prices and disabled payment state, with no new product, offer, supplier or checkout activation.</li>"
+                "</ul>"
+                "<h4>1.19.0</h4>"
+                "<ul>"
+                "<li>The frozen 1.19.0 artifact encoded seven Syrian public/noindex candidates but was never owner-approved or deployed; those candidates covered the city, the Aleppine kibbeh family, bulgur, cooked lamb and beef, hydration, fully cooked kibbeh methods and source-scoped Jewish foodways.</li>"
+                "<li>Kept the science registry at 672 identities and Entity Studio at 728 subjects, expanded the source register to 374, and grew the public graph to 34 entities across 26 canonical page owners per language and 52 bilingual routes while keeping zero science records indexable.</li>"
+                "<li>Added seven original responsive Syrian science image sets in a dedicated editorial collection while preserving the separate 60-entry generated catalog asset register.</li>"
+                "<li>Bound only the Syrian bulgur editorial owner to the existing 500 gram bulgur WooCommerce offer at ILS 5.90, with no new product, price, stock, supplier, checkout or payment activation.</li>"
+                "<li>Restored the versioned dish-component projection for all 12 bilingual menu pages and aligned Syrian continuation cards with the approved public knowledge graph while preserving structural breadcrumbs.</li>"
+                "<li>Kept the untested kibbeh meshwiyyeh dish private and pending, published no raw kibbeh method and emitted no Recipe schema for that held record.</li>"
+                "</ul>"
+                "<h4>1.18.2</h4>"
                 "<ul>"
                 "<li>Compacted only the mobile pantry masthead and shelf introduction so the first product card can appear inside the initial 390 by 844 viewport in both languages.</li>"
                 "<li>Kept the complete consumer copy in the server-rendered document while removing repeated narrow-screen labels from the visual flow and scaling the two store headings for a concise mobile shelf.</li>"
@@ -424,8 +795,19 @@ def main() -> int:
         encoding="utf-8",
         newline="\n",
     )
+    integrity_json = json.dumps(
+        integrity,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
     (dist / INTEGRITY_METADATA_NAME).write_text(
-        json.dumps(integrity, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        integrity_json,
+        encoding="utf-8",
+        newline="\n",
+    )
+    (dist / f"{SLUG}-{version}-integrity.json").write_text(
+        integrity_json,
         encoding="utf-8",
         newline="\n",
     )

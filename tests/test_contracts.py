@@ -185,14 +185,54 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("added no WooCommerce offers, stock, supplier claims", changelog)
         self.assertIn("payment activation or role assignments", changelog)
 
-    def test_release_1_18_2_manifest_describes_mobile_acceptance_and_preserves_1_18_1(self) -> None:
+    def test_release_1_20_0_manifest_describes_held_science_and_preserves_history(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
-        self.assertTrue(changelog.startswith("<h4>1.18.2</h4>"))
+        self.assertTrue(changelog.startswith("<h4>1.20.0</h4>"))
+        self.assertIn(
+            "Held exactly twelve Syrian and Japanese science editorial candidates: "
+            "approval v2 binds the exact PNG source evidence separately from the "
+            "four deployable WebP/AVIF variants and complete bilingual content",
+            changelog,
+        )
+        self.assertIn("no trusted owner key or receipt is present", changelog)
+        self.assertIn(
+            "Made the 1.20 Science media package default-deny", changelog
+        )
+        self.assertIn(
+            "exactly 70 approved delivery derivatives ship, while 78 held files, "
+            "24 active PNG source-evidence files and the three-file superseded "
+            "museum archive remain repository-only",
+            changelog,
+        )
+        self.assertIn("schema v6 and release v20 with 375 sources", changelog)
+        self.assertIn(
+            "Kept the live public science graph at exactly 27 entities across 19 "
+            "standalone page owners per language and 38 bilingual routes",
+            changelog,
+        )
+        self.assertIn(
+            "Kept exactly three verified literature-context assay ranges private",
+            changelog,
+        )
+        self.assertIn("Added cross-domain binding registry v3", changelog)
+        self.assertIn("exactly 95 unresolved census records", changelog)
+        self.assertIn("11 private reciprocal Woo candidate records", changelog)
+        self.assertIn("all five indexes remain literally empty", changelog)
+        self.assertIn(
+            "zero decisions and zero recognized reviewer authorities", changelog
+        )
+        self.assertIn("<h4>1.19.0</h4>", changelog)
+        self.assertIn(
+            "The frozen 1.19.0 artifact encoded seven Syrian public/noindex "
+            "candidates but was never owner-approved or deployed",
+            changelog,
+        )
+        self.assertIn("<h4>1.18.2</h4>", changelog)
         self.assertIn("first product card", changelog)
         self.assertIn("390 by 844 viewport in both languages", changelog)
         self.assertIn("complete consumer copy in the server-rendered document", changelog)
@@ -838,6 +878,13 @@ class Complete99ContractTests(unittest.TestCase):
             )
             metadata = json.loads((dist / "complete99-platform-integrity.json").read_text(encoding="utf-8"))
             update_manifest = json.loads((dist / "complete99-platform.json").read_text(encoding="utf-8"))
+            versioned_metadata = json.loads(
+                (
+                    dist
+                    / f"complete99-platform-{metadata['version']}-integrity.json"
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(metadata, versioned_metadata)
             self.assertEqual(metadata["version"], update_manifest["version"])
             artifact = dist / metadata["artifact"]
             checksum = (dist / f"{artifact.name}.sha256").read_text(

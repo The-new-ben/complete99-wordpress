@@ -2,12 +2,11 @@
 
 ## Scope and provenance
 
-This register covers twenty-six full-size visual assets for the culinary
-science program plus responsive museum delivery variants. OpenAI's built-in
-image generation tool created twenty-two retained source PNG files for Complete99
-between 2026-08-06 and 2026-08-07. Four additional Syrian ingredient studies
-are documented editorial crops derived from the generated Syrian pantry
-composition.
+This register documents the named visual cohorts in the culinary-science
+program plus responsive museum variants and exact repository receipts. OpenAI's
+built-in image generation tool created the retained source PNG files for
+Complete99 between 2026-08-06 and 2026-08-08. Four Syrian ingredient studies are
+documented editorial crops derived from the generated Syrian pantry composition.
 
 ImageMagick 7.1.2 Q16-HDRI produced the WebP, AVIF and 768-pixel delivery
 derivatives. Full-size science assets are 1536 by 1024 pixels. Responsive
@@ -32,6 +31,23 @@ concentration, or health outcome.
 For public science pages, `rights_receipt_digest` binds the exact delivered
 WebP file. The retained PNG hash proves source integrity, while the AVIF hash
 proves the optional alternate delivery derivative.
+
+The generated-asset manifest is an editorial evidence registry, not an
+installed-file inventory. It has two separate collections: 60 catalog assets
+and 12 science editorial candidates. The twelve Science entries covered by the
+1.19/1.20 work, seven Syrian and five Japanese, are all held and not public media.
+Approval v2 binds the exact PNG source evidence separately from the four
+deployable WebP/AVIF variants and complete bilingual content. No trusted owner
+key or receipt exists; provenance, alt text and SHA-256 receipts prove identity
+and scope only.
+
+The 1.20 default-deny media policy inventories exactly 47 stems and 175 files:
+28 public-delivery stems, 18 held repository-only stems and one approved
+superseded archive stem. Only 70 public delivery files are selected for the ZIP.
+Exactly 105 files stay repository-only: 78 held files, 24 active public PNG
+source-evidence files and three superseded archive files. This removes all 60
+held derivatives that the earlier 1.20 candidate packaged while preserving all
+78 held files as repository evidence.
 
 ## Asset map
 
@@ -301,6 +317,9 @@ No words, letters, labels, logos, price tags, watermarks, badges, flags, religio
 | `c99-science-japanese-food-science-v01.png` | PNG | 1536x1024 | 2,469,999 | `b0ae4081aa28d1af78c8bc9ea03779755e873954993c2dd95bd005100bb68625` |
 | `c99-science-japanese-food-science-v01.webp` | WebP | 1536x1024 | 214,184 | `41affd1d16f01e9aeb418d05139d0df6aad5bee4c02df88473ea2c33c516c49b` |
 | `c99-science-japanese-food-science-v01.avif` | AVIF | 1536x1024 | 162,428 | `37aad62b0ae0dab54aa82e23f9c07c68fa43f014c4cdfb54032dc37f0f54c507` |
+| `c99-science-japanese-foundations-lab-v01.png` | PNG | 1536x1024 | 3,118,586 | `aeb206fe349fef86b799187491786d6a0c366bf982ecf549221663d6ed26468c` |
+| `c99-science-japanese-foundations-lab-v01.webp` | WebP | 1536x1024 | 179,436 | `6dcf73f4c9bc3a37beed600118e7cbbcb2dc6c6dee2ba10eed51464a46acdb41` |
+| `c99-science-japanese-foundations-lab-v01.avif` | AVIF | 1536x1024 | 107,699 | `f08c33f2cd86303f8debefefeff1bc3ed4b29a15c50ddcb36c7669af087d4110` |
 | `c99-science-hon-mirin-v01.png` | PNG | 1536x1024 | 2,032,609 | `74c72b476a16d6950783d433ce1152ec3d44ecf619e994e37ce94ac5355b0480` |
 | `c99-science-hon-mirin-v01.webp` | WebP | 1536x1024 | 107,164 | `c8808bebd8f92d7ebfd4b78d3ab3853ebff56fbe00e8d98c3433db75d4de97d0` |
 | `c99-science-hon-mirin-v01.avif` | AVIF | 1536x1024 | 86,254 | `3915d6ecefcdb70e77c9849067cd4133d9f5646224be8b5cc1354b013cebc289` |
@@ -317,8 +336,8 @@ No words, letters, labels, logos, price tags, watermarks, badges, flags, religio
 | `c99-science-syrian-pantry-foundations-v01.webp` | WebP | 1536x1024 | 302,712 | `5ace3d023ee89903ab6145e4bebcbeacf4a2e8b0c1e166d6e33e520cf7beab98` |
 | `c99-science-syrian-pantry-foundations-v01.avif` | AVIF | 1536x1024 | 140,591 | `d5de1971678bf5a261b6d843e6c786166886eff5a7bff5f54683291e789e7d11` |
 | `c99-science-syrian-regional-table-v01.png` | PNG | 1536x1024 | 3,000,191 | `afb83ffeca43f78d99284ebefab8eba36358a2316d9ca162f8c6d537aa922d3c` |
-| `c99-science-syrian-regional-table-v01.webp` | WebP | 1536x1024 | 413,414 | `4abfb4b819c5b8df9e555656ee56fd0328b09870fbdb8142dadc9cc769b8e7de` |
-| `c99-science-syrian-regional-table-v01.avif` | AVIF | 1536x1024 | 189,877 | `7aaae837032abe67c346890e0c6cf0a9223e7b197737a1ffd78aaae495a6cdb9` |
+| `c99-science-syrian-regional-table-v01.webp` | WebP | 1536x1024 | 198,012 | `073da8295218283dd115540e169549bc940ae6bbad50f176ca15cea464001b24` |
+| `c99-science-syrian-regional-table-v01.avif` | AVIF | 1536x1024 | 115,653 | `7e0e90409f089675a28e63e741fd9afdad77e28a0166bbe3e0bd861d040f9a3b` |
 | `c99-science-syrian-cooking-methods-v01.png` | PNG | 1536x1024 | 2,773,158 | `d2b006cc83eb802f13861f6c2500f1002fbf4fd64fda7616ed4334351be282b3` |
 | `c99-science-syrian-cooking-methods-v01.webp` | WebP | 1536x1024 | 285,458 | `67e78a4c3ab3ad89718e22b7438c9465d532aa249b88393f69048be08d5cd719` |
 | `c99-science-syrian-cooking-methods-v01.avif` | AVIF | 1536x1024 | 137,059 | `96be7c1d63ed6929f9b22351e58b88d95554deeac78bdf59bd97ce0850f61fee` |
@@ -335,8 +354,8 @@ No words, letters, labels, logos, price tags, watermarks, badges, flags, religio
 | `c99-science-sumac-v01.webp` | WebP | 1536x1024 | 156,078 | `e7a3ce7683eb9e21cba5957e008e5711bad8b60157cc4b906d48eaa975a782da` |
 | `c99-science-sumac-v01.avif` | AVIF | 1536x1024 | 79,487 | `0fafd9b1d217e7fdf379bfef575482953e0753bde7b10260d93c7bf008ff29bf` |
 | `c99-science-lebanese-regional-table-v01.png` | PNG | 1536x1024 | 3,636,692 | `71fd11f969f3b583781eb420a90069ce8f92c147e309a4e4e5417fa5e068970c` |
-| `c99-science-lebanese-regional-table-v01.webp` | WebP | 1536x1024 | 610,172 | `0adf73a4888d068a204d38da644ba222240ccd28b7a10ef67c20fc4f6057b37e` |
-| `c99-science-lebanese-regional-table-v01.avif` | AVIF | 1536x1024 | 479,271 | `43eb1bfdfd32fa48f9316cbe6ee707f1f345a544fe0643bd9019431d6b9209f4` |
+| `c99-science-lebanese-regional-table-v01.webp` | WebP | 1536x1024 | 271,164 | `6f1fa8d7fa80a2a9d873b5e3e2a4c91ae57ee431a4a38db9b90229d3df0319b2` |
+| `c99-science-lebanese-regional-table-v01.avif` | AVIF | 1536x1024 | 143,615 | `5ebd5c49d58fd1c80e31c09b431f3761939855af0780972ede081add4eccbb5b` |
 | `c99-science-museum-store-pantry-v01.png` | PNG | 1536x1024 | 2,841,762 | `2d3edf0c692cbe370cd40b7eb82e2037bf6fb26c20c26ca5ca27e226047eaa42` |
 | `c99-science-museum-store-pantry-v01.webp` | WebP | 1536x1024 | 318,398 | `a2cbec677f8497114d410ca8a9489d3ab9b3a4eba58c0bad9284729d500b4bdd` |
 | `c99-science-museum-store-pantry-v01.avif` | AVIF | 1536x1024 | 188,284 | `86c0b7b9f1f9297e4732c0af1ce447f17d2a581c776f3aa0dce7a38efa6d7315` |
@@ -356,10 +375,12 @@ mobile without changing the asset's editorial binding or rights state.
 | `c99-science-japanese-washoku-v01-768.webp` | WebP | 768x512 | 44,324 | `487e02c7f3feda156ceee31e5574f0cf390f1323adf0cc07e06b3b6e4848b86f` |
 | `c99-science-japanese-premium-ingredients-v01-768.avif` | AVIF | 768x512 | 48,309 | `bc62e9a7aad4b86939b204d3e6b2dcf08b0f464bbc6f13838053f29105a0a94a` |
 | `c99-science-japanese-premium-ingredients-v01-768.webp` | WebP | 768x512 | 74,312 | `4afe255cfdd326a6cc8583cafc4bc843fc8f048310aa779c5fcbce70fa162125` |
-| `c99-science-lebanese-regional-table-v01-768.avif` | AVIF | 768x512 | 51,137 | `d140354868087d05224d036903964371cda14fd08c6b3b1797aa8b11a9004f2b` |
-| `c99-science-lebanese-regional-table-v01-768.webp` | WebP | 768x512 | 102,490 | `f54db843f5f911196a7b364c0cf1e9a10f1b7ab99b43728b3f02c726362f6c34` |
-| `c99-science-syrian-regional-table-v01-768.avif` | AVIF | 768x512 | 46,588 | `8192760321be58628eee20d7e7789764bf516e187bda8572b234eaabca9443e3` |
-| `c99-science-syrian-regional-table-v01-768.webp` | WebP | 768x512 | 87,892 | `2a8d29be2b3357fddfc65ab9bffd815de89762bd5263c0723ed2282dd12d5441` |
+| `c99-science-japanese-foundations-lab-v01-768.avif` | AVIF | 768x512 | 28,786 | `3246bbcc23af9ea04bb6d63f46c315f1814ff4915ad636177ef1a346a327fbd3` |
+| `c99-science-japanese-foundations-lab-v01-768.webp` | WebP | 768x512 | 51,264 | `75ea49f59222af17c67ed80d61a7769a1f49a8c58f65894fcb7d7b121f558512` |
+| `c99-science-lebanese-regional-table-v01-768.avif` | AVIF | 768x512 | 36,436 | `b498bd46618d0dd65695cf71228f713203cdd5e4da281276aaaffc7705efe00f` |
+| `c99-science-lebanese-regional-table-v01-768.webp` | WebP | 768x512 | 71,640 | `d1dddee7ed34b8e7c2ada28d9f3d5df1bc6c2fefef01be933696bee446fb2a57` |
+| `c99-science-syrian-regional-table-v01-768.avif` | AVIF | 768x512 | 34,176 | `92105eb0321e8b4a3e2b6be4f90717e1e802e0b2b314fe7862f08f6e6a69af65` |
+| `c99-science-syrian-regional-table-v01-768.webp` | WebP | 768x512 | 63,564 | `64304aacb1f6cab686f54ab12f1b30efe23ccb014cfacda9aa4d227305a493aa` |
 | `c99-science-museum-store-pantry-v01-768.avif` | AVIF | 768x512 | 55,270 | `0d2baa8e2db35c437ffbb03697822d8b666d7e819a29516fe876f59b88b04b14` |
 | `c99-science-museum-store-pantry-v01-768.webp` | WebP | 768x512 | 92,128 | `04ca668f64c5f3ba5b3fd40175cb6f3383a09616584f0150611fd7bd8385fcc9` |
 | `c99-food-house-spread-hero-2021-wp-v01-768.avif` | AVIF | 768x432 | 34,625 | `d9fe624ca7c0fd0418a72519de27672165f424fa779daffe31a09c1be15844a1` |
@@ -372,7 +393,267 @@ mobile without changing the asset's editorial binding or rights state.
 - Every museum derivative reports the documented dimensions and preserves the
   source aspect ratio. The food-house photograph correctly retains its 1400 by
   788 source ratio in the 768 by 432 variant.
-- Each of the twenty-two retained source-composition PNGs is byte-identical to its
+- In the pre-1.19 cohort, each of the twenty-two retained source-composition PNGs is byte-identical to its
   generated source according to SHA256. The four ingredient PNGs are documented
   crops whose own hashes appear in this register.
-- No existing file was overwritten during import or conversion.
+- The Lebanese and Syrian gateway sets and the Japanese Foundations Lab set
+  were recompressed for the v20 delivery package with ImageMagick 7 at WebP
+  quality 68 and AVIF quality 48. Their combined delivery bytes fell from
+  2,598,972 to 1,301,445 (1,297,527 bytes saved); all three preserved PNG
+  sources remained byte-identical, and every full and 768-pixel derivative
+  passed decode, dimension, and visual comparison checks.
+
+## Aleppo and Syrian kibbeh foundation assets
+
+Seven original editorial images were generated with OpenAI's built-in image
+generation tool on 2026-08-08. The generation session was
+`019fdfcb-bdf5-7f20-8b68-7cef12008948`, and generation was requested against
+main commit `f9e413c64ee67a980adfdcfccb11877d4c28fe22`.
+
+The selected generation evidence is retained outside the release package at:
+
+`C:\Users\pro\Documents\websites\.codex-tmp\complete99-syrian-foundations-assets-2026-08-08-session-019fdfcb`
+
+No prompt sidecar was produced by the generation tool. The prompt text below
+is the reviewed specification used to assess each result. That review is not a
+publication approval and must not be represented as a recovered hidden sidecar.
+
+### Source provenance and preserved PNG identity
+
+| Entity | Original generated source | Evidence filename | PNG SHA256 |
+|---|---|---|---|
+| `region-syria-aleppo` | `C:\Users\pro\.codex\generated_images\019fdfcb-bdf5-7f20-8b68-7cef12008948\exec-b93fb873-2361-46e3-8cc5-4058004415a3.png` | `region-syria-aleppo-source.png` | `90e354e00d4a5e63f661f162284b1b5d0dc21fcada53e2f34d5f937fdd784042` |
+| `hub-aleppine-kibbeh-family` | `C:\Users\pro\.codex\generated_images\019fdfcb-bdf5-7f20-8b68-7cef12008948\exec-b863bf87-6c75-482a-8a8c-9ef0257e0507.png` | `hub-aleppine-kibbeh-family-source.png` | `8ce08587469c4d1c6f18f3cd399c41b5fbfb2f6cc72b23a3046bca167ac8fbdc` |
+| `ingredient-syrian-bulgur` | `C:\Users\pro\.codex\generated_images\019fdfcb-bdf5-7f20-8b68-7cef12008948\exec-9ed78cee-dbdb-4d33-b3f2-cd4daec1614c.png` | `ingredient-syrian-bulgur-source.png` | `765a8b844ce6b12448e81e612a74cbd97e8a2e86506002260b1a29af833050a2` |
+| `ingredient-syrian-red-meat` | `C:\Users\pro\.codex\generated_images\019fdfcb-bdf5-7f20-8b68-7cef12008948\exec-01e27b35-6889-47a7-9764-42c267a13a3d.png` | `ingredient-syrian-red-meat-source.png` | `f2da86bc9b38544c42a1608103ad8b78294ab7385ee4bc93851f5e4716a8337e` |
+| `technique-syrian-bulgur-hydration` | `C:\Users\pro\.codex\generated_images\019fdfcb-bdf5-7f20-8b68-7cef12008948\exec-78b203e1-0905-4739-a89a-e79014a3e23a.png` | `technique-syrian-bulgur-hydration-source.png` | `0839e05df007410bc9ef224683241ac653da4cd35bafe2adc17ac84a12674ccb` |
+| `technique-syrian-kibbeh-cooking` | `C:\Users\pro\.codex\generated_images\019fdfcb-bdf5-7f20-8b68-7cef12008948\exec-48a45d90-5ca8-44bf-8228-5ab1750e1ca9.png` | `technique-syrian-kibbeh-cooking-source.png` | `0c062a2d04ae4a0307f3af4366869f63e295d64bc99d10712fc016627693f0c3` |
+| `tradition-aleppan-jewish-foodways` | `C:\Users\pro\.codex\generated_images\019fdfcb-bdf5-7f20-8b68-7cef12008948\exec-616ef544-68f2-4873-b1c6-2f7fdad0b6fb.png` | `tradition-aleppan-jewish-foodways-source-v2.png` | `e3e3da6e28de043fa5f97e3803441c8e84798fab3ac8b810d70cccfe90c35418` |
+
+Each project PNG is byte-identical to its named evidence file and original
+generated source according to SHA256. For the Aleppan Jewish foodways image,
+only V2 was selected. V1 was rejected because ambiguous extras appeared around
+the chicken, and it was not copied into the evidence folder.
+
+### Bilingual alt text and publication boundary
+
+| Project basename | Exact entity binding | Hebrew alt | English alt |
+|---|---|---|---|
+| `c99-science-syrian-aleppo-table-v01` | `region-syria-aleppo` | שולחן קולינרי חַלבי עם קובה מבושלת, בורגול, ממרח פלפל ואגוז, דובדבנים חמוצים, חבוש ולחם שטוח | Aleppine culinary table with cooked kibbeh, bulgur, red pepper and walnut spread, sour cherries, quince and flatbread |
+| `c99-science-aleppine-kibbeh-family-v01` | `hub-aleppine-kibbeh-family` | תצוגת השוואה של קובה חלבית מבושלת בצורות צלויות, מטוגנות, מגולגלות ומבושלות ברוטב | Comparison display of fully cooked Aleppine kibbeh in grilled, fried, rolled and sauce-cooked forms |
+| `c99-science-syrian-bulgur-v01` | `ingredient-syrian-bulgur` | קערות נפרדות של בורגול דק ובינוני עם כף עץ וגרגרי חיטה סדוקה | Separate bowls of fine and medium bulgur with a wooden scoop and cracked wheat grains |
+| `c99-science-syrian-lamb-beef-family-v01` | `ingredient-syrian-red-meat` | מנות נפרדות של כבש ובקר צרובים ומבושלים היטב על שולחן אבן בהיר | Separate dishes of seared, fully cooked lamb and beef on a pale stone table |
+| `c99-science-syrian-bulgur-hydration-v01` | `technique-syrian-bulgur-hydration` | ארבע קערות המציגות בורגול יבש, ספיחת מים, מנוחה ומרקם לח סופי | Four bowls showing dry bulgur, water uptake, resting and a final hydrated texture |
+| `c99-science-syrian-kibbeh-cooking-v01` | `technique-syrian-kibbeh-cooking` | ארבע תוצאות של קובה מבושלת לחלוטין בבישול לח, בצלייה, בטיגון וברוטב | Four fully cooked kibbeh outcomes from moist cooking, grilling, frying and sauce cooking |
+| `c99-science-aleppan-jewish-foodways-v01` | `tradition-aleppan-jewish-foodways` | שולחן מסורות אוכל של יהודי חלב עם קובה במרק, עוף צלוי ממולא ויברה לצד משמשים מיובשים | Aleppan Jewish foodways table with kibbeh in broth, stuffed roast chicken and yebra beside dried apricots |
+
+The seven assets are held noindex editorial candidates for their one exact
+entity. `actual_product_presentation` is false for every record. They are not
+product photographs, supplier packs, tested recipes, current Complete99 service
+presentations, origin or cultivar evidence, laboratory results, or a claim that
+one depiction exhausts a regional, family or community tradition. Internal
+provenance, rights and bilingual editorial checks do not claim named human or
+owner approval. The assets remain non-public until approval v2 verifies a
+trusted owner receipt binding each exact PNG source separately from all four
+deployable WebP/AVIF variants and the complete Hebrew and English content, and a
+newly reviewed artifact passes release review.
+
+The immutable 1.19 artifact encoded these seven entries with public usage, but
+that artifact lacked owner approval and was never deployed. The current v20
+manifest truth is `usage_state=held`, not evidence that the historical bytes
+were rewritten.
+
+The Aleppo table is regional discovery supported by `avs-mirvet-aleppo` and
+`aleppo-project-cuisine-2017`, not a recipe or citywide household rule. The
+kibbeh family image shows visual variety, not a final taxonomy. Lamb and beef
+remain separate family categories and are not automatic substitutes. The
+Aleppan Jewish image is bounded to documented community and family foodways and
+does not assert a universal menu or ritual.
+
+### Reviewed prompt specifications
+
+`region-syria-aleppo`:
+
+```text
+Commercial culinary editorial photograph of an abundant Aleppo table with several fully cooked kibbeh forms, bulgur, red pepper and walnut spread, sour cherries, quince and warm flatbread, inviting natural window light, accurate food textures, no decorative stereotypes.
+```
+
+`hub-aleppine-kibbeh-family`:
+
+```text
+Commercial overhead comparison of four distinct fully cooked Aleppine kibbeh forms: grilled, fried, rolled and sauce-cooked, separated on neutral ceramic plates, cutaways fully cooked, warm studio light, no claim of a definitive taxonomy.
+```
+
+`ingredient-syrian-bulgur`:
+
+```text
+Commercial macro photograph of fine and medium bulgur grains in separate unbranded ceramic bowls with a wooden scoop, tactile dry grain detail, warm neutral daylight, no origin or grade claim.
+```
+
+`ingredient-syrian-red-meat`:
+
+```text
+Commercial culinary photograph of fully cooked lamb and beef presented in separate neutral dishes, clear visual separation, warm natural light, no raw mince and no equivalence cue.
+```
+
+`technique-syrian-bulgur-hydration`:
+
+```text
+Four-stage bulgur hydration study showing dry grain, water uptake, rested grain and final hydrated texture in identical bowls, controlled workspace, no ratios or instruction text.
+```
+
+`technique-syrian-kibbeh-cooking`:
+
+```text
+Four fully cooked kibbeh outcomes from moist cooking, grilling, frying and sauce cooking, cut open with no pink/raw center, controlled culinary studio, no time-temperature text.
+```
+
+`tradition-aleppan-jewish-foodways`:
+
+```text
+Warm Aleppan Jewish family-food table with fully cooked kibbeh hamda in broth, stuffed roast chicken and family yebra beside dried apricots, separated dishes, documentary natural light, no ritual props/costumes/generalization.
+```
+
+Shared negative specification:
+
+```text
+No text, logos, brands, flags, national symbols, costumes, copied packaging, religious props, raw meat, pink center, unsourced garnish, health claim or watermark.
+```
+
+### Conversion and complete artifact integrity
+
+ImageMagick 7 created every delivery derivative from its preserved PNG. Full
+WebP and responsive WebP use quality 68 with method 6. Full AVIF and responsive
+AVIF use quality 40. Responsive assets use Lanczos scaling to 768 by 512. The
+bounded release optimization reduced the 28 delivery derivatives from
+2,715,688 bytes to 1,849,872 bytes, a saving of 865,816 bytes, without changing
+any retained PNG source. All files decode as 8-bit sRGB and retain the 3:2
+composition.
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-science-syrian-aleppo-table-v01.png` | PNG | 1536x1024 | 2,702,757 | `90e354e00d4a5e63f661f162284b1b5d0dc21fcada53e2f34d5f937fdd784042` |
+| `c99-science-syrian-aleppo-table-v01.webp` | WebP | 1536x1024 | 152,402 | `12be0704e4211ec5b39686ff291ee1b1c162cde2d93e6fc66b83c3316c1fd6c6` |
+| `c99-science-syrian-aleppo-table-v01.avif` | AVIF | 1536x1024 | 66,291 | `b76d2dbe8988e2ff77f3945a7a76ba406526a7f083a4c3ff98e77402af697a2c` |
+| `c99-science-syrian-aleppo-table-v01-768.webp` | WebP | 768x512 | 53,280 | `bf33c3713d91c02314dcba5a12880fb4c1ff52a1517687d9de63556d1a66b73a` |
+| `c99-science-syrian-aleppo-table-v01-768.avif` | AVIF | 768x512 | 21,506 | `5c988117343f91799e5901c761825510b1a43afc38711c9c76738cc81d87b12e` |
+| `c99-science-aleppine-kibbeh-family-v01.png` | PNG | 1536x1024 | 3,423,946 | `8ce08587469c4d1c6f18f3cd399c41b5fbfb2f6cc72b23a3046bca167ac8fbdc` |
+| `c99-science-aleppine-kibbeh-family-v01.webp` | WebP | 1536x1024 | 264,090 | `ad8b1b3fdfc59eb22b7e06e443b1477ec152ab4f00985d44533ff7245d1f8d5b` |
+| `c99-science-aleppine-kibbeh-family-v01.avif` | AVIF | 1536x1024 | 100,486 | `e852acee075ced29382816cf72126596dc9be163c252f7e47e9da96673af3c85` |
+| `c99-science-aleppine-kibbeh-family-v01-768.webp` | WebP | 768x512 | 79,274 | `aeeb41fdc4dfa5cdf5b55d391e8bb08a2823de92797d2ab4e0f2d48e5a5b34dd` |
+| `c99-science-aleppine-kibbeh-family-v01-768.avif` | AVIF | 768x512 | 26,650 | `bec787d4d6c518e2840b31f055d91189e928e14339e64e3350e781ec7c0429fe` |
+| `c99-science-syrian-bulgur-v01.png` | PNG | 1536x1024 | 2,690,132 | `765a8b844ce6b12448e81e612a74cbd97e8a2e86506002260b1a29af833050a2` |
+| `c99-science-syrian-bulgur-v01.webp` | WebP | 1536x1024 | 134,840 | `0abf067b8a84796b002103da6839b549c47adf37bd7821d35b5c0a66b15ab620` |
+| `c99-science-syrian-bulgur-v01.avif` | AVIF | 1536x1024 | 61,530 | `751c0eba10bc368aa310678bb09e26efef563dba80eed83e40c80f9475b11608` |
+| `c99-science-syrian-bulgur-v01-768.webp` | WebP | 768x512 | 47,448 | `1e0ad172fac3ec7b1d9c14456f67322689153abc53e9eb2c98888598460db455` |
+| `c99-science-syrian-bulgur-v01-768.avif` | AVIF | 768x512 | 18,438 | `626744dab964a0eaf42a61bfa6c1287f600513596e07a1ccadb3c0fa47ab3644` |
+| `c99-science-syrian-lamb-beef-family-v01.png` | PNG | 1536x1024 | 2,490,567 | `f2da86bc9b38544c42a1608103ad8b78294ab7385ee4bc93851f5e4716a8337e` |
+| `c99-science-syrian-lamb-beef-family-v01.webp` | WebP | 1536x1024 | 115,636 | `e87dc0d2d74bffe2b48156838a11f704fe35d0480380bd965b186df0affb67db` |
+| `c99-science-syrian-lamb-beef-family-v01.avif` | AVIF | 1536x1024 | 49,327 | `93590f1431df04a989f7cc2fae9ca0f9c406241eba80ca5117808c96b4b1a21f` |
+| `c99-science-syrian-lamb-beef-family-v01-768.webp` | WebP | 768x512 | 38,118 | `eb1c408619280d7475ac87aee0ce94253533c255576101c8f40231b877bb8c93` |
+| `c99-science-syrian-lamb-beef-family-v01-768.avif` | AVIF | 768x512 | 15,253 | `190d8c7606cca9f18c9b307e95314695a6aee2d19c657ee2bcfb8322757c7d82` |
+| `c99-science-syrian-bulgur-hydration-v01.png` | PNG | 1536x1024 | 2,457,045 | `0839e05df007410bc9ef224683241ac653da4cd35bafe2adc17ac84a12674ccb` |
+| `c99-science-syrian-bulgur-hydration-v01.webp` | WebP | 1536x1024 | 102,572 | `762a91a1a3c00483b1c5a572f17b4659a328ee86cf832a281ef360aace6eecd1` |
+| `c99-science-syrian-bulgur-hydration-v01.avif` | AVIF | 1536x1024 | 48,474 | `b11d0a99c6fadf8ae2a65c442617226984e91b9468ba22f88ef600cb68056c5b` |
+| `c99-science-syrian-bulgur-hydration-v01-768.webp` | WebP | 768x512 | 34,876 | `4eade017a529f47d94fbb58044c06dbc6c1f79c836b2691b5dbe04af3fb927a1` |
+| `c99-science-syrian-bulgur-hydration-v01-768.avif` | AVIF | 768x512 | 14,353 | `0f1013188fb0a543509e32e5d3096b510c098b7ff647d3fe459b54cc0eca9ddc` |
+| `c99-science-syrian-kibbeh-cooking-v01.png` | PNG | 1536x1024 | 2,221,839 | `0c062a2d04ae4a0307f3af4366869f63e295d64bc99d10712fc016627693f0c3` |
+| `c99-science-syrian-kibbeh-cooking-v01.webp` | WebP | 1536x1024 | 85,324 | `c28467bb07a6900d22618b17791ae6c5eefee7d73bf3c5f1a75b4d4661db2d03` |
+| `c99-science-syrian-kibbeh-cooking-v01.avif` | AVIF | 1536x1024 | 39,314 | `3b688c7cc264306637f5ed05104d1b6e244db2a099344be86042870b11213720` |
+| `c99-science-syrian-kibbeh-cooking-v01-768.webp` | WebP | 768x512 | 28,304 | `17bde0718851596d1499c5d9683da3c02e79e74ce7754207c37c9f3049667c2a` |
+| `c99-science-syrian-kibbeh-cooking-v01-768.avif` | AVIF | 768x512 | 12,190 | `ec4c53ada52785a9fa6c105536980b151e52b8492cb6d9fd9dd45cb496cf8368` |
+| `c99-science-aleppan-jewish-foodways-v01.png` | PNG | 1536x1024 | 2,680,059 | `e3e3da6e28de043fa5f97e3803441c8e84798fab3ac8b810d70cccfe90c35418` |
+| `c99-science-aleppan-jewish-foodways-v01.webp` | WebP | 1536x1024 | 130,346 | `1160071fd8b80a9d11ad2792ed8b53643e2b086a4db3d81772ddedf98bba2797` |
+| `c99-science-aleppan-jewish-foodways-v01.avif` | AVIF | 1536x1024 | 55,988 | `5302c91d7727a644426658560fa26e0c38ced0aeceaf25e1a1a3f93cb456e4f0` |
+| `c99-science-aleppan-jewish-foodways-v01-768.webp` | WebP | 768x512 | 38,754 | `aef249e5496dc5b5b5c4c1d80ff2967da0eef8fe7d263a2822a88f3a7ccadfa8` |
+| `c99-science-aleppan-jewish-foodways-v01-768.avif` | AVIF | 768x512 | 14,808 | `17a8e94db9630d7ffb1ecc8a860f3dcb46e7cbe16013b01ac51de4dc7144968a` |
+
+Visual QA confirmed all seven full PNGs, WebPs and AVIFs plus all fourteen
+responsive derivatives decode at the registered dimensions. The scenes contain
+no embedded text, logos, brands, raw meat, pink centers, flags, religious
+props, costumes, named chefs or molecular diagrams.
+
+## Japanese koji, hydrolysis, kioke and JAS editorial assets
+
+Five original editorial images were generated for the post-1.19 Culinary
+Science v20 candidate with OpenAI's built-in image generation tool on
+2026-08-08. The generation session is
+`019faa9f-cb38-7c22-9bd5-9fcdf3d37b3b`. The retained project PNGs are
+byte-identical to the selected generation files. Two earlier compositions were
+rejected before integration: the first hydrolysis-guide image resembled natto,
+and the first reaction image resembled pasta. Neither rejected image is an
+approved asset.
+
+The images are editorial illustrations proposed for exact noindex knowledge owners.
+They are not product photographs, culture or lot evidence, laboratory results,
+process instructions, certification evidence, or claims about any Complete99
+product. No named human or owner review is claimed. Publication remains held;
+approval v2 requires a trusted owner receipt binding the exact PNG source
+evidence separately from all four deployable WebP/AVIF variants and complete
+bilingual content, followed by a newly reviewed and rebuilt artifact.
+
+### Exact source, binding and bilingual alt text
+
+| Entity | Stem | Selected generation file | PNG SHA256 | Hebrew alt | English alt |
+|---|---|---|---|---|---|
+| `ingredient-shoyu-koji` | `c99-science-shoyu-koji-substrate-v01` | `exec-eb526ab3-7196-4171-836f-ff0290247128.png` | `5cff891c9801e1bcd3c274284f82c580134a841246da444737d41058ca6b509a` | מגש קוג׳י לשויו מסויה וחיטה עם מעטה קוג׳י בהיר | Tray of soybean and wheat shoyu koji with a pale koji bloom |
+| `equipment-kioke` | `c99-science-kioke-wooden-barrel-v01` | `exec-dece784f-b018-40da-a9d9-bcf15620fd11.png` | `43508327f310be0c1875d3dd00a9d35daa0502152c659c9b706ff6fa81413ddd` | חבית קיוקה מעץ ארז עם חישוקי במבוק בסדנת תסיסה | Cedar kioke barrel with bamboo hoops in a fermentation workshop |
+| `guide-koji-hydrolysis` | `c99-science-koji-enzymes-hydrolysis-guide-v01` | `exec-7c83cbed-65ce-4fd9-a354-9b5844ee7671.png` | `69fa18417864c71b7d2b95c30c9febacb87d7430e8da6155b5484b05c307e06a` | קוג׳י אורז וקוג׳י לשויו לצד המחשה מושגית של פירוק אנזימטי | Rice koji and shoyu koji beside a conceptual enzymatic-breakdown illustration |
+| `reaction-koji-enzymatic-hydrolysis` | `c99-science-koji-enzymatic-hydrolysis-v01` | `exec-04a0d3ce-081b-4eaa-b982-9b0ed86458c4.png` | `737f0c74b8f0abce9921231e2c9185d73d33a74c836c029452085724e5e7a357` | שלושה רצפים מושגיים של שרשראות מזון המתפרקות מעל מצע קוג׳י לשויו | Three conceptual food-chain breakdown sequences above shoyu koji substrate |
+| `standard-jas-shoyu-1703` | `c99-science-jas-1703-shoyu-standard-v01` | `exec-7f7fcd84-f1e0-4b94-96a0-1eebf4d697d1.png` | `4f0781828ba648106456db31012c6c664ed633104deea972493020925ba80672` | דוגמאות גוון כלליות של רוטב סויה לצד תיק תקן וכלי בדיקה לא מסומנים | Generic soy-sauce color samples beside an unmarked standards folio and test glassware |
+
+### Prompt and claim boundaries
+
+- Shoyu koji: prepared soybeans and cracked roasted wheat beneath a pale koji
+  bloom in an unbranded tray. It does not identify a strain, ratio, lot or
+  production protocol.
+- Kioke: one maintained cedar barrel with bamboo hoops in an unbranded
+  workshop. It does not prove producer, capacity, age, maturation time or
+  quality.
+- Guide: rice koji and dry soybean-wheat shoyu koji with restrained conceptual
+  breakdown strands. It is not a molecular structure or process protocol.
+- Reaction: three conceptual fragmentation sequences above real dry
+  soybean-wheat substrate. It is not a Complete99 assay, lot or kinetic result.
+- JAS: generic color samples, a blank standards folio and unmarked glassware.
+  It does not grade or certify any product, producer, shipment or lot.
+
+The shared negative prompt excluded text, labels, logos, brands, certification
+marks, packaging, numeric results, instructions, people, health claims, unsafe
+mold, raw meat and watermarks.
+
+### Complete repository receipts
+
+ImageMagick 7 generated full and 768 by 512 derivatives from each preserved
+1536 by 1024 PNG. WebP quality is 68, AVIF quality is 40, and responsive
+scaling uses Lanczos. All 25 files decode at their registered dimensions and
+passed a full-size plus responsive contact-sheet review. These receipts describe
+repository evidence; while the candidates are held, none of the 25 files is an
+installed package asset.
+
+| File | Format | Dimensions | Bytes | SHA256 |
+|---|---:|---:|---:|---|
+| `c99-science-shoyu-koji-substrate-v01.png` | PNG | 1536x1024 | 2,677,419 | `5cff891c9801e1bcd3c274284f82c580134a841246da444737d41058ca6b509a` |
+| `c99-science-shoyu-koji-substrate-v01.webp` | WebP | 1536x1024 | 151,948 | `1213fee79dbd9dfe3d597aaddb0011e57ed0bc014fdd13a83a23ccdf478f1319` |
+| `c99-science-shoyu-koji-substrate-v01.avif` | AVIF | 1536x1024 | 62,876 | `4ad56ccb9768dc462e510c7ed08dc59d8e24ea74e7bed5c65385d920bb88f684` |
+| `c99-science-shoyu-koji-substrate-v01-768.webp` | WebP | 768x512 | 61,826 | `a96cdda0342d6f4457a41b05833450a931ebb110f8855eae4ad7f844894e0a25` |
+| `c99-science-shoyu-koji-substrate-v01-768.avif` | AVIF | 768x512 | 24,241 | `92602dd7b9e17bb813b237552443c0da52b7994887b3b1c211dcf6757aa3293a` |
+| `c99-science-kioke-wooden-barrel-v01.png` | PNG | 1536x1024 | 2,498,585 | `43508327f310be0c1875d3dd00a9d35daa0502152c659c9b706ff6fa81413ddd` |
+| `c99-science-kioke-wooden-barrel-v01.webp` | WebP | 1536x1024 | 101,652 | `bafac22402602dbda38f512754a701a4388b262e89dda7e7cac68d6dd2616a23` |
+| `c99-science-kioke-wooden-barrel-v01.avif` | AVIF | 1536x1024 | 42,001 | `253829c672293dcff4e96064a0c765b881fd600aaf22f074c9ed61175f2b27a8` |
+| `c99-science-kioke-wooden-barrel-v01-768.webp` | WebP | 768x512 | 27,124 | `9e1aded15a2ec45391299bbbeea6fc6ae6d84f4ac5e86020b49dfe4a3be19a0d` |
+| `c99-science-kioke-wooden-barrel-v01-768.avif` | AVIF | 768x512 | 11,723 | `13092eee69ecf4b0a6d6da64346e30f07afe89e4734154cf61492df1e37ecbb5` |
+| `c99-science-koji-enzymes-hydrolysis-guide-v01.png` | PNG | 1536x1024 | 2,871,799 | `69fa18417864c71b7d2b95c30c9febacb87d7430e8da6155b5484b05c307e06a` |
+| `c99-science-koji-enzymes-hydrolysis-guide-v01.webp` | WebP | 1536x1024 | 138,348 | `6bb6f6becd75c7e4fdeed3e76f70e616ed6fc8713b94163475f585c4ac0d1a77` |
+| `c99-science-koji-enzymes-hydrolysis-guide-v01.avif` | AVIF | 1536x1024 | 64,625 | `278b633bfea9dbc7ce394a3084f6e3755b35d275b700ed4f488b7dcb9457fd87` |
+| `c99-science-koji-enzymes-hydrolysis-guide-v01-768.webp` | WebP | 768x512 | 47,580 | `ba41228b267d28942a35125e16bd873f975f02af6c9f20faf06486582d86d428` |
+| `c99-science-koji-enzymes-hydrolysis-guide-v01-768.avif` | AVIF | 768x512 | 17,226 | `a37aff4fe4cd6d9972a867347fd5e9e4f27bc55a79a586c1f1d7640441dd0365` |
+| `c99-science-koji-enzymatic-hydrolysis-v01.png` | PNG | 1536x1024 | 2,739,263 | `737f0c74b8f0abce9921231e2c9185d73d33a74c836c029452085724e5e7a357` |
+| `c99-science-koji-enzymatic-hydrolysis-v01.webp` | WebP | 1536x1024 | 104,658 | `5978859d2161cbb6a41daddf52cc7402952a63068b9a0c0f684166237eee66a5` |
+| `c99-science-koji-enzymatic-hydrolysis-v01.avif` | AVIF | 1536x1024 | 50,371 | `88bca6d0f57293e85be2ba32100bce0a1d6eedd1612c2c9a94604b4dfb61be78` |
+| `c99-science-koji-enzymatic-hydrolysis-v01-768.webp` | WebP | 768x512 | 36,764 | `eb771026f662c8a664394b1d8a807cb65caec4b9951a3cd3fd821e584d3acee2` |
+| `c99-science-koji-enzymatic-hydrolysis-v01-768.avif` | AVIF | 768x512 | 17,901 | `0157d0ad3875ffdf36a90e5c5a82c3bafb331c87897f564e5f7dae05f66d1ba8` |
+| `c99-science-jas-1703-shoyu-standard-v01.png` | PNG | 1536x1024 | 2,660,520 | `4f0781828ba648106456db31012c6c664ed633104deea972493020925ba80672` |
+| `c99-science-jas-1703-shoyu-standard-v01.webp` | WebP | 1536x1024 | 76,394 | `5a099802acabf8e704a03e5b254844519d2e32df0d8358d277b8594889e16ebf` |
+| `c99-science-jas-1703-shoyu-standard-v01.avif` | AVIF | 1536x1024 | 30,904 | `67cf96aca9c4ea71ebff0612ca9d1f12aa7708f9acad8eb8458cd4952c47e3a8` |
+| `c99-science-jas-1703-shoyu-standard-v01-768.webp` | WebP | 768x512 | 16,830 | `72a7aefb5b09dbb550bf537d18d04294a7a32dd93243e137814c813df568016c` |
+| `c99-science-jas-1703-shoyu-standard-v01-768.avif` | AVIF | 768x512 | 8,414 | `ee21cdaf8d480c7699072fed21a3bfe3e9aa49dcfb51711c82688591cb506d94` |

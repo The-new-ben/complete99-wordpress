@@ -1,0 +1,11 @@
+{
+  "artifact": "complete99-platform-1.18.2.zip",
+  "deployment_id": "c99-wp-1.18.2",
+  "installed_sha256": "c10dc72e5e13fa018698937a18a51b6dbd6bbecdcfd8bcff11911f449321ea87",
+  "sha256": "a743abf18b176819612e16c95128681e888fe99e0bf361264abe31fec166455a",
+  "size": 31339873,
+  "slug": "complete99-platform",
+  "source_sha256": "3e91157ee27717c0610c1e8ef7e2a9b234c9c2b3d69074ef433ae50eaf89b00a",
+  "type": "plugin",
+  "version": "1.18.2"
+}

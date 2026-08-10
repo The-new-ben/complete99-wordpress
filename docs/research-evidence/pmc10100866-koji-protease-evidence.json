@@ -1,0 +1,60 @@
+{
+  "schema": "complete99-source-evidence-extract/v1",
+  "source_id": "zhang-industrial-koji-proteases-2023",
+  "upstream": {
+    "url": "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_json/PMC10100866/unicode",
+    "sha256": "fd57c0cdf14beb447ad47a0561cfc8c6fac1d356ce9cde64b10a2dbd2e1266c3",
+    "retrieved_at": "2026-08-08T11:34:30+03:00",
+    "license": "CC-BY-4.0"
+  },
+  "bibliography": {
+    "title": "Phenotypic, Genomic, and Transcriptomic Comparison of Industrial Aspergillus oryzae Used in Chinese and Japanese Soy Sauce: Analysis of Key Proteolytic Enzymes Produced by Koji Molds",
+    "authors": "Lijie Zhang; Le Kang; Yan Xu",
+    "journal": "Microbiology Spectrum",
+    "published_at": "2023-02-06",
+    "doi": "10.1128/spectrum.00836-22",
+    "pmcid": "PMC10100866"
+  },
+  "claims": [
+    {
+      "id": "industrial-koji-protease-activity-ranges",
+      "locator": "Results, Phenotypic comparison of three industrial Aspergillus oryzae strains, paragraph discussing Figure 2B",
+      "scope": "Ranges reported across three industrial Aspergillus oryzae strains during a 46-hour koji fermentation",
+      "values": [
+        {
+          "property": "neutral-protease-activity",
+          "low": 500,
+          "high": 700,
+          "unit": "U/g"
+        },
+        {
+          "property": "acidic-protease-activity",
+          "low": 50,
+          "high": 150,
+          "unit": "U/g"
+        },
+        {
+          "property": "leucine-aminopeptidase-activity",
+          "low": 50,
+          "high": 250,
+          "unit": "U/g"
+        }
+      ]
+    },
+    {
+      "id": "industrial-koji-protease-assay-context",
+      "locator": "Materials and Methods, Enzyme activity assays",
+      "scope": "Crude enzyme extract prepared from 5 g koji and 45 mL liquid, stirred at 40 degrees Celsius for one hour",
+      "methods": {
+        "neutral-protease": "Modified protease assay in pH 7.2 phosphate buffer; one unit corresponds to color equivalent to 1 microgram tyrosine in 1 mL reaction solution per minute at 40 degrees Celsius.",
+        "acidic-protease": "Modified protease assay in pH 3.0 lactic acid buffer; one unit corresponds to color equivalent to 1 microgram tyrosine in 1 mL reaction solution per minute at 40 degrees Celsius.",
+        "leucine-aminopeptidase": "Leucine p-nitroaniline assay; one unit corresponds to production of 1 microgram p-nitroaniline per minute at 40 degrees Celsius."
+      }
+    }
+  ],
+  "public_boundary": [
+    "The values are literature context for three industrial strains, not a Complete99 product, supplier, recipe, lot, process guarantee, or operating instruction.",
+    "The ranges must remain attached to the 46-hour study context and the reported assay definitions.",
+    "The article identifies candidate proteolytic enzymes and explicitly calls for further functional confirmation."
+  ]
+}

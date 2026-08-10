@@ -503,6 +503,8 @@ echo json_encode(array(
             self.assertEqual(18, html.count("data-c99-foundations-member"))
             self.assertEqual(4, html.count("data-c99-foundations-filter-button="))
             self.assertIn("c99-science-japanese-foundations-lab-v01.webp", html)
+            self.assertIn("c99-science-japanese-foundations-lab-v01-768.webp", html)
+            self.assertIn("c99-science-japanese-foundations-lab-v01-768.avif", html)
             public_json = json.dumps(bundle, ensure_ascii=False).lower()
             for forbidden in (
                 "prompt_en",

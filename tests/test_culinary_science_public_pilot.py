@@ -210,6 +210,20 @@ $paths = array(
     '/en/museum/japanese-culinary-science/',
     '/museum/syrian-culinary-science/',
     '/en/museum/syrian-culinary-science/',
+    '/museum/syrian-culinary-science/aleppo/',
+    '/en/museum/syrian-culinary-science/aleppo/',
+    '/museum/syrian-culinary-science/aleppo/aleppine-kibbeh-family/',
+    '/en/museum/syrian-culinary-science/aleppo/aleppine-kibbeh-family/',
+    '/ingredients/syrian-bulgur/',
+    '/en/ingredients/syrian-bulgur/',
+    '/ingredients/lamb-and-beef-in-syrian-cooking/',
+    '/en/ingredients/lamb-and-beef-in-syrian-cooking/',
+    '/knowledge/how-to-hydrate-bulgur-for-kibbeh/',
+    '/en/knowledge/how-to-hydrate-bulgur-for-kibbeh/',
+    '/knowledge/how-to-cook-kibbeh-safely/',
+    '/en/knowledge/how-to-cook-kibbeh-safely/',
+    '/traditions/aleppan-jewish-foodways/',
+    '/en/traditions/aleppan-jewish-foodways/',
     '/museum/lebanese-culinary-science/',
     '/en/museum/lebanese-culinary-science/',
     '/museum/japanese-culinary-science/foundations/',
@@ -224,6 +238,8 @@ $paths = array(
     '/en/ingredients/kome-koji/',
     '/ingredients/koji-starter-culture/',
     '/en/ingredients/koji-starter-culture/',
+    '/ingredients/shoyu-koji/',
+    '/en/ingredients/shoyu-koji/',
     '/ingredients/koshihikari-rice/',
     '/en/ingredients/koshihikari-rice/',
     '/ingredients/fresh-wasabi-rhizome/',
@@ -241,11 +257,20 @@ $paths = array(
     '/knowledge/wasabi-aitc-pungency/',
     '/en/knowledge/wasabi-aitc-pungency/',
     '/knowledge/wasabi-grater-guide/',
-    '/en/knowledge/wasabi-grater-guide/'
+    '/en/knowledge/wasabi-grater-guide/',
+    '/knowledge/koji-enzymatic-hydrolysis/',
+    '/en/knowledge/koji-enzymatic-hydrolysis/',
+    '/knowledge/kioke-barrel-guide/',
+    '/en/knowledge/kioke-barrel-guide/',
+    '/knowledge/jas-1703-shoyu-standard/',
+    '/en/knowledge/jas-1703-shoyu-standard/'
 );
 $bundles = array();
 foreach ($paths as $path) {{
-    $bundles[$path] = Complete99_Culinary_Science::public_page_bundle_for_path($path);
+    $bundle = Complete99_Culinary_Science::public_page_bundle_for_path($path);
+    if (! empty($bundle)) {{
+        $bundles[$path] = $bundle;
+    }}
 }}
 echo json_encode(array(
     'registry' => $registry,

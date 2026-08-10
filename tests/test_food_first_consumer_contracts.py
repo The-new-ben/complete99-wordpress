@@ -478,6 +478,63 @@ def test_dish_components_and_generic_pages_use_consumer_intent_actions() -> None
         assert stale not in action_map
 
 
+def test_consumer_dish_lookup_reads_the_versioned_registry_dishes_envelope() -> None:
+    consumer_path = _php_path(CONSUMER)
+    plugin_dir = _php_path(PLUGIN, directory=True)
+    result = _run_php_json(
+        f"""
+define('ABSPATH', __DIR__);
+define('COMPLETE99_PLATFORM_DIR', '{plugin_dir}');
+function sanitize_title($value) {{
+    $value = strtolower(trim((string) $value));
+    return trim((string) preg_replace('/[^a-z0-9\\-]+/', '-', $value), '-');
+}}
+function sanitize_key($value) {{
+    return (string) preg_replace('/[^a-z0-9_-]/', '', strtolower((string) $value));
+}}
+function esc_attr($value) {{ return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }}
+function esc_html($value) {{ return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }}
+function esc_url($value) {{ return (string) $value; }}
+function wp_http_validate_url($value) {{ return str_starts_with((string) $value, 'https://'); }}
+final class Complete99_Content {{
+    public static function route_url($key, $lang) {{
+        return 'https://complete99.example/' . ('en' === $lang ? 'en/' : '') . $key . '/';
+    }}
+}}
+require '{consumer_path}';
+$lookup = new ReflectionMethod('Complete99_Consumer', 'dish_entity_tree');
+$lookup->setAccessible(true);
+$sabich = $lookup->invoke(null, 'sabich');
+$missing = $lookup->invoke(null, 'not-a-reviewed-dish');
+$render = new ReflectionMethod('Complete99_Consumer', 'render_dish_component_tree');
+$render->setAccessible(true);
+ob_start();
+$render->invoke(null, array('slug' => 'sabich'), 'en');
+$html = (string) ob_get_clean();
+echo json_encode(
+    array(
+        'slug' => $sabich['identity']['slug'] ?? '',
+        'component_count' => count($sabich['component_tree']['children'] ?? array()),
+        'public_components' => $sabich['exposure']['public']['menu_stated_components'] ?? false,
+        'rendered_component_count' => substr_count($html, '<li id='),
+        'rendered_section' => str_contains($html, 'class="c99-dish-components"'),
+        'missing' => $missing,
+    ),
+    JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+);
+"""
+    )
+
+    assert result == {
+        "slug": "sabich",
+        "component_count": 7,
+        "public_components": True,
+        "rendered_component_count": 7,
+        "rendered_section": True,
+        "missing": [],
+    }
+
+
 def test_generic_page_action_map_returns_distinct_working_destinations() -> None:
     consumer_path = _php_path(CONSUMER)
     result = _run_php_json(

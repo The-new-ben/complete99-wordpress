@@ -734,7 +734,7 @@ if ( $c99_iraqi_depth_expected_counts !== $c99_iraqi_depth_comparable_counts || 
 
 return array(
 	'schema' => 'complete99-iraqi-regional-depth-module/v1',
-	'version' => 'culinary-science-2026.08.07.v18',
+	'version' => 'culinary-science-2026.08.08.v20',
 	'sources' => $c99_iraqi_depth_sources,
 	'entities' => $c99_iraqi_depth_entities,
 	'private_entity_ids' => array_column( $c99_iraqi_depth_entities, 'id' ),

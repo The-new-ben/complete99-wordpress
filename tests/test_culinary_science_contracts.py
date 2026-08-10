@@ -26,8 +26,8 @@ REST_CLASS = PLUGIN / "includes" / "class-complete99-rest.php"
 REVIEW_LAB = PLUGIN / "includes" / "class-complete99-review-lab.php"
 SEO_REGISTRY = PLUGIN / "includes" / "class-complete99-seo-registry.php"
 
-EXPECTED_SCHEMA = "complete99-culinary-science-registry/v5"
-EXPECTED_VERSION = "culinary-science-2026.08.07.v18"
+EXPECTED_SCHEMA = "complete99-culinary-science-registry/v6"
+EXPECTED_VERSION = "culinary-science-2026.08.08.v20"
 EXPECTED_PUBLIC_PILOT = {
     "museum-culinary-science",
     "cuisine-japanese-washoku",
@@ -68,6 +68,9 @@ EXPECTED_PUBLIC_OFFER_CODES = {
     "ingredient-fresh-dutch-wasabi": "product-fresh-wasabi-50-60g",
     "ingredient-kito-yuzu": "product-kito-yuzu-juice-100ml",
     "equipment-wasabi-grater": "product-hagane-zame-large",
+}
+EXPECTED_HELD_PRIVATE_CANDIDATE_CODES = {
+    "ingredient-syrian-bulgur": "product-bulgur-fine-500g",
 }
 EXPECTED_CLUSTERS = {
     "cluster-culinary-science-museum",
@@ -171,8 +174,6 @@ EXPECTED_CANONICAL_OWNERS = {
     ),
     "ingredient-kombu": ("ingredient", "/ingredients/kombu/"),
     "ingredient-katsuobushi": ("ingredient", "/ingredients/katsuobushi/"),
-    "ingredient-shoyu-koji": ("ingredient", "/ingredients/shoyu-koji/"),
-    "equipment-kioke": ("equipment", "/knowledge/kioke-barrel-guide/"),
     "ingredient-kioke-shoyu": ("ingredient", "/ingredients/kioke-shoyu/"),
     "ingredient-kome-koji": ("ingredient", "/ingredients/kome-koji/"),
     "ingredient-koji-starter-culture": (
@@ -203,20 +204,12 @@ EXPECTED_CANONICAL_OWNERS = {
         "equipment",
         "/knowledge/wasabi-grater-guide/",
     ),
-    "standard-jas-shoyu-1703": (
-        "standard",
-        "/knowledge/jas-1703-shoyu-standard/",
-    ),
     "tradition-washoku": ("tradition", "/traditions/washoku/"),
     "guide-umami-synergy": (
         "guide",
         "/knowledge/umami-synergy-glutamate-imp/",
     ),
     "guide-wasabi-aitc": ("guide", "/knowledge/wasabi-aitc-pungency/"),
-    "guide-koji-hydrolysis": (
-        "guide",
-        "/knowledge/koji-enzymatic-hydrolysis/",
-    ),
     "comparison-yanagiba-steels": (
         "comparison",
         "/knowledge/yanagiba-white-2-vs-blue-1/",
@@ -748,7 +741,7 @@ def test_single_museum_root_is_the_exact_bilingual_owner(
     ]
 
 
-def test_reviewed_public_pilot_has_only_approved_offers_and_no_indexing(
+def test_public_pilot_and_held_candidate_relations_are_truthfully_separated(
     science_payload: dict,
 ) -> None:
     assert science_payload["status"]["public_count"] == len(EXPECTED_PUBLIC_PILOT)
@@ -759,6 +752,23 @@ def test_reviewed_public_pilot_has_only_approved_offers_and_no_indexing(
         assert publication["public_page"] is expected_public, entity["id"]
         assert (publication["state"] == "approved_public") is expected_public
         assert publication["search_index"] is False, entity["id"]
+        private_candidate_code = EXPECTED_HELD_PRIVATE_CANDIDATE_CODES.get(
+            entity["id"], ""
+        )
+        if private_candidate_code:
+            assert expected_public is False
+            assert publication["state"] == "private_preview"
+            assert entity["seo"]["route_mode"] == "private"
+            assert entity["commerce"]["state"] == "active_offer"
+            assert entity["commerce"]["public_offer_allowed"] is True
+            assert entity["commerce"]["woo_product_code"] == private_candidate_code
+            assert all(not fact["public_safe"] for fact in entity["facts"])
+            assert all(not relation["public_safe"] for relation in entity["relations"])
+            assert all(not note["public_safe"] for note in entity["compliance"])
+            assert all(
+                not link["public_safe"] for link in entity["seo"]["link_plan"]
+            )
+            continue
         expected_product_code = EXPECTED_PUBLIC_OFFER_CODES.get(entity["id"], "")
         commerce = entity["commerce"]
         assert commerce["public_offer_allowed"] is bool(expected_product_code), (
