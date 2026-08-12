@@ -234,6 +234,7 @@ jobs:
         shell: powershell
         run: |
           $releaseDir = Join-Path $env:RUNNER_TEMP "complete99-verified-release-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $interruptedForwardDist = $releaseDir
           $bootstrapArgs = @()
           $observationArgs = @()
           $interruptedForwardArgs = @()
@@ -246,11 +247,46 @@ jobs:
             $validationArgs += "--expect-observation"
           }
           if (-not [string]::IsNullOrWhiteSpace($env:COMPLETE99_INTERRUPTED_FORWARD_PROOF)) {
+            $proofRelative = $env:COMPLETE99_INTERRUPTED_FORWARD_PROOF
+            $proofSegments = @($proofRelative -split '/')
+            $invalidProofSegments = @($proofSegments | Where-Object {
+              [string]::IsNullOrWhiteSpace($_) -or $_ -eq '.' -or $_ -eq '..'
+            })
+            if ($proofRelative.Contains('\') -or
+                -not $proofRelative.StartsWith('docs/recovery-proofs/', [System.StringComparison]::Ordinal) -or
+                -not $proofRelative.EndsWith('.json', [System.StringComparison]::Ordinal) -or
+                $invalidProofSegments.Count -ne 0) {
+              Write-Error "The interrupted-forward proof path must be a direct repository-relative recovery-proof JSON path."
+              exit 1
+            }
+            $proofPath = Join-Path $env:GITHUB_WORKSPACE $proofRelative
+            try {
+              $proofRecord = Get-Content -LiteralPath $proofPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            } catch {
+              Write-Error "The interrupted-forward proof could not be read before release selection."
+              exit 1
+            }
+            $proofVersion = [string]$proofRecord.proof.failed_run.version
+            if ($proofVersion -notmatch '^[0-9]+\.[0-9]+\.[0-9]+$') {
+              Write-Error "The interrupted-forward proof version is invalid."
+              exit 1
+            }
+            $historicalArtifact = Join-Path $env:GITHUB_WORKSPACE "plugin-dist/complete99-platform-$proofVersion.zip"
+            $historicalIntegrity = Join-Path $env:GITHUB_WORKSPACE "plugin-dist/complete99-platform-$proofVersion-integrity.json"
+            if (-not (Test-Path -LiteralPath $historicalArtifact -PathType Leaf) -or
+                -not (Test-Path -LiteralPath $historicalIntegrity -PathType Leaf)) {
+              Write-Error "The exact reviewed interrupted-forward release package is unavailable."
+              exit 1
+            }
+            $interruptedForwardDist = Join-Path $env:RUNNER_TEMP "complete99-interrupted-forward-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+            New-Item -ItemType Directory -Path $interruptedForwardDist -ErrorAction Stop | Out-Null
+            Copy-Item -LiteralPath $historicalArtifact -Destination (Join-Path $interruptedForwardDist "complete99-platform-$proofVersion.zip") -ErrorAction Stop
+            Copy-Item -LiteralPath $historicalIntegrity -Destination (Join-Path $interruptedForwardDist "complete99-platform-integrity.json") -ErrorAction Stop
             $interruptedForwardArgs += @(
               "--interrupted-forward-proof",
               $env:COMPLETE99_INTERRUPTED_FORWARD_PROOF,
               "--dist",
-              $releaseDir
+              $interruptedForwardDist
             )
             $validationArgs += @(
               "--interrupted-forward-proof",
@@ -298,7 +334,7 @@ jobs:
           $env:COMPLETE99_RECOVERY_SUMMARY_JSON = $recoverySummary
           & python scripts/validate-recovery-audit.py `
             --expected-probe-id $probeId `
-            --dist $releaseDir `
+            --dist $interruptedForwardDist `
             @validationArgs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if (-not [string]::IsNullOrWhiteSpace($env:COMPLETE99_INTERRUPTED_FORWARD_PROOF) -and
