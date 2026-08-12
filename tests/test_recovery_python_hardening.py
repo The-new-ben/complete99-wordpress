@@ -2479,6 +2479,281 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
                         loaded,
                     )
 
+    def test_real_candidate_repair_adoption_v5_is_exact(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31620203121-1-v4.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        adoption = loaded["proof"]["forward_adoption"]
+        receipt = loaded["reviewed_forward_observation"]
+        self.assertEqual(
+            "complete99-interrupted-forward-proof/v4", loaded["schema"]
+        )
+        self.assertEqual(
+            "complete99-interrupted-forward-adoption/v5", adoption["schema"]
+        )
+        self.assertEqual(
+            "fc3402a527ce8e3ed2bc337afadea108192911a46fe5a3fd887e88144ff826b7",
+            loaded["proof_sha256"],
+        )
+        self.assertEqual(
+            "a5e2f689764643bfcffc11e5fb02cb0fce65a7cd3c2e4d28ab86e947ab8e79e9",
+            receipt["safe_status_sha256"],
+        )
+        self.assertEqual(
+            receipt,
+            RECOVER.validate_interrupted_forward_candidate_repair_status(
+                DEPLOY,
+                copy.deepcopy(receipt["safe_status"]),
+                loaded,
+            ),
+        )
+        fields = RECOVER.interrupted_forward_bridge_fields(loaded)
+        repair = adoption["candidate_repair"]
+        self.assertEqual(repair["plugin_after_sha256"], fields["expected_plugin_sha256"])
+        self.assertEqual(repair["schema"], fields["candidate_repair_schema"])
+        self.assertEqual(
+            repair["source_before_sha256"],
+            fields["candidate_source_before_sha256"],
+        )
+        self.assertEqual(
+            repair["source_after_sha256"],
+            fields["candidate_source_after_sha256"],
+        )
+        recovered = loaded["proof"]["recovered_baseline"]
+        self.assertEqual(
+            recovered["database_fingerprint"],
+            fields["prior_database_fingerprint"],
+        )
+        self.assertEqual(
+            recovered["deployment_id"], fields["prior_deployment_id"]
+        )
+        self.assertEqual(recovered["plugin_sha256"], fields["prior_plugin_sha256"])
+        self.assertEqual(recovered["version"], fields["prior_version"])
+        changed = copy.deepcopy(receipt["safe_status"])
+        changed["database_fingerprint"] = "0" * 64
+        with self.assertRaisesRegex(
+            DEPLOY.DeployError, "checkpoint changed after read-only review"
+        ):
+            RECOVER.validate_interrupted_forward_candidate_repair_status(
+                DEPLOY,
+                changed,
+                loaded,
+            )
+
+    def test_candidate_repair_adoption_v5_reconciles_lost_responses(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31620203121-1-v4.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        proof = loaded["proof"]
+        failed = proof["failed_run"]
+        recovered = proof["recovered_baseline"]
+        adoption = proof["forward_adoption"]
+        repair = adoption["candidate_repair"]
+        repair_receipt = {
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_unicode_ci",
+            "column": repair["column"],
+            "completed_at": 1,
+            "default": None,
+            "from_type": repair["from_type"],
+            "nullable": False,
+            "plugin_after_sha256": repair["plugin_after_sha256"],
+            "plugin_before_sha256": repair["plugin_before_sha256"],
+            "proof_sha256": loaded["proof_sha256"],
+            "schema": repair["schema"],
+            "source_after_sha256": repair["source_after_sha256"],
+            "source_before_sha256": repair["source_before_sha256"],
+            "source_path": repair["source_path"],
+            "table": "wp_c99_campaign_provider_receipts",
+            "to_type": repair["to_type"],
+        }
+        repair_response = {
+            "column_type": repair["to_type"],
+            "deployment_id": failed["deployment_id"],
+            "idempotent": False,
+            "phase": "candidate_activation_pending",
+            "plugin_sha256": repair["plugin_after_sha256"],
+            "receipt": repair_receipt,
+            "repaired": True,
+            "source_sha256": repair["source_after_sha256"],
+        }
+        continuation = {
+            "active": True,
+            "adopted_forward_no_rollback": True,
+            "continued": True,
+            "database_manifest": adoption["observed_database_manifest"],
+            "database_manifest_sha256": adoption[
+                "observed_database_manifest_sha256"
+            ],
+            "database_storage": adoption["observed_database_storage"],
+            "deployment_id": failed["deployment_id"],
+            "idempotent": False,
+            "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            "phase": "installed",
+            "plugin_sha256": repair["plugin_after_sha256"],
+            "post_install_database_fingerprint": "c" * 64,
+            "repair_receipt": repair_receipt,
+            "stabilized": True,
+            "version": failed["version"],
+        }
+        initial = copy.deepcopy(loaded["reviewed_forward_observation"]["safe_status"])
+        pending_repaired = copy.deepcopy(initial)
+        pending_repaired.update(
+            {
+                "candidate_repair_no_rollback": True,
+                "candidate_repair_receipt": repair_receipt,
+                "candidate_repair_started": True,
+                "current_plugin_sha256": repair["plugin_after_sha256"],
+                "installed_plugin_sha256": repair["plugin_after_sha256"],
+                "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            }
+        )
+        installed = copy.deepcopy(pending_repaired)
+        installed.update(
+            {
+                "adopted_forward_no_rollback": True,
+                "current_active": True,
+                "current_database_version": failed["version"],
+                "current_deployment": failed["deployment_id"],
+                "current_robots_sha256": recovered["robots_sha256"],
+                "current_sync_configured": True,
+                "current_version": failed["version"],
+                "database_fingerprint": continuation[
+                    "post_install_database_fingerprint"
+                ],
+                "database_manifest": continuation["database_manifest"],
+                "database_manifest_sha256": continuation[
+                    "database_manifest_sha256"
+                ],
+                "database_storage": continuation["database_storage"],
+                "interrupted_forward_database_manifest_sha256": continuation[
+                    "database_manifest_sha256"
+                ],
+                "migration_failed": False,
+                "migration_invariants_valid": True,
+                "no_rollback_artifacts": True,
+                "phase": "installed",
+                "post_install_database_fingerprint": continuation[
+                    "post_install_database_fingerprint"
+                ],
+                "robots_applied": True,
+                "robots_managed_sha256": recovered["robots_sha256"],
+                "runtime_loaded": True,
+                "runtime_version": failed["version"],
+                "stabilized": True,
+                "state_exists": True,
+            }
+        )
+
+        cases = {
+            "normal": [initial, repair_response, continuation, installed],
+            "repair response lost": [
+                initial,
+                DEPLOY.DeployError("lost repair response"),
+                pending_repaired,
+                continuation,
+                installed,
+            ],
+            "activation response lost": [
+                initial,
+                repair_response,
+                DEPLOY.DeployError("lost activation response"),
+                installed,
+                installed,
+            ],
+            "already installed": [installed],
+        }
+        expected_routes = {
+            "normal": [
+                "status",
+                "repair-candidate-activation",
+                "continue-activation",
+                "status",
+            ],
+            "repair response lost": [
+                "status",
+                "repair-candidate-activation",
+                "status",
+                "continue-activation",
+                "status",
+            ],
+            "activation response lost": [
+                "status",
+                "repair-candidate-activation",
+                "continue-activation",
+                "status",
+                "status",
+            ],
+            "already installed": ["status"],
+        }
+        for label, responses in cases.items():
+            with self.subTest(response_path=label):
+                bridge_call = mock.Mock(side_effect=copy.deepcopy(responses))
+                result = RECOVER.adopt_interrupted_forward(
+                    types.SimpleNamespace(
+                        DeployError=DEPLOY.DeployError,
+                        bridge_call=bridge_call,
+                        re=re,
+                    ),
+                    object(),
+                    "token",
+                    failed["deployment_id"],
+                    loaded,
+                )
+                self.assertEqual(repair_receipt, result["repair"]["receipt"])
+                self.assertEqual("installed", result["receipt"]["phase"])
+                self.assertEqual(
+                    expected_routes[label],
+                    [call.args[1] for call in bridge_call.call_args_list],
+                )
+                for call in bridge_call.call_args_list:
+                    if call.args[1] in {
+                        "repair-candidate-activation",
+                        "continue-activation",
+                    }:
+                        self.assertEqual(
+                            loaded["proof_sha256"],
+                            call.kwargs["interrupted_forward_proof_sha256"],
+                        )
+
+        for phase in ("committing", "commit_failed", "committed", "cleanup_failed"):
+            with self.subTest(finalize_resume=phase):
+                terminal = copy.deepcopy(installed)
+                terminal.update(
+                    {
+                        "committed_expected_active": True,
+                        "committed_expected_absent": False,
+                        "committed_expected_deployment": failed["deployment_id"],
+                        "committed_expected_plugin_sha256": repair[
+                            "plugin_after_sha256"
+                        ],
+                        "committed_expected_robots_exists": True,
+                        "committed_expected_robots_sha256": recovered[
+                            "robots_sha256"
+                        ],
+                        "committed_expected_version": failed["version"],
+                        "committed_outcome": "installed",
+                        "phase": phase,
+                        "recovery_ready": phase == "committing",
+                    }
+                )
+                resume = RECOVER.validate_interrupted_forward_finalize_status(
+                    DEPLOY,
+                    terminal,
+                    loaded,
+                )
+                self.assertEqual(
+                    "complete99-interrupted-forward-finalize-resume/v2",
+                    resume["schema"],
+                )
+                self.assertEqual(phase, resume["phase"])
+
     def test_pending_stabilization_adoption_v4_rejects_authority_drift(
         self,
     ) -> None:
@@ -4483,6 +4758,41 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
                 status=changed,
                 observe_only=False,
             )
+
+    def test_candidate_repair_v5_routes_only_to_reviewed_adoption(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31620203121-1-v4.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        status = copy.deepcopy(
+            loaded["reviewed_forward_observation"]["safe_status"]
+        )
+        fake, adopt, rollback, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=status,
+            observe_only=False,
+        )
+        adopt.assert_called_once()
+        rollback.assert_not_called()
+        fake.finalize_deployment.assert_called_once()
+        audit = write_audit.call_args.args[1]
+        self.assertEqual("recovered", audit["result"])
+        self.assertEqual("adopt_interrupted_forward", audit["decision"])
+        self.assertEqual(
+            loaded["reviewed_forward_observation"],
+            audit["pre_adoption_observation"],
+        )
+        health_calls = fake.verify_health.call_args_list
+        self.assertEqual(
+            loaded["proof"]["recovered_baseline"]["deployment_id"],
+            health_calls[0].args[2],
+        )
+        self.assertEqual(
+            loaded["proof"]["failed_run"]["deployment_id"],
+            health_calls[-1].args[2],
+        )
 
     def test_robots_checkpoint_adoption_v3_resumes_idempotently(self) -> None:
         loaded, _ = interrupted_robots_checkpoint_loaded()

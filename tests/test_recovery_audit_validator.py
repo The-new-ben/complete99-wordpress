@@ -1283,6 +1283,265 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                     str(proof_path),
                     root,
                 )
+
+    def test_repository_candidate_repair_adoption_v5_is_exact(self) -> None:
+        loaded = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31620203121-1-v4.json",
+            ROOT,
+        )
+        adoption = loaded["proof"]["forward_adoption"]
+        receipt = loaded["reviewed_forward_observation"]
+        self.assertEqual(
+            "complete99-interrupted-forward-proof/v4", loaded["schema"]
+        )
+        self.assertEqual(
+            "complete99-interrupted-forward-adoption/v5", adoption["schema"]
+        )
+        self.assertEqual(
+            "fc3402a527ce8e3ed2bc337afadea108192911a46fe5a3fd887e88144ff826b7",
+            loaded["proof_sha256"],
+        )
+        self.assertEqual(
+            VALIDATOR.INTERRUPTED_FORWARD_CANDIDATE_REPAIR_MISMATCHES,
+            receipt["mismatches"],
+        )
+        self.assertEqual(
+            adoption["observation_safe_status_sha256"],
+            receipt["safe_status_sha256"],
+        )
+
+    def test_candidate_repair_adoption_v5_audit_is_independently_bound(self) -> None:
+        loaded = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31620203121-1-v4.json",
+            ROOT,
+        )
+        proof = loaded["proof"]
+        failed = proof["failed_run"]
+        adoption = proof["forward_adoption"]
+        repair = adoption["candidate_repair"]
+        repair_receipt = {
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_unicode_ci",
+            "column": repair["column"],
+            "completed_at": 1,
+            "default": None,
+            "from_type": repair["from_type"],
+            "nullable": False,
+            "plugin_after_sha256": repair["plugin_after_sha256"],
+            "plugin_before_sha256": repair["plugin_before_sha256"],
+            "proof_sha256": loaded["proof_sha256"],
+            "schema": repair["schema"],
+            "source_after_sha256": repair["source_after_sha256"],
+            "source_before_sha256": repair["source_before_sha256"],
+            "source_path": repair["source_path"],
+            "table": "wp_c99_campaign_provider_receipts",
+            "to_type": repair["to_type"],
+        }
+        continuation = {
+            "active": True,
+            "adopted_forward_no_rollback": True,
+            "continued": True,
+            "database_manifest": adoption["observed_database_manifest"],
+            "database_manifest_sha256": adoption[
+                "observed_database_manifest_sha256"
+            ],
+            "database_storage": adoption["observed_database_storage"],
+            "deployment_id": failed["deployment_id"],
+            "idempotent": False,
+            "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            "phase": "installed",
+            "plugin_sha256": repair["plugin_after_sha256"],
+            "post_install_database_fingerprint": "c" * 64,
+            "repair_receipt": repair_receipt,
+            "stabilized": True,
+            "version": failed["version"],
+        }
+        value = {
+            "repair": {
+                "column_type": repair["to_type"],
+                "deployment_id": failed["deployment_id"],
+                "idempotent": False,
+                "phase": "candidate_activation_pending",
+                "plugin_sha256": repair["plugin_after_sha256"],
+                "receipt": repair_receipt,
+                "repaired": True,
+                "source_sha256": repair["source_after_sha256"],
+            },
+            "receipt": continuation,
+            "status": {
+                "adopted_forward_no_rollback": True,
+                "database_fingerprint": continuation[
+                    "post_install_database_fingerprint"
+                ],
+                "database_manifest_sha256": continuation[
+                    "database_manifest_sha256"
+                ],
+                "deployment_id": failed["deployment_id"],
+                "installed_plugin_sha256": repair["plugin_after_sha256"],
+                "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+                "phase": "installed",
+                "state_exists": True,
+                "version": failed["version"],
+            },
+        }
+        self.assertFalse(
+            VALIDATOR.validate_candidate_repair_adoption(value, loaded)
+        )
+        for label, mutate in (
+            (
+                "repair receipt",
+                lambda changed: changed["repair"]["receipt"].__setitem__(
+                    "source_after_sha256", "0" * 64
+                ),
+            ),
+            (
+                "activation receipt",
+                lambda changed: changed["receipt"].__setitem__(
+                    "plugin_sha256", "0" * 64
+                ),
+            ),
+            (
+                "installed status",
+                lambda changed: changed["status"].__setitem__(
+                    "database_fingerprint", "0" * 64
+                ),
+            ),
+        ):
+            with self.subTest(drift=label):
+                changed = copy.deepcopy(value)
+                mutate(changed)
+                with self.assertRaises(VALIDATOR.AuditValidationError):
+                    VALIDATOR.validate_candidate_repair_adoption(changed, loaded)
+
+    def test_candidate_repair_v5_full_recovery_audit_is_exact(self) -> None:
+        loaded = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31620203121-1-v4.json",
+            ROOT,
+        )
+        proof = loaded["proof"]
+        failed = proof["failed_run"]
+        prior = proof["prior_run"]
+        recovered = proof["recovered_baseline"]
+        adoption = proof["forward_adoption"]
+        repair = adoption["candidate_repair"]
+        repair_receipt = {
+            "charset": "utf8mb4",
+            "collation": "utf8mb4_unicode_ci",
+            "column": repair["column"],
+            "completed_at": 1,
+            "default": None,
+            "from_type": repair["from_type"],
+            "nullable": False,
+            "plugin_after_sha256": repair["plugin_after_sha256"],
+            "plugin_before_sha256": repair["plugin_before_sha256"],
+            "proof_sha256": loaded["proof_sha256"],
+            "schema": repair["schema"],
+            "source_after_sha256": repair["source_after_sha256"],
+            "source_before_sha256": repair["source_before_sha256"],
+            "source_path": repair["source_path"],
+            "table": "wp_c99_campaign_provider_receipts",
+            "to_type": repair["to_type"],
+        }
+        continuation = {
+            "active": True,
+            "adopted_forward_no_rollback": True,
+            "continued": True,
+            "database_manifest": adoption["observed_database_manifest"],
+            "database_manifest_sha256": adoption[
+                "observed_database_manifest_sha256"
+            ],
+            "database_storage": adoption["observed_database_storage"],
+            "deployment_id": failed["deployment_id"],
+            "idempotent": False,
+            "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            "phase": "installed",
+            "plugin_sha256": repair["plugin_after_sha256"],
+            "post_install_database_fingerprint": "c" * 64,
+            "repair_receipt": repair_receipt,
+            "stabilized": True,
+            "version": failed["version"],
+        }
+        adoption_audit = {
+            "repair": {
+                "column_type": repair["to_type"],
+                "deployment_id": failed["deployment_id"],
+                "idempotent": False,
+                "phase": "candidate_activation_pending",
+                "plugin_sha256": repair["plugin_after_sha256"],
+                "receipt": repair_receipt,
+                "repaired": True,
+                "source_sha256": repair["source_after_sha256"],
+            },
+            "receipt": continuation,
+            "status": {
+                "adopted_forward_no_rollback": True,
+                "database_fingerprint": continuation[
+                    "post_install_database_fingerprint"
+                ],
+                "database_manifest_sha256": continuation[
+                    "database_manifest_sha256"
+                ],
+                "deployment_id": failed["deployment_id"],
+                "installed_plugin_sha256": repair["plugin_after_sha256"],
+                "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+                "phase": "installed",
+                "state_exists": True,
+                "version": failed["version"],
+            },
+        }
+        pre_adoption_live = {
+            **failed,
+            "deployment_id": recovered["deployment_id"],
+        }
+        probe_id = "c99-recovery-probe-40000000006-1"
+        audit = {
+            **interrupted_common(failed["deployment_id"]),
+            **interrupted_health_home_robots(failed, prior),
+            **interrupted_health_home_robots(
+                pre_adoption_live,
+                recovered,
+                "pre_adoption_",
+            ),
+            "adopted_forward_no_rollback": True,
+            "decision": "adopt_interrupted_forward",
+            "discovery": interrupted_discovery(
+                failed["deployment_id"],
+                probe_id,
+                "candidate_activation_pending",
+            ),
+            "finalize": finalize_record(),
+            "interrupted_forward_adoption": adoption_audit,
+            "interrupted_forward_proof": {
+                "path": loaded["path"],
+                "proof_sha256": loaded["proof_sha256"],
+                "schema": loaded["schema"],
+            },
+            "pre_adoption_observation": loaded["reviewed_forward_observation"],
+            "result": "recovered",
+        }
+        VALIDATOR.validate_interrupted_forward_recovery_audit(
+            audit,
+            loaded,
+            probe_id,
+        )
+
+        resumed = copy.deepcopy(audit)
+        for key in (
+            "pre_adoption_health",
+            "pre_adoption_observation",
+            "pre_adoption_rendered_home",
+            "pre_adoption_robots",
+        ):
+            del resumed[key]
+        resumed["discovery"]["owner_phase"] = "installed"
+        resumed["interrupted_forward_adoption"]["repair"]["idempotent"] = True
+        resumed["interrupted_forward_adoption"]["receipt"]["idempotent"] = True
+        VALIDATOR.validate_interrupted_forward_recovery_audit(
+            resumed,
+            loaded,
+            probe_id,
+        )
+
     def test_independent_robots_checkpoint_authority_rejects_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository_root = Path(temporary)
@@ -2252,6 +2511,7 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                 "prior_run": prior,
             },
             "proof_sha256": proof_sha256,
+            "schema": "complete99-interrupted-forward-proof/v2",
         }
         pre_adoption = VALIDATOR.expected_interrupted_observation(
             failed,

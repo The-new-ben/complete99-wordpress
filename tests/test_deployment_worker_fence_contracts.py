@@ -25,7 +25,11 @@ class DeploymentWorkerFenceContractTests(unittest.TestCase):
         cls.bridge = BRIDGE_PATH.read_text(encoding="utf-8")
         cls.campaign = CAMPAIGN_PATH.read_text(encoding="utf-8")
         cls.run_section = cls._section(
-            "$route_prefix . '/run'", "$route_prefix . '/continue-activation'"
+            "$route_prefix . '/run'", "$route_prefix . '/repair-candidate-activation'"
+        )
+        cls.candidate_repair = cls._section(
+            "$route_prefix . '/repair-candidate-activation'",
+            "$route_prefix . '/continue-activation'",
         )
         cls.continuation = cls._section(
             "$route_prefix . '/continue-activation'", "$route_prefix . '/rollback'"
@@ -215,7 +219,13 @@ class DeploymentWorkerFenceContractTests(unittest.TestCase):
                 )
 
     def test_release_failure_overrides_success_before_process_lock_release(self) -> None:
-        for section in (self.run_section, self.rollback, self.orphan, self.finalize):
+        for section in (
+            self.run_section,
+            self.candidate_repair,
+            self.rollback,
+            self.orphan,
+            self.finalize,
+        ):
             with self.subTest(route=section[:40]):
                 finally_block = section.rsplit("} finally {", 1)[1]
                 worker_release = finally_block.index("$release_worker_fence(")

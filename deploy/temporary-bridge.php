@@ -41,6 +41,11 @@ add_action(
 				'reviewed_database_storage'         => json_decode( base64_decode( '__C99_REVIEWED_DATABASE_STORAGE_BASE64__' ), true ),
 				'reviewed_safe_status'              => json_decode( base64_decode( '__C99_REVIEWED_SAFE_STATUS_BASE64__' ), true ),
 				'reviewed_safe_status_sha256'       => '__C99_REVIEWED_SAFE_STATUS_SHA256__',
+				'candidate_repair_schema'            => '__C99_CANDIDATE_REPAIR_SCHEMA__',
+				'candidate_source_before_sha256'     => '__C99_CANDIDATE_SOURCE_BEFORE_SHA256__',
+				'candidate_source_after_sha256'      => '__C99_CANDIDATE_SOURCE_AFTER_SHA256__',
+				'candidate_plugin_before_sha256'     => '__C99_CANDIDATE_PLUGIN_BEFORE_SHA256__',
+				'candidate_plugin_after_sha256'      => '__C99_CANDIDATE_PLUGIN_AFTER_SHA256__',
 				'prior_database_fingerprint'        => '__C99_PRIOR_DATABASE_FINGERPRINT__',
 				'prior_plugin_sha256'                => '__C99_PRIOR_PLUGIN_SHA256__',
 				'prior_deployment'                   => '__C99_PRIOR_DEPLOYMENT_ID__',
@@ -1250,6 +1255,89 @@ add_action(
 				'placements'        => $wpdb->prefix . 'c99_campaign_placements',
 				'event_aggregates'  => $wpdb->prefix . 'c99_campaign_event_aggregates',
 			);
+		};
+
+		$candidate_repair_column = static function () use ( $campaign_table_names ) {
+			global $wpdb;
+			$table = (string) $campaign_table_names()['provider_receipts'];
+			$wpdb->last_error = '';
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					'SELECT COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT,CHARACTER_SET_NAME,COLLATION_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s AND COLUMN_NAME=%s ORDER BY ORDINAL_POSITION ASC LIMIT 2',
+					$table,
+					'external_state'
+				),
+				ARRAY_A
+			);
+			if (
+				'' !== (string) $wpdb->last_error
+				|| ! is_array( $rows )
+				|| 1 !== count( $rows )
+				|| 'external_state' !== (string) ( $rows[0]['COLUMN_NAME'] ?? '' )
+				|| ! in_array( strtolower( (string) ( $rows[0]['COLUMN_TYPE'] ?? '' ) ), array( 'varchar(24)', 'varchar(32)' ), true )
+				|| 'NO' !== strtoupper( (string) ( $rows[0]['IS_NULLABLE'] ?? '' ) )
+				|| null !== ( $rows[0]['COLUMN_DEFAULT'] ?? null )
+				|| ! preg_match( '/\Autf8mb4\z/i', (string) ( $rows[0]['CHARACTER_SET_NAME'] ?? '' ) )
+				|| ! preg_match( '/\Autf8mb4_[A-Za-z0-9_]+\z/', (string) ( $rows[0]['COLLATION_NAME'] ?? '' ) )
+			) {
+				return new WP_Error( 'c99_candidate_repair_column', 'Candidate repair requires the exact reviewed provider receipt column.', array( 'status' => 409 ) );
+			}
+			return array(
+				'column'   => 'external_state',
+				'type'     => strtolower( (string) $rows[0]['COLUMN_TYPE'] ),
+				'nullable' => false,
+				'default'  => null,
+				'charset'  => strtolower( (string) $rows[0]['CHARACTER_SET_NAME'] ),
+				'collation'=> strtolower( (string) $rows[0]['COLLATION_NAME'] ),
+				'table'    => $table,
+			);
+		};
+
+		$candidate_repair_receipt_valid = static function ( $state, $require_live = true ) use ( $config, $candidate_repair_column, $directory_sha256, $canonicalize_json_value ) {
+			global $wpdb;
+			$interrupted = is_array( $config['interrupted_forward'] ?? null ) ? $config['interrupted_forward'] : array();
+			$receipt = is_array( $state ) ? ( $state['candidate_repair_receipt'] ?? null ) : null;
+			$receipt_keys = is_array( $receipt ) ? array_keys( $receipt ) : array();
+			sort( $receipt_keys, SORT_STRING );
+			$expected_keys = array( 'charset', 'collation', 'column', 'completed_at', 'default', 'from_type', 'nullable', 'plugin_after_sha256', 'plugin_before_sha256', 'proof_sha256', 'schema', 'source_after_sha256', 'source_before_sha256', 'source_path', 'table', 'to_type' );
+			$valid = 'complete99-interrupted-forward-adoption/v5' === (string) ( $interrupted['adoption_schema'] ?? '' )
+				&& is_array( $receipt )
+				&& $expected_keys === $receipt_keys
+				&& true === ( $state['candidate_repair_started'] ?? null )
+				&& true === ( $state['candidate_repair_no_rollback'] ?? null )
+				&& hash_equals( (string) ( $interrupted['proof_sha256'] ?? '' ), (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ) )
+				&& 'complete99-campaign-provider-receipt-width-repair/v1' === (string) ( $receipt['schema'] ?? '' )
+				&& hash_equals( (string) ( $interrupted['proof_sha256'] ?? '' ), (string) ( $receipt['proof_sha256'] ?? '' ) )
+				&& 'includes/class-complete99-campaigns.php' === (string) ( $receipt['source_path'] ?? '' )
+				&& hash_equals( (string) ( $interrupted['candidate_source_before_sha256'] ?? '' ), (string) ( $receipt['source_before_sha256'] ?? '' ) )
+				&& hash_equals( (string) ( $interrupted['candidate_source_after_sha256'] ?? '' ), (string) ( $receipt['source_after_sha256'] ?? '' ) )
+				&& hash_equals( (string) ( $interrupted['candidate_plugin_before_sha256'] ?? '' ), (string) ( $receipt['plugin_before_sha256'] ?? '' ) )
+				&& hash_equals( (string) ( $interrupted['candidate_plugin_after_sha256'] ?? '' ), (string) ( $receipt['plugin_after_sha256'] ?? '' ) )
+				&& hash_equals( (string) ( $interrupted['candidate_plugin_after_sha256'] ?? '' ), (string) ( $state['installed_plugin_sha256'] ?? '' ) )
+				&& (string) $wpdb->prefix . 'c99_campaign_provider_receipts' === (string) ( $receipt['table'] ?? '' )
+				&& 'external_state' === (string) ( $receipt['column'] ?? '' )
+				&& 'varchar(24)' === (string) ( $receipt['from_type'] ?? '' )
+				&& 'varchar(32)' === (string) ( $receipt['to_type'] ?? '' )
+				&& false === ( $receipt['nullable'] ?? null )
+				&& null === ( $receipt['default'] ?? null )
+				&& is_int( $receipt['completed_at'] ?? null ) && 0 < $receipt['completed_at']
+				&& preg_match( '/\Autf8mb4\z/i', (string) ( $receipt['charset'] ?? '' ) )
+				&& preg_match( '/\Autf8mb4_[A-Za-z0-9_]+\z/', (string) ( $receipt['collation'] ?? '' ) );
+			if ( ! $valid || ! $require_live ) { return $valid; }
+			$target_dir = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
+			$source_path = trailingslashit( $target_dir ) . 'includes/class-complete99-campaigns.php';
+			$source_sha256 = ! is_link( $source_path ) && is_file( $source_path ) ? @hash_file( 'sha256', $source_path ) : false;
+			$plugin_sha256 = $directory_sha256( $target_dir );
+			$column = $candidate_repair_column();
+			return false !== $source_sha256
+				&& ! is_wp_error( $plugin_sha256 )
+				&& ! is_wp_error( $column )
+				&& hash_equals( (string) $receipt['source_after_sha256'], (string) $source_sha256 )
+				&& hash_equals( (string) $receipt['plugin_after_sha256'], (string) $plugin_sha256 )
+				&& 'varchar(32)' === (string) ( $column['type'] ?? '' )
+				&& (string) $receipt['table'] === (string) ( $column['table'] ?? '' )
+				&& (string) $receipt['charset'] === (string) ( $column['charset'] ?? '' )
+				&& (string) $receipt['collation'] === (string) ( $column['collation'] ?? '' );
 		};
 
 		$ops_absent_snapshot = static function () use ( $ops_table_names ) {
@@ -3426,6 +3514,9 @@ add_action(
 						'candidate_database_fingerprint'=> (string) ( $state['candidate_database_fingerprint'] ?? $lock['candidate_database_fingerprint'] ?? '' ),
 						'candidate_requested_active'=> ! empty( $state['candidate_requested_active'] ?? $lock['candidate_requested_active'] ?? false ),
 						'candidate_prior_active'=> ! empty( $state['candidate_prior_active'] ?? $lock['candidate_prior_active'] ?? false ),
+						'candidate_repair_started'=> ! empty( $state['candidate_repair_started'] ?? $lock['candidate_repair_started'] ?? false ),
+						'candidate_repair_no_rollback'=> ! empty( $state['candidate_repair_no_rollback'] ?? $lock['candidate_repair_no_rollback'] ?? false ),
+						'candidate_repair_receipt'=> is_array( $state['candidate_repair_receipt'] ?? null ) ? $state['candidate_repair_receipt'] : array(),
 						'committed_outcome'=> (string) ( $state['committed_outcome'] ?? $lock['committed_outcome'] ?? '' ),
 						'committed_expected_active'=> (bool) ( $state['committed_expected_active'] ?? $lock['committed_expected_active'] ?? false ),
 						'committed_expected_absent'=> (bool) ( $state['committed_expected_absent'] ?? $lock['committed_expected_absent'] ?? false ),
@@ -5916,11 +6007,175 @@ add_action(
 
 		register_rest_route(
 			'complete99-deploy/v1',
+			$route_prefix . '/repair-candidate-activation',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $permission,
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $set_state_phase, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $database_identifier, $candidate_repair_column, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $canonicalize_json_value, $deployment_id_valid ) {
+					global $wpdb, $wp_filesystem;
+					$filesystem = $bootstrap_filesystem();
+					if ( is_wp_error( $filesystem ) ) { return $filesystem; }
+					$site = $verify_site_identity();
+					if ( is_wp_error( $site ) ) { return $site; }
+					$params = $request->get_json_params();
+					$keys = is_array( $params ) ? array_keys( $params ) : array();
+					sort( $keys, SORT_STRING );
+					$deployment_id = (string) $request->get_param( 'deployment_id' );
+					$proof_sha256 = strtolower( (string) $request->get_param( 'interrupted_forward_proof_sha256' ) );
+					$interrupted = is_array( $config['interrupted_forward'] ?? null ) ? $config['interrupted_forward'] : array();
+					$reviewed_status = $interrupted['reviewed_safe_status'] ?? null;
+					$reviewed_status_json = is_array( $reviewed_status ) ? wp_json_encode( $canonicalize_json_value( $reviewed_status ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) : false;
+					$digest_fields = array( 'proof_sha256', 'candidate_source_before_sha256', 'candidate_source_after_sha256', 'candidate_plugin_before_sha256', 'candidate_plugin_after_sha256', 'reviewed_safe_status_sha256' );
+					$config_valid = true;
+					foreach ( $digest_fields as $digest_field ) { $config_valid = $config_valid && preg_match( '/\A[a-f0-9]{64}\z/', (string) ( $interrupted[ $digest_field ] ?? '' ) ); }
+					$config_valid = $config_valid
+						&& array( 'deployment_id', 'interrupted_forward_proof_sha256', 'token' ) === $keys
+						&& $deployment_id_valid( $deployment_id )
+						&& hash_equals( (string) $config['deployment_id'], $deployment_id )
+						&& 'complete99-interrupted-forward-adoption/v5' === (string) ( $interrupted['adoption_schema'] ?? '' )
+						&& 'complete99-campaign-provider-receipt-width-repair/v1' === (string) ( $interrupted['candidate_repair_schema'] ?? '' )
+						&& preg_match( '/\A[a-f0-9]{64}\z/', $proof_sha256 )
+						&& hash_equals( (string) ( $interrupted['proof_sha256'] ?? '' ), $proof_sha256 )
+						&& is_array( $reviewed_status )
+						&& false !== $reviewed_status_json
+						&& hash_equals( (string) $interrupted['reviewed_safe_status_sha256'], hash( 'sha256', $reviewed_status_json ) )
+						&& ! hash_equals( (string) $interrupted['candidate_source_before_sha256'], (string) $interrupted['candidate_source_after_sha256'] )
+						&& ! hash_equals( (string) $interrupted['candidate_plugin_before_sha256'], (string) $interrupted['candidate_plugin_after_sha256'] )
+						&& hash_equals( (string) $config['expected_plugin_sha256'], (string) $interrupted['candidate_plugin_after_sha256'] );
+					if ( ! $config_valid ) { return new WP_Error( 'c99_candidate_repair_request', 'Candidate repair requires one exact reviewed proof request.', array( 'status' => 403 ) ); }
+					$pre_state_path = trailingslashit( $state_directory( $deployment_id ) ) . 'state.json';
+					$pre_state = $wp_filesystem->exists( $pre_state_path ) ? json_decode( $wp_filesystem->get_contents( $pre_state_path ), true ) : null;
+					$pre_started = is_array( $pre_state ) && true === ( $pre_state['candidate_repair_started'] ?? null );
+					if ( ! $pre_started ) {
+						$status_request = new WP_REST_Request( 'POST', '/complete99-deploy/v1/' . $deployment_id . '/status' );
+						$status_request->set_param( 'token', (string) $request->get_param( 'token' ) );
+						$status_request->set_param( 'deployment_id', $deployment_id );
+						$status_response = rest_do_request( $status_request );
+						$status_data = $status_response instanceof WP_REST_Response ? $status_response->get_data() : null;
+						$live_reviewed = array();
+						if ( is_array( $status_data ) ) { foreach ( array_keys( $reviewed_status ) as $reviewed_key ) { if ( ! array_key_exists( $reviewed_key, $status_data ) ) { $live_reviewed = array(); break; } $live_reviewed[ $reviewed_key ] = $status_data[ $reviewed_key ]; } }
+						if ( $canonicalize_json_value( $live_reviewed ) !== $canonicalize_json_value( $reviewed_status ) ) { return new WP_Error( 'c99_candidate_repair_review_changed', 'Candidate repair checkpoint changed after read-only review.', array( 'status' => 409 ) ); }
+					}
+
+					$process_lock = $acquire_process_lock();
+					if ( is_wp_error( $process_lock ) ) { return $process_lock; }
+					$fence = null;
+					try {
+						$state_dir = $state_directory( $deployment_id );
+						$state_path = trailingslashit( $state_dir ) . 'state.json';
+						$state = $wp_filesystem->exists( $state_path ) ? json_decode( $wp_filesystem->get_contents( $state_path ), true ) : null;
+						$lock = $read_lock( true );
+						if (
+							! is_array( $state ) || ! is_array( $lock )
+							|| 'candidate_activation_pending' !== (string) ( $state['phase'] ?? '' )
+							|| ! hash_equals( $deployment_id, (string) ( $state['deployment_id'] ?? '' ) )
+							|| ! hash_equals( $deployment_id, (string) ( $lock['deployment_id'] ?? '' ) )
+							|| (int) ( $state['fence'] ?? 0 ) !== (int) ( $lock['fence'] ?? -1 )
+							|| ! hash_equals( (string) ( $state['owner_id'] ?? '' ), (string) ( $lock['owner_id'] ?? '' ) )
+							|| ! empty( $state['rollback_applied'] ) || ! empty( $state['database_restored'] ) || ! empty( $state['rollback_compensated'] )
+						) { return new WP_Error( 'c99_candidate_repair_state', 'Candidate repair lacks its exact pending durable owner.', array( 'status' => 409 ) ); }
+						$started = true === ( $state['candidate_repair_started'] ?? null );
+						if ( $started && ! hash_equals( $proof_sha256, (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_repair_proof_conflict', 'Candidate repair state is bound to another proof.', array( 'status' => 409 ) ); }
+						$fence = $acquire_worker_fence();
+						if ( is_wp_error( $fence ) ) { return $fence; }
+						$fresh_state = json_decode( $wp_filesystem->get_contents( $state_path ), true );
+						$fresh_lock = $read_lock( true );
+						if ( ! is_array( $fresh_state ) || ! is_array( $fresh_lock ) || ! hash_equals( wp_json_encode( $state ), wp_json_encode( $fresh_state ) ) || ! hash_equals( wp_json_encode( $lock ), wp_json_encode( $fresh_lock ) ) ) { return new WP_Error( 'c99_candidate_repair_race', 'Candidate repair ownership changed after worker exclusion.', array( 'status' => 409 ) ); }
+						$state = $fresh_state;
+						if ( ! $started ) {
+							$review_snapshot = $capture_database_state_consistent();
+							$review_json = is_wp_error( $review_snapshot ) ? false : wp_json_encode( $review_snapshot );
+							$review_manifest_record = is_wp_error( $review_snapshot ) ? $review_snapshot : $database_snapshot_manifest( $review_snapshot );
+							$review_manifest = is_array( $review_manifest_record ) ? ( $review_manifest_record['manifest'] ?? null ) : null;
+							$review_manifest_sha256 = is_array( $review_manifest_record ) ? (string) ( $review_manifest_record['manifest_sha256'] ?? '' ) : '';
+							$review_storage = $verify_transactional_storage();
+							if ( is_wp_error( $review_snapshot ) || false === $review_json || ! is_array( $review_manifest_record ) || ! $database_snapshot_manifest_valid( $review_manifest, $review_manifest_sha256 ) || is_wp_error( $review_storage ) || ! hash_equals( (string) ( $reviewed_status['database_fingerprint'] ?? '' ), hash( 'sha256', $review_json ) ) || ! hash_equals( (string) ( $reviewed_status['database_manifest_sha256'] ?? '' ), $review_manifest_sha256 ) || $review_manifest !== ( $reviewed_status['database_manifest'] ?? null ) || $review_storage !== ( $reviewed_status['database_storage'] ?? null ) ) { return new WP_Error( 'c99_candidate_repair_database_changed', 'Candidate repair database checkpoint changed after worker exclusion.', array( 'status' => 409 ) ); }
+						}
+
+						$target_dir = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
+						$source_path = trailingslashit( $target_dir ) . 'includes/class-complete99-campaigns.php';
+						$target_real = realpath( $target_dir );
+						$source_real = realpath( $source_path );
+						if ( false === $target_real || false === $source_real || is_link( $target_dir ) || is_link( $source_path ) || is_dir( $source_path ) || wp_normalize_path( dirname( dirname( $source_real ) ) ) !== wp_normalize_path( $target_real ) ) { return new WP_Error( 'c99_candidate_repair_source_path', 'Candidate repair source path is unsafe.', array( 'status' => 409 ) ); }
+						$source = @file_get_contents( $source_path );
+						$source_sha256 = is_string( $source ) ? hash( 'sha256', $source ) : '';
+						$plugin_sha256 = $directory_sha256( $target_dir );
+						$column = $candidate_repair_column();
+						if ( is_wp_error( $plugin_sha256 ) || is_wp_error( $column ) ) { return is_wp_error( $plugin_sha256 ) ? $plugin_sha256 : $column; }
+						$pre_source = hash_equals( (string) $interrupted['candidate_source_before_sha256'], $source_sha256 );
+						$post_source = hash_equals( (string) $interrupted['candidate_source_after_sha256'], $source_sha256 );
+						$pre_plugin = hash_equals( (string) $interrupted['candidate_plugin_before_sha256'], (string) $plugin_sha256 );
+						$post_plugin = hash_equals( (string) $interrupted['candidate_plugin_after_sha256'], (string) $plugin_sha256 );
+						if ( ( $pre_source && ! $pre_plugin ) || ( $post_source && ! $post_plugin ) || ( ! $pre_source && ! $post_source ) || ! in_array( (string) $column['type'], array( 'varchar(24)', 'varchar(32)' ), true ) || ( $pre_source && 'varchar(32)' === (string) $column['type'] ) ) { return new WP_Error( 'c99_candidate_repair_precondition', 'Candidate source, plugin, or column is outside the reviewed repair transition.', array( 'status' => 409 ) ); }
+
+						if ( ! $started ) {
+							$state = $set_state_phase( $state_dir, $deployment_id, 'candidate_activation_pending', array( 'candidate_repair_started' => true, 'candidate_repair_no_rollback' => true, 'interrupted_forward_proof_sha256' => $proof_sha256 ) );
+							if ( is_wp_error( $state ) ) { return $state; }
+						}
+
+						if ( $pre_source ) {
+							$replacements = array(
+								"const RECEIPT_PHASE_INVENTORY_CACHE_MAX = 4;\n" => "const RECEIPT_PHASE_INVENTORY_CACHE_MAX = 4;\n\tconst PROVIDER_EXTERNAL_STATE_MAX_BYTES = 32;\n",
+								"60000 < strlen( \$identity['proofRef'] ) || ! preg_match" => "60000 < strlen( \$identity['proofRef'] ) || self::PROVIDER_EXTERNAL_STATE_MAX_BYTES < strlen( (string) \$identity['externalState'] ) || ! preg_match",
+								'external_state varchar(24) NOT NULL,' => 'external_state varchar(32) NOT NULL,',
+								"'external_state'     => array( 'type' => 'varchar(24)', 'nullable' => false )," => "'external_state'     => array( 'type' => 'varchar(32)', 'nullable' => false ),",
+							);
+							foreach ( $replacements as $before => $after ) { if ( 1 !== substr_count( $source, $before ) ) { return new WP_Error( 'c99_candidate_repair_source_shape', 'Candidate source patch context is not exact.', array( 'status' => 409 ) ); } $source = str_replace( $before, $after, $source, $count ); if ( 1 !== $count ) { return new WP_Error( 'c99_candidate_repair_source_shape', 'Candidate source patch was not singular.', array( 'status' => 409 ) ); } }
+							if ( ! hash_equals( (string) $interrupted['candidate_source_after_sha256'], hash( 'sha256', $source ) ) ) { return new WP_Error( 'c99_candidate_repair_source_digest', 'Candidate source patch does not produce the reviewed bytes.', array( 'status' => 409 ) ); }
+							try { $suffix = bin2hex( random_bytes( 8 ) ); } catch ( \Throwable $error ) { return new WP_Error( 'c99_candidate_repair_random', 'Candidate source could not be staged safely.', array( 'status' => 500 ) ); }
+							$temp_source = $source_path . '.repair-' . $suffix;
+							$written = @file_put_contents( $temp_source, $source, LOCK_EX );
+							if ( strlen( $source ) !== $written || ! @chmod( $temp_source, FS_CHMOD_FILE ) || ! @rename( $temp_source, $source_path ) ) { @unlink( $temp_source ); return new WP_Error( 'c99_candidate_repair_source_write', 'Candidate source repair could not be committed atomically.', array( 'status' => 500 ) ); }
+							wp_opcache_invalidate_directory( $target_dir );
+							clearstatcache( true, $source_path );
+						}
+
+						$source_after = @file_get_contents( $source_path );
+						$plugin_after = $directory_sha256( $target_dir );
+						if ( ! is_string( $source_after ) || is_wp_error( $plugin_after ) || ! hash_equals( (string) $interrupted['candidate_source_after_sha256'], hash( 'sha256', $source_after ) ) || ! hash_equals( (string) $interrupted['candidate_plugin_after_sha256'], (string) $plugin_after ) ) { return new WP_Error( 'c99_candidate_repair_source_readback', 'Candidate source repair failed exact readback.', array( 'status' => 500 ) ); }
+
+						$column_before = $column;
+						if ( 'varchar(24)' === (string) $column['type'] ) {
+							$table_identifier = $database_identifier( (string) $column['table'] );
+							if ( is_wp_error( $table_identifier ) ) { return $table_identifier; }
+							$column_charset = (string) $column['charset'];
+							$column_collation = (string) $column['collation'];
+							$wpdb->last_error = '';
+							$altered = $wpdb->query( "ALTER TABLE {$table_identifier} MODIFY COLUMN `external_state` varchar(32) CHARACTER SET {$column_charset} COLLATE {$column_collation} NOT NULL" );
+							if ( false === $altered || '' !== (string) $wpdb->last_error ) { return new WP_Error( 'c99_candidate_repair_ddl', 'Candidate provider receipt width repair failed.', array( 'status' => 500 ) ); }
+						}
+						$column_after = $candidate_repair_column();
+						if ( is_wp_error( $column_after ) || 'varchar(32)' !== (string) ( $column_after['type'] ?? '' ) || (string) $column_before['charset'] !== (string) ( $column_after['charset'] ?? '' ) || (string) $column_before['collation'] !== (string) ( $column_after['collation'] ?? '' ) ) { return is_wp_error( $column_after ) ? $column_after : new WP_Error( 'c99_candidate_repair_ddl_readback', 'Candidate provider receipt width repair failed exact readback.', array( 'status' => 500 ) ); }
+
+						$existing_receipt = $state['candidate_repair_receipt'] ?? null;
+						$completed_at = is_array( $existing_receipt ) && is_int( $existing_receipt['completed_at'] ?? null ) && 0 < $existing_receipt['completed_at'] ? $existing_receipt['completed_at'] : time();
+						$receipt = array(
+							'schema' => (string) $interrupted['candidate_repair_schema'], 'proof_sha256' => $proof_sha256,
+							'source_path' => 'includes/class-complete99-campaigns.php', 'source_before_sha256' => (string) $interrupted['candidate_source_before_sha256'], 'source_after_sha256' => (string) $interrupted['candidate_source_after_sha256'],
+							'plugin_before_sha256' => (string) $interrupted['candidate_plugin_before_sha256'], 'plugin_after_sha256' => (string) $interrupted['candidate_plugin_after_sha256'],
+							'table' => (string) $column_after['table'], 'column' => 'external_state', 'from_type' => 'varchar(24)', 'to_type' => 'varchar(32)', 'nullable' => false, 'default' => null,
+							'charset' => (string) $column_after['charset'], 'collation' => (string) $column_after['collation'], 'completed_at' => $completed_at,
+						);
+						if ( is_array( $existing_receipt ) && $canonicalize_json_value( $existing_receipt ) !== $canonicalize_json_value( $receipt ) ) { return new WP_Error( 'c99_candidate_repair_receipt_conflict', 'Candidate repair receipt conflicts with the reviewed transition.', array( 'status' => 409 ) ); }
+						$completed = $set_state_phase( $state_dir, $deployment_id, 'candidate_activation_pending', array( 'candidate_repair_started' => true, 'candidate_repair_no_rollback' => true, 'candidate_repair_receipt' => $receipt, 'installed_plugin_sha256' => (string) $interrupted['candidate_plugin_after_sha256'], 'interrupted_forward_proof_sha256' => $proof_sha256 ) );
+						if ( is_wp_error( $completed ) ) { return $completed; }
+						return array( 'repaired' => true, 'idempotent' => is_array( $existing_receipt ), 'phase' => 'candidate_activation_pending', 'deployment_id' => $deployment_id, 'plugin_sha256' => (string) $interrupted['candidate_plugin_after_sha256'], 'source_sha256' => (string) $interrupted['candidate_source_after_sha256'], 'column_type' => 'varchar(32)', 'receipt' => $receipt );
+					} finally {
+						$worker_fence_release = is_array( $fence ) ? $release_worker_fence( $fence ) : true;
+						$release_process_lock( $process_lock );
+						if ( is_wp_error( $worker_fence_release ) ) { return $worker_fence_release; }
+					}
+				},
+			)
+		);
+
+		register_rest_route(
+			'complete99-deploy/v1',
 			$route_prefix . '/continue-activation',
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $heartbeat_state, $set_state_phase, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $apply_managed_robots, $purge_caches, $capture_database_state, $decrypt_database_state, $campaign_snapshot_coherent, $core_plugin_active_persisted, $deployment_id_valid ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $heartbeat_state, $set_state_phase, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $apply_managed_robots, $purge_caches, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $decrypt_database_state, $campaign_snapshot_coherent, $core_plugin_active_persisted, $candidate_repair_receipt_valid, $deployment_id_valid ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) { return $filesystem; }
@@ -5930,7 +6185,11 @@ add_action(
 					$keys = is_array( $params ) ? array_keys( $params ) : array();
 					sort( $keys, SORT_STRING );
 					$deployment_id = (string) $request->get_param( 'deployment_id' );
-					if ( array( 'deployment_id', 'token' ) !== $keys || ! $deployment_id_valid( $deployment_id ) || ! hash_equals( (string) $config['deployment_id'], $deployment_id ) ) { return new WP_Error( 'c99_candidate_activation_request', 'Candidate activation continuation request is invalid.', array( 'status' => 400 ) ); }
+					$interrupted = is_array( $config['interrupted_forward'] ?? null ) ? $config['interrupted_forward'] : array();
+					$proof_sha256 = strtolower( (string) $request->get_param( 'interrupted_forward_proof_sha256' ) );
+					$repair_continuation = 'complete99-interrupted-forward-adoption/v5' === (string) ( $interrupted['adoption_schema'] ?? '' ) && '' !== $proof_sha256;
+					$expected_keys = $repair_continuation ? array( 'deployment_id', 'interrupted_forward_proof_sha256', 'token' ) : array( 'deployment_id', 'token' );
+					if ( $expected_keys !== $keys || ! $deployment_id_valid( $deployment_id ) || ! hash_equals( (string) $config['deployment_id'], $deployment_id ) || ( $repair_continuation && ( ! preg_match( '/\A[a-f0-9]{64}\z/', $proof_sha256 ) || ! hash_equals( (string) ( $interrupted['proof_sha256'] ?? '' ), $proof_sha256 ) ) ) ) { return new WP_Error( 'c99_candidate_activation_request', 'Candidate activation continuation request is invalid.', array( 'status' => 400 ) ); }
 					$process = $acquire_process_lock();
 					if ( is_wp_error( $process ) ) { return $process; }
 					$fence = null;
@@ -5940,7 +6199,8 @@ add_action(
 						$state = $wp_filesystem->exists( $state_path ) ? json_decode( $wp_filesystem->get_contents( $state_path ), true ) : null;
 						$lock = $read_lock( true );
 						$phase = is_array( $state ) ? (string) ( $state['phase'] ?? '' ) : '';
-						if ( ! is_array( $state ) || ! is_array( $lock ) || ! in_array( $phase, array( 'candidate_activation_pending', 'candidate_activation_complete', 'installed_pending_stabilization' ), true ) || ! hash_equals( $deployment_id, (string) ( $state['deployment_id'] ?? '' ) ) || ! hash_equals( $deployment_id, (string) ( $lock['deployment_id'] ?? '' ) ) || (int) ( $state['fence'] ?? 0 ) !== (int) ( $lock['fence'] ?? -1 ) || ! hash_equals( (string) ( $state['owner_id'] ?? '' ), (string) ( $lock['owner_id'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_activation_state', 'Candidate activation continuation lacks exact durable reservation and journal ownership.', array( 'status' => 409, 'phase' => $phase ) ); }
+						$allowed_phases = $repair_continuation ? array( 'candidate_activation_pending', 'candidate_activation_complete', 'installed_pending_stabilization', 'installed' ) : array( 'candidate_activation_pending', 'candidate_activation_complete', 'installed_pending_stabilization' );
+						if ( ! is_array( $state ) || ! is_array( $lock ) || ! in_array( $phase, $allowed_phases, true ) || ! hash_equals( $deployment_id, (string) ( $state['deployment_id'] ?? '' ) ) || ! hash_equals( $deployment_id, (string) ( $lock['deployment_id'] ?? '' ) ) || (int) ( $state['fence'] ?? 0 ) !== (int) ( $lock['fence'] ?? -1 ) || ! hash_equals( (string) ( $state['owner_id'] ?? '' ), (string) ( $lock['owner_id'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_activation_state', 'Candidate activation continuation lacks exact durable reservation and journal ownership.', array( 'status' => 409, 'phase' => $phase ) ); }
 						$fence = $acquire_worker_fence();
 						if ( is_wp_error( $fence ) ) { return $fence; }
 						$fresh_state = json_decode( $wp_filesystem->get_contents( $state_path ), true );
@@ -5953,11 +6213,37 @@ add_action(
 						$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . $config['plugin_file'];
 						$digest = $directory_sha256( $target_dir );
 						if ( is_wp_error( $digest ) || ! hash_equals( (string) $config['expected_plugin_sha256'], (string) $digest ) || ! hash_equals( (string) ( $state['installed_plugin_sha256'] ?? '' ), (string) $digest ) || ! file_exists( $plugin_path ) ) { return new WP_Error( 'c99_candidate_activation_plugin', 'Candidate plugin bytes do not match the authenticated handoff.', array( 'status' => 409 ) ); }
+						if ( $repair_continuation && true !== $candidate_repair_receipt_valid( $state, true ) ) { return new WP_Error( 'c99_candidate_activation_repair_receipt', 'Candidate activation repair receipt is missing, changed, or incomplete.', array( 'status' => 409 ) ); }
 						require_once ABSPATH . 'wp-admin/includes/plugin.php';
 						require_once $plugin_path;
 						if ( ! defined( 'COMPLETE99_PLATFORM_VERSION' ) || ! hash_equals( (string) $config['expected_version'], (string) COMPLETE99_PLATFORM_VERSION ) || ! class_exists( 'Complete99_Platform', false ) || ! method_exists( 'Complete99_Platform', 'recover_active_upgrade' ) || ! class_exists( 'Complete99_Campaigns', false ) || ! method_exists( 'Complete99_Campaigns', 'assert_invariants' ) ) { return new WP_Error( 'c99_candidate_activation_runtime', 'Fresh candidate classes are not the reviewed runtime.', array( 'status' => 409 ) ); }
 						$core_active = $core_plugin_active_persisted( $config['plugin_file'] );
 						if ( is_wp_error( $core_active ) ) { return $core_active; }
+						if ( $repair_continuation && 'installed' === $phase ) {
+							$live_snapshot = $capture_database_state_consistent();
+							$live_json = is_wp_error( $live_snapshot ) ? false : wp_json_encode( $live_snapshot );
+							$live_manifest_record = is_wp_error( $live_snapshot ) ? $live_snapshot : $database_snapshot_manifest( $live_snapshot );
+							$live_manifest = is_array( $live_manifest_record ) ? ( $live_manifest_record['manifest'] ?? null ) : null;
+							$live_manifest_sha256 = is_array( $live_manifest_record ) ? (string) ( $live_manifest_record['manifest_sha256'] ?? '' ) : '';
+							$live_storage = $verify_transactional_storage();
+							$live_fingerprint = false === $live_json ? '' : hash( 'sha256', $live_json );
+							$installed_exact = true === $core_active
+								&& true === ( $state['adopted_forward_no_rollback'] ?? null )
+								&& true === ( $state['stabilized'] ?? null )
+								&& true === ( $state['forward_ready'] ?? null )
+								&& true === ( $state['installed_active'] ?? null )
+								&& 'complete' === (string) ( $state['candidate_activation_phase'] ?? '' )
+								&& hash_equals( $proof_sha256, (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ) )
+								&& preg_match( '/\A[a-f0-9]{64}\z/', (string) ( $state['post_install_database_fingerprint'] ?? '' ) )
+								&& hash_equals( (string) $state['post_install_database_fingerprint'], $live_fingerprint )
+								&& is_array( $live_manifest_record ) && $database_snapshot_manifest_valid( $live_manifest, $live_manifest_sha256 )
+								&& hash_equals( (string) ( $state['interrupted_forward_database_manifest_sha256'] ?? '' ), $live_manifest_sha256 )
+								&& $live_manifest === ( $state['interrupted_forward_database_manifest'] ?? null )
+								&& ! is_wp_error( $live_storage ) && $live_storage === ( $state['interrupted_forward_database_storage'] ?? null );
+							try { $installed_exact = $installed_exact && true === Complete99_Campaigns::assert_invariants(); } catch ( \Throwable $error ) { $installed_exact = false; }
+							if ( ! $installed_exact ) { return new WP_Error( 'c99_candidate_activation_repair_idempotency', 'Candidate repair adoption no longer matches live durable truth.', array( 'status' => 409 ) ); }
+							return array( 'continued' => true, 'idempotent' => true, 'active' => true, 'stabilized' => true, 'adopted_forward_no_rollback' => true, 'phase' => 'installed', 'deployment_id' => $deployment_id, 'version' => (string) $config['expected_version'], 'plugin_sha256' => (string) $config['expected_plugin_sha256'], 'post_install_database_fingerprint' => $live_fingerprint, 'database_manifest' => $live_manifest, 'database_manifest_sha256' => $live_manifest_sha256, 'database_storage' => $live_storage, 'interrupted_forward_proof_sha256' => $proof_sha256, 'repair_receipt' => $state['candidate_repair_receipt'] );
+						}
 						if ( in_array( $phase, array( 'candidate_activation_complete', 'installed_pending_stabilization' ), true ) ) {
 							$complete_exact = true === $core_active && ! empty( $state['forward_ready'] ) && ! empty( $state['installed_active'] ) && 'complete' === (string) ( $state['candidate_activation_phase'] ?? '' ) && is_int( $state['candidate_activation_completed_at'] ?? null ) && 0 < $state['candidate_activation_completed_at'] && preg_match( '/\A[a-f0-9]{64}\z/', (string) ( $state['candidate_database_fingerprint'] ?? '' ) );
 							try { $complete_exact = $complete_exact && true === Complete99_Campaigns::assert_invariants(); } catch ( \Throwable $error ) { $complete_exact = false; }
@@ -5989,9 +6275,31 @@ add_action(
 						if ( is_wp_error( $robots ) ) { return $robots; }
 						$purged = $purge_caches();
 						if ( is_wp_error( $purged ) ) { return $purged; }
-						$snapshot = $capture_database_state();
+						$snapshot = $repair_continuation ? $capture_database_state_consistent() : $capture_database_state();
 						$snapshot_json = is_wp_error( $snapshot ) || ! is_array( $snapshot ) ? false : wp_json_encode( $snapshot );
 						if ( is_wp_error( $snapshot ) || false === $snapshot_json || ! $campaign_snapshot_coherent( $snapshot ) ) { return new WP_Error( 'c99_candidate_activation_snapshot', 'Candidate activation database proof is unavailable.', array( 'status' => 500 ) ); }
+						if ( $repair_continuation ) {
+							$manifest_record = $database_snapshot_manifest( $snapshot );
+							$manifest = is_array( $manifest_record ) ? ( $manifest_record['manifest'] ?? null ) : null;
+							$manifest_sha256 = is_array( $manifest_record ) ? (string) ( $manifest_record['manifest_sha256'] ?? '' ) : '';
+							$storage = $verify_transactional_storage();
+							$fingerprint = hash( 'sha256', $snapshot_json );
+							if ( ! is_array( $manifest_record ) || ! $database_snapshot_manifest_valid( $manifest, $manifest_sha256 ) || is_wp_error( $storage ) || 3 !== (int) ( $storage['tables'] ?? 0 ) || '' === (string) ( $storage['engine'] ?? '' ) ) { return new WP_Error( 'c99_candidate_activation_repair_database_proof', 'Candidate repair activation database proof is incomplete.', array( 'status' => 500 ) ); }
+							$installed = $set_state_phase(
+								$state_dir,
+								$deployment_id,
+								'installed',
+								array(
+									'candidate_activation_phase' => 'complete', 'candidate_activation_completed_at' => time(), 'candidate_database_fingerprint' => $fingerprint,
+									'forward_ready' => true, 'installed_active' => true, 'installed_version' => (string) $config['expected_version'], 'installed_plugin_sha256' => (string) $config['expected_plugin_sha256'],
+									'robots_applied' => true, 'robots_managed_sha256' => (string) ( $robots['sha256'] ?? '' ), 'post_install_database_fingerprint' => $fingerprint,
+									'interrupted_forward_current_database_fingerprint' => $fingerprint, 'interrupted_forward_database_manifest' => $manifest, 'interrupted_forward_database_manifest_sha256' => $manifest_sha256, 'interrupted_forward_database_storage' => $storage,
+									'interrupted_forward_proof_sha256' => $proof_sha256, 'adopted_forward_no_rollback' => true, 'adopted_forward_at' => time(), 'stabilized' => true, 'stabilized_from_phase' => 'candidate_activation_pending',
+								)
+							);
+							if ( is_wp_error( $installed ) ) { return $installed; }
+							return array( 'continued' => true, 'idempotent' => false, 'active' => true, 'stabilized' => true, 'adopted_forward_no_rollback' => true, 'phase' => 'installed', 'deployment_id' => $deployment_id, 'version' => (string) $config['expected_version'], 'plugin_sha256' => (string) $config['expected_plugin_sha256'], 'post_install_database_fingerprint' => $fingerprint, 'database_manifest' => $manifest, 'database_manifest_sha256' => $manifest_sha256, 'database_storage' => $storage, 'interrupted_forward_proof_sha256' => $proof_sha256, 'repair_receipt' => $installed['candidate_repair_receipt'] );
+						}
 						$complete = $set_state_phase( $state_dir, $deployment_id, 'candidate_activation_complete', array( 'candidate_activation_phase' => 'complete', 'candidate_activation_completed_at' => time(), 'candidate_database_fingerprint' => hash( 'sha256', $snapshot_json ), 'forward_ready' => true, 'installed_active' => true, 'robots_applied' => true, 'robots_managed_sha256' => (string) ( $robots['sha256'] ?? '' ) ) );
 						if ( is_wp_error( $complete ) ) { return $complete; }
 						$pending = $set_state_phase( $state_dir, $deployment_id, 'installed_pending_stabilization', array( 'candidate_activation_phase' => 'complete', 'candidate_activation_completed_at' => (int) $complete['candidate_activation_completed_at'], 'candidate_database_fingerprint' => (string) $complete['candidate_database_fingerprint'], 'forward_ready' => true, 'installed_active' => true ) );
@@ -6043,6 +6351,13 @@ add_action(
 					$state = json_decode( $wp_filesystem->get_contents( $state_file ), true );
 					if ( ! is_array( $state ) ) {
 						return new WP_Error( 'c99_rollback_state_invalid', 'Rollback state is invalid.', array( 'status' => 500 ) );
+					}
+					if ( ! empty( $state['candidate_repair_started'] ) && empty( $state['adopted_forward_no_rollback'] ) ) {
+						return new WP_Error(
+							'c99_rollback_candidate_repair',
+							'Rollback is categorically refused after proof-gated candidate repair began.',
+							array( 'status' => 409, 'phase' => (string) ( $state['phase'] ?? '' ), 'deployment_id' => $deployment_id )
+						);
 					}
 					if ( ! empty( $state['adopted_forward_no_rollback'] ) ) {
 						return new WP_Error(
@@ -7751,7 +8066,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $directory_sha256, $protect_recovery_evidence_root, $ops_quarantine_residue ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $directory_sha256, $candidate_repair_receipt_valid, $protect_recovery_evidence_root, $ops_quarantine_residue ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -7886,7 +8201,7 @@ add_action(
 						&& ! $adopted_forward_cleanup_residue
 						&& in_array( (string) ( $lock['phase'] ?? '' ), array( 'committed', 'cleanup_failed' ), true )
 						&& ! empty( $lock['adopted_forward_no_rollback'] );
-					$validate_adopted_forward_finalize = static function ( $stage, $lock_only = false, $require_lock_identity = false, $cleanup_residue = false ) use ( $config, $deployment_id, $state_dir, $state_file, $read_lock, $directory_sha256, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $managed_robots_path ) {
+					$validate_adopted_forward_finalize = static function ( $stage, $lock_only = false, $require_lock_identity = false, $cleanup_residue = false ) use ( $config, $deployment_id, $state_dir, $state_file, $read_lock, $directory_sha256, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $managed_robots_path, $candidate_repair_receipt_valid ) {
 						global $wp_filesystem;
 						$attestation_error = static function () use ( $stage ) {
 							return new WP_Error(
@@ -7946,6 +8261,7 @@ add_action(
 							? $config['interrupted_forward']
 							: array();
 						$pending_repair = 'complete99-interrupted-forward-adoption/v4' === (string) ( $interrupted_config['adoption_schema'] ?? '' );
+						$candidate_repair = 'complete99-interrupted-forward-adoption/v5' === (string) ( $interrupted_config['adoption_schema'] ?? '' );
 						$expected_storage = $interrupted_config['reviewed_database_storage'] ?? null;
 						$storage_valid = static function ( $storage ) {
 							$keys = is_array( $storage ) ? array_keys( $storage ) : array();
@@ -7973,7 +8289,8 @@ add_action(
 							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $interrupted_config['expected_version'] ?? '' ) )
 							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $interrupted_config['prior_version'] ?? '' ) )
 							&& preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', (string) ( $interrupted_config['prior_deployment'] ?? '' ) )
-							&& $storage_valid( $expected_storage );
+							&& $storage_valid( $expected_storage )
+							&& ( ! $candidate_repair || ( 'complete99-campaign-provider-receipt-width-repair/v1' === (string) ( $interrupted_config['candidate_repair_schema'] ?? '' ) && preg_match( '/^[a-f0-9]{64}$/', (string) ( $interrupted_config['candidate_source_before_sha256'] ?? '' ) ) && preg_match( '/^[a-f0-9]{64}$/', (string) ( $interrupted_config['candidate_source_after_sha256'] ?? '' ) ) && preg_match( '/^[a-f0-9]{64}$/', (string) ( $interrupted_config['candidate_plugin_before_sha256'] ?? '' ) ) && preg_match( '/^[a-f0-9]{64}$/', (string) ( $interrupted_config['candidate_plugin_after_sha256'] ?? '' ) ) ) );
 						$cleanup_prior_live = trailingslashit( $state_dir ) . 'robots.prior-live';
 						if (
 							$cleanup_residue
@@ -8000,6 +8317,8 @@ add_action(
 							|| true !== ( $current_state['adopted_forward_no_rollback'] ?? null )
 							|| true !== ( $current_state['stabilized'] ?? null )
 							|| ( $pending_repair && 'installed_pending_stabilization' !== (string) ( $current_state['stabilized_from_phase'] ?? '' ) )
+							|| ( $candidate_repair && 'candidate_activation_pending' !== (string) ( $current_state['stabilized_from_phase'] ?? '' ) )
+							|| ( $candidate_repair && true !== $candidate_repair_receipt_valid( $current_state, true ) )
 							|| true !== ( $current_state['forward_ready'] ?? null )
 							|| true !== ( $current_state['temp_removed'] ?? null )
 							|| '' !== (string) ( $current_state['temp_path'] ?? '' )
@@ -8010,8 +8329,8 @@ add_action(
 							|| true !== ( $current_state['installed_active'] ?? null )
 							|| ! empty( $current_state['sync_configuration_pending'] )
 							|| ! hash_equals( (string) $interrupted_config['proof_sha256'], (string) ( $current_state['interrupted_forward_proof_sha256'] ?? '' ) )
-							|| ! hash_equals( (string) $interrupted_config['reviewed_database_fingerprint'], (string) ( $current_state['post_install_database_fingerprint'] ?? '' ) )
-							|| ! hash_equals( (string) $interrupted_config['reviewed_database_manifest_sha256'], (string) ( $current_state['interrupted_forward_database_manifest_sha256'] ?? '' ) )
+							|| ( ! $candidate_repair && ! hash_equals( (string) $interrupted_config['reviewed_database_fingerprint'], (string) ( $current_state['post_install_database_fingerprint'] ?? '' ) ) )
+							|| ( ! $candidate_repair && ! hash_equals( (string) $interrupted_config['reviewed_database_manifest_sha256'], (string) ( $current_state['interrupted_forward_database_manifest_sha256'] ?? '' ) ) )
 							|| ! is_array( $current_state['interrupted_forward_database_manifest'] ?? null )
 							|| ! $storage_valid( $current_state['interrupted_forward_database_storage'] ?? null )
 							|| (string) ( $current_state['interrupted_forward_database_storage']['engine'] ?? '' ) !== (string) $expected_storage['engine']
@@ -8054,6 +8373,9 @@ add_action(
 								'interrupted_forward_database_manifest_sha256',
 								'interrupted_forward_database_storage',
 								'post_install_database_fingerprint',
+								'candidate_repair_started',
+								'candidate_repair_no_rollback',
+								'candidate_repair_receipt',
 								'database_fingerprint',
 								'had_plugin',
 								'prior_target_dir_exists',
@@ -8187,10 +8509,10 @@ add_action(
 							|| ( $current_storage['tables'] ?? null ) !== $expected_storage['tables']
 							|| is_wp_error( $current_snapshot )
 							|| false === $current_database_json
-							|| ! hash_equals( (string) $interrupted_config['reviewed_database_fingerprint'], $current_database_fingerprint )
+							|| ! hash_equals( $candidate_repair ? (string) ( $current_state['post_install_database_fingerprint'] ?? '' ) : (string) $interrupted_config['reviewed_database_fingerprint'], $current_database_fingerprint )
 							|| ! is_array( $current_manifest_record )
 							|| ! $database_snapshot_manifest_valid( $current_manifest, $current_manifest_sha256 )
-							|| ! hash_equals( (string) $interrupted_config['reviewed_database_manifest_sha256'], $current_manifest_sha256 )
+							|| ! hash_equals( $candidate_repair ? (string) ( $current_state['interrupted_forward_database_manifest_sha256'] ?? '' ) : (string) $interrupted_config['reviewed_database_manifest_sha256'], $current_manifest_sha256 )
 							|| $current_manifest !== $current_state['interrupted_forward_database_manifest']
 							|| true !== ( $current_snapshot['sync_secret_existed'] ?? null )
 							|| true !== ( $current_snapshot['sync_secret_configured'] ?? null )
@@ -8690,6 +9012,9 @@ add_action(
 							'stabilized'                        => ! empty( $state['stabilized'] ),
 							'forward_ready'                     => ! empty( $state['forward_ready'] ),
 							'interrupted_forward_proof_sha256'  => (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ),
+							'candidate_repair_started'          => ! empty( $state['candidate_repair_started'] ),
+							'candidate_repair_no_rollback'      => ! empty( $state['candidate_repair_no_rollback'] ),
+							'candidate_repair_receipt'          => is_array( $state['candidate_repair_receipt'] ?? null ) ? $state['candidate_repair_receipt'] : array(),
 							'interrupted_forward_database_manifest'=> $state['interrupted_forward_database_manifest'] ?? array(),
 							'interrupted_forward_database_manifest_sha256'=> (string) ( $state['interrupted_forward_database_manifest_sha256'] ?? '' ),
 							'interrupted_forward_database_storage'=> $state['interrupted_forward_database_storage'] ?? array(),

@@ -999,6 +999,11 @@ def render_bridge(
     reviewed_database_storage: dict[str, Any] | None = None,
     reviewed_safe_status: dict[str, Any] | None = None,
     reviewed_safe_status_sha256: str = "",
+    candidate_repair_schema: str = "",
+    candidate_source_before_sha256: str = "",
+    candidate_source_after_sha256: str = "",
+    candidate_plugin_before_sha256: str = "",
+    candidate_plugin_after_sha256: str = "",
     prior_database_fingerprint: str = "",
     prior_plugin_sha256: str = "",
     prior_deployment_id: str = "",
@@ -1035,6 +1040,10 @@ def render_bridge(
         "reviewed database": reviewed_database_fingerprint,
         "reviewed database manifest": reviewed_database_manifest_sha256,
         "reviewed safe status": reviewed_safe_status_sha256,
+        "candidate source before": candidate_source_before_sha256,
+        "candidate source after": candidate_source_after_sha256,
+        "candidate plugin before": candidate_plugin_before_sha256,
+        "candidate plugin after": candidate_plugin_after_sha256,
         "prior database": prior_database_fingerprint,
         "prior plugin": prior_plugin_sha256,
         "prior robots": prior_robots_sha256,
@@ -1085,6 +1094,7 @@ def render_bridge(
         "complete99-interrupted-forward-adoption/v2",
         "complete99-interrupted-forward-adoption/v3",
         "complete99-interrupted-forward-adoption/v4",
+        "complete99-interrupted-forward-adoption/v5",
     }:
         raise DeployError("Temporary bridge interrupted-forward adoption schema is invalid")
     reviewed_status = reviewed_safe_status or {}
@@ -1098,7 +1108,10 @@ def render_bridge(
     )
     if (
         interrupted_forward_adoption_schema
-        == "complete99-interrupted-forward-adoption/v4"
+        in {
+            "complete99-interrupted-forward-adoption/v4",
+            "complete99-interrupted-forward-adoption/v5",
+        }
         and (
             not reviewed_status
             or re.fullmatch(r"[a-f0-9]{64}", reviewed_safe_status_sha256)
@@ -1110,6 +1123,23 @@ def render_bridge(
         )
     ):
         raise DeployError("Temporary bridge reviewed repair status is invalid")
+    if interrupted_forward_adoption_schema == "complete99-interrupted-forward-adoption/v5" and (
+        candidate_repair_schema
+        != "complete99-campaign-provider-receipt-width-repair/v1"
+        or any(
+            re.fullmatch(r"[a-f0-9]{64}", value) is None
+            for value in (
+                candidate_source_before_sha256,
+                candidate_source_after_sha256,
+                candidate_plugin_before_sha256,
+                candidate_plugin_after_sha256,
+            )
+        )
+        or candidate_source_before_sha256 == candidate_source_after_sha256
+        or candidate_plugin_before_sha256 == candidate_plugin_after_sha256
+        or candidate_plugin_after_sha256 != expected_plugin_sha256
+    ):
+        raise DeployError("Temporary bridge candidate repair identity is invalid")
     reviewed_manifest_json = json.dumps(
         reviewed_manifest,
         ensure_ascii=False,
@@ -1140,7 +1170,14 @@ def render_bridge(
         or any(
             not value
             for label, value in digest_identities.items()
-            if label != "reviewed safe status"
+            if label
+            not in {
+                "reviewed safe status",
+                "candidate source before",
+                "candidate source after",
+                "candidate plugin before",
+                "candidate plugin after",
+            }
         )
         or not expected_version
         or not prior_version
@@ -1205,6 +1242,11 @@ def render_bridge(
             reviewed_status_json.encode("utf-8")
         ).decode("ascii"),
         "__C99_REVIEWED_SAFE_STATUS_SHA256__": reviewed_safe_status_sha256,
+        "__C99_CANDIDATE_REPAIR_SCHEMA__": candidate_repair_schema,
+        "__C99_CANDIDATE_SOURCE_BEFORE_SHA256__": candidate_source_before_sha256,
+        "__C99_CANDIDATE_SOURCE_AFTER_SHA256__": candidate_source_after_sha256,
+        "__C99_CANDIDATE_PLUGIN_BEFORE_SHA256__": candidate_plugin_before_sha256,
+        "__C99_CANDIDATE_PLUGIN_AFTER_SHA256__": candidate_plugin_after_sha256,
         "__C99_PRIOR_DATABASE_FINGERPRINT__": prior_database_fingerprint,
         "__C99_PRIOR_PLUGIN_SHA256__": prior_plugin_sha256,
         "__C99_PRIOR_DEPLOYMENT_ID__": prior_deployment_id,
