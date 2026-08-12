@@ -6050,6 +6050,7 @@ add_action(
 						$status_request = new WP_REST_Request( 'POST', '/complete99-deploy/v1/' . $deployment_id . '/status' );
 						$status_request->set_param( 'token', (string) $request->get_param( 'token' ) );
 						$status_request->set_param( 'deployment_id', $deployment_id );
+						$status_request->set_param( 'projected_deployment_id', $deployment_id );
 						$status_response = rest_do_request( $status_request );
 						$status_data = $status_response instanceof WP_REST_Response ? $status_response->get_data() : null;
 						$live_reviewed = array();
