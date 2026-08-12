@@ -903,6 +903,7 @@ def validate_interrupted_forward_source_audits(
     failed_audit: dict[str, Any],
     recovery_audit: dict[str, Any],
     prior_audit: dict[str, Any],
+    recovered_baseline: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     validate_reviewed_audit_common(
         deployer,
@@ -927,6 +928,7 @@ def validate_interrupted_forward_source_audits(
     failed_home = failed_audit.get("prior_rendered_home")
     failed_cleanup = failed_audit.get("failure_rollback")
     failed_error = failed_audit.get("error")
+    baseline = recovered_baseline if isinstance(recovered_baseline, dict) else prior
     if (
         failed_audit.get("dry_run") is not False
         or failed_audit.get("result") != "failed"
@@ -939,13 +941,13 @@ def validate_interrupted_forward_source_audits(
         or failed_audit.get("artifact")
         != f"complete99-platform-{failed['version']}.zip"
         or not isinstance(failed_preflight, dict)
-        or failed_preflight.get("current_active") is not prior["active"]
-        or failed_preflight.get("current_deployment") != prior["deployment_id"]
-        or failed_preflight.get("current_version") != prior["version"]
+        or failed_preflight.get("current_active") is not baseline["active"]
+        or failed_preflight.get("current_deployment") != baseline["deployment_id"]
+        or failed_preflight.get("current_version") != baseline["version"]
         or failed_preflight.get("database_fingerprint")
         != failed["baseline_database_fingerprint"]
         or failed_preflight.get("robots_prior_exists") is not True
-        or failed_preflight.get("robots_prior_sha256") != prior["robots_sha256"]
+        or failed_preflight.get("robots_prior_sha256") != baseline["robots_sha256"]
         or failed_preflight.get("had_plugin") is not True
         or failed_preflight.get("target_dir_exists") is not True
         or failed_preflight.get("plugin_main_exists") is not True
@@ -958,17 +960,17 @@ def validate_interrupted_forward_source_audits(
             failed_health,
             {
                 "component": "complete99-platform",
-                "database_version": prior["database_version"],
-                "deployment_id": prior["deployment_id"],
+                "database_version": baseline["database_version"],
+                "deployment_id": baseline["deployment_id"],
                 "status": "ok",
-                "sync_configured": prior["sync_configured"],
-                "version": prior["version"],
+                "sync_configured": baseline["sync_configured"],
+                "version": baseline["version"],
             },
         )
         or not isinstance(failed_home, dict)
-        or failed_home.get("deployment_id") != prior["deployment_id"]
+        or failed_home.get("deployment_id") != baseline["deployment_id"]
         or failed_home.get("exact_path") != "/"
-        or failed_home.get("version") != prior["version"]
+        or failed_home.get("version") != baseline["version"]
         or deployer.re.fullmatch(
             r"[a-f0-9]{64}", str(failed_home.get("body_sha256", ""))
         )
@@ -1016,13 +1018,24 @@ def validate_interrupted_forward_source_audits(
             },
         )
     )
+    pending_candidate_activation = (
+        isinstance(recovered_baseline, dict)
+        and failed_error == "HTTPDeployError"
+        and recovery_status.get("phase") == "candidate_activation_pending"
+        and recovery_status.get("recovery_ready") is False
+        and "stabilization_failure" not in recovery_audit
+    )
     if (
         recovery_audit.get("result") != "failed"
         or recovery_audit.get("error") != "HTTPDeployError"
         or recovery_audit.get("discovery") is not None
         or not isinstance(raw_recovery_status, dict)
         or set(recovery_status) != recovery_status_shape
-        or not (legacy_interrupted_install or pending_stabilization)
+        or not (
+            legacy_interrupted_install
+            or pending_stabilization
+            or pending_candidate_activation
+        )
         or recovery_status.get("state_exists") is not True
         or recovery_status.get("lock_owned") is not True
         or recovery_status.get("process_lock_available") is not True
@@ -1973,6 +1986,7 @@ def load_interrupted_forward_proof(
         not in {
             "complete99-interrupted-forward-proof/v1",
             "complete99-interrupted-forward-proof/v2",
+            "complete99-interrupted-forward-proof/v3",
         }
         or not isinstance(envelope.get("proof"), dict)
     ):
@@ -1984,10 +1998,15 @@ def load_interrupted_forward_proof(
     expected_proof_keys = (
         {"failed_run", "forward_adoption", "prior_run"}
         if schema == "complete99-interrupted-forward-proof/v2"
-        else {"failed_run", "prior_run"}
+        else (
+            {"failed_run", "prior_run", "recovered_baseline"}
+            if schema == "complete99-interrupted-forward-proof/v3"
+            else {"failed_run", "prior_run"}
+        )
     )
     failed = proof.get("failed_run")
     prior = proof.get("prior_run")
+    recovered_baseline = proof.get("recovered_baseline")
     failed_keys = {
         "artifact_sha256",
         "baseline_database_fingerprint",
@@ -2094,12 +2113,92 @@ def load_interrupted_forward_proof(
         or failed["commit"] == prior["commit"]
         or failed["version"] == prior["version"]
         or failed["installed_plugin_sha256"] == prior["plugin_sha256"]
-        or failed["baseline_database_fingerprint"]
-        != prior["database_fingerprint"]
+        or (
+            schema != "complete99-interrupted-forward-proof/v3"
+            and failed["baseline_database_fingerprint"]
+            != prior["database_fingerprint"]
+        )
     ):
         raise deployer.DeployError(
             "Interrupted forward reviewed identities are invalid"
         )
+    if schema == "complete99-interrupted-forward-proof/v3":
+        recovered_keys = {
+            "active",
+            "database_fingerprint",
+            "database_version",
+            "deployment_id",
+            "plugin_sha256",
+            "proof_path",
+            "proof_sha256",
+            "robots_sha256",
+            "sync_configured",
+            "version",
+        }
+        if (
+            not isinstance(recovered_baseline, dict)
+            or set(recovered_baseline) != recovered_keys
+            or recovered_baseline.get("active") is not True
+            or recovered_baseline.get("sync_configured") is not True
+            or recovered_baseline.get("database_version")
+            != recovered_baseline.get("version")
+            or recovered_baseline.get("database_fingerprint")
+            != failed["baseline_database_fingerprint"]
+            or recovered_baseline.get("version") == failed["version"]
+            or recovered_baseline.get("deployment_id") == failed["deployment_id"]
+        ):
+            raise deployer.DeployError(
+                "Interrupted forward recovered baseline identity is invalid"
+            )
+        for field in (
+            "database_fingerprint",
+            "plugin_sha256",
+            "proof_sha256",
+            "robots_sha256",
+        ):
+            if (
+                type(recovered_baseline.get(field)) is not str
+                or digest.fullmatch(recovered_baseline[field]) is None
+            ):
+                raise deployer.DeployError(
+                    f"Interrupted forward recovered baseline digest is invalid for {field}"
+                )
+        if (
+            type(recovered_baseline.get("version")) is not str
+            or version.fullmatch(recovered_baseline["version"]) is None
+            or type(recovered_baseline.get("deployment_id")) is not str
+        ):
+            raise deployer.DeployError(
+                "Interrupted forward recovered baseline release identity is invalid"
+            )
+        validate_recovery_id(
+            deployer,
+            recovered_baseline["deployment_id"],
+            "Interrupted forward recovered baseline deployment ID",
+        )
+        previous = load_interrupted_forward_proof(
+            deployer,
+            str(recovered_baseline.get("proof_path", "")),
+        )
+        if (
+            not isinstance(previous, dict)
+            or previous.get("schema")
+            != "complete99-interrupted-forward-proof/v2"
+            or previous.get("proof_sha256")
+            != recovered_baseline["proof_sha256"]
+            or previous["proof"]["failed_run"]["deployment_id"]
+            != recovered_baseline["deployment_id"]
+            or previous["proof"]["failed_run"]["version"]
+            != recovered_baseline["version"]
+            or previous["proof"]["failed_run"]["installed_plugin_sha256"]
+            != recovered_baseline["plugin_sha256"]
+            or previous["proof"]["prior_run"] != prior
+            or previous["proof"]["prior_run"]["robots_sha256"]
+            != recovered_baseline["robots_sha256"]
+        ):
+            raise deployer.DeployError(
+                "Interrupted forward recovered baseline proof is not the reviewed predecessor"
+            )
     failed_audit = load_bound_recovery_audit(
         deployer,
         failed["deploy_audit_path"],
@@ -2135,6 +2234,7 @@ def load_interrupted_forward_proof(
         failed_audit,
         recovery_audit,
         prior_audit,
+        recovered_baseline,
     )
     base_proof = {"failed_run": failed, "prior_run": prior}
     base_proof_sha256 = canonical_proof_sha256(base_proof)
@@ -2955,6 +3055,12 @@ def interrupted_forward_status_mismatches(
     """Name every reviewed predicate that differs, in canonical order."""
     failed = loaded_proof["proof"]["failed_run"]
     prior = loaded_proof["proof"]["prior_run"]
+    recovered_baseline = loaded_proof["proof"].get("recovered_baseline")
+    baseline = (
+        recovered_baseline
+        if isinstance(recovered_baseline, dict)
+        else prior
+    )
     recovery_identity = loaded_proof["recovery_identity"]
     expected = {
         "adopted_forward_no_rollback": False,
@@ -2969,7 +3075,7 @@ def interrupted_forward_status_mismatches(
         "current_deployment": failed["deployment_id"],
         "current_plugin_main_exists": True,
         "current_plugin_sha256": failed["installed_plugin_sha256"],
-        "current_robots_sha256": prior["robots_sha256"],
+        "current_robots_sha256": baseline["robots_sha256"],
         "current_sync_configured": True,
         "current_target_dir_exists": True,
         "current_version": failed["version"],
@@ -2992,17 +3098,17 @@ def interrupted_forward_status_mismatches(
         "no_rollback_artifacts": True,
         "phase": "installing",
         "prior_active": True,
-        "prior_deployment": prior["deployment_id"],
+        "prior_deployment": baseline["deployment_id"],
         "prior_plugin_main_exists": True,
-        "prior_plugin_sha256": prior["plugin_sha256"],
+        "prior_plugin_sha256": baseline["plugin_sha256"],
         "prior_target_dir_exists": True,
-        "prior_version": prior["version"],
+        "prior_version": baseline["version"],
         "process_lock_available": True,
         "recovery_ready": True,
         "robots_applied": True,
-        "robots_managed_sha256": prior["robots_sha256"],
+        "robots_managed_sha256": baseline["robots_sha256"],
         "robots_prior_exists": True,
-        "robots_prior_sha256": prior["robots_sha256"],
+        "robots_prior_sha256": baseline["robots_sha256"],
         "robots_restored": False,
         "runtime_loaded": True,
         "runtime_version": failed["version"],
@@ -4285,11 +4391,12 @@ def main() -> int:
             raise deployer.DeployError(
                 "Interrupted forward recovery requires --dist"
             )
-        if interrupted_observe_only and interrupted_proof.get("schema") != (
-            "complete99-interrupted-forward-proof/v1"
-        ):
+        if interrupted_observe_only and interrupted_proof.get("schema") not in {
+            "complete99-interrupted-forward-proof/v1",
+            "complete99-interrupted-forward-proof/v3",
+        }:
             raise deployer.DeployError(
-                "Interrupted forward observation requires the reviewed v1 proof"
+                "Interrupted forward observation requires a reviewed observation proof"
             )
         if interrupted_observe_only and recovery_only:
             raise deployer.DeployError(
@@ -4647,6 +4754,14 @@ def main() -> int:
         if interrupted_proof is not None:
             failed_forward = interrupted_proof["proof"]["failed_run"]
             prior_forward = interrupted_proof["proof"]["prior_run"]
+            recovered_baseline = interrupted_proof["proof"].get(
+                "recovered_baseline"
+            )
+            live_baseline = (
+                recovered_baseline
+                if isinstance(recovered_baseline, dict)
+                else prior_forward
+            )
             audit.pop("initial_status", None)
             audit["interrupted_forward_proof"] = {
                 "path": interrupted_proof["path"],
@@ -4698,18 +4813,18 @@ def main() -> int:
                 audit["health"] = deployer.verify_health(
                     client,
                     failed_forward["version"],
-                    failed_forward["deployment_id"],
+                    live_baseline["deployment_id"],
                     require_sync_configured=True,
                 )
                 audit["rendered_home"] = deployer.verify_rendered_home(
                     client,
                     failed_forward["version"],
-                    failed_forward["deployment_id"],
+                    live_baseline["deployment_id"],
                     prior_forward["deployment_id"],
                 )
                 audit["robots"] = deployer.verify_managed_robots(
                     client,
-                    prior_forward["robots_sha256"],
+                    live_baseline["robots_sha256"],
                 )
                 if observation_kind == "database-mismatch":
                     audit["decision"] = (

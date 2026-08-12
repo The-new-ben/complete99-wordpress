@@ -42,6 +42,7 @@ final class Complete99_Campaigns {
 	const AGGREGATE_CLEANUP_DIGEST_VECTOR_MAX_PAGES = 1300;
 	const AGGREGATE_CLEANUP_CHAIN_CACHE_MAX = 4;
 	const RECEIPT_PHASE_INVENTORY_CACHE_MAX = 4;
+	const PROVIDER_EXTERNAL_STATE_MAX_BYTES = 32;
 	const MAX_JSON_BYTES        = 65536;
 	const MAX_EVIDENCE_BYTES    = 8192;
 	const MAX_PRIVATE_EVIDENCE_FILE_BYTES = 8388608;
@@ -594,7 +595,7 @@ final class Complete99_Campaigns {
 		$identity = self::aggregate_cleanup_receipt_identity( $payload, $kind ); $tables = self::table_names(); $ops = Complete99_Ops::table_names(); $lock = self::is_sqlite_database() ? '' : ' FOR UPDATE';
 		$wpdb->last_error = '';
 		$existing = $wpdb->get_results( $wpdb->prepare( "SELECT id FROM {$tables['provider_receipts']} WHERE receipt_id=%s OR (provider_key=%s AND external_id=%s) ORDER BY id ASC LIMIT 2{$lock}", $identity['receiptId'], self::AGGREGATE_CLEANUP_PROVIDER, $identity['externalId'] ), ARRAY_A );
-		if ( '' !== (string) $wpdb->last_error || ! is_array( $existing ) || ! empty( $existing ) || 60000 < strlen( $identity['proofRef'] ) || ! preg_match( '/\A[a-f0-9]{64}\z/', $identity['materialDigest'] ) || '' === (string) $identity['occurredAt'] ) { return new WP_Error( 'complete99_campaign_aggregate_cleanup_receipt_collision', 'Aggregate cleanup receipt identity is occupied or invalid.', array( 'status' => 503 ) ); }
+		if ( '' !== (string) $wpdb->last_error || ! is_array( $existing ) || ! empty( $existing ) || 60000 < strlen( $identity['proofRef'] ) || self::PROVIDER_EXTERNAL_STATE_MAX_BYTES < strlen( (string) $identity['externalState'] ) || ! preg_match( '/\A[a-f0-9]{64}\z/', $identity['materialDigest'] ) || '' === (string) $identity['occurredAt'] ) { return new WP_Error( 'complete99_campaign_aggregate_cleanup_receipt_collision', 'Aggregate cleanup receipt identity is occupied or invalid.', array( 'status' => 503 ) ); }
 		$stored = $wpdb->insert( $tables['provider_receipts'], array( 'receipt_id' => $identity['receiptId'], 'campaign_id' => self::AGGREGATE_CLEANUP_CAMPAIGN_ID, 'campaign_version' => (int) $payload['generation'], 'channel' => 'website', 'provider_key' => self::AGGREGATE_CLEANUP_PROVIDER, 'provider_account_ref' => 'complete99-wordpress', 'receipt_status' => 'confirmed', 'proof_level' => 'system_verified', 'external_state' => $identity['externalState'], 'external_id' => $identity['externalId'], 'proof_ref' => $identity['proofRef'], 'material_digest' => $identity['materialDigest'], 'payload_digest' => $identity['payloadDigest'], 'occurred_at' => $identity['occurredAt'], 'created_by' => 0, 'created_at' => $identity['occurredAt'] ) );
 		if ( 1 !== (int) $stored || '' !== (string) $wpdb->last_error ) { return new WP_Error( 'complete99_campaign_aggregate_cleanup_receipt_store', 'Aggregate cleanup provider receipt could not be stored.', array( 'status' => 503 ) ); }
 		self::invalidate_receipt_phase_inventory_cache();
@@ -3327,7 +3328,7 @@ final class Complete99_Campaigns {
 				provider_account_ref varchar(191) NOT NULL,
 				receipt_status varchar(24) NOT NULL,
 				proof_level varchar(32) NOT NULL,
-				external_state varchar(24) NOT NULL,
+				external_state varchar(32) NOT NULL,
 				external_id varchar(191) NULL,
 				proof_ref text NULL,
 				material_digest char(64) NOT NULL,
@@ -3581,7 +3582,7 @@ final class Complete99_Campaigns {
 					'provider_key'       => array( 'type' => 'varchar(64)', 'nullable' => false ),
 					'receipt_status'     => array( 'type' => 'varchar(24)', 'nullable' => false ),
 					'proof_level'        => array( 'type' => 'varchar(32)', 'nullable' => false ),
-					'external_state'     => array( 'type' => 'varchar(24)', 'nullable' => false ),
+					'external_state'     => array( 'type' => 'varchar(32)', 'nullable' => false ),
 					'external_id'        => array( 'type' => 'varchar(191)', 'nullable' => true ),
 					'proof_ref'          => array( 'type' => 'text', 'nullable' => true ),
 					'material_digest'    => array( 'type' => 'char(64)', 'nullable' => false ),

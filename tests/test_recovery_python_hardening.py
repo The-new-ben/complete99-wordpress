@@ -2280,6 +2280,72 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             package["installed_sha256"],
         )
 
+    def test_real_candidate_activation_v3_proof_is_recursively_bound(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31620203121-1.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        baseline = loaded["proof"]["recovered_baseline"]
+        self.assertEqual("complete99-interrupted-forward-proof/v3", loaded["schema"])
+        self.assertEqual(
+            "a5b7c0d705e6f8a8107074a5e7a277832cb91bf525ab148bb703698cee49d224",
+            loaded["proof_sha256"],
+        )
+        self.assertEqual(
+            "docs/recovery-proofs/c99-prod-31598196288-1-v2.json",
+            baseline["proof_path"],
+        )
+        self.assertEqual(
+            "6fd99bae0c732ae2df254341d2e3501d7d377c383adc2a034667bf6e86bfd8d9",
+            baseline["proof_sha256"],
+        )
+        self.assertEqual(
+            "f1087fce5d0dcbec614c7cf4ee8790988ba23fd290ab01f56bccd80979875140",
+            loaded["recovery_identity"]["database_manifest_sha256"],
+        )
+
+    def test_candidate_activation_v3_recovered_baseline_tampering_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(
+                ROOT / "docs" / "recovery-proofs",
+                root / "docs" / "recovery-proofs",
+            )
+            proof_path = (
+                root
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31620203121-1.json"
+            )
+            original = json.loads(proof_path.read_text(encoding="utf-8"))
+            cases = {
+                "database fingerprint": lambda baseline: baseline.__setitem__(
+                    "database_fingerprint", "0" * 64
+                ),
+                "predecessor proof digest": lambda baseline: baseline.__setitem__(
+                    "proof_sha256", "0" * 64
+                ),
+                "predecessor deployment": lambda baseline: baseline.__setitem__(
+                    "deployment_id", "c99-prod-31598196289-1"
+                ),
+            }
+            for label, mutate in cases.items():
+                with self.subTest(label=label):
+                    envelope = copy.deepcopy(original)
+                    mutate(envelope["proof"]["recovered_baseline"])
+                    envelope["proof_sha256"] = RECOVER.canonical_proof_sha256(
+                        envelope["proof"]
+                    )
+                    proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+                    with mock.patch.object(RECOVER, "ROOT", root):
+                        with self.assertRaises(DEPLOY.DeployError):
+                            RECOVER.load_interrupted_forward_proof(
+                                DEPLOY,
+                                "docs/recovery-proofs/c99-prod-31620203121-1.json",
+                            )
+
     def test_real_robots_checkpoint_adoption_v3_proof_is_exact(self) -> None:
         loaded = RECOVER.load_interrupted_forward_proof(
             DEPLOY,
