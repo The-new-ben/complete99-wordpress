@@ -54,6 +54,7 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             "__C99_EXPECTED_ARTIFACT_SHA256__",
             "__C99_EXPECTED_PLUGIN_SHA256__",
             "__C99_EXPECTED_VERSION__",
+            "__C99_INTERRUPTED_FORWARD_ADOPTION_SCHEMA__",
             "__C99_INTERRUPTED_FORWARD_PROOF_SHA256__",
             "__C99_INTERRUPTED_FORWARD_FINALIZED_ATTESTATION__",
             "__C99_INTERRUPTED_FORWARD_TARGET_DEPLOYMENT_ID__",
@@ -61,6 +62,8 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             "__C99_REVIEWED_DATABASE_MANIFEST_BASE64__",
             "__C99_REVIEWED_DATABASE_MANIFEST_SHA256__",
             "__C99_REVIEWED_DATABASE_STORAGE_BASE64__",
+            "__C99_REVIEWED_SAFE_STATUS_BASE64__",
+            "__C99_REVIEWED_SAFE_STATUS_SHA256__",
             "__C99_PRIOR_DATABASE_FINGERPRINT__",
             "__C99_PRIOR_PLUGIN_SHA256__",
             "__C99_PRIOR_DEPLOYMENT_ID__",
@@ -119,8 +122,9 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             "'c99_stabilize_interrupted_proof'",
             "'c99_stabilize_interrupted_lease'",
             "$lock_age < (int) $config['recovery_lease_seconds']",
-            "array( 'installing' )",
-            "'installing',\n\t\t\t\t\t\t\tfalse,\n\t\t\t\t\t\t\ttrue",
+            "$interrupted_source_phase = $interrupted_forward_pending ? 'installed_pending_stabilization' : 'installing'",
+            "array( $interrupted_source_phase )",
+            "$interrupted_source_phase,\n\t\t\t\t\t\t\tfalse,\n\t\t\t\t\t\t\ttrue",
         ):
             self.assertIn(marker, self.stabilize)
         self.assertIn(
@@ -167,7 +171,7 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
     def test_adoption_checkpoint_and_response_are_auditable(self) -> None:
         for marker in (
             "'adopted_forward_no_rollback'              => true",
-            "'stabilized_from_phase'                    => 'installing'",
+            "'stabilized_from_phase'                    => $interrupted_source_phase",
             "'post_install_database_fingerprint'        => $post_claim_fingerprint",
             "'installed_plugin_sha256'                  => $installed_plugin_sha256",
             "'interrupted_forward_proof_sha256'         => $interrupted_config['proof_sha256']",
@@ -179,6 +183,31 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             "'c99_stabilize_interrupted_idempotency_proof'",
         ):
             self.assertIn(marker, self.stabilize)
+
+    def test_pending_stabilization_repair_is_exactly_reviewed_and_rechecked(self) -> None:
+        for marker in (
+            "'complete99-interrupted-forward-adoption/v4'",
+            "$reviewed_safe_status_sha256",
+            "hash( 'sha256', $reviewed_safe_json )",
+            "new WP_REST_Request( 'POST', '/complete99-deploy/v1/' . $deployment_id . '/status' )",
+            "$canonicalize_json_value( $live_safe_status ) !== $canonicalize_json_value( $reviewed_safe_status )",
+            "$interrupted_forward_pending = $pending_repair_request && 'installed_pending_stabilization' === $phase",
+            "true === ( $state['temp_removed'] ?? null )",
+            "true === ( $state['forward_ready'] ?? null )",
+            "true === ( $state['installed_active'] ?? null )",
+            "'complete' === (string) ( $state['candidate_activation_phase'] ?? '' )",
+            "$interrupted_config['reviewed_database_fingerprint'], (string) ( $state['candidate_database_fingerprint'] ?? '' )",
+            "'stabilized_from_phase'                    => $interrupted_source_phase",
+        ):
+            self.assertIn(marker, self.stabilize)
+        self.assertLess(
+            self.stabilize.index("rest_do_request( $status_request )"),
+            self.stabilize.index("$process_lock = $acquire_process_lock()"),
+        )
+        self.assertLess(
+            self.stabilize.index("$post_claim_fingerprint"),
+            self.stabilize.index("'adopted_forward_no_rollback'              => true"),
+        )
 
     def test_rollback_categorically_refuses_adopted_forward(self) -> None:
         refusal = "if ( ! empty( $state['adopted_forward_no_rollback'] ) )"
@@ -307,6 +336,21 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             "prior_version": "1.17.0",
             "prior_robots_sha256": "8" * 64,
         }
+        pending_envelope = json.loads(
+            (
+                ROOT
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31598196288-1-v2.json"
+            ).read_text(encoding="utf-8")
+        )
+        pending_adoption = pending_envelope["proof"]["forward_adoption"]
+        pending_audit = json.loads(
+            (ROOT / pending_adoption["observation_audit_path"]).read_text(
+                encoding="utf-8"
+            )
+        )
+        pending_observation = pending_audit["interrupted_forward_observation"]
         cases = {
             "default": {},
             "v1": identities,
@@ -327,6 +371,52 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
                     "engine": "INNODB",
                     "tables": 3,
                 },
+            },
+            "pending-stabilization-v4": {
+                "expected_artifact_sha256": pending_adoption[
+                    "target_artifact_sha256"
+                ],
+                "expected_plugin_sha256": pending_adoption[
+                    "target_installed_plugin_sha256"
+                ],
+                "expected_version": pending_adoption["observed_version"],
+                "interrupted_forward_adoption_schema": pending_adoption[
+                    "schema"
+                ],
+                "interrupted_forward_proof_sha256": pending_envelope[
+                    "proof_sha256"
+                ],
+                "prior_database_fingerprint": pending_envelope["proof"][
+                    "prior_run"
+                ]["database_fingerprint"],
+                "prior_deployment_id": pending_envelope["proof"]["prior_run"][
+                    "deployment_id"
+                ],
+                "prior_plugin_sha256": pending_envelope["proof"]["prior_run"][
+                    "plugin_sha256"
+                ],
+                "prior_robots_sha256": pending_envelope["proof"]["prior_run"][
+                    "robots_sha256"
+                ],
+                "prior_version": pending_envelope["proof"]["prior_run"][
+                    "version"
+                ],
+                "reviewed_database_fingerprint": pending_adoption[
+                    "observed_database_fingerprint"
+                ],
+                "reviewed_database_manifest": pending_adoption[
+                    "observed_database_manifest"
+                ],
+                "reviewed_database_manifest_sha256": pending_adoption[
+                    "observed_database_manifest_sha256"
+                ],
+                "reviewed_database_storage": pending_adoption[
+                    "observed_database_storage"
+                ],
+                "reviewed_safe_status": pending_observation["safe_status"],
+                "reviewed_safe_status_sha256": pending_observation[
+                    "safe_status_sha256"
+                ],
             },
         }
         with tempfile.TemporaryDirectory() as temporary:

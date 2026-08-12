@@ -2328,6 +2328,330 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             package["installed_sha256"],
         )
 
+    def test_real_pending_stabilization_adoption_v4_is_exact(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31598196288-1-v2.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        adoption = loaded["proof"]["forward_adoption"]
+        receipt = loaded["reviewed_forward_observation"]
+        self.assertEqual(
+            "complete99-interrupted-forward-proof/v2", loaded["schema"]
+        )
+        self.assertEqual(
+            "complete99-interrupted-forward-adoption/v4",
+            adoption["schema"],
+        )
+        self.assertEqual(
+            "6fd99bae0c732ae2df254341d2e3501d7d377c383adc2a034667bf6e86bfd8d9",
+            loaded["proof_sha256"],
+        )
+        self.assertEqual(31615621733, adoption["observation_run_id"])
+        self.assertEqual(2, adoption["observation_run_attempt"])
+        self.assertEqual(
+            "bb590087d5b26586313bca29e6d7e8f8768804e0202c9859d1462c2c1858af67",
+            adoption["observation_audit_sha256"],
+        )
+        self.assertEqual(
+            "129c4527f50872bc22f8ca0b3b8612c25872adb6d71779ba68df8293c4359e24",
+            receipt["safe_status_sha256"],
+        )
+        self.assertEqual(
+            RECOVER.INTERRUPTED_FORWARD_PENDING_STABILIZATION_MISMATCHES,
+            receipt["mismatches"],
+        )
+        self.assertEqual(
+            receipt,
+            RECOVER.validate_interrupted_forward_pending_stabilization_status(
+                DEPLOY,
+                copy.deepcopy(receipt["safe_status"]),
+                loaded,
+            ),
+        )
+        fields = RECOVER.interrupted_forward_bridge_fields(loaded)
+        self.assertEqual(adoption["schema"], fields["interrupted_forward_adoption_schema"])
+        self.assertEqual(receipt["safe_status"], fields["reviewed_safe_status"])
+        self.assertEqual(
+            receipt["safe_status_sha256"],
+            fields["reviewed_safe_status_sha256"],
+        )
+        for label, mutate in (
+            (
+                "phase",
+                lambda value: value.__setitem__("phase", "installed"),
+            ),
+            (
+                "candidate fingerprint",
+                lambda value: value.__setitem__(
+                    "candidate_database_fingerprint", "0" * 64
+                ),
+            ),
+            (
+                "campaign readiness",
+                lambda value: value["campaign_operational"].__setitem__(
+                    "ready", True
+                ),
+            ),
+            (
+                "campaign invariant",
+                lambda value: value["migration_invariant_checks"].__setitem__(
+                    "campaigns", True
+                ),
+            ),
+        ):
+            with self.subTest(status_drift=label):
+                changed = copy.deepcopy(receipt["safe_status"])
+                mutate(changed)
+                with self.assertRaisesRegex(
+                    DEPLOY.DeployError, "checkpoint changed after review"
+                ):
+                    RECOVER.validate_interrupted_forward_pending_stabilization_status(
+                        DEPLOY,
+                        changed,
+                        loaded,
+                    )
+
+    def test_pending_stabilization_adoption_v4_rejects_authority_drift(
+        self,
+    ) -> None:
+        original_loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31598196288-1-v2.json",
+        )
+        self.assertIsNotNone(original_loaded)
+        assert original_loaded is not None
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(
+                ROOT / "docs" / "recovery-proofs",
+                root / "docs" / "recovery-proofs",
+            )
+            proof_path = (
+                root
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31598196288-1-v2.json"
+            )
+            original_proof = json.loads(proof_path.read_text(encoding="utf-8"))
+            adoption = original_proof["proof"]["forward_adoption"]
+            audit_path = root / adoption["observation_audit_path"]
+            original_audit = json.loads(audit_path.read_text(encoding="utf-8"))
+
+            def load_changed(
+                *,
+                mutate_audit: Callable[[dict[str, Any]], None] | None = None,
+                mutate_proof: Callable[[dict[str, Any]], None] | None = None,
+                recompute_receipt: bool = False,
+                rebind_audit: bool = True,
+            ) -> None:
+                envelope = copy.deepcopy(original_proof)
+                audit = copy.deepcopy(original_audit)
+                if mutate_audit is not None:
+                    mutate_audit(audit)
+                if recompute_receipt:
+                    observation = audit["interrupted_forward_observation"]
+                    safe = observation["safe_status"]
+                    observation["safe_status_sha256"] = (
+                        RECOVER.canonical_proof_sha256(safe)
+                    )
+                    observation["mismatches"] = (
+                        RECOVER.interrupted_forward_status_mismatches(
+                            safe,
+                            original_loaded,
+                        )
+                    )
+                audit_path.write_text(
+                    json.dumps(
+                        audit,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ),
+                    encoding="utf-8",
+                )
+                if rebind_audit:
+                    envelope["proof"]["forward_adoption"][
+                        "observation_audit_sha256"
+                    ] = hashlib.sha256(audit_path.read_bytes()).hexdigest()
+                if mutate_proof is not None:
+                    mutate_proof(envelope["proof"])
+                envelope["proof_sha256"] = RECOVER.canonical_proof_sha256(
+                    envelope["proof"]
+                )
+                proof_path.write_text(
+                    json.dumps(
+                        envelope,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        sort_keys=True,
+                    ),
+                    encoding="utf-8",
+                )
+                with mock.patch.object(RECOVER, "ROOT", root):
+                    RECOVER.load_interrupted_forward_proof(
+                        DEPLOY,
+                        str(proof_path),
+                    )
+
+            cases: tuple[
+                tuple[
+                    str,
+                    Callable[[dict[str, Any]], None] | None,
+                    Callable[[dict[str, Any]], None] | None,
+                    bool,
+                    bool,
+                ],
+                ...,
+            ] = (
+                (
+                    "run attempt",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "observation_run_attempt", 1
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "observation commit",
+                    None,
+                    lambda proof: proof["forward_adoption"].__setitem__(
+                        "observation_commit", "0" * 40
+                    ),
+                    False,
+                    True,
+                ),
+                (
+                    "candidate checkpoint",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ].__setitem__("candidate_database_fingerprint", "0" * 64),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "campaign diagnostics",
+                    lambda audit: audit["interrupted_forward_observation"][
+                        "safe_status"
+                    ]["campaign_operational"].__setitem__("ready", True),
+                    None,
+                    True,
+                    True,
+                ),
+                (
+                    "receipt grants authority",
+                    lambda audit: audit["interrupted_forward_observation"].__setitem__(
+                        "recovery_authority", True
+                    ),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "audit result",
+                    lambda audit: audit.__setitem__("result", "recovered"),
+                    None,
+                    False,
+                    True,
+                ),
+                (
+                    "unbound audit bytes",
+                    lambda audit: audit.__setitem__("result", "failed"),
+                    None,
+                    False,
+                    False,
+                ),
+            )
+            for label, audit_mutation, proof_mutation, recompute, rebind in cases:
+                with self.subTest(authority_drift=label), self.assertRaises(
+                    DEPLOY.DeployError
+                ):
+                    load_changed(
+                        mutate_audit=audit_mutation,
+                        mutate_proof=proof_mutation,
+                        recompute_receipt=recompute,
+                        rebind_audit=rebind,
+                    )
+
+    def test_pending_stabilization_v4_adoption_receipt_is_phase_exact(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31598196288-1-v2.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        failed = loaded["proof"]["failed_run"]
+        adoption = loaded["proof"]["forward_adoption"]
+        response = {
+            "adopted_forward_no_rollback": True,
+            "cache_purge": {"deferred_to_finalize": True},
+            "database_manifest": adoption["observed_database_manifest"],
+            "database_manifest_sha256": adoption[
+                "observed_database_manifest_sha256"
+            ],
+            "database_storage": adoption["observed_database_storage"],
+            "database_version": failed["version"],
+            "deployment_id": failed["deployment_id"],
+            "idempotent": False,
+            "installed_plugin_sha256": failed["installed_plugin_sha256"],
+            "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            "post_install_database_fingerprint": adoption[
+                "observed_database_fingerprint"
+            ],
+            "stabilized": True,
+            "stabilized_from_phase": "installed_pending_stabilization",
+            "version": failed["version"],
+        }
+        status = interrupted_forward_status(loaded, adopted=True)
+        status["migration_invariants_valid"] = False
+        status["migration_invariant_checks"] = {
+            "campaigns": False,
+            "content": True,
+            "culinary_science": True,
+            "evaluation_catalog": True,
+            "ops": True,
+            "settings": True,
+        }
+        bridge_call = mock.Mock(side_effect=[response, status])
+        fake_deployer = types.SimpleNamespace(
+            DeployError=DEPLOY.DeployError,
+            bridge_call=bridge_call,
+            re=re,
+        )
+        receipt = RECOVER.adopt_interrupted_forward(
+            fake_deployer,
+            object(),
+            "token",
+            failed["deployment_id"],
+            loaded,
+        )
+        self.assertEqual(
+            "installed_pending_stabilization",
+            receipt["receipt"]["stabilized_from_phase"],
+        )
+        self.assertEqual(
+            ["stabilize", "status"],
+            [call.args[1] for call in bridge_call.call_args_list],
+        )
+
+        changed = copy.deepcopy(response)
+        changed["stabilized_from_phase"] = "installing"
+        with self.assertRaises(DEPLOY.DeployError):
+            RECOVER.adopt_interrupted_forward(
+                types.SimpleNamespace(
+                    DeployError=DEPLOY.DeployError,
+                    bridge_call=mock.Mock(return_value=changed),
+                    re=re,
+                ),
+                object(),
+                "token",
+                failed["deployment_id"],
+                loaded,
+            )
+
     def test_robots_checkpoint_adoption_v3_rejects_every_authority_drift(
         self,
     ) -> None:
@@ -4055,6 +4379,44 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
                         changed,
                         loaded,
                     )
+
+    def test_pending_stabilization_v4_routes_only_to_reviewed_adoption(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31598196288-1-v2.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        status = copy.deepcopy(
+            loaded["reviewed_forward_observation"]["safe_status"]
+        )
+        fake, adopt, rollback, write_audit = self._run_interrupted_main(
+            loaded=loaded,
+            status=status,
+            observe_only=False,
+        )
+        adopt.assert_called_once()
+        rollback.assert_not_called()
+        fake.finalize_deployment.assert_called_once()
+        audit = write_audit.call_args.args[1]
+        self.assertEqual("recovered", audit["result"])
+        self.assertEqual("adopt_interrupted_forward", audit["decision"])
+        self.assertEqual(
+            loaded["reviewed_forward_observation"],
+            audit["pre_adoption_observation"],
+        )
+        self.assertTrue(audit["adopted_forward_no_rollback"])
+
+        changed = copy.deepcopy(status)
+        changed["campaign_capacity_diagnostic"][
+            "lifecycle_reserve_inspectable"
+        ] = True
+        with self.assertRaises(DEPLOY.DeployError):
+            self._run_interrupted_main(
+                loaded=loaded,
+                status=changed,
+                observe_only=False,
+            )
 
     def test_robots_checkpoint_adoption_v3_resumes_idempotently(self) -> None:
         loaded, _ = interrupted_robots_checkpoint_loaded()
