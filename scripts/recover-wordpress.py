@@ -2167,6 +2167,9 @@ def load_interrupted_forward_proof(
             type(recovered_baseline.get("version")) is not str
             or version.fullmatch(recovered_baseline["version"]) is None
             or type(recovered_baseline.get("deployment_id")) is not str
+            or recovered_baseline.get("proof_path")
+            != "docs/recovery-proofs/"
+            f"{recovered_baseline.get('deployment_id', '')}-v2.json"
         ):
             raise deployer.DeployError(
                 "Interrupted forward recovered baseline release identity is invalid"

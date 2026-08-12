@@ -2223,9 +2223,9 @@ def load_interrupted_forward_proof(
             and type(recovered_baseline.get("deployment_id")) is str
             and DEPLOYMENT_ID.fullmatch(recovered_baseline["deployment_id"])
             is not None
-            and type(recovered_baseline.get("proof_path")) is str
-            and recovered_baseline["proof_path"]
-            != path.relative_to(repository_root.resolve()).as_posix(),
+            and recovered_baseline.get("proof_path")
+            == "docs/recovery-proofs/"
+            f"{recovered_baseline['deployment_id']}-v2.json",
             "Interrupted forward recovered baseline release identity is invalid",
         )
         previous = load_interrupted_forward_proof(
