@@ -970,6 +970,7 @@ INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS = {
 }
 
 INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS = {
+    "campaign_capacity_diagnostic",
     "campaign_lifecycle",
     "campaign_operational",
     "candidate_activation_completed_at",
@@ -1008,6 +1009,15 @@ INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS = {
     "suppression_invalid",
     "suppression_ready",
     "suppression_recoverable_pending",
+}
+
+INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS = {
+    "campaign_cohort_inspectable",
+    "fresh_install_empty",
+    "lifecycle_reserve_inspectable",
+    "operations_cohort_inspectable",
+    "prior_inactive_receipt_valid",
+    "quarantine_reserve_inspectable",
 }
 
 INTERRUPTED_FORWARD_SAFE_PHASES = {
@@ -1136,6 +1146,10 @@ def validate_interrupted_safe_status_shape(
             safe.get("campaign_operational"),
             f"{label} campaign operational status",
         )
+        capacity_diagnostic = require_mapping(
+            safe.get("campaign_capacity_diagnostic"),
+            f"{label} campaign capacity diagnostic",
+        )
         lifecycle = require_mapping(
             safe.get("campaign_lifecycle"),
             f"{label} campaign lifecycle status",
@@ -1145,6 +1159,9 @@ def validate_interrupted_safe_status_shape(
             and all(type(value) is bool for value in invariant_checks.values())
             and set(campaign) == INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS
             and all(type(value) is bool for value in campaign.values())
+            and set(capacity_diagnostic)
+            == INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS
+            and all(type(value) is bool for value in capacity_diagnostic.values())
             and set(lifecycle) == {"canonical", "generation", "state"}
             and type(lifecycle.get("canonical")) is bool
             and type(lifecycle.get("generation")) is int

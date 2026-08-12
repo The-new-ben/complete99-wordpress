@@ -3167,7 +3167,15 @@ add_action(
 						'suppression_ready'              => false,
 						'suppression_recoverable_pending' => false,
 					);
-					if ( $runtime_loaded && method_exists( 'Complete99_Ops', 'status_snapshot' ) ) {
+					$campaign_capacity_diagnostic = array(
+						'campaign_cohort_inspectable'   => false,
+						'fresh_install_empty'            => false,
+						'lifecycle_reserve_inspectable'  => false,
+						'operations_cohort_inspectable' => false,
+						'prior_inactive_receipt_valid'   => false,
+						'quarantine_reserve_inspectable' => false,
+					);
+					if ( $runtime_loaded && 'installed_pending_stabilization' === $phase && method_exists( 'Complete99_Ops', 'status_snapshot' ) ) {
 						try {
 							$ops_status = Complete99_Ops::status_snapshot();
 							$campaign_status = is_array( $ops_status ) && is_array( $ops_status['campaigns'] ?? null ) ? $ops_status['campaigns'] : array();
@@ -3191,6 +3199,8 @@ add_action(
 								'suppression_ready'              => true === ( $suppression_status['ready'] ?? false ),
 								'suppression_recoverable_pending' => true === ( $suppression_status['recoverablePending'] ?? false ),
 							);
+							$campaign_capacity_diagnostic['campaign_cohort_inspectable'] = is_array( $capacity_status['cohorts']['campaign'] ?? null );
+							$campaign_capacity_diagnostic['operations_cohort_inspectable'] = is_array( $capacity_status['cohorts']['operations'] ?? null );
 						} catch ( \Throwable $error ) {
 							// Preserve the all-false bounded projection on diagnostic failure.
 						}
@@ -3205,6 +3215,32 @@ add_action(
 								'generation' => (int) ( $lifecycle_payload['generation'] ?? 0 ),
 								'state'      => (string) ( $lifecycle_payload['state'] ?? '' ),
 							);
+						}
+					}
+					if ( $runtime_loaded && 'installed_pending_stabilization' === $phase && $campaign_lifecycle['canonical'] ) {
+						$invoke_campaign_private = static function ( $method, $arguments = array() ) {
+							try {
+								$reflection = new \ReflectionMethod( 'Complete99_Campaigns', (string) $method );
+								$reflection->setAccessible( true );
+								return array( 'invoked' => true, 'value' => $reflection->invokeArgs( null, array_values( (array) $arguments ) ) );
+							} catch ( \Throwable $error ) {
+								return array( 'invoked' => false, 'value' => null );
+							}
+						};
+						$lifecycle_reserve = $invoke_campaign_private( 'lifecycle_capacity_reservation' );
+						$campaign_capacity_diagnostic['lifecycle_reserve_inspectable'] = ! empty( $lifecycle_reserve['invoked'] ) && is_array( $lifecycle_reserve['value'] ) && ! is_wp_error( $lifecycle_reserve['value'] );
+						$quarantine_reserve = $invoke_campaign_private( 'public_quarantine_capacity_reservation' );
+						$campaign_capacity_diagnostic['quarantine_reserve_inspectable'] = ! empty( $quarantine_reserve['invoked'] ) && is_array( $quarantine_reserve['value'] ) && ! is_wp_error( $quarantine_reserve['value'] );
+						if ( 1 < $campaign_lifecycle['generation'] ) {
+							$prior_receipt = $invoke_campaign_private( 'stored_lifecycle_receipt', array( $campaign_lifecycle['generation'] - 1, 'inactive', false ) );
+							$campaign_capacity_diagnostic['prior_inactive_receipt_valid'] = ! empty( $prior_receipt['invoked'] ) && is_array( $prior_receipt['value'] ) && ! is_wp_error( $prior_receipt['value'] );
+						}
+						$sentinel = $invoke_campaign_private( 'public_quarantine_placement_id' );
+						$campaign_rows = is_array( $database_snapshot['campaign_tables']['campaigns']['rows'] ?? null ) ? $database_snapshot['campaign_tables']['campaigns']['rows'] : null;
+						$placement_rows = is_array( $database_snapshot['campaign_tables']['placements']['rows'] ?? null ) ? $database_snapshot['campaign_tables']['placements']['rows'] : null;
+						if ( ! empty( $sentinel['invoked'] ) && is_string( $sentinel['value'] ) && is_array( $campaign_rows ) && is_array( $placement_rows ) ) {
+							$non_sentinel = array_values( array_filter( $placement_rows, static fn( $row ) => ! is_array( $row ) || ! hash_equals( (string) $sentinel['value'], (string) ( $row['placement_id'] ?? '' ) ) ) );
+							$campaign_capacity_diagnostic['fresh_install_empty'] = empty( $campaign_rows ) && empty( $non_sentinel );
 						}
 					}
 					$baseline_database_snapshot = $rollback_journal_status
@@ -3332,6 +3368,7 @@ add_action(
 						'migration_invariant_checks' => $migration_invariant_checks,
 						'migration_invariants_valid'=> $migration_invariants_valid,
 						'campaign_operational' => $campaign_operational,
+						'campaign_capacity_diagnostic' => $campaign_capacity_diagnostic,
 						'campaign_lifecycle'   => $campaign_lifecycle,
 						'no_rollback_artifacts'=> $no_rollback_artifacts,
 						'ops_rollback_residue_present'=> ! empty( $ops_rollback_residue ),

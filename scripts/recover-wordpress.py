@@ -2377,6 +2377,7 @@ INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS = (
 )
 
 INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS = (
+    "campaign_capacity_diagnostic",
     "campaign_lifecycle",
     "campaign_operational",
     "candidate_activation_completed_at",
@@ -2415,6 +2416,15 @@ INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS = {
     "suppression_invalid",
     "suppression_ready",
     "suppression_recoverable_pending",
+}
+
+INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS = {
+    "campaign_cohort_inspectable",
+    "fresh_install_empty",
+    "lifecycle_reserve_inspectable",
+    "operations_cohort_inspectable",
+    "prior_inactive_receipt_valid",
+    "quarantine_reserve_inspectable",
 }
 
 INTERRUPTED_FORWARD_SAFE_PHASES = {
@@ -2567,6 +2577,7 @@ def validate_interrupted_forward_safe_status_shape(
     if safe_status["phase"] == "installed_pending_stabilization":
         invariant_checks = safe_status.get("migration_invariant_checks")
         campaign = safe_status.get("campaign_operational")
+        capacity_diagnostic = safe_status.get("campaign_capacity_diagnostic")
         lifecycle = safe_status.get("campaign_lifecycle")
         if (
             not isinstance(invariant_checks, dict)
@@ -2575,6 +2586,10 @@ def validate_interrupted_forward_safe_status_shape(
             or not isinstance(campaign, dict)
             or set(campaign) != INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS
             or any(type(value) is not bool for value in campaign.values())
+            or not isinstance(capacity_diagnostic, dict)
+            or set(capacity_diagnostic)
+            != INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS
+            or any(type(value) is not bool for value in capacity_diagnostic.values())
             or not isinstance(lifecycle, dict)
             or set(lifecycle) != {"canonical", "generation", "state"}
             or type(lifecycle.get("canonical")) is not bool
