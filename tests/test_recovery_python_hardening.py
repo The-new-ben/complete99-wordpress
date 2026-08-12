@@ -2942,6 +2942,20 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             with self.subTest(bounded_bridge_phase=phase):
                 phase_changed = copy.deepcopy(exact)
                 phase_changed["phase"] = phase
+                if phase == "installed_pending_stabilization":
+                    phase_changed.update(
+                        {
+                            "candidate_activation_completed_at": 1_786_533_000,
+                            "candidate_activation_phase": "complete",
+                            "candidate_activation_required": True,
+                            "candidate_database_fingerprint": "e" * 64,
+                            "candidate_prior_active": True,
+                            "candidate_requested_active": True,
+                            "forward_ready": True,
+                            "forward_stabilization_candidate": True,
+                            "temp_removed": True,
+                        }
+                    )
                 captured = RECOVER.capture_interrupted_forward_mismatch_diagnostic(
                     DEPLOY,
                     phase_changed,
