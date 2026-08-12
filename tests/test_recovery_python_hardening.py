@@ -312,6 +312,14 @@ def interrupted_forward_status(
 
 def pending_stabilization_diagnostics() -> dict[str, Any]:
     return {
+        "campaign_capacity_diagnostic": {
+            "campaign_cohort_inspectable": True,
+            "fresh_install_empty": True,
+            "lifecycle_reserve_inspectable": False,
+            "operations_cohort_inspectable": True,
+            "prior_inactive_receipt_valid": False,
+            "quarantine_reserve_inspectable": False,
+        },
         "campaign_lifecycle": {
             "canonical": True,
             "generation": 7,
@@ -2202,6 +2210,12 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
                 "nonboolean campaign status",
                 lambda value: value["campaign_operational"].__setitem__(
                     "ready", 1
+                ),
+            ),
+            (
+                "nonboolean capacity diagnostic",
+                lambda value: value["campaign_capacity_diagnostic"].__setitem__(
+                    "fresh_install_empty", 1
                 ),
             ),
             (

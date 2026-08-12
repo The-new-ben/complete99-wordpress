@@ -1660,6 +1660,14 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                 if phase == "installed_pending_stabilization":
                     safe.update(
                         {
+                            "campaign_capacity_diagnostic": {
+                                "campaign_cohort_inspectable": True,
+                                "fresh_install_empty": True,
+                                "lifecycle_reserve_inspectable": False,
+                                "operations_cohort_inspectable": True,
+                                "prior_inactive_receipt_valid": False,
+                                "quarantine_reserve_inspectable": False,
+                            },
                             "campaign_lifecycle": {
                                 "canonical": True,
                                 "generation": 7,

@@ -200,6 +200,7 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             "'migration_failed'",
             "'migration_invariant_checks'",
             "'migration_invariants_valid'",
+            "'campaign_capacity_diagnostic'",
             "'campaign_operational'",
             "'campaign_lifecycle'",
             "'baseline_database_journal_valid'",
@@ -216,6 +217,11 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
         self.assertIn("|| $interrupted_installing_status", self.status)
         self.assertIn("|| $interrupted_adopted_status", self.status)
         self.assertIn("Complete99_Ops::status_snapshot()", self.status)
+        self.assertIn("new \\ReflectionMethod( 'Complete99_Campaigns'", self.status)
+        self.assertIn("'lifecycle_capacity_reservation'", self.status)
+        self.assertIn("'public_quarantine_capacity_reservation'", self.status)
+        self.assertIn("'stored_lifecycle_receipt'", self.status)
+        self.assertIn("'fresh_install_empty'", self.status)
         self.assertIn("$campaign_lifecycle_reservation_valid( $lifecycle_row )", self.status)
         self.assertIn("array_fill_keys( array_keys( $migration_invariant_callbacks ), false )", self.status)
         self.assertIn(
