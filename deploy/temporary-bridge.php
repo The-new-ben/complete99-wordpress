@@ -6053,8 +6053,19 @@ add_action(
 						$status_response = rest_do_request( $status_request );
 						$status_data = $status_response instanceof WP_REST_Response ? $status_response->get_data() : null;
 						$live_reviewed = array();
-						if ( is_array( $status_data ) ) { foreach ( array_keys( $reviewed_status ) as $reviewed_key ) { if ( ! array_key_exists( $reviewed_key, $status_data ) ) { $live_reviewed = array(); break; } $live_reviewed[ $reviewed_key ] = $status_data[ $reviewed_key ]; } }
-						if ( $canonicalize_json_value( $live_reviewed ) !== $canonicalize_json_value( $reviewed_status ) ) { return new WP_Error( 'c99_candidate_repair_review_changed', 'Candidate repair checkpoint changed after read-only review.', array( 'status' => 409 ) ); }
+						$review_changed_field = '';
+						if ( ! is_array( $status_data ) ) {
+							$review_changed_field = 'status';
+						} else {
+							foreach ( array_keys( $reviewed_status ) as $reviewed_key ) {
+								if ( ! array_key_exists( $reviewed_key, $status_data ) || $canonicalize_json_value( $status_data[ $reviewed_key ] ) !== $canonicalize_json_value( $reviewed_status[ $reviewed_key ] ) ) {
+									$review_changed_field = sanitize_key( (string) $reviewed_key );
+									break;
+								}
+								$live_reviewed[ $reviewed_key ] = $status_data[ $reviewed_key ];
+							}
+						}
+						if ( '' !== $review_changed_field ) { return new WP_Error( 'c99_candidate_repair_review_changed_' . $review_changed_field, 'Candidate repair checkpoint changed after read-only review.', array( 'status' => 409, 'field' => $review_changed_field ) ); }
 					}
 
 					$process_lock = $acquire_process_lock();
