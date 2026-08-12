@@ -970,6 +970,8 @@ INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS = {
 }
 
 INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS = {
+    "campaign_lifecycle",
+    "campaign_operational",
     "candidate_activation_completed_at",
     "candidate_activation_phase",
     "candidate_activation_required",
@@ -978,7 +980,34 @@ INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS = {
     "candidate_requested_active",
     "forward_ready",
     "forward_stabilization_candidate",
+    "migration_invariant_checks",
     "temp_removed",
+}
+
+INTERRUPTED_FORWARD_MIGRATION_INVARIANT_KEYS = {
+    "campaigns",
+    "content",
+    "culinary_science",
+    "evaluation_catalog",
+    "ops",
+    "settings",
+}
+
+INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS = {
+    "cache_ready",
+    "capabilities_ready",
+    "capacity_inspectable",
+    "capacity_ready",
+    "capacity_write_ready",
+    "cron_inspectable",
+    "cron_ready",
+    "evidence_inspectable",
+    "evidence_ready",
+    "ready",
+    "suppression_inspectable",
+    "suppression_invalid",
+    "suppression_ready",
+    "suppression_recoverable_pending",
 }
 
 INTERRUPTED_FORWARD_SAFE_PHASES = {
@@ -1098,6 +1127,39 @@ def validate_interrupted_safe_status_shape(
                 }
             ),
             f"{label} stabilization checkpoint status is invalid",
+        )
+        invariant_checks = require_mapping(
+            safe.get("migration_invariant_checks"),
+            f"{label} migration invariant checks",
+        )
+        campaign = require_mapping(
+            safe.get("campaign_operational"),
+            f"{label} campaign operational status",
+        )
+        lifecycle = require_mapping(
+            safe.get("campaign_lifecycle"),
+            f"{label} campaign lifecycle status",
+        )
+        require(
+            set(invariant_checks) == INTERRUPTED_FORWARD_MIGRATION_INVARIANT_KEYS
+            and all(type(value) is bool for value in invariant_checks.values())
+            and set(campaign) == INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS
+            and all(type(value) is bool for value in campaign.values())
+            and set(lifecycle) == {"canonical", "generation", "state"}
+            and type(lifecycle.get("canonical")) is bool
+            and type(lifecycle.get("generation")) is int
+            and 0 <= lifecycle["generation"] <= 9_223_372_036_854_775_807
+            and type(lifecycle.get("state")) is str
+            and lifecycle["state"] in {"", "active", "suspending", "inactive"}
+            and (
+                (
+                    lifecycle["generation"] >= 1
+                    and lifecycle["state"] in {"active", "suspending", "inactive"}
+                )
+                if lifecycle["canonical"]
+                else lifecycle["generation"] == 0 and lifecycle["state"] == ""
+            ),
+            f"{label} stabilization diagnostics are invalid",
         )
     return safe
 

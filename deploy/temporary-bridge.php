@@ -3003,7 +3003,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $decrypt_database_state, $managed_robots_path, $ops_quarantine_residue ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $decrypt_database_state, $managed_robots_path, $ops_quarantine_residue, $campaign_lifecycle_reservation_valid ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -3131,18 +3131,80 @@ add_action(
 						&& class_exists( 'Complete99_Culinary_Science', false )
 						&& method_exists( 'Complete99_Culinary_Science', 'assert_invariants' );
 					$migration_failed = $runtime_loaded ? (bool) Complete99_Platform::migration_failed() : true;
-					$migration_invariants_valid = false;
+					$migration_invariant_callbacks = array(
+						'campaigns'         => array( 'Complete99_Campaigns', 'assert_invariants' ),
+						'content'           => array( 'Complete99_Content', 'assert_migration_invariants' ),
+						'culinary_science'  => array( 'Complete99_Culinary_Science', 'assert_invariants' ),
+						'evaluation_catalog' => array( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' ),
+						'ops'               => array( 'Complete99_Ops', 'assert_invariants' ),
+						'settings'          => array( 'Complete99_Settings', 'assert_defaults' ),
+					);
+					$migration_invariant_checks = array_fill_keys( array_keys( $migration_invariant_callbacks ), false );
 					if ( $runtime_loaded && ! $migration_failed ) {
+						foreach ( $migration_invariant_callbacks as $component => $callback ) {
+							try {
+								call_user_func( $callback );
+								$migration_invariant_checks[ $component ] = true;
+							} catch ( \Throwable $error ) {
+								$migration_invariant_checks[ $component ] = false;
+							}
+						}
+					}
+					$migration_invariants_valid = ! in_array( false, $migration_invariant_checks, true );
+					$campaign_operational = array(
+						'cache_ready'                    => false,
+						'capabilities_ready'             => false,
+						'capacity_inspectable'           => false,
+						'capacity_ready'                 => false,
+						'capacity_write_ready'           => false,
+						'cron_inspectable'               => false,
+						'cron_ready'                     => false,
+						'evidence_inspectable'           => false,
+						'evidence_ready'                 => false,
+						'ready'                          => false,
+						'suppression_inspectable'        => false,
+						'suppression_invalid'            => false,
+						'suppression_ready'              => false,
+						'suppression_recoverable_pending' => false,
+					);
+					if ( $runtime_loaded && method_exists( 'Complete99_Ops', 'status_snapshot' ) ) {
 						try {
-							Complete99_Content::assert_migration_invariants();
-							Complete99_Settings::assert_defaults();
-							Complete99_Platform::assert_evaluation_catalog_invariants();
-							Complete99_Ops::assert_invariants();
-							Complete99_Campaigns::assert_invariants();
-							Complete99_Culinary_Science::assert_invariants();
-							$migration_invariants_valid = true;
+							$ops_status = Complete99_Ops::status_snapshot();
+							$campaign_status = is_array( $ops_status ) && is_array( $ops_status['campaigns'] ?? null ) ? $ops_status['campaigns'] : array();
+							$capacity_status = is_array( $campaign_status['capacity'] ?? null ) ? $campaign_status['capacity'] : array();
+							$cron_status = is_array( $campaign_status['cron_runner'] ?? null ) ? $campaign_status['cron_runner'] : array();
+							$evidence_status = is_array( $campaign_status['evidence_recovery'] ?? null ) ? $campaign_status['evidence_recovery'] : array();
+							$suppression_status = is_array( $campaign_status['public_suppression_backlog'] ?? null ) ? $campaign_status['public_suppression_backlog'] : array();
+							$campaign_operational = array(
+								'cache_ready'                    => true === ( $campaign_status['cache_ready'] ?? false ),
+								'capabilities_ready'             => true === ( $campaign_status['capabilities_ready'] ?? false ),
+								'capacity_inspectable'           => true === ( $capacity_status['inspectable'] ?? false ),
+								'capacity_ready'                 => true === ( $capacity_status['ready'] ?? false ),
+								'capacity_write_ready'           => true === ( $capacity_status['writeReady'] ?? false ),
+								'cron_inspectable'               => true === ( $cron_status['inspectable'] ?? false ),
+								'cron_ready'                     => true === ( $cron_status['ready'] ?? false ),
+								'evidence_inspectable'           => true === ( $evidence_status['inspectable'] ?? false ),
+								'evidence_ready'                 => true === ( $evidence_status['ready'] ?? false ),
+								'ready'                          => true === ( $campaign_status['ready'] ?? false ),
+								'suppression_inspectable'        => true === ( $suppression_status['inspectable'] ?? false ),
+								'suppression_invalid'            => true === ( $suppression_status['invalid'] ?? false ),
+								'suppression_ready'              => true === ( $suppression_status['ready'] ?? false ),
+								'suppression_recoverable_pending' => true === ( $suppression_status['recoverablePending'] ?? false ),
+							);
 						} catch ( \Throwable $error ) {
-							$migration_invariants_valid = false;
+							// Preserve the all-false bounded projection on diagnostic failure.
+						}
+					}
+					$campaign_lifecycle = array( 'canonical' => false, 'generation' => 0, 'state' => '' );
+					$lifecycle_row = is_array( $database_snapshot ) ? ( $database_snapshot['options']['complete99_campaign_lifecycle_reservation_v1'] ?? null ) : null;
+					if ( $campaign_lifecycle_reservation_valid( $lifecycle_row ) ) {
+						$lifecycle_payload = json_decode( (string) $lifecycle_row['option_value'], true );
+						if ( is_array( $lifecycle_payload ) ) {
+							$campaign_lifecycle = array(
+								'canonical'  => true,
+								'generation' => (int) ( $lifecycle_payload['generation'] ?? 0 ),
+								'state'      => (string) ( $lifecycle_payload['state'] ?? '' ),
+							);
 						}
 					}
 					$baseline_database_snapshot = $rollback_journal_status
@@ -3267,7 +3329,10 @@ add_action(
 						'runtime_loaded'   => $runtime_loaded,
 						'runtime_version'  => $runtime_version,
 						'migration_failed' => $migration_failed,
+						'migration_invariant_checks' => $migration_invariant_checks,
 						'migration_invariants_valid'=> $migration_invariants_valid,
+						'campaign_operational' => $campaign_operational,
+						'campaign_lifecycle'   => $campaign_lifecycle,
 						'no_rollback_artifacts'=> $no_rollback_artifacts,
 						'ops_rollback_residue_present'=> ! empty( $ops_rollback_residue ),
 						'ops_rollback_residue_count'=> count( $ops_rollback_residue ),
