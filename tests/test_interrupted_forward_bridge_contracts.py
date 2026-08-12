@@ -340,6 +340,16 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             "array( 'status' => 409, 'field' => $review_changed_field )",
             self.candidate_repair,
         )
+        self.assertIn(
+            "$status_request->set_param( 'projected_deployment_id', $deployment_id )",
+            self.candidate_repair,
+        )
+        self.assertLess(
+            self.candidate_repair.index(
+                "$status_request->set_param( 'projected_deployment_id', $deployment_id )"
+            ),
+            self.candidate_repair.index("$status_response = rest_do_request("),
+        )
         self.assertIn("c99_rollback_candidate_repair", self.rollback)
         self.assertIn("candidate_repair_started", self.rollback)
         self.assertIn(
