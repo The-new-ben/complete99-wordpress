@@ -233,13 +233,14 @@ add_action(
 		$lifecycle_role_name = 'c99_campaign_lifecycle_' . substr( hash( 'sha256', $lifecycle_role_protocol ), 0, 40 );
 		$worker_fence_protocol = 'complete99-campaign-worker-fence/v1';
 		$worker_fence_name = 'c99_campaign_worker_' . substr( hash( 'sha256', $worker_fence_protocol ), 0, 40 );
+		$rollback_capacity_name = 'c99_campaign_slot_' . substr( hash( 'sha256', 'rollback-capacity' ), 0, 40 );
 		$deploy_reservation_exists = static function () use ( $read_lock ) {
 			$lock = $read_lock( true );
 			return '' !== (string) ( $lock['deployment_id'] ?? '' )
 				&& '' !== (string) ( $lock['phase'] ?? '' )
 				&& '' !== (string) ( $lock['owner_id'] ?? '' );
 		};
-		$acquire_worker_fence = static function () use ( $config, $lifecycle_role_protocol, $lifecycle_role_name, $worker_fence_protocol, $worker_fence_name, $deploy_reservation_exists ) {
+		$acquire_worker_fence = static function () use ( $config, $lifecycle_role_protocol, $lifecycle_role_name, $worker_fence_protocol, $worker_fence_name, $rollback_capacity_name, $deploy_reservation_exists ) {
 			global $wpdb;
 			$before = $deploy_reservation_exists();
 			if ( is_wp_error( $before ) ) {
@@ -276,15 +277,40 @@ add_action(
 					}
 					return new WP_Error( 'c99_worker_fence_busy', 'The active Campaign worker did not drain before deployment mutation.', array( 'status' => 423 ) );
 				}
+				$wpdb->last_error = '';
+				$capacity_acquired = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', $rollback_capacity_name, 10 ) );
+				$capacity_acquire_error = (string) $wpdb->last_error;
+				if ( '' !== $capacity_acquire_error || 1 !== (int) $capacity_acquired ) {
+					$wpdb->last_error = '';
+					$worker_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $worker_fence_name ) );
+					$worker_release_error = (string) $wpdb->last_error;
+					$wpdb->last_error = '';
+					$lifecycle_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lifecycle_role_name ) );
+					$lifecycle_release_error = (string) $wpdb->last_error;
+					$wpdb->suppress_errors( $previous_suppress );
+					if ( '' !== $worker_release_error || 1 !== (int) $worker_released || '' !== $lifecycle_release_error || 1 !== (int) $lifecycle_released ) {
+						return new WP_Error( 'c99_lifecycle_worker_release', 'Deployment could not prove release after the Campaign rollback-capacity boundary stayed busy.', array( 'status' => 500 ) );
+					}
+					return new WP_Error( 'c99_rollback_capacity_busy', 'An admitted Campaign database transaction did not drain before deployment mutation.', array( 'status' => 423 ) );
+				}
 				$wpdb->suppress_errors( $previous_suppress );
 			}
 			$after = $deploy_reservation_exists();
 			if ( is_wp_error( $after ) || true !== $after ) {
 				if ( ! $sqlite ) {
+					$previous_suppress = $wpdb->suppress_errors( true );
+					$wpdb->last_error = '';
+					$capacity_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $rollback_capacity_name ) );
+					$capacity_release_error = (string) $wpdb->last_error;
+					$wpdb->last_error = '';
 					$worker_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $worker_fence_name ) );
+					$worker_release_error = (string) $wpdb->last_error;
+					$wpdb->last_error = '';
 					$lifecycle_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lifecycle_role_name ) );
-					if ( 1 !== (int) $worker_released || 1 !== (int) $lifecycle_released ) {
-						return new WP_Error( 'c99_lifecycle_worker_release', 'Deployment reservation changed with uncertain lifecycle/worker lock ownership.', array( 'status' => 500 ) );
+					$lifecycle_release_error = (string) $wpdb->last_error;
+					$wpdb->suppress_errors( $previous_suppress );
+					if ( '' !== $capacity_release_error || 1 !== (int) $capacity_released || '' !== $worker_release_error || 1 !== (int) $worker_released || '' !== $lifecycle_release_error || 1 !== (int) $lifecycle_released ) {
+						return new WP_Error( 'c99_lifecycle_worker_release', 'Deployment reservation changed with uncertain Campaign lock ownership.', array( 'status' => 500 ) );
 					}
 				}
 				return is_wp_error( $after )
@@ -297,6 +323,7 @@ add_action(
 				'lifecycle_lock_name'=> $lifecycle_role_name,
 				'protocol' => $worker_fence_protocol,
 				'lock_name'=> $worker_fence_name,
+				'rollback_capacity_lock_name'=> $rollback_capacity_name,
 				'sqlite'   => $sqlite,
 			);
 		};
@@ -310,13 +337,16 @@ add_action(
 			}
 			$previous_suppress = $wpdb->suppress_errors( true );
 			$wpdb->last_error = '';
+			$capacity_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', (string) ( $fence['rollback_capacity_lock_name'] ?? '' ) ) );
+			$capacity_release_error = (string) $wpdb->last_error;
+			$wpdb->last_error = '';
 			$released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', (string) $fence['lock_name'] ) );
 			$release_error = (string) $wpdb->last_error;
 			$wpdb->last_error = '';
 			$lifecycle_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', (string) ( $fence['lifecycle_lock_name'] ?? '' ) ) );
 			$lifecycle_release_error = (string) $wpdb->last_error;
 			$wpdb->suppress_errors( $previous_suppress );
-			if ( '' !== $release_error || 1 !== (int) $released || '' !== $lifecycle_release_error || 1 !== (int) $lifecycle_released ) {
+			if ( '' !== $capacity_release_error || 1 !== (int) $capacity_released || '' !== $release_error || 1 !== (int) $released || '' !== $lifecycle_release_error || 1 !== (int) $lifecycle_released ) {
 				return new WP_Error( 'c99_worker_fence_release', 'Deployment completed with uncertain Campaign worker-fence ownership.', array( 'status' => 500 ) );
 			}
 			return true;
