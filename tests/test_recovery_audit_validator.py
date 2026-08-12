@@ -1112,6 +1112,63 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             proof["recovery_identity"]["database_fingerprint"],
         )
 
+    def test_repository_1_22_1_candidate_activation_v3_proof_is_exact(self) -> None:
+        proof = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31620203121-1.json",
+            ROOT,
+        )
+        baseline = proof["proof"]["recovered_baseline"]
+        self.assertEqual("complete99-interrupted-forward-proof/v3", proof["schema"])
+        self.assertEqual(
+            "a5b7c0d705e6f8a8107074a5e7a277832cb91bf525ab148bb703698cee49d224",
+            proof["proof_sha256"],
+        )
+        self.assertEqual("c99-prod-31598196288-1", baseline["deployment_id"])
+        self.assertEqual("1.22.0", baseline["version"])
+        self.assertEqual(
+            "82bac8efff67242dc64043a2bcd94976357ee17192914aba79746dcfe0d0bf6b",
+            proof["recovery_identity"]["database_fingerprint"],
+        )
+
+    def test_candidate_activation_v3_recovered_baseline_tampering_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            repository_root = Path(directory)
+            shutil.copytree(
+                ROOT / "docs" / "recovery-proofs",
+                repository_root / "docs" / "recovery-proofs",
+            )
+            proof_path = (
+                repository_root
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31620203121-1.json"
+            )
+            original = json.loads(proof_path.read_text(encoding="utf-8"))
+            cases = {
+                "database fingerprint": lambda baseline: baseline.__setitem__(
+                    "database_fingerprint", "0" * 64
+                ),
+                "predecessor proof digest": lambda baseline: baseline.__setitem__(
+                    "proof_sha256", "0" * 64
+                ),
+                "predecessor deployment": lambda baseline: baseline.__setitem__(
+                    "deployment_id", "c99-prod-31598196289-1"
+                ),
+            }
+            for label, mutate in cases.items():
+                with self.subTest(label=label):
+                    envelope = copy.deepcopy(original)
+                    mutate(envelope["proof"]["recovered_baseline"])
+                    envelope["proof_sha256"] = VALIDATOR.canonical_json_sha256(
+                        envelope["proof"]
+                    )
+                    proof_path.write_text(json.dumps(envelope), encoding="utf-8")
+                    with self.assertRaises(VALIDATOR.AuditValidationError):
+                        VALIDATOR.load_interrupted_forward_proof(
+                            "docs/recovery-proofs/c99-prod-31620203121-1.json",
+                            repository_root,
+                        )
+
     def test_repository_robots_checkpoint_adoption_v3_proof_is_exact(self) -> None:
         proof = VALIDATOR.load_interrupted_forward_proof(
             "docs/recovery-proofs/c99-prod-31217684760-1-v2.json",

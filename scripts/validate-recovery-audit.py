@@ -598,6 +598,7 @@ def validate_interrupted_source_audits(
     failed_audit: dict[str, Any],
     recovery_audit: dict[str, Any],
     prior_audit: dict[str, Any],
+    recovered_baseline: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     validate_interrupted_common_audit(
         failed_audit,
@@ -620,6 +621,7 @@ def validate_interrupted_source_audits(
         "Interrupted forward failed deploy preflight",
     )
     failed_error = failed_audit.get("error")
+    baseline = recovered_baseline if isinstance(recovered_baseline, dict) else prior
     require(
         failed_audit.get("dry_run") is False
         and failed_audit.get("result") == "failed"
@@ -631,13 +633,13 @@ def validate_interrupted_source_audits(
         and failed_audit.get("source_sha256") == failed["source_sha256"]
         and failed_audit.get("artifact")
         == f"complete99-platform-{failed['version']}.zip"
-        and failed_preflight.get("current_active") is prior["active"]
-        and failed_preflight.get("current_deployment") == prior["deployment_id"]
-        and failed_preflight.get("current_version") == prior["version"]
+        and failed_preflight.get("current_active") is baseline["active"]
+        and failed_preflight.get("current_deployment") == baseline["deployment_id"]
+        and failed_preflight.get("current_version") == baseline["version"]
         and failed_preflight.get("database_fingerprint")
         == failed["baseline_database_fingerprint"]
         and failed_preflight.get("robots_prior_exists") is True
-        and failed_preflight.get("robots_prior_sha256") == prior["robots_sha256"]
+        and failed_preflight.get("robots_prior_sha256") == baseline["robots_sha256"]
         and failed_preflight.get("had_plugin") is True
         and failed_preflight.get("target_dir_exists") is True
         and failed_preflight.get("plugin_main_exists") is True
@@ -653,11 +655,11 @@ def validate_interrupted_source_audits(
             failed_audit.get("prior_health"),
             {
                 "component": "complete99-platform",
-                "database_version": prior["database_version"],
-                "deployment_id": prior["deployment_id"],
+                "database_version": baseline["database_version"],
+                "deployment_id": baseline["deployment_id"],
                 "status": "ok",
-                "sync_configured": prior["sync_configured"],
-                "version": prior["version"],
+                "sync_configured": baseline["sync_configured"],
+                "version": baseline["version"],
             },
         ),
         "Interrupted forward failed deploy prior health conflicts with the proof",
@@ -667,9 +669,9 @@ def validate_interrupted_source_audits(
         "Interrupted forward failed deploy prior home",
     )
     require(
-        failed_home.get("deployment_id") == prior["deployment_id"]
+        failed_home.get("deployment_id") == baseline["deployment_id"]
         and failed_home.get("exact_path") == "/"
-        and failed_home.get("version") == prior["version"],
+        and failed_home.get("version") == baseline["version"],
         "Interrupted forward failed deploy prior home conflicts with the proof",
     )
     require_digest(failed_home.get("body_sha256"), "Failed deploy prior home")
@@ -703,6 +705,13 @@ def validate_interrupted_source_audits(
             },
         )
     )
+    pending_candidate_activation = (
+        isinstance(recovered_baseline, dict)
+        and failed_error == "HTTPDeployError"
+        and recovery_status.get("phase") == "candidate_activation_pending"
+        and recovery_status.get("recovery_ready") is False
+        and "stabilization_failure" not in recovery_audit
+    )
     require(
         recovery_audit.get("result") == "failed"
         and recovery_audit.get("error") == "HTTPDeployError"
@@ -720,7 +729,11 @@ def validate_interrupted_source_audits(
             "recovery_ready",
             "state_exists",
         }
-        and (legacy_interrupted_install or pending_stabilization)
+        and (
+            legacy_interrupted_install
+            or pending_stabilization
+            or pending_candidate_activation
+        )
         and recovery_status.get("state_exists") is True
         and recovery_status.get("lock_owned") is True
         and recovery_status.get("process_lock_available") is True
@@ -1195,7 +1208,9 @@ def interrupted_status_mismatches(
     failed: dict[str, Any],
     prior: dict[str, Any],
     recovery_identity: dict[str, str],
+    recovered_baseline: dict[str, Any] | None = None,
 ) -> list[str]:
+    baseline = recovered_baseline if isinstance(recovered_baseline, dict) else prior
     expected = {
         "adopted_forward_no_rollback": False,
         "baseline_database_fingerprint": failed["baseline_database_fingerprint"],
@@ -1207,7 +1222,7 @@ def interrupted_status_mismatches(
         "current_deployment": failed["deployment_id"],
         "current_plugin_main_exists": True,
         "current_plugin_sha256": failed["installed_plugin_sha256"],
-        "current_robots_sha256": prior["robots_sha256"],
+        "current_robots_sha256": baseline["robots_sha256"],
         "current_sync_configured": True,
         "current_target_dir_exists": True,
         "current_version": failed["version"],
@@ -1230,17 +1245,17 @@ def interrupted_status_mismatches(
         "no_rollback_artifacts": True,
         "phase": "installing",
         "prior_active": True,
-        "prior_deployment": prior["deployment_id"],
+        "prior_deployment": baseline["deployment_id"],
         "prior_plugin_main_exists": True,
-        "prior_plugin_sha256": prior["plugin_sha256"],
+        "prior_plugin_sha256": baseline["plugin_sha256"],
         "prior_target_dir_exists": True,
-        "prior_version": prior["version"],
+        "prior_version": baseline["version"],
         "process_lock_available": True,
         "recovery_ready": True,
         "robots_applied": True,
-        "robots_managed_sha256": prior["robots_sha256"],
+        "robots_managed_sha256": baseline["robots_sha256"],
         "robots_prior_exists": True,
-        "robots_prior_sha256": prior["robots_sha256"],
+        "robots_prior_sha256": baseline["robots_sha256"],
         "robots_restored": False,
         "runtime_loaded": True,
         "runtime_version": failed["version"],
@@ -1264,6 +1279,7 @@ def validate_interrupted_mismatch_diagnostic_receipt(
     failed: dict[str, Any],
     prior: dict[str, Any],
     recovery_identity: dict[str, str],
+    recovered_baseline: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     receipt = require_mapping(
         observation,
@@ -1296,6 +1312,7 @@ def validate_interrupted_mismatch_diagnostic_receipt(
         failed,
         prior,
         recovery_identity,
+        recovered_baseline,
     )
     require(
         bool(mismatches)
@@ -1463,14 +1480,21 @@ def validate_interrupted_health_home_robots(
     *,
     prefix: str = "",
     label: str,
+    recovered_baseline: dict[str, Any] | None = None,
 ) -> None:
+    baseline = recovered_baseline if isinstance(recovered_baseline, dict) else prior
+    live_deployment = (
+        recovered_baseline["deployment_id"]
+        if isinstance(recovered_baseline, dict)
+        else failed["deployment_id"]
+    )
     require(
         exact_json_equal(
             audit.get(f"{prefix}health"),
             {
                 "component": "complete99-platform",
                 "database_version": failed["version"],
-                "deployment_id": failed["deployment_id"],
+                "deployment_id": live_deployment,
                 "status": "ok",
                 "sync_configured": True,
                 "version": failed["version"],
@@ -1481,7 +1505,7 @@ def validate_interrupted_health_home_robots(
     home = require_mapping(audit.get(f"{prefix}rendered_home"), f"{label} home")
     require(
         set(home) == {"body_sha256", "deployment_id", "exact_path", "version"}
-        and home.get("deployment_id") == failed["deployment_id"]
+        and home.get("deployment_id") == live_deployment
         and home.get("exact_path") == "/"
         and home.get("version") == failed["version"],
         f"{label} rendered home is invalid",
@@ -1490,7 +1514,7 @@ def validate_interrupted_health_home_robots(
     require(
         exact_json_equal(
             audit.get(f"{prefix}robots"),
-            {"sha256": prior["robots_sha256"], "status": 200},
+            {"sha256": baseline["robots_sha256"], "status": 200},
         ),
         f"{label} robots.txt is invalid",
     )
@@ -1508,6 +1532,8 @@ def validate_interrupted_observation_audit(
     expected_commit: str | None = None,
     expected_manifest: dict[str, Any] | None = None,
     expected_storage: dict[str, Any] | None = None,
+    proof_schema: str = "complete99-interrupted-forward-proof/v1",
+    recovered_baseline: dict[str, Any] | None = None,
 ) -> None:
     validate_interrupted_common_audit(
         audit,
@@ -1560,7 +1586,7 @@ def validate_interrupted_observation_audit(
             {
                 "path": proof_path,
                 "proof_sha256": proof_sha256,
-                "schema": "complete99-interrupted-forward-proof/v1",
+                "schema": proof_schema,
             },
         ),
         "Interrupted forward observation proof path or digest changed",
@@ -1614,6 +1640,7 @@ def validate_interrupted_observation_audit(
         failed,
         prior,
         label="Interrupted forward observation",
+        recovered_baseline=recovered_baseline,
     )
 
 
@@ -1628,6 +1655,8 @@ def validate_interrupted_database_mismatch_observation_audit(
     *,
     expected_commit: str | None = None,
     expected_database_identity: dict[str, Any] | None = None,
+    proof_schema: str = "complete99-interrupted-forward-proof/v1",
+    recovered_baseline: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     validate_interrupted_common_audit(
         audit,
@@ -1684,7 +1713,7 @@ def validate_interrupted_database_mismatch_observation_audit(
             {
                 "path": proof_path,
                 "proof_sha256": proof_sha256,
-                "schema": "complete99-interrupted-forward-proof/v1",
+                "schema": proof_schema,
             },
         ),
         "Interrupted forward database mismatch proof path or digest changed",
@@ -1718,6 +1747,7 @@ def validate_interrupted_database_mismatch_observation_audit(
         failed,
         prior,
         label="Interrupted forward database mismatch observation",
+        recovered_baseline=recovered_baseline,
     )
     return identity
 
@@ -1732,6 +1762,8 @@ def validate_interrupted_mismatch_diagnostic_audit(
     expected_probe_id: str,
     *,
     expected_commit: str | None = None,
+    proof_schema: str = "complete99-interrupted-forward-proof/v1",
+    recovered_baseline: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Validate evidence-only v3 without making it recovery authority."""
     validate_interrupted_common_audit(
@@ -1781,6 +1813,7 @@ def validate_interrupted_mismatch_diagnostic_audit(
         failed,
         prior,
         recovery_identity,
+        recovered_baseline,
     )
     validate_interrupted_discovery(
         audit.get("discovery"),
@@ -1795,7 +1828,7 @@ def validate_interrupted_mismatch_diagnostic_audit(
             {
                 "path": proof_path,
                 "proof_sha256": proof_sha256,
-                "schema": "complete99-interrupted-forward-proof/v1",
+                "schema": proof_schema,
             },
         ),
         "Interrupted forward mismatch diagnostic proof path or digest changed",
@@ -1805,6 +1838,7 @@ def validate_interrupted_mismatch_diagnostic_audit(
         failed,
         prior,
         label="Interrupted forward mismatch diagnostic",
+        recovered_baseline=recovered_baseline,
     )
     return safe
 
@@ -2029,6 +2063,7 @@ def load_interrupted_forward_proof(
         in {
             "complete99-interrupted-forward-proof/v1",
             "complete99-interrupted-forward-proof/v2",
+            "complete99-interrupted-forward-proof/v3",
         },
         "Interrupted forward proof schema is invalid",
     )
@@ -2045,7 +2080,11 @@ def load_interrupted_forward_proof(
         == (
             {"failed_run", "forward_adoption", "prior_run"}
             if schema == "complete99-interrupted-forward-proof/v2"
-            else {"failed_run", "prior_run"}
+            else (
+                {"failed_run", "prior_run", "recovered_baseline"}
+                if schema == "complete99-interrupted-forward-proof/v3"
+                else {"failed_run", "prior_run"}
+            )
         )
         and set(failed)
         == {
@@ -2130,9 +2169,84 @@ def load_interrupted_forward_proof(
         and failed["commit"] != prior["commit"]
         and failed["version"] != prior["version"]
         and failed["installed_plugin_sha256"] != prior["plugin_sha256"]
-        and failed["baseline_database_fingerprint"] == prior["database_fingerprint"],
+        and (
+            schema == "complete99-interrupted-forward-proof/v3"
+            or failed["baseline_database_fingerprint"]
+            == prior["database_fingerprint"]
+        ),
         "Interrupted forward reviewed identities are invalid",
     )
+    recovered_baseline = proof.get("recovered_baseline")
+    if schema == "complete99-interrupted-forward-proof/v3":
+        recovered_baseline = require_mapping(
+            recovered_baseline,
+            "Interrupted forward recovered baseline",
+        )
+        require(
+            set(recovered_baseline)
+            == {
+                "active",
+                "database_fingerprint",
+                "database_version",
+                "deployment_id",
+                "plugin_sha256",
+                "proof_path",
+                "proof_sha256",
+                "robots_sha256",
+                "sync_configured",
+                "version",
+            }
+            and recovered_baseline.get("active") is True
+            and recovered_baseline.get("sync_configured") is True
+            and recovered_baseline.get("database_version")
+            == recovered_baseline.get("version")
+            and recovered_baseline.get("database_fingerprint")
+            == failed["baseline_database_fingerprint"]
+            and recovered_baseline.get("version") != failed["version"]
+            and recovered_baseline.get("deployment_id")
+            != failed["deployment_id"],
+            "Interrupted forward recovered baseline identity is invalid",
+        )
+        for field in (
+            "database_fingerprint",
+            "plugin_sha256",
+            "proof_sha256",
+            "robots_sha256",
+        ):
+            require_digest(
+                recovered_baseline.get(field),
+                f"Interrupted forward recovered baseline {field}",
+            )
+        require(
+            type(recovered_baseline.get("version")) is str
+            and VERSION.fullmatch(recovered_baseline["version"]) is not None
+            and type(recovered_baseline.get("deployment_id")) is str
+            and DEPLOYMENT_ID.fullmatch(recovered_baseline["deployment_id"])
+            is not None
+            and recovered_baseline.get("proof_path")
+            == "docs/recovery-proofs/"
+            f"{recovered_baseline['deployment_id']}-v2.json",
+            "Interrupted forward recovered baseline release identity is invalid",
+        )
+        previous = load_interrupted_forward_proof(
+            recovered_baseline["proof_path"],
+            repository_root,
+        )
+        require(
+            previous.get("schema") == "complete99-interrupted-forward-proof/v2"
+            and previous.get("proof_sha256")
+            == recovered_baseline["proof_sha256"]
+            and previous["proof"]["failed_run"]["deployment_id"]
+            == recovered_baseline["deployment_id"]
+            and previous["proof"]["failed_run"]["version"]
+            == recovered_baseline["version"]
+            and previous["proof"]["failed_run"]["installed_plugin_sha256"]
+            == recovered_baseline["plugin_sha256"]
+            and exact_json_equal(previous["proof"]["prior_run"], prior)
+            and previous["proof"]["prior_run"]["robots_sha256"]
+            == recovered_baseline["robots_sha256"],
+            "Interrupted forward recovered baseline proof is not the reviewed predecessor",
+        )
     failed_audit = load_bound_interrupted_audit(
         failed["deploy_audit_path"],
         failed["deploy_audit_sha256"],
@@ -2168,6 +2282,7 @@ def load_interrupted_forward_proof(
         failed_audit,
         recovery_audit,
         prior_audit,
+        recovered_baseline,
     )
     base_proof = {"failed_run": failed, "prior_run": prior}
     base_proof_sha256 = canonical_json_sha256(base_proof)
@@ -4363,13 +4478,16 @@ def validate_recovery_audit(
             interrupted_forward_proof_path,
             repository_root.resolve(),
         )
-        expected_schema = (
-            "complete99-interrupted-forward-proof/v1"
+        expected_schemas = (
+            {
+                "complete99-interrupted-forward-proof/v1",
+                "complete99-interrupted-forward-proof/v3",
+            }
             if expect_observation
-            else "complete99-interrupted-forward-proof/v2"
+            else {"complete99-interrupted-forward-proof/v2"}
         )
         require(
-            loaded["schema"] == expected_schema,
+            loaded["schema"] in expected_schemas,
             "Interrupted forward proof version does not match observation/recovery mode",
         )
         if result == "already-recovered":
@@ -4386,6 +4504,7 @@ def validate_recovery_audit(
         require(dist is not None, "Interrupted forward validation requires --dist")
         validate_interrupted_forward_dist(dist, loaded)
         if expect_observation:
+            recovered_baseline = loaded["proof"].get("recovered_baseline")
             if result == "interrupted_forward_database_mismatch_observed":
                 validate_interrupted_database_mismatch_observation_audit(
                     audit,
@@ -4395,6 +4514,8 @@ def validate_recovery_audit(
                     loaded["path"],
                     loaded["proof_sha256"],
                     expected_probe_id,
+                    proof_schema=loaded["schema"],
+                    recovered_baseline=recovered_baseline,
                 )
                 require(
                     summary.get("proof_consumed") is False,
@@ -4409,6 +4530,8 @@ def validate_recovery_audit(
                     loaded["path"],
                     loaded["proof_sha256"],
                     expected_probe_id,
+                    proof_schema=loaded["schema"],
+                    recovered_baseline=recovered_baseline,
                 )
                 require(
                     summary.get("proof_consumed") is False,
@@ -4423,6 +4546,8 @@ def validate_recovery_audit(
                     loaded["path"],
                     loaded["proof_sha256"],
                     expected_probe_id,
+                    proof_schema=loaded["schema"],
+                    recovered_baseline=recovered_baseline,
                 )
             proof_consumed = False
         elif result == "already-recovered":

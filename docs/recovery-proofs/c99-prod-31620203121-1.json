@@ -1,0 +1,46 @@
+{
+  "schema": "complete99-interrupted-forward-proof/v3",
+  "proof": {
+    "failed_run": {
+      "artifact_sha256": "b5a90bab452bbbb54d55cc639c368e262d2c5c702a56d401286d581b816542f1",
+      "baseline_database_fingerprint": "29d2ba5971d96d374c63ca998dcb7fa166ef52bccb8367541082914095fb003b",
+      "commit": "bc1c464f39bc791870a7d36904d124ab3ecc7381",
+      "deploy_audit_path": "docs/recovery-proofs/observations/c99-prod-31620203121-1-deploy.json",
+      "deploy_audit_sha256": "593056b5d5d24ac358fcd6c3d3d1d243053a6cea7dc59e2f8e83d72c4cf98929",
+      "deployment_id": "c99-prod-31620203121-1",
+      "installed_plugin_sha256": "110507dfe52785aff27f25ec69e91428d29456c564b21ccd71ab712d2234ce2f",
+      "recovery_audit_path": "docs/recovery-proofs/observations/c99-prod-31620203121-1-recovery.json",
+      "recovery_audit_sha256": "fb4ecf8e693156f1394c8c512b4568df8de694f259e087cf09a40aaabbe8e7f2",
+      "run_id": 31620203121,
+      "source_sha256": "953cf7cbce095bb1b782c8b934e59d1e0a838dd8b238d0e4167f248020766b60",
+      "version": "1.22.1"
+    },
+    "prior_run": {
+      "active": true,
+      "commit": "77185dd9e16fe23f68a87005e1394eb8dfaf7ae1",
+      "database_fingerprint": "eb39d82877754eabf9d68404173533704d3b922b4fd2870698520542b50848ae",
+      "database_version": "1.21.0",
+      "deploy_audit_path": "docs/recovery-proofs/observations/c99-prod-31437559134-1-deploy.json",
+      "deploy_audit_sha256": "7c046be12b1709eef4062b2d32080d27e0bc44f11f346ee1b0bfe78b00bb3a94",
+      "deployment_id": "c99-prod-31437559134-1",
+      "plugin_sha256": "98727e96eefdc858637537a285be5b7e80981821f0c48e7ee0268758311675e8",
+      "robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "run_id": 31437559134,
+      "sync_configured": true,
+      "version": "1.21.0"
+    },
+    "recovered_baseline": {
+      "active": true,
+      "database_fingerprint": "29d2ba5971d96d374c63ca998dcb7fa166ef52bccb8367541082914095fb003b",
+      "database_version": "1.22.0",
+      "deployment_id": "c99-prod-31598196288-1",
+      "plugin_sha256": "0046b5cfcd2db0a5ec87c2a75dc7f1d7956cad2e43bde0983c2f4e84b2836c1e",
+      "proof_path": "docs/recovery-proofs/c99-prod-31598196288-1-v2.json",
+      "proof_sha256": "6fd99bae0c732ae2df254341d2e3501d7d377c383adc2a034667bf6e86bfd8d9",
+      "robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "sync_configured": true,
+      "version": "1.22.0"
+    }
+  },
+  "proof_sha256": "a5b7c0d705e6f8a8107074a5e7a277832cb91bf525ab148bb703698cee49d224"
+}
