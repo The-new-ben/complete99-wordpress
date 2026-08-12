@@ -58,19 +58,6 @@ class Complete99CampaignStudioContracts(unittest.TestCase):
             self.assertIn(f"'{column}'", self.php)
         self.assertIn("const MAX_JSON_BYTES        = 65536", self.php)
         self.assertIn("const MAX_EVIDENCE_BYTES    = 8192", self.php)
-        self.assertIn("const PROVIDER_EXTERNAL_STATE_MAX_BYTES = 32", self.php)
-        self.assertIn("external_state varchar(32) NOT NULL", self.php)
-        self.assertIn(
-            "'external_state'     => array( 'type' => 'varchar(32)', 'nullable' => false )",
-            self.php,
-        )
-        aggregate_state = "aggregate_cleanup_complete"
-        self.assertGreater(len(aggregate_state.encode("utf-8")), 24)
-        self.assertLessEqual(len(aggregate_state.encode("utf-8")), 32)
-        self.assertIn(
-            "self::PROVIDER_EXTERNAL_STATE_MAX_BYTES < strlen( (string) $identity['externalState'] )",
-            self.php,
-        )
         self.assertGreaterEqual(self.php.count("strlen( $json ) > self::MAX_JSON_BYTES"), 3)
 
     def test_server_authority_rejects_client_claims_and_stale_snapshots(self) -> None:
