@@ -619,10 +619,11 @@ def validate_interrupted_source_audits(
         failed_audit.get("preflight"),
         "Interrupted forward failed deploy preflight",
     )
+    failed_error = failed_audit.get("error")
     require(
         failed_audit.get("dry_run") is False
         and failed_audit.get("result") == "failed"
-        and failed_audit.get("error") == "HTTPDeployError"
+        and failed_error in {"DeployError", "HTTPDeployError"}
         and failed_audit.get("failed_gate") == "install"
         and failed_audit.get("commit") == failed["commit"]
         and failed_audit.get("version") == failed["version"]
@@ -684,6 +685,24 @@ def validate_interrupted_source_audits(
         recovery_audit.get("initial_status"),
         "Interrupted forward failed recovery status",
     )
+    legacy_interrupted_install = (
+        failed_error == "HTTPDeployError"
+        and recovery_status.get("phase") == "installing"
+        and recovery_status.get("recovery_ready") is True
+        and "stabilization_failure" not in recovery_audit
+    )
+    pending_stabilization = (
+        failed_error == "DeployError"
+        and recovery_status.get("phase") == "installed_pending_stabilization"
+        and recovery_status.get("recovery_ready") is False
+        and exact_json_equal(
+            recovery_audit.get("stabilization_failure"),
+            {
+                "error": "HTTPDeployError",
+                "phase": "installed_pending_stabilization",
+            },
+        )
+    )
     require(
         recovery_audit.get("result") == "failed"
         and recovery_audit.get("error") == "HTTPDeployError"
@@ -701,10 +720,9 @@ def validate_interrupted_source_audits(
             "recovery_ready",
             "state_exists",
         }
-        and recovery_status.get("phase") == "installing"
+        and (legacy_interrupted_install or pending_stabilization)
         and recovery_status.get("state_exists") is True
         and recovery_status.get("lock_owned") is True
-        and recovery_status.get("recovery_ready") is True
         and recovery_status.get("process_lock_available") is True
         and recovery_status.get("projected_database_fingerprint") == ""
         and recovery_status.get("projected_deployment_id") == ""
@@ -951,6 +969,18 @@ INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS = {
     "runtime_version",
 }
 
+INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS = {
+    "candidate_activation_completed_at",
+    "candidate_activation_phase",
+    "candidate_activation_required",
+    "candidate_database_fingerprint",
+    "candidate_prior_active",
+    "candidate_requested_active",
+    "forward_ready",
+    "forward_stabilization_candidate",
+    "temp_removed",
+}
+
 INTERRUPTED_FORWARD_SAFE_PHASES = {
     "",
     "cleanup_failed",
@@ -980,8 +1010,11 @@ def validate_interrupted_safe_status_shape(
 ) -> dict[str, Any]:
     """Independently accept only the fixed non-secret status projection."""
     safe = require_mapping(value, f"{label} safe status")
+    expected_keys = set(INTERRUPTED_FORWARD_SAFE_STATUS_KEYS)
+    if safe.get("phase") == "installed_pending_stabilization":
+        expected_keys.update(INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS)
     require(
-        set(safe) == INTERRUPTED_FORWARD_SAFE_STATUS_KEYS,
+        set(safe) == expected_keys,
         f"{label} safe status fields are invalid",
     )
     validate_database_manifest(
@@ -1044,6 +1077,28 @@ def validate_interrupted_safe_status_shape(
         and safe["phase"] in INTERRUPTED_FORWARD_SAFE_PHASES,
         f"{label} safe phase status is invalid",
     )
+    if safe["phase"] == "installed_pending_stabilization":
+        require(
+            type(safe.get("candidate_activation_completed_at")) is int
+            and 0 < safe["candidate_activation_completed_at"]
+            <= 9_223_372_036_854_775_807
+            and safe.get("candidate_activation_phase") == "complete"
+            and type(safe.get("candidate_database_fingerprint")) is str
+            and DIGEST.fullmatch(safe["candidate_database_fingerprint"])
+            is not None
+            and all(
+                type(safe.get(field)) is bool
+                for field in {
+                    "candidate_activation_required",
+                    "candidate_prior_active",
+                    "candidate_requested_active",
+                    "forward_ready",
+                    "forward_stabilization_candidate",
+                    "temp_removed",
+                }
+            ),
+            f"{label} stabilization checkpoint status is invalid",
+        )
     return safe
 
 
@@ -1633,11 +1688,17 @@ def validate_interrupted_mismatch_diagnostic_audit(
         and (expected_commit is None or commit == expected_commit),
         "Interrupted forward mismatch diagnostic commit is invalid",
     )
+    safe = validate_interrupted_mismatch_diagnostic_receipt(
+        audit.get("interrupted_forward_observation"),
+        failed,
+        prior,
+        recovery_identity,
+    )
     validate_interrupted_discovery(
         audit.get("discovery"),
         failed["deployment_id"],
         expected_probe_id,
-        "installing",
+        safe["phase"],
         "Interrupted forward mismatch diagnostic discovery",
     )
     require(
@@ -1650,12 +1711,6 @@ def validate_interrupted_mismatch_diagnostic_audit(
             },
         ),
         "Interrupted forward mismatch diagnostic proof path or digest changed",
-    )
-    safe = validate_interrupted_mismatch_diagnostic_receipt(
-        audit.get("interrupted_forward_observation"),
-        failed,
-        prior,
-        recovery_identity,
     )
     validate_interrupted_health_home_robots(
         audit,
