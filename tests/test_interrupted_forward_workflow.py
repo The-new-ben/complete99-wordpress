@@ -81,12 +81,26 @@ class InterruptedForwardWorkflowTests(unittest.TestCase):
             preflight,
         )
         self.assertGreaterEqual(preflight.count("--dist"), 2)
-        self.assertGreaterEqual(preflight.count("--dist $releaseDir"), 2)
+        self.assertGreaterEqual(preflight.count("$interruptedForwardDist"), 4)
+        self.assertIn("$interruptedForwardDist = $releaseDir", preflight)
+        self.assertIn(
+            '"plugin-dist/complete99-platform-$proofVersion.zip"', preflight
+        )
+        self.assertIn(
+            '"plugin-dist/complete99-platform-$proofVersion-integrity.json"',
+            preflight,
+        )
+        self.assertIn(
+            'Join-Path $interruptedForwardDist "complete99-platform-integrity.json"',
+            preflight,
+        )
+        self.assertIn("$proofRelative.Contains('\\')", preflight)
+        self.assertIn("$invalidProofSegments.Count -ne 0", preflight)
         self.assertIn(
             '"--interrupted-forward-proof",\n'
             "              $env:COMPLETE99_INTERRUPTED_FORWARD_PROOF,\n"
             '              "--dist",\n'
-            "              $releaseDir",
+            "              $interruptedForwardDist",
             preflight,
         )
         recovery_invocation = between(
@@ -95,6 +109,8 @@ class InterruptedForwardWorkflowTests(unittest.TestCase):
             "$recoveryExitCode = $LASTEXITCODE",
         )
         self.assertNotIn("--dist $releaseDir", recovery_invocation)
+        self.assertNotIn("--dist $interruptedForwardDist", recovery_invocation)
+        self.assertIn("--dist $interruptedForwardDist", preflight)
         self.assertGreaterEqual(preflight.count("--interrupted-forward-proof"), 2)
         self.assertIn("--interrupted-forward-observe-only", preflight)
         self.assertIn("--recovery-only", preflight)
