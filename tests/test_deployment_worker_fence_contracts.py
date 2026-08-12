@@ -64,6 +64,44 @@ class DeploymentWorkerFenceContractTests(unittest.TestCase):
         self.assertIn("'c99_campaign_worker_' . substr( hash( 'sha256'", self.bridge)
         self.assertEqual(60, len(expected_name))
 
+    def test_bridge_retains_the_campaign_database_boundary_in_lock_order(self) -> None:
+        capacity_name = "c99_campaign_slot_" + hashlib.sha256(
+            b"rollback-capacity"
+        ).hexdigest()[:40]
+        helper = self.bridge.split("$acquire_worker_fence = static function", 1)[1].split(
+            "$release_worker_fence = static function", 1
+        )[0]
+        lifecycle = helper.index("$lifecycle_acquired =")
+        worker = helper.index("$acquired =", lifecycle)
+        capacity = helper.index("$capacity_acquired =", worker)
+        reservation_readback = helper.index("$after = $deploy_reservation_exists();")
+        self.assertLess(lifecycle, worker)
+        self.assertLess(worker, capacity)
+        self.assertLess(capacity, reservation_readback)
+        self.assertIn("hash( 'sha256', 'rollback-capacity' )", self.bridge)
+        self.assertIn(
+            "AUTHORITY_LOCK_ORDER = "
+            "'deploy-reservation>lifecycle-role>worker-execution>"
+            "authority-source-row>rollback-capacity>cron'",
+            self.campaign,
+        )
+        self.assertIn(
+            "$name = 'c99_campaign_slot_' . substr( hash( 'sha256', "
+            "'rollback-capacity' ), 0, 40 );",
+            self.campaign,
+        )
+        self.assertEqual(58, len(capacity_name))
+        self.assertIn("c99_rollback_capacity_busy", helper)
+
+        release = self.bridge.split("$release_worker_fence = static function", 1)[1].split(
+            "$acquire_lock = static function", 1
+        )[0]
+        capacity_release = release.index("$capacity_released =")
+        worker_release = release.index("$released =", capacity_release)
+        lifecycle_release = release.index("$lifecycle_released =", worker_release)
+        self.assertLess(capacity_release, worker_release)
+        self.assertLess(worker_release, lifecycle_release)
+
     def test_deployment_reservation_precedes_and_survives_fence_acquisition(self) -> None:
         helper = self.bridge.split("$acquire_worker_fence = static function", 1)[1].split(
             "$release_worker_fence = static function", 1
@@ -192,27 +230,38 @@ class DeploymentWorkerFenceContractTests(unittest.TestCase):
                 self.assertIn("return $worker_fence_release;", finally_block)
 
     def test_fault_model_never_allows_worker_and_deployment_mutation_together(self) -> None:
-        def acquire(reservation_before: bool, worker_running: bool, reservation_after: bool):
+        def acquire(
+            reservation_before: bool,
+            worker_running: bool,
+            database_transaction_running: bool,
+            reservation_after: bool,
+        ):
             if not reservation_before:
-                return "missing", worker_running
+                return "missing", worker_running, database_transaction_running
             if worker_running:
-                return "busy", worker_running
+                return "worker-busy", worker_running, database_transaction_running
+            if database_transaction_running:
+                return "database-busy", False, database_transaction_running
             if not reservation_after:
-                return "lost", False
-            return "owned", False
+                return "lost", False, False
+            return "owned", False, False
 
         vectors = (
-            (False, False, False, "missing"),
-            (True, True, True, "busy"),
-            (True, False, False, "lost"),
-            (True, False, True, "owned"),
+            (False, False, False, False, "missing"),
+            (True, True, False, True, "worker-busy"),
+            (True, False, True, True, "database-busy"),
+            (True, False, False, False, "lost"),
+            (True, False, False, True, "owned"),
         )
-        for before, worker, after, expected in vectors:
-            with self.subTest(before=before, worker=worker, after=after):
-                outcome, worker_still_running = acquire(before, worker, after)
+        for before, worker, database, after, expected in vectors:
+            with self.subTest(before=before, worker=worker, database=database, after=after):
+                outcome, worker_still_running, database_still_running = acquire(
+                    before, worker, database, after
+                )
                 self.assertEqual(expected, outcome)
                 if outcome == "owned":
                     self.assertFalse(worker_still_running)
+                    self.assertFalse(database_still_running)
 
 
 if __name__ == "__main__":
