@@ -7,17 +7,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * WordPress-native, private Complete99 operations foundation.
  *
- * P1 is deliberately read-only. It establishes durable schema, WordPress
- * authorization and an authenticated status surface without accepting an
- * operational command or claiming that the legacy application is migrated.
+ * Campaign Studio is the first capability-controlled operational vertical.
+ * Other modules remain schema-only or pending, and no legacy record is ever
+ * presented as migrated without exact evidence.
  */
 final class Complete99_Ops {
 	const PAGE_SLUG             = 'complete99-os';
 	const CAPABILITY            = 'complete99_view_operations';
 	const REST_NAMESPACE        = 'complete99/v1';
 	const REST_ROUTE            = '/ops/status';
+	const WORKER_ROLE           = 'complete99_campaign_worker';
+	const WORKER_CAPABILITY     = 'complete99_run_campaign_worker';
+	const WORKER_ROUTE          = '/ops/campaign-worker';
+	const WORKER_SCHEMA         = 'complete99-campaign-worker-monitor/v1';
+	const WORKER_INTERVAL       = 900;
+	const WORKER_MAX_AGE        = 4500;
 	const SCHEMA_VERSION        = 'complete99-ops-schema/v1';
 	const OPTION_SCHEMA_VERSION = 'complete99_ops_schema_version';
+
+	/** @var int User authenticated by WordPress core's Application Password provider. */
+	private static $application_password_user_id = 0;
+
+	/** @var string Validated UUID of the core Application Password used this request. */
+	private static $application_password_uuid = '';
 
 	/**
 	 * Register private admin and REST surfaces.
@@ -26,6 +38,8 @@ final class Complete99_Ops {
 		add_action( 'admin_menu', array( __CLASS__, 'admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 		add_action( 'rest_api_init', array( __CLASS__, 'register_routes' ) );
+		add_action( 'application_password_did_authenticate', array( __CLASS__, 'note_application_password_authentication' ), 10, 2 );
+		add_filter( 'rest_post_dispatch', array( __CLASS__, 'prevent_worker_response_caching' ), 10, 3 );
 	}
 
 	/**
@@ -118,7 +132,7 @@ final class Complete99_Ops {
 	}
 
 	/**
-	 * Register one nonce- and capability-protected read-only endpoint.
+	 * Register the private status endpoint and one fixed Campaign worker operation.
 	 */
 	public static function register_routes() {
 		register_rest_route(
@@ -130,6 +144,31 @@ final class Complete99_Ops {
 				'callback'            => array( __CLASS__, 'rest_status' ),
 			)
 		);
+		register_rest_route(
+			self::REST_NAMESPACE,
+			self::WORKER_ROUTE,
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'permission_callback' => array( __CLASS__, 'authorize_campaign_worker' ),
+				'callback'            => array( __CLASS__, 'rest_campaign_worker' ),
+			)
+		);
+	}
+
+	/**
+	 * Record only WordPress core's successful Application Password provenance.
+	 *
+	 * The secret and application metadata are deliberately never retained.
+	 */
+	public static function note_application_password_authentication( $user, $item ) {
+		self::$application_password_user_id = 0;
+		self::$application_password_uuid    = '';
+		$user_id = is_object( $user ) && isset( $user->ID ) ? absint( $user->ID ) : 0;
+		$uuid    = is_array( $item ) && is_string( $item['uuid'] ?? null ) ? strtolower( trim( $item['uuid'] ) ) : '';
+		if ( 0 < $user_id && 1 === preg_match( '/\A[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/D', $uuid ) ) {
+			self::$application_password_user_id = $user_id;
+			self::$application_password_uuid    = $uuid;
+		}
 	}
 
 	/**
@@ -163,6 +202,40 @@ final class Complete99_Ops {
 	}
 
 	/**
+	 * Require the exact current-site worker role and core Application Password auth.
+	 */
+	public static function authorize_campaign_worker( WP_REST_Request $request ) {
+		unset( $request );
+		if ( ! is_user_logged_in() ) {
+			return new WP_Error(
+				'complete99_campaign_worker_authentication_required',
+				'WordPress Application Password authentication is required.',
+				array( 'status' => 401 )
+			);
+		}
+
+		$user = wp_get_current_user();
+		$user_id = is_object( $user ) && isset( $user->ID ) ? absint( $user->ID ) : 0;
+		$official_application_password = 0 < $user_id
+			&& $user_id === self::$application_password_user_id
+			&& '' !== self::$application_password_uuid;
+		$role = self::worker_role_status();
+		if ( ! $official_application_password
+			|| ! self::worker_user_is_enabled( $user )
+			|| is_super_admin( $user_id )
+			|| empty( $role['ready'] )
+			|| ! self::worker_user_assignment_is_exact( $user_id )
+			|| ! current_user_can( self::WORKER_CAPABILITY ) ) {
+			return new WP_Error(
+				'complete99_campaign_worker_forbidden',
+				'This WordPress account cannot run the Campaign worker.',
+				array( 'status' => 403 )
+			);
+		}
+		return true;
+	}
+
+	/**
 	 * Return private foundation status, or fail closed while migration is stale.
 	 */
 	public static function rest_status( WP_REST_Request $request ) {
@@ -182,7 +255,79 @@ final class Complete99_Ops {
 	}
 
 	/**
-	 * Render a truthful, read-only Today foundation in wp-admin.
+	 * Run exactly one bounded Campaign reconciliation as the system actor.
+	 */
+	public static function rest_campaign_worker( WP_REST_Request $request ) {
+		unset( $request );
+		if ( ! self::campaign_worker_prerequisites_ready() ) {
+			return self::campaign_worker_unavailable_response();
+		}
+
+		$authenticated_user_id = get_current_user_id();
+		if ( 1 > $authenticated_user_id ) {
+			return self::campaign_worker_unavailable_response();
+		}
+		$failed                = false;
+		$restore_failed        = false;
+		$cron_runner           = null;
+		try {
+			wp_set_current_user( 0 );
+			if ( 0 !== get_current_user_id() ) {
+				throw new \RuntimeException( 'The Campaign worker system identity could not be established.' );
+			}
+			$result = Complete99_Campaigns::reconcile_schedules();
+			if ( true !== $result ) {
+				$failed = true;
+			} else {
+				$status      = Complete99_Campaigns::operational_status();
+				$cron_runner = is_array( $status ) ? ( $status['cron_runner'] ?? null ) : null;
+				$failed      = ! self::campaign_worker_heartbeat_is_fresh( $cron_runner );
+			}
+		} catch ( \Throwable $error ) {
+			unset( $error );
+			$failed = true;
+		} finally {
+			try {
+				wp_set_current_user( $authenticated_user_id );
+				$restore_failed = $authenticated_user_id !== get_current_user_id();
+			} catch ( \Throwable $restore_error ) {
+				unset( $restore_error );
+				$restore_failed = true;
+			}
+		}
+
+		if ( $failed || $restore_failed ) {
+			return self::campaign_worker_unavailable_response();
+		}
+
+		return self::campaign_worker_response(
+			array(
+				'schemaVersion'   => self::WORKER_SCHEMA,
+				'workerCompleted' => true,
+				'cronRunner'      => array(
+					'ready'         => true,
+					'inspectable'   => true,
+					'lastAt'        => (string) $cron_runner['lastAt'],
+					'ageSeconds'    => (int) $cron_runner['ageSeconds'],
+					'maxAgeSeconds' => self::WORKER_MAX_AGE,
+				),
+			),
+			200
+		);
+	}
+
+	/** Apply a no-store boundary to every response from the worker route. */
+	public static function prevent_worker_response_caching( $response, $server, $request ) {
+		unset( $server );
+		$route = is_object( $request ) && is_callable( array( $request, 'get_route' ) ) ? (string) $request->get_route() : '';
+		if ( '/' . self::REST_NAMESPACE . self::WORKER_ROUTE === $route ) {
+			self::apply_worker_no_store_headers( $response );
+		}
+		return $response;
+	}
+
+	/**
+	 * Render a truthful Today foundation and operational campaign entrypoint.
 	 */
 	public static function render_page() {
 		if ( ! is_user_logged_in() || ! current_user_can( self::CAPABILITY ) ) {
@@ -195,13 +340,14 @@ final class Complete99_Ops {
 
 		$status = self::status_snapshot();
 		$ready  = ! empty( $status['ready'] );
+		$campaign_operational = ! empty( $status['campaign_view_enabled'] ) && ! empty( $status['campaigns']['ready'] );
 		?>
-		<div class="wrap c99-ops" data-c99-ops-shell="read-only">
+		<div class="wrap c99-ops" data-c99-ops-shell="<?php echo esc_attr( $campaign_operational ? 'campaign-operational' : 'campaign-unavailable' ); ?>">
 			<header class="c99-ops__hero">
 				<div>
 					<p class="c99-ops__eyebrow"><?php echo esc_html__( 'Private WordPress workspace', 'complete99-platform' ); ?></p>
 					<h1><?php echo esc_html__( 'Complete99 OS: Today', 'complete99-platform' ); ?></h1>
-					<p class="c99-ops__lede"><?php echo esc_html__( 'This is the first WordPress-native operations foundation. It is read-only; daily operational modules and legacy data have not yet been migrated.', 'complete99-platform' ); ?></p>
+					<p class="c99-ops__lede"><?php echo esc_html( $campaign_operational ? __( 'Campaign Studio is a verified WordPress-native operational module for this account. Other daily modules and legacy records remain pending and are never presented as migrated truth.', 'complete99-platform' ) : __( 'Campaign Studio is unavailable until its schema, rollback capacity, durable capabilities and this account’s access are verified. Other daily modules and legacy records remain pending.', 'complete99-platform' ) ); ?></p>
 				</div>
 				<div class="c99-ops__status <?php echo $ready ? 'is-ready' : 'is-blocked'; ?>" data-c99-ops-status>
 					<strong data-c99-ops-status-label><?php echo esc_html( $ready ? __( 'Foundation ready', 'complete99-platform' ) : __( 'Migration incomplete', 'complete99-platform' ) ); ?></strong>
@@ -212,7 +358,7 @@ final class Complete99_Ops {
 			<div class="c99-ops__facts" aria-label="<?php echo esc_attr__( 'Foundation guarantees', 'complete99-platform' ); ?>">
 				<span><?php echo esc_html__( 'Authentication: WordPress', 'complete99-platform' ); ?></span>
 				<span><?php echo esc_html__( 'ChatGPT login: not required', 'complete99-platform' ); ?></span>
-				<span><?php echo esc_html__( 'Operational writes: disabled', 'complete99-platform' ); ?></span>
+				<span><?php echo esc_html( ! empty( $status['write_commands_enabled'] ) ? __( 'Campaign writes: enabled for this account', 'complete99-platform' ) : __( 'Campaign writes: unavailable for this account', 'complete99-platform' ) ); ?></span>
 			</div>
 
 			<main class="c99-ops__grid">
@@ -239,7 +385,7 @@ final class Complete99_Ops {
 					<ul class="c99-ops__modules">
 						<?php foreach ( $status['modules'] as $module ) : ?>
 							<li>
-								<span><strong><?php echo esc_html( $module['label'] ); ?></strong><small><?php echo esc_html( $module['description'] ); ?></small></span>
+								<span><strong><?php if ( ! empty( $module['url'] ) ) : ?><a href="<?php echo esc_url( $module['url'] ); ?>"><?php echo esc_html( $module['label'] ); ?></a><?php else : ?><?php echo esc_html( $module['label'] ); ?><?php endif; ?></strong><small><?php echo esc_html( $module['description'] ); ?></small></span>
 								<em class="c99-ops__module-state c99-ops__module-state--<?php echo esc_attr( sanitize_html_class( $module['state'] ) ); ?>"><?php echo esc_html( $module['state_label'] ); ?></em>
 							</li>
 						<?php endforeach; ?>
@@ -255,32 +401,49 @@ final class Complete99_Ops {
 	 */
 	public static function status_snapshot() {
 		$schema           = self::schema_status();
+		$worker_role      = self::worker_role_status();
+		$campaign         = class_exists( 'Complete99_Campaigns' ) ? Complete99_Campaigns::operational_status() : array( 'ready' => false, 'campaign_count' => 0 );
+		$campaign_ready   = class_exists( 'Complete99_Campaigns' ) && ! empty( $campaign['ready'] );
+		$campaign_view    = $campaign_ready && current_user_can( Complete99_Campaigns::VIEW_CAPABILITY );
+		$campaign_write   = false;
+		if ( $campaign_view ) {
+			foreach ( array( Complete99_Campaigns::MANAGE_CAPABILITY, Complete99_Campaigns::APPROVE_CAPABILITY, Complete99_Campaigns::SCHEDULE_CAPABILITY, Complete99_Campaigns::EVIDENCE_CAPABILITY, Complete99_Campaigns::RESULTS_CAPABILITY, Complete99_Campaigns::MODERATE_CAPABILITY ) as $capability ) {
+				if ( current_user_can( $capability ) ) { $campaign_write = true; break; }
+			}
+		}
 		$database_version = (string) get_option( 'complete99_platform_version', '' );
 		$migration_failed = ! is_callable( array( 'Complete99_Platform', 'migration_failed' ) )
 			|| Complete99_Platform::migration_failed();
 		$ready = ! $migration_failed
 			&& COMPLETE99_PLATFORM_VERSION === $database_version
-			&& ! empty( $schema['ready'] );
+			&& ! empty( $schema['ready'] )
+			&& ! empty( $worker_role['ready'] )
+			&& $campaign_ready;
+		$campaign_operational_ready = $ready && $campaign_ready;
+		$campaign_operational_view  = $campaign_operational_ready && $campaign_view;
 
 		return array(
 			'schema'                 => $schema,
 			'status_schema'          => 'complete99-ops-status/v1',
 			'ready'                  => $ready,
-			'mode'                   => 'read_only_foundation',
+			'mode'                   => $campaign_operational_view ? 'campaign_operational_other_modules_pending' : 'campaign_unavailable_other_modules_pending',
 			'auth_provider'          => 'wordpress',
 			'chatgpt_login_required' => false,
-			'write_commands_enabled' => false,
+			'write_commands_enabled' => $ready && $campaign_write,
+			'campaign_view_enabled'  => $campaign_operational_view,
+			'campaigns'              => $campaign,
+			'campaign_worker'        => $worker_role,
 			'plugin_version'         => COMPLETE99_PLATFORM_VERSION,
 			'database_version'       => $database_version,
 			'ops_schema_version'     => $schema['stored_version'],
-			'modules'                => self::module_statuses(),
+			'modules'                => self::module_statuses( $campaign_operational_ready, $campaign_operational_view ),
 		);
 	}
 
 	/**
 	 * Truthful migration states shown in the read-only shell.
 	 */
-	private static function module_statuses() {
+	private static function module_statuses( $campaign_ready, $campaign_view ) {
 		return array(
 			array(
 				'key'         => 'foundation',
@@ -311,9 +474,17 @@ final class Complete99_Ops {
 				'state_label' => __( 'Not migrated', 'complete99-platform' ),
 			),
 			array(
+				'key'         => 'campaigns',
+				'label'       => __( 'Campaign Studio', 'complete99-platform' ),
+				'description' => $campaign_ready ? ( $campaign_view ? __( 'Private drafting, approval, owned-site scheduling, evidence, moderation and results.', 'complete99-platform' ) : __( 'The module is migrated, but this WordPress account lacks its view capability.', 'complete99-platform' ) ) : __( 'The module remains unavailable because its schema, rollback capacity or durable capabilities could not be verified.', 'complete99-platform' ),
+				'state'       => $campaign_view ? 'operational' : ( $campaign_ready ? 'restricted' : 'unavailable' ),
+				'state_label' => $campaign_view ? __( 'Operational', 'complete99-platform' ) : ( $campaign_ready ? __( 'Restricted', 'complete99-platform' ) : __( 'Unavailable', 'complete99-platform' ) ),
+				'url'         => $campaign_view ? admin_url( 'admin.php?page=' . Complete99_Campaigns::PAGE_SLUG ) : '',
+			),
+			array(
 				'key'         => 'growth',
-				'label'       => __( 'Campaigns, SEO, finance and projects', 'complete99-platform' ),
-				'description' => __( 'These private workflows remain outside this P1 scope.', 'complete99-platform' ),
+				'label'       => __( 'SEO, finance and projects', 'complete99-platform' ),
+				'description' => __( 'These remaining private workflows still require later migration slices.', 'complete99-platform' ),
 				'state'       => 'not-migrated',
 				'state_label' => __( 'Not migrated', 'complete99-platform' ),
 			),
@@ -482,7 +653,7 @@ final class Complete99_Ops {
 	}
 
 	/**
-	 * Grant only administrators access in P1; worker roles are not activated.
+	 * Grant private status access and normalize the dedicated least-privilege role.
 	 */
 	private static function install_capability() {
 		$administrator = get_role( 'administrator' );
@@ -490,6 +661,28 @@ final class Complete99_Ops {
 			throw new \RuntimeException( 'The WordPress administrator role is unavailable.' );
 		}
 		$administrator->add_cap( self::CAPABILITY );
+		$administrator->remove_cap( self::WORKER_CAPABILITY );
+
+		$allowed = self::worker_role_capabilities();
+		$worker  = get_role( self::WORKER_ROLE );
+		if ( ! $worker ) {
+			$worker = add_role(
+				self::WORKER_ROLE,
+				__( 'Complete99 Campaign Worker', 'complete99-platform' ),
+				$allowed
+			);
+		}
+		if ( ! $worker ) {
+			throw new \RuntimeException( 'The Complete99 Campaign worker role could not be created.' );
+		}
+		foreach ( array_keys( (array) $worker->capabilities ) as $capability ) {
+			if ( ! array_key_exists( $capability, $allowed ) ) {
+				$worker->remove_cap( $capability );
+			}
+		}
+		foreach ( $allowed as $capability => $grant ) {
+			$worker->add_cap( $capability, $grant );
+		}
 		self::assert_capability();
 	}
 
@@ -518,9 +711,35 @@ final class Complete99_Ops {
 	}
 
 	/**
-	 * Verify the administrator capability directly from the roles option.
+	 * Verify the administrator capability and exact worker role from storage.
 	 */
 	private static function assert_capability() {
+		$roles = self::persisted_roles();
+		if ( true !== ( $roles['administrator']['capabilities'][ self::CAPABILITY ] ?? null ) ) {
+			throw new \RuntimeException( 'The Complete99 operations capability is not durable.' );
+		}
+		if ( array_key_exists( self::WORKER_CAPABILITY, (array) ( $roles['administrator']['capabilities'] ?? array() ) ) ) {
+			throw new \RuntimeException( 'The administrator role must not hold the Campaign worker capability.' );
+		}
+		$stored_worker = (array) ( $roles[ self::WORKER_ROLE ]['capabilities'] ?? array() );
+		ksort( $stored_worker );
+		$expected_worker = self::worker_role_capabilities();
+		ksort( $expected_worker );
+		if ( $expected_worker !== $stored_worker ) {
+			throw new \RuntimeException( 'The Complete99 Campaign worker role is not exact and durable.' );
+		}
+	}
+
+	/** Exact capabilities allowed on the dedicated monitor role. */
+	private static function worker_role_capabilities() {
+		return array(
+			'read'                  => true,
+			self::WORKER_CAPABILITY => true,
+		);
+	}
+
+	/** Read the current site's role definitions directly from durable storage. */
+	private static function persisted_roles() {
 		global $wpdb;
 
 		$role_key = $wpdb->get_blog_prefix( get_current_blog_id() ) . 'user_roles';
@@ -535,9 +754,224 @@ final class Complete99_Ops {
 			throw new \RuntimeException( 'The durable WordPress roles option is unavailable.' );
 		}
 		$roles = maybe_unserialize( $raw );
-		if ( true !== ( $roles['administrator']['capabilities'][ self::CAPABILITY ] ?? null ) ) {
-			throw new \RuntimeException( 'The Complete99 operations capability is not durable.' );
+		if ( ! is_array( $roles ) ) {
+			throw new \RuntimeException( 'The durable WordPress roles option is malformed.' );
 		}
+		return $roles;
+	}
+
+	/** Return a bounded readiness projection for the dedicated worker role. */
+	private static function worker_role_status() {
+		$ready = false;
+		try {
+			$roles         = self::persisted_roles();
+			$administrator = (array) ( $roles['administrator']['capabilities'] ?? array() );
+			$worker        = (array) ( $roles[ self::WORKER_ROLE ]['capabilities'] ?? array() );
+			$expected      = self::worker_role_capabilities();
+			ksort( $worker );
+			ksort( $expected );
+			$ready = true === ( $administrator[ self::CAPABILITY ] ?? null )
+				&& ! array_key_exists( self::WORKER_CAPABILITY, $administrator )
+				&& $expected === $worker;
+		} catch ( \Throwable $error ) {
+			unset( $error );
+			$ready = false;
+		}
+		return array(
+			'ready'          => $ready,
+			'role'           => self::WORKER_ROLE,
+			'capability'     => self::WORKER_CAPABILITY,
+			'authentication' => 'wordpress_application_password',
+		);
+	}
+
+	/** Accept only exact enabled-state values returned by WordPress user storage. */
+	private static function worker_user_is_enabled( $user ) {
+		if ( ! is_object( $user ) ) {
+			return false;
+		}
+		if ( ! isset( $user->user_status ) || ! in_array( $user->user_status, array( 0, '0' ), true ) ) {
+			return false;
+		}
+		foreach ( array( 'spam', 'deleted' ) as $property ) {
+			if ( isset( $user->{$property} ) && ! in_array( $user->{$property}, array( 0, '0' ), true ) ) {
+				return false;
+			}
+			if ( is_multisite() && ! isset( $user->{$property} ) ) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Prove a user has exactly the current-site worker role and no direct grants. */
+	private static function worker_user_assignment_is_exact( $user_id ) {
+		global $wpdb;
+
+		if ( 1 > (int) $user_id ) {
+			return false;
+		}
+		$meta_key = $wpdb->get_blog_prefix( get_current_blog_id() ) . 'capabilities';
+		$wpdb->last_error = '';
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT umeta_id,meta_value FROM {$wpdb->usermeta} WHERE user_id=%d AND meta_key=%s ORDER BY umeta_id ASC LIMIT 2",
+				(int) $user_id,
+				$meta_key
+			),
+			ARRAY_A
+		);
+		if ( '' !== (string) $wpdb->last_error || ! is_array( $rows ) || 1 !== count( $rows ) ) {
+			return false;
+		}
+		$assignment = maybe_unserialize( (string) ( $rows[0]['meta_value'] ?? '' ) );
+		if ( array( self::WORKER_ROLE => true ) !== $assignment ) {
+			return false;
+		}
+
+		return self::worker_user_has_only_current_site_membership(
+			(int) $user_id,
+			(int) ( $rows[0]['umeta_id'] ?? 0 )
+		);
+	}
+
+	/**
+	 * Bound multisite membership proof to two durable rows and require the
+	 * current assignment row to be the only registered-site membership.
+	 */
+	private static function worker_user_has_only_current_site_membership( $user_id, $current_umeta_id ) {
+		global $wpdb;
+
+		if ( ! is_multisite() ) {
+			return true;
+		}
+		$blogs_table = isset( $wpdb->blogs ) ? (string) $wpdb->blogs : '';
+		$base_prefix = isset( $wpdb->base_prefix ) ? (string) $wpdb->base_prefix : '';
+		if ( 1 > (int) $user_id || 1 > (int) $current_umeta_id || '' === $blogs_table || '' === $base_prefix ) {
+			return false;
+		}
+
+		$wpdb->last_error = '';
+		$memberships = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT b.blog_id,um.umeta_id FROM {$blogs_table} b INNER JOIN {$wpdb->usermeta} um ON um.user_id=%d AND um.meta_key=CONCAT(%s,CASE WHEN b.blog_id=1 THEN '' ELSE CONCAT(b.blog_id,'_') END,'capabilities') ORDER BY b.blog_id ASC,um.umeta_id ASC LIMIT 2",
+				(int) $user_id,
+				$base_prefix
+			),
+			ARRAY_A
+		);
+		return '' === (string) $wpdb->last_error
+			&& is_array( $memberships )
+			&& 1 === count( $memberships )
+			&& get_current_blog_id() === (int) ( $memberships[0]['blog_id'] ?? 0 )
+			&& (int) $current_umeta_id === (int) ( $memberships[0]['umeta_id'] ?? 0 );
+	}
+
+	/** Refuse worker writes until the platform and Campaign write foundations are ready. */
+	private static function campaign_worker_prerequisites_ready() {
+		try {
+			if ( ! class_exists( 'Complete99_Campaigns' )
+				|| ! is_callable( array( 'Complete99_Campaigns', 'reconcile_schedules' ) )
+				|| ! is_callable( array( 'Complete99_Campaigns', 'operational_status' ) )
+				|| ! is_callable( array( 'Complete99_Campaigns', 'begin_worker_execution_fence' ) )
+				|| ! is_callable( array( 'Complete99_Campaigns', 'end_worker_execution_fence' ) )
+				|| ! is_callable( array( 'Complete99_Campaigns', 'worker_execution_fence_lock_name' ) )
+				|| ! is_callable( array( 'Complete99_Campaigns', 'worker_quiescence_status' ) )
+				|| ! defined( 'Complete99_Campaigns::SCHEMA_VERSION' )
+				|| ! defined( 'Complete99_Campaigns::SYSTEM_CRON_INTERVAL_SECONDS' )
+				|| ! defined( 'Complete99_Campaigns::CRON_HEARTBEAT_MAX_AGE' )
+				|| self::WORKER_INTERVAL !== Complete99_Campaigns::SYSTEM_CRON_INTERVAL_SECONDS
+				|| self::WORKER_MAX_AGE !== Complete99_Campaigns::CRON_HEARTBEAT_MAX_AGE
+				|| ! is_callable( array( 'Complete99_Platform', 'migration_failed' ) )
+				|| Complete99_Platform::migration_failed()
+				|| COMPLETE99_PLATFORM_VERSION !== (string) get_option( 'complete99_platform_version', '' ) ) {
+				return false;
+			}
+			$ops_schema = self::schema_status();
+			$worker_role = self::worker_role_status();
+			if ( ! is_array( $ops_schema )
+				|| true !== ( $ops_schema['ready'] ?? null )
+				|| self::SCHEMA_VERSION !== ( $ops_schema['stored_version'] ?? null )
+				|| true !== ( $worker_role['ready'] ?? null ) ) {
+				return false;
+			}
+
+			$lock_name = Complete99_Campaigns::worker_execution_fence_lock_name();
+			$quiescence = Complete99_Campaigns::worker_quiescence_status();
+			if ( ! is_string( $lock_name )
+				|| '' === $lock_name
+				|| 64 < strlen( $lock_name )
+				|| ! is_array( $quiescence )
+				|| true !== ( $quiescence['ready'] ?? null ) ) {
+				return false;
+			}
+
+			$status   = Complete99_Campaigns::operational_status();
+			$capacity = is_array( $status ) ? ( $status['capacity'] ?? null ) : null;
+			$cohorts  = is_array( $capacity ) ? ( $capacity['cohorts'] ?? null ) : null;
+			return is_array( $status )
+				&& Complete99_Campaigns::SCHEMA_VERSION === (string) ( $status['schema_version'] ?? '' )
+				&& true === ( $status['capabilities_ready'] ?? null )
+				&& is_array( $capacity )
+				&& true === ( $capacity['ready'] ?? null )
+				&& true === ( $capacity['inspectable'] ?? null )
+				&& is_array( $cohorts )
+				&& true === ( $cohorts['operations']['writeReady'] ?? null )
+				&& true === ( $cohorts['campaign']['writeReady'] ?? null );
+		} catch ( \Throwable $error ) {
+			unset( $error );
+			return false;
+		}
+	}
+
+	/** Validate the exact 75-minute durable heartbeat acceptance contract. */
+	private static function campaign_worker_heartbeat_is_fresh( $heartbeat ) {
+		if ( ! is_array( $heartbeat )
+			|| true !== ( $heartbeat['ready'] ?? null )
+			|| true !== ( $heartbeat['inspectable'] ?? null )
+			|| ! is_string( $heartbeat['lastAt'] ?? null )
+			|| 1 !== preg_match( '/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\z/D', $heartbeat['lastAt'] )
+			|| ! is_int( $heartbeat['ageSeconds'] ?? null )
+			|| 0 > $heartbeat['ageSeconds']
+			|| self::WORKER_MAX_AGE < $heartbeat['ageSeconds']
+			|| self::WORKER_MAX_AGE !== ( $heartbeat['maxAgeSeconds'] ?? null ) ) {
+			return false;
+		}
+		$last_at = strtotime( $heartbeat['lastAt'] );
+		if ( false === $last_at || $last_at > time() + 300 ) {
+			return false;
+		}
+		$observed_age = max( 0, time() - $last_at );
+		return 5 >= abs( $observed_age - $heartbeat['ageSeconds'] );
+	}
+
+	/** Return one generic, bounded worker failure without exposing internal state. */
+	private static function campaign_worker_unavailable_response() {
+		return self::campaign_worker_response(
+			array(
+				'schemaVersion'   => self::WORKER_SCHEMA,
+				'workerCompleted' => false,
+				'state'           => 'unavailable',
+			),
+			503
+		);
+	}
+
+	/** Build a bounded response and apply the route's cache prohibition immediately. */
+	private static function campaign_worker_response( $payload, $status ) {
+		$response = new WP_REST_Response( $payload, (int) $status );
+		self::apply_worker_no_store_headers( $response );
+		return $response;
+	}
+
+	/** Apply headers without assuming a particular REST response implementation. */
+	private static function apply_worker_no_store_headers( $response ) {
+		if ( ! is_object( $response ) || ! is_callable( array( $response, 'header' ) ) ) {
+			return;
+		}
+		$response->header( 'Cache-Control', 'no-store, private, max-age=0' );
+		$response->header( 'Pragma', 'no-cache' );
+		$response->header( 'Expires', '0' );
 	}
 
 	/**

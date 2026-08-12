@@ -86,7 +86,9 @@ def validate_database_manifest(
         "evaluation_ids",
     ]
     schema = manifest.get("schema") if isinstance(manifest, dict) else None
-    if schema == "complete99-database-snapshot-manifest/v2":
+    if schema == "complete99-database-snapshot-manifest/v3":
+        components.extend(["ops_tables", "campaign_tables"])
+    elif schema == "complete99-database-snapshot-manifest/v2":
         components.append("ops_tables")
     elif schema != "complete99-database-snapshot-manifest/v1":
         raise deployer.DeployError(f"{label} manifest identity is invalid")
@@ -114,7 +116,8 @@ def validate_database_manifest(
         if (
             type(count) is not int
             or count < 0
-            or (component == "ops_tables" and count != 7)
+            or count > 9223372036854775807
+            or (component in {"ops_tables", "campaign_tables"} and count != 7)
             or type(component_sha256) is not str
             or digest.fullmatch(component_sha256) is None
         ):
@@ -2360,6 +2363,8 @@ INTERRUPTED_FORWARD_SAFE_PHASES = {
     "committing",
     "failed",
     "finalized",
+    "candidate_activation_pending",
+    "candidate_activation_complete",
     "installed",
     "installed_pending_cleanup",
     "installed_pending_stabilization",

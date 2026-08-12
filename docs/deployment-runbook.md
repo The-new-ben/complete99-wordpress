@@ -76,6 +76,27 @@ after exact-commit CI and the `production` environment gate pass. No pull-reques
 workflow targets the self-hosted label. GitHub injects the environment secrets at
 job runtime; they are not stored in the runner directory.
 
+Provision the deploy runner outside the checkout, the user's Documents folder
+and every synchronized directory, for example
+`C:\actions-runner\complete99-deploy`. Register it only to this repository and
+run it as a Windows service under the least-privileged dedicated account. If
+service installation is unavailable, use one hidden Startup launcher for that
+same runner directory; never run a second interactive listener. Before a release,
+prove exactly one runner listener/worker process, an online repository runner and
+the four exact labels above. The checkout remains disposable; runner credentials,
+diagnostics and work directories are not release inputs.
+
+Campaign zero-traffic reconciliation uses a separate repository-scoped Windows
+runner under `C:\actions-runner\complete99-monitor` with exact labels
+`self-hosted`, `Windows`, `X64` and `complete99-monitor`. It may access only the
+`campaign-monitor` environment and its dedicated WordPress Application Password.
+The fixed workflow runs at minutes 7, 22, 37 and 52 and may also be dispatched
+manually. GitHub schedules are not real-time guarantees: an offline or busy
+self-hosted runner queues the job. Keep it continuously online, alert on a queued
+or failed monitor, and require a fresh durable Campaign heartbeat before enabling
+owned placements. Do not share the production administrator credential with this
+runner.
+
 Keep that narrowly scoped runner online and allow its automatic runner updates.
 If it is offline, the deploy job remains queued and no WordPress mutation occurs.
 The Windows runner uses the already-installed Python 3.11 runtime. Do not add
@@ -222,36 +243,100 @@ backup, releases the lock, permanently deletes the temporary Code Snippets datab
 row through the protected bridge, independently proves that exact row is absent,
 and then proves the route returns 404.
 
-### Operations foundation rollback gate
+### Protected operations and Campaign Studio rollback gate
 
-Any release that introduces the private Complete99 operations foundation must
-pass the database snapshot manifest v2 gate. The encrypted journal contains the
-exact seven `c99_ops_*` table identities, transactional engine and normalized
-schema digest, rows ordered by `id`, and the
-`complete99_ops_schema_version` option. Capture is bounded to 5,000 rows per
-table and 8 MiB across all seven tables. A larger state is rejected before the
-plugin is changed.
+The encrypted journal uses exact manifest generations. Historical v1 omits both
+protected-table cohorts; v2 adds exactly seven `c99_ops_*` tables; v3 adds the
+exact seven Campaign Studio tables. Each component binds transactional engine,
+normalized schema digest and rows ordered by `id`. Capture is bounded to 5,000
+rows per table and 8 MiB independently across each seven-table cohort. The
+operations and Campaign schema markers are journaled in their generation.
 
-For a first installation, all seven tables must be absent in the authenticated
-baseline. Rollback atomically renames candidate-created tables into a
-deployment-specific quarantine before restoring transaction-bound WordPress
-options, posts and postmeta. It then proves the exact baseline fingerprint,
-drops only the proven quarantine tables, proves zero residue, and only then may
-report `rolled_back` or finalize. The identical artifact redeploy must recreate
-exactly seven InnoDB tables and the schema marker.
+Before preflight or `/run`, Campaign Studio must be wholly absent, or its marker
+must equal `complete99-campaign-schema/v1` and all seven tables must exist. A
+marker-only, table-only or partial-table state is schema drift and fails before
+the plugin changes. Historical v1/v2 JSON and SHA-256 are validated in their
+original shape before absent components are synthesized for internal comparison.
 
-If any operations table existed at baseline, rollback is deliberately narrower:
-the candidate may not change its schema or rows. Any difference fails closed
-before plugin or database mutation. Interrupted retries reconstruct the exact
-recorded forward table digest from canonical and quarantined copies; ambiguous,
-missing or changed copies are refused. Historical manifest-v1 journals remain
-recoverable only with their exact authenticated legacy shape and an explicit
-seven-table absent baseline. An unexpected operations table is never inferred
-to be disposable.
+Rollback reconstructs and fingerprints operations and Campaign forward state
+separately, then atomically renames every candidate-created table from both
+cohorts into one deployment-specific quarantine boundary. WordPress options,
+posts and postmeta restore in one transaction. Only after the full normalized
+baseline reads back exactly may cleanup drop the two proven quarantine cohorts
+in one bounded operation. Retry requires both recorded forward digests and can
+rejoin both cohorts only in one atomic rename. Any ambiguity, mutation, partial
+cohort, residue or missing proof fails closed.
 
-Status reports operations quarantine residue. Preflight, `/run` and finalization
-all refuse to proceed while any reserved `c99rb_*` table remains, so a redeploy
-cannot hide or inherit an unfinished rollback.
+Status reports reserved quarantine residue. Preflight, `/run` and finalization
+all refuse to proceed while any `c99rb_*` table remains, so a redeploy cannot
+hide or inherit an unfinished rollback. A table that existed at baseline may
+not change schema or rows during this release; it is never inferred disposable.
+
+Campaign and Ops mutation paths must keep exact bridge-compatible capacity below
+4,500 rows per table and 4 MiB per seven-table cohort, with `writeReady` reserving
+64 rows per table and 256 KiB per cohort for lifecycle/compensation work. The
+anonymous event table is additionally limited to 2,500 rows and 2.5 MiB with
+five-hour claim/budget retention. Confirm private status reports both cohorts and
+headroom; anonymous endpoints must return only bounded 429/503 errors, never row
+counts or canonical-byte totals.
+
+Immediately before the real `/run` baseline, the bridge must acquire the same
+`rollback-capacity` advisory lock used by Campaign writers, capture while held,
+and release it with no residue. Test both sides of the race: a writer that began
+before reservation drains before baseline, while a writer beginning after the
+durable reservation is rejected before advisory contention.
+
+### Campaign Studio cron and redeploy acceptance
+
+The serialized WordPress `cron` option is derived runtime state and is neither
+journaled nor mutated by the bridge. Schema preparation and migration must call
+no WordPress scheduling API. A schedule request first commits the governed
+campaign row with `reconcile_pending`, version and schedule digest; reconciliation
+then uses exact arguments `[campaignId, scheduledVersion, scheduleDigest]` and
+reads both activation and expiry timestamps back.
+
+On normal deactivation, Campaign Studio keyset-drains every scheduled or active
+row, snapshots exact activation/expiry/readback triggers, persists `suspended`
+before unscheduling, compensates state and hooks on failure, and proves zero
+unsuspended rows. On activation/redeploy, normal `init` performs only an
+enqueue-only durable due-job check. The generic no-argument cron worker processes
+at most two 50-row keyset batches or five seconds, then schedules the earliest
+remaining due or future attempt. It includes scheduled watchdog rows, revalidates
+package/authority, repairs exact timestamps, and cannot strand a later retry
+behind an earlier worker. Acceptance must model at least 250 reconciliation rows
+across repeated invocations and 1,205 suspension rows to cross batch bounds.
+
+### Campaign Studio operator and public-truth acceptance
+
+The private operator surface must preview, copy and download the exact persisted
+SHA-bound prepared artifact; upload and stream protected campaign/location/owner
+bound evidence; show human-attested provider receipts, observed (not verified)
+results, anonymous-unverified aggregates and campaign-linked moderation history/
+SLA; and provide idempotent optimistic resolve/escalate/outcome transitions.
+Double submission reuses one logical Idempotency-Key, controls stay disabled in
+flight, and cancelled/blank/non-finite prompts cannot become numeric zero.
+
+Evidence upload must be command/audit receipted, content-addressed, campaign-
+bound, digest-verified and bounded by per-file, per-campaign and total quotas.
+An insert failure may delete bytes only when that request created the target; it
+must never delete a shared existing digest target.
+
+Public readback and event claims must acquire the shared transaction boundary,
+lock/reselect placement, current campaign and exact prepared package, and require
+active/unexpired window plus exact lifecycle, scheduled version, package,
+approval, schedule and authority bindings. Cancel/expiry races therefore return
+no verified response and commit no anonymous event. Generic public event paths
+must never call global object-cache flush; owned placement activation/readback/
+cancel/expiry/suppression uses the explicit page-cache lifecycle instead.
+
+Before accepting Campaign assets, verify the exact
+`complete99-consumer-media-rights/v1` overlay: thirteen ordered archive stems,
+pinned canonical digest, illustrative-public-use only, false paid/Campaign use
+and empty photographer/contract receipts. The frozen consumer-menu and
+cross-domain registry bytes must remain unchanged. Missing/tampered rights data
+must empty the bundled projection and fail Campaign invariants; none of the
+archive dish photos may appear as a Campaign choice. The packaged brand
+illustration must still pass its exact byte digest.
 
 Managed-host requests use a normal browser request signature with only standard
 `Accept`, `Authorization`, `Content-Type` and `User-Agent` headers. Do not add an
@@ -344,6 +429,57 @@ change, including commerce data, rejects this pre-commerce attestation. If an
 earlier probe-finalize response was lost, the next run waits for that unstarted
 probe lease, releases only its exact state-free reservation, and repeats the full
 attestation under a new probe.
+
+## Release 1.22.0 Campaign Studio and lifecycle verification
+
+Release 1.22.0 adds the reviewed WordPress-native Campaign boundary without
+claiming that legacy Campaign data, external provider publication or production
+deployment already exists. Before accepting the source candidate or building the
+artifact:
+
+1. Confirm the plugin header and constants are exactly `1.22.0` and
+   `c99-wp-1.22.0`; all frozen Campaign, Platform, bridge, deployment, Ops,
+   consumer UI, monitor and workflow inputs must retain their audited digests.
+2. Confirm the versioned Science media policy is named for `1.22.0`, has raw
+   SHA-256 `53b7932009c3f0af233feb6d485cf4774e8bfe6a715934b2d7a19ea7ab33c3f9`
+   and schema-bound canonical digest
+   `ff64987efd5fa169c4f9ece5fd8691d3b2d6f8a05df56bc2e76d11c89653e857`.
+   It must retain exactly 47 stems, 175 repository files, 70 delivery files and
+   105 repository-only files.
+3. Confirm the generated changelog starts with a new 1.22 block and retains the
+   complete literal 1.21 block before 1.20. Reproducible builds must agree on ZIP,
+   source and integrity digests; the source candidate itself is not deployment
+   evidence.
+4. Confirm bridge v3 authenticates the exact seven Campaign tables and lifecycle
+   reservation, and that fresh-request activation continuation, rollback,
+   recovery and finalization preserve v1/v2 compatibility and reject mixed or
+   ambiguous state.
+5. Confirm Campaign mutations require WordPress capability, nonce, location
+   scope, idempotency, exact version and durable audit truth. Owned-site placement
+   requires immutable approval/package bindings, deterministic readback and a
+   system receipt; external channels remain prepared manual packages.
+6. Confirm deactivation, activation, quarantine, cleanup and generation recovery
+   remain behind the shared deploy/lifecycle/worker/authority lock order. Public
+   render and events fail closed during lifecycle or quarantine transitions, and
+   exact cache/public-absence receipts precede terminal lifecycle truth.
+7. Provision and prove both self-hosted runners as described above. The Campaign
+   monitor must complete through its fixed authenticated route and report a fresh
+   inspectable heartbeat without exposing credentials or protected row counts.
+8. Confirm the legacy prototype's two demo campaigns, nine playbooks and any
+   historic external-OS state are not imported as approvals, schedules,
+   publications or results. Meta, TikTok, WhatsApp and Google Business remain
+   manual packages; the legacy public host remains until route mapping,
+   redirects, sitemap removal and anonymous cutover checks are complete.
+9. Reprove the unchanged consumer boundary: 36 WooCommerce products, prices and
+   stock authority, disabled payments, frozen consumer UI and search allowlist.
+   No held Science asset, legacy Campaign record or external provider claim may
+   enter the artifact or public truth.
+
+After controlled deployment, run the owner-authenticated Campaign worker and
+private invariants, verify the public health version/deployment ID and durable
+heartbeat, exercise one reviewed owned-site schedule/readback/expiry lifecycle,
+and recheck all legacy and external-provider negative cases. Keep credentials,
+private evidence and provider payloads out of the audit bundle.
 
 ## Release 1.21.0 WordPress migration and search activation verification
 

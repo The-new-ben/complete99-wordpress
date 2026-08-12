@@ -502,6 +502,247 @@ class ChunkedArtifactStagingClientTests(unittest.TestCase):
                 )
         stabilize.assert_not_called()
 
+    @staticmethod
+    def candidate_handoff_fixture() -> tuple[dict[str, object], dict[str, object], str]:
+        installed_digest = "b" * 64
+        run_fields: dict[str, object] = {
+            "slug": DEPLOY.SLUG,
+            "type": "plugin",
+            "version": "1.18.1",
+            "expected_sha256": "a" * 64,
+            "staged": True,
+            "activate": True,
+        }
+        result: dict[str, object] = {
+            "active": True,
+            "backup_ready": True,
+            "baseline_database_fingerprint": "c" * 64,
+            "continuation_required": True,
+            "deployment_id": "c99-prod-candidate-1234",
+            "had_plugin": True,
+            "installed": True,
+            "installed_plugin_sha256": installed_digest,
+            "prior_active": True,
+            "prior_deployment": "c99-prod-prior-1234",
+            "prior_plugin_sha256": "d" * 64,
+            "prior_version": "1.18.0",
+            "requested_active": True,
+            "robots_prior_exists": True,
+            "robots_prior_sha256": "e" * 64,
+            "sha256": run_fields["expected_sha256"],
+            "slug": DEPLOY.SLUG,
+            "temp_removed": True,
+            "version": run_fields["version"],
+        }
+        return run_fields, result, installed_digest
+
+    @staticmethod
+    def completed_candidate_status(
+        run_fields: dict[str, object], installed_digest: str
+    ) -> dict[str, object]:
+        candidate_fingerprint = "f" * 64
+        return {
+            "baseline_database_fingerprint": "c" * 64,
+            "baseline_database_journal_valid": True,
+            "candidate_activation_completed_at": 1_700_000_000,
+            "candidate_activation_phase": "complete",
+            "candidate_activation_required": True,
+            "candidate_database_fingerprint": candidate_fingerprint,
+            "candidate_prior_active": True,
+            "candidate_requested_active": True,
+            "current_active": True,
+            "current_database_version": run_fields["version"],
+            "current_deployment": "c99-prod-candidate-1234",
+            "current_plugin_sha256": installed_digest,
+            "current_robots_sha256": "9" * 64,
+            "current_version": run_fields["version"],
+            "database_fingerprint": candidate_fingerprint,
+            "deployment_id": "c99-prod-candidate-1234",
+            "expected_sha256": run_fields["expected_sha256"],
+            "expected_version": run_fields["version"],
+            "forward_ready": True,
+            "had_plugin": True,
+            "installed_plugin_sha256": installed_digest,
+            "lock_owned": True,
+            "migration_failed": False,
+            "migration_invariants_valid": True,
+            "no_rollback_artifacts": True,
+            "phase": "installed_pending_stabilization",
+            "prior_active": True,
+            "prior_deployment": "c99-prod-prior-1234",
+            "prior_plugin_sha256": "d" * 64,
+            "prior_version": "1.18.0",
+            "robots_applied": True,
+            "robots_managed_sha256": "9" * 64,
+            "robots_prior_exists": True,
+            "robots_prior_sha256": "e" * 64,
+            "state_exists": True,
+            "temp_removed": True,
+        }
+
+    def test_candidate_activation_continues_before_install_returns(self) -> None:
+        run_fields, handoff, installed_digest = self.candidate_handoff_fixture()
+        status = self.completed_candidate_status(run_fields, installed_digest)
+        calls: list[tuple[str, str, str, dict[str, object]]] = []
+
+        def bridge(
+            _client: object,
+            action: str,
+            token: str,
+            deployment_id: str,
+            **fields: object,
+        ) -> dict[str, object]:
+            calls.append((action, token, deployment_id, fields))
+            if action == "run":
+                return dict(handoff)
+            if action == "continue-activation":
+                return {
+                    "active": True,
+                    "continued": True,
+                    "deployment_id": deployment_id,
+                    "phase": "installed_pending_stabilization",
+                }
+            if action == "status":
+                return dict(status)
+            raise AssertionError(action)
+
+        with mock.patch.object(DEPLOY, "bridge_call", side_effect=bridge):
+            result = DEPLOY.install_with_recovery(
+                object(),
+                "temporary-secret-token",
+                "c99-prod-candidate-1234",
+                run_fields,
+                installed_digest,
+            )
+
+        self.assertEqual(
+            ["run", "continue-activation", "status"],
+            [call[0] for call in calls],
+        )
+        self.assertTrue(all(call[1] == "temporary-secret-token" for call in calls))
+        self.assertTrue(all(call[2] == "c99-prod-candidate-1234" for call in calls))
+        self.assertEqual({}, calls[1][3])
+        self.assertFalse(result["continuation_required"])
+        self.assertEqual("9" * 64, result["robots_sha256"])
+        self.assertEqual(
+            "complete99-candidate-activation-client-receipt/v1",
+            result["candidate_activation"]["schema"],
+        )
+        self.assertEqual(
+            "c99-prod-candidate-1234",
+            result["candidate_activation"]["deployment_id"],
+        )
+        self.assertNotIn("temporary-secret-token", repr(result))
+
+    def test_candidate_activation_ack_loss_replays_idempotently_with_two_call_bound(self) -> None:
+        run_fields, handoff, installed_digest = self.candidate_handoff_fixture()
+        status = self.completed_candidate_status(run_fields, installed_digest)
+        continuation_calls = 0
+
+        def bridge(
+            _client: object,
+            action: str,
+            _token: str,
+            deployment_id: str,
+            **_fields: object,
+        ) -> dict[str, object]:
+            nonlocal continuation_calls
+            if action == "run":
+                return dict(handoff)
+            if action == "continue-activation":
+                continuation_calls += 1
+                if continuation_calls == 1:
+                    raise DEPLOY.NetworkDeployError("response lost")
+                return {
+                    "active": True,
+                    "continued": True,
+                    "deployment_id": deployment_id,
+                    "idempotent": True,
+                    "phase": "installed_pending_stabilization",
+                }
+            if action == "status":
+                return dict(status)
+            raise AssertionError(action)
+
+        with mock.patch.object(DEPLOY, "bridge_call", side_effect=bridge), mock.patch.object(
+            DEPLOY, "poll_deployment_status", return_value=status
+        ):
+            result = DEPLOY.install_with_recovery(
+                object(),
+                "temporary-secret-token",
+                "c99-prod-candidate-1234",
+                run_fields,
+                installed_digest,
+            )
+
+        self.assertEqual(2, continuation_calls)
+        self.assertTrue(result["candidate_activation"]["idempotent"])
+        self.assertTrue(result["candidate_activation"]["response_recovered"])
+
+    def test_lost_run_response_replays_already_complete_candidate(self) -> None:
+        run_fields, _handoff, installed_digest = self.candidate_handoff_fixture()
+        status = self.completed_candidate_status(run_fields, installed_digest)
+        calls: list[str] = []
+
+        def bridge(
+            _client: object,
+            action: str,
+            _token: str,
+            deployment_id: str,
+            **_fields: object,
+        ) -> dict[str, object]:
+            calls.append(action)
+            if action == "run":
+                raise DEPLOY.NetworkDeployError("run response lost")
+            if action == "continue-activation":
+                return {
+                    "active": True,
+                    "continued": True,
+                    "deployment_id": deployment_id,
+                    "idempotent": True,
+                    "phase": "installed_pending_stabilization",
+                }
+            if action == "status":
+                return dict(status)
+            raise AssertionError(action)
+
+        with mock.patch.object(DEPLOY, "bridge_call", side_effect=bridge), mock.patch.object(
+            DEPLOY, "poll_deployment_status", return_value=status
+        ):
+            result = DEPLOY.install_with_recovery(
+                object(),
+                "temporary-secret-token",
+                "c99-prod-candidate-1234",
+                run_fields,
+                installed_digest,
+            )
+
+        self.assertEqual(["run", "continue-activation", "status"], calls)
+        self.assertTrue(result["write_response_recovered"])
+        self.assertTrue(result["candidate_activation"]["idempotent"])
+
+    def test_candidate_activation_rejects_noncanonical_response_and_status(self) -> None:
+        run_fields, handoff, installed_digest = self.candidate_handoff_fixture()
+        invalid_response = {
+            "active": True,
+            "continued": True,
+            "deployment_id": "c99-prod-candidate-1234",
+            "phase": "installed_pending_stabilization",
+            "unexpected": "not-canonical",
+        }
+        with mock.patch.object(
+            DEPLOY,
+            "bridge_call",
+            side_effect=[dict(handoff), invalid_response],
+        ), self.assertRaisesRegex(DEPLOY.DeployError, "response is invalid"):
+            DEPLOY.install_with_recovery(
+                object(),
+                "temporary-secret-token",
+                "c99-prod-candidate-1234",
+                run_fields,
+                installed_digest,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

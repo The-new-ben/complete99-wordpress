@@ -134,6 +134,19 @@ add_action(
 
 		$lock_option = 'complete99_deploy_lock';
 		$lock_owner  = hash_hmac( 'sha256', $config['deployment_id'], $config['token'] );
+		$deployment_id_valid = static function ( $value ) {
+			return is_string( $value ) && 1 === preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $value );
+		};
+		$core_plugin_active_persisted = static function ( $plugin_file ) {
+			global $wpdb;
+			$wpdb->last_error = '';
+			$rows = $wpdb->get_results( $wpdb->prepare( "SELECT option_id,option_value FROM {$wpdb->options} WHERE option_name=%s ORDER BY option_id ASC LIMIT 2", 'active_plugins' ), ARRAY_A );
+			if ( '' !== (string) $wpdb->last_error || ! is_array( $rows ) || 1 !== count( $rows ) || ! is_numeric( $rows[0]['option_id'] ?? null ) || 0 >= (int) $rows[0]['option_id'] ) { return new WP_Error( 'c99_core_active_plugins_unavailable', 'Persisted core plugin activation truth is unavailable.', array( 'status' => 503 ) ); }
+			$plugins = maybe_unserialize( (string) ( $rows[0]['option_value'] ?? '' ) );
+			if ( ! is_array( $plugins ) ) { return new WP_Error( 'c99_core_active_plugins_invalid', 'Persisted core plugin activation truth is malformed.', array( 'status' => 503 ) ); }
+			foreach ( $plugins as $plugin ) { if ( ! is_string( $plugin ) || '' === $plugin ) { return new WP_Error( 'c99_core_active_plugins_invalid', 'Persisted core plugin activation truth is malformed.', array( 'status' => 503 ) ); } }
+			return in_array( (string) $plugin_file, $plugins, true );
+		};
 		$process_lock_path = trailingslashit( WP_CONTENT_DIR ) . '.complete99-deploy-process.lock';
 
 		$read_lock = static function ( $fresh = false ) use ( $lock_option ) {
@@ -209,7 +222,108 @@ add_action(
 			return true;
 		};
 
-		$acquire_lock = static function ( $deployment_id, $phase = 'reserved' ) use ( $lock_option, $lock_owner, $read_lock, $cas_lock ) {
+		/*
+		 * Serialize every deployment mutation with the complete Campaign worker,
+		 * including its cron, cache, HTTP and protected-file side effects. The
+		 * durable deployment option is created first; a worker that has not yet
+		 * entered sees it and refuses, while this advisory fence drains a worker
+		 * that began immediately before the reservation became visible.
+		 */
+		$lifecycle_role_protocol = 'complete99-campaign-lifecycle-reservation/v1';
+		$lifecycle_role_name = 'c99_campaign_lifecycle_' . substr( hash( 'sha256', $lifecycle_role_protocol ), 0, 40 );
+		$worker_fence_protocol = 'complete99-campaign-worker-fence/v1';
+		$worker_fence_name = 'c99_campaign_worker_' . substr( hash( 'sha256', $worker_fence_protocol ), 0, 40 );
+		$deploy_reservation_exists = static function () use ( $read_lock ) {
+			$lock = $read_lock( true );
+			return '' !== (string) ( $lock['deployment_id'] ?? '' )
+				&& '' !== (string) ( $lock['phase'] ?? '' )
+				&& '' !== (string) ( $lock['owner_id'] ?? '' );
+		};
+		$acquire_worker_fence = static function () use ( $config, $lifecycle_role_protocol, $lifecycle_role_name, $worker_fence_protocol, $worker_fence_name, $deploy_reservation_exists ) {
+			global $wpdb;
+			$before = $deploy_reservation_exists();
+			if ( is_wp_error( $before ) ) {
+				return $before;
+			}
+			if ( true !== $before ) {
+				return new WP_Error( 'c99_worker_fence_reservation_missing', 'Deployment worker exclusion requires the durable deployment reservation.', array( 'status' => 409 ) );
+			}
+			$database_class = strtolower( get_class( $wpdb ) );
+			$database_type  = defined( 'DB_ENGINE' ) ? strtolower( (string) DB_ENGINE ) : '';
+			$sqlite = $config['local_test'] && ( 'sqlite' === $database_type || str_contains( $database_class, 'sqlite' ) );
+			if ( ! $sqlite ) {
+				if ( true !== $wpdb->is_mysql ) {
+					return new WP_Error( 'c99_worker_fence_driver', 'The deployment cannot serialize with the Campaign worker on this database driver.', array( 'status' => 409 ) );
+				}
+				$previous_suppress = $wpdb->suppress_errors( true );
+				$wpdb->last_error = '';
+				$lifecycle_acquired = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', $lifecycle_role_name, 10 ) );
+				$lifecycle_error = (string) $wpdb->last_error;
+				if ( '' !== $lifecycle_error || 1 !== (int) $lifecycle_acquired ) {
+					$wpdb->suppress_errors( $previous_suppress );
+					return new WP_Error( 'c99_lifecycle_role_busy', 'An active Campaign lifecycle transition did not drain before deployment mutation.', array( 'status' => 423 ) );
+				}
+				$wpdb->last_error = '';
+				$acquired = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', $worker_fence_name, 10 ) );
+				$acquire_error = (string) $wpdb->last_error;
+				if ( '' !== $acquire_error || 1 !== (int) $acquired ) {
+					$wpdb->last_error = '';
+					$lifecycle_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lifecycle_role_name ) );
+					$lifecycle_release_error = (string) $wpdb->last_error;
+					$wpdb->suppress_errors( $previous_suppress );
+					if ( '' !== $lifecycle_release_error || 1 !== (int) $lifecycle_released ) {
+						return new WP_Error( 'c99_lifecycle_role_release', 'Deployment could not prove release of the Campaign lifecycle role.', array( 'status' => 500 ) );
+					}
+					return new WP_Error( 'c99_worker_fence_busy', 'The active Campaign worker did not drain before deployment mutation.', array( 'status' => 423 ) );
+				}
+				$wpdb->suppress_errors( $previous_suppress );
+			}
+			$after = $deploy_reservation_exists();
+			if ( is_wp_error( $after ) || true !== $after ) {
+				if ( ! $sqlite ) {
+					$worker_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $worker_fence_name ) );
+					$lifecycle_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lifecycle_role_name ) );
+					if ( 1 !== (int) $worker_released || 1 !== (int) $lifecycle_released ) {
+						return new WP_Error( 'c99_lifecycle_worker_release', 'Deployment reservation changed with uncertain lifecycle/worker lock ownership.', array( 'status' => 500 ) );
+					}
+				}
+				return is_wp_error( $after )
+					? $after
+					: new WP_Error( 'c99_worker_fence_reservation_lost', 'The deployment reservation changed while acquiring worker exclusion.', array( 'status' => 409 ) );
+			}
+			return array(
+				'acquired' => true,
+				'lifecycle_protocol' => $lifecycle_role_protocol,
+				'lifecycle_lock_name'=> $lifecycle_role_name,
+				'protocol' => $worker_fence_protocol,
+				'lock_name'=> $worker_fence_name,
+				'sqlite'   => $sqlite,
+			);
+		};
+		$release_worker_fence = static function ( $fence ) {
+			global $wpdb;
+			if ( ! is_array( $fence ) || true !== ( $fence['acquired'] ?? null ) ) {
+				return new WP_Error( 'c99_worker_fence_not_owned', 'Deployment worker-fence ownership is invalid.', array( 'status' => 500 ) );
+			}
+			if ( true === ( $fence['sqlite'] ?? null ) ) {
+				return true;
+			}
+			$previous_suppress = $wpdb->suppress_errors( true );
+			$wpdb->last_error = '';
+			$released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', (string) $fence['lock_name'] ) );
+			$release_error = (string) $wpdb->last_error;
+			$wpdb->last_error = '';
+			$lifecycle_released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', (string) ( $fence['lifecycle_lock_name'] ?? '' ) ) );
+			$lifecycle_release_error = (string) $wpdb->last_error;
+			$wpdb->suppress_errors( $previous_suppress );
+			if ( '' !== $release_error || 1 !== (int) $released || '' !== $lifecycle_release_error || 1 !== (int) $lifecycle_released ) {
+				return new WP_Error( 'c99_worker_fence_release', 'Deployment completed with uncertain Campaign worker-fence ownership.', array( 'status' => 500 ) );
+			}
+			return true;
+		};
+
+		$acquire_lock = static function ( $deployment_id, $phase = 'reserved' ) use ( $lock_option, $lock_owner, $read_lock, $cas_lock, $deployment_id_valid ) {
+			if ( ! $deployment_id_valid( $deployment_id ) ) { return new WP_Error( 'c99_lock_deployment_id', 'The deployment reservation identity is invalid.', array( 'status' => 400 ) ); }
 			$lock = array(
 				'deployment_id' => $deployment_id,
 				'owner_id'      => $lock_owner,
@@ -248,7 +362,8 @@ add_action(
 			return $lock;
 		};
 
-		$claim_lock = static function ( $deployment_id, $allowed_phases, $next_phase, $require_current_owner = false, $require_stale = false ) use ( $config, $lock_owner, $read_lock, $cas_lock ) {
+		$claim_lock = static function ( $deployment_id, $allowed_phases, $next_phase, $require_current_owner = false, $require_stale = false ) use ( $config, $lock_owner, $read_lock, $cas_lock, $deployment_id_valid ) {
+			if ( ! $deployment_id_valid( $deployment_id ) ) { return new WP_Error( 'c99_lock_claim_deployment_id', 'The deployment reservation identity is invalid.', array( 'status' => 400 ) ); }
 			$current = $read_lock( true );
 			$phase   = (string) ( $current['phase'] ?? '' );
 			if ( $deployment_id !== (string) ( $current['deployment_id'] ?? '' ) || ! in_array( $phase, $allowed_phases, true ) ) {
@@ -360,7 +475,7 @@ add_action(
 			global $wp_filesystem;
 			if (
 				$config['deployment_id'] !== $deployment_id
-				|| ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id )
+				|| ! preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $deployment_id )
 			) {
 				return new WP_Error( 'c99_stage_path_identity', 'The artifact staging identity is invalid.', array( 'status' => 400 ) );
 			}
@@ -414,7 +529,7 @@ add_action(
 		};
 
 		$cleanup_staging = static function ( $deployment_id ) use ( $config, $staging_root, $staging_directory ) {
-			if ( $config['deployment_id'] !== $deployment_id || ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id ) ) {
+			if ( $config['deployment_id'] !== $deployment_id || ! preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $deployment_id ) ) {
 				return new WP_Error( 'c99_stage_cleanup_identity', 'The artifact staging cleanup identity is invalid.', array( 'status' => 400 ) );
 			}
 			if ( is_link( $staging_root ) || ( file_exists( $staging_root ) && ! is_dir( $staging_root ) ) ) {
@@ -1091,9 +1206,35 @@ add_action(
 			);
 		};
 
+		$campaign_table_names = static function () {
+			global $wpdb;
+			return array(
+				'campaigns'         => $wpdb->prefix . 'c99_campaigns',
+				'revisions'         => $wpdb->prefix . 'c99_campaign_revisions',
+				'prepared_packages' => $wpdb->prefix . 'c99_campaign_packages',
+				'provider_receipts' => $wpdb->prefix . 'c99_campaign_provider_receipts',
+				'results'           => $wpdb->prefix . 'c99_campaign_results',
+				'placements'        => $wpdb->prefix . 'c99_campaign_placements',
+				'event_aggregates'  => $wpdb->prefix . 'c99_campaign_event_aggregates',
+			);
+		};
+
 		$ops_absent_snapshot = static function () use ( $ops_table_names ) {
 			$snapshot = array();
 			foreach ( $ops_table_names() as $key => $unused_table ) {
+				$snapshot[ $key ] = array(
+					'exists'        => false,
+					'engine'        => '',
+					'schema_sha256' => '',
+					'rows'          => array(),
+				);
+			}
+			return $snapshot;
+		};
+
+		$campaign_absent_snapshot = static function () use ( $campaign_table_names ) {
+			$snapshot = array();
+			foreach ( $campaign_table_names() as $key => $unused_table ) {
 				$snapshot[ $key ] = array(
 					'exists'        => false,
 					'engine'        => '',
@@ -1114,6 +1255,23 @@ add_action(
 			}
 			$tables = array();
 			$index  = 0;
+			foreach ( array_keys( $canonical ) as $key ) {
+				$tables[ $key ] = $base . $index;
+				++$index;
+			}
+			return $tables;
+		};
+
+		$campaign_quarantine_names = static function ( $deployment_id ) use ( $campaign_table_names ) {
+			global $wpdb;
+			$canonical = $campaign_table_names();
+			$suffix    = substr( hash( 'sha256', (string) $deployment_id . '|' . (string) $wpdb->prefix ), 0, 20 );
+			$base      = (string) $wpdb->prefix . 'c99rb_' . $suffix . '_';
+			if ( 61 < strlen( $base ) ) {
+				$base = 'c99rb_' . substr( hash( 'sha256', (string) $wpdb->prefix ), 0, 12 ) . '_' . $suffix . '_';
+			}
+			$tables = array();
+			$index  = 7;
 			foreach ( array_keys( $canonical ) as $key ) {
 				$tables[ $key ] = $base . $index;
 				++$index;
@@ -1240,6 +1398,92 @@ add_action(
 			return $result;
 		};
 
+		$capture_campaign_tables = static function ( $physical_tables = null ) use ( $config, $canonicalize_json_value, $database_identifier, $campaign_table_names ) {
+			global $wpdb;
+			$canonical = $campaign_table_names();
+			$tables    = null === $physical_tables ? $canonical : $physical_tables;
+			if ( ! is_array( $tables ) || array_keys( $tables ) !== array_keys( $canonical ) ) {
+				return new WP_Error( 'c99_campaign_snapshot_scope', 'The Campaign Studio table snapshot scope is invalid.', array( 'status' => 500 ) );
+			}
+			$database_class = strtolower( get_class( $wpdb ) );
+			$database_type  = defined( 'DB_ENGINE' ) ? strtolower( (string) DB_ENGINE ) : '';
+			$is_sqlite      = $config['local_test'] && ( 'sqlite' === $database_type || str_contains( $database_class, 'sqlite' ) );
+			$result         = array();
+			$total_bytes    = 0;
+			foreach ( $tables as $key => $table ) {
+				$quoted = $database_identifier( $table );
+				if ( is_wp_error( $quoted ) ) {
+					return $quoted;
+				}
+				$like = method_exists( $wpdb, 'esc_like' ) ? $wpdb->esc_like( $table ) : addcslashes( $table, '_%\\' );
+				$wpdb->last_error = '';
+				$found = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $like ) );
+				if ( '' !== (string) $wpdb->last_error ) {
+					return new WP_Error( 'c99_campaign_snapshot_probe', 'A Campaign Studio table could not be inspected.', array( 'status' => 500 ) );
+				}
+				if ( ! is_string( $found ) || ! hash_equals( (string) $table, $found ) ) {
+					$result[ $key ] = array(
+						'exists'        => false,
+						'engine'        => '',
+						'schema_sha256' => '',
+						'rows'          => array(),
+					);
+					continue;
+				}
+
+				if ( $is_sqlite ) {
+					$engine = 'SQLITE';
+					$wpdb->last_error = '';
+					$create_sql = $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT sql FROM sqlite_master WHERE type = 'table' AND name = %s LIMIT 1",
+							$table
+						)
+					);
+				} else {
+					$wpdb->last_error = '';
+					$engine = $wpdb->get_var(
+						$wpdb->prepare(
+							'SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s LIMIT 1',
+							$table
+						)
+					);
+					$engine = strtoupper( (string) $engine );
+					if ( '' !== (string) $wpdb->last_error || ! in_array( $engine, array( 'INNODB', 'XTRADB' ), true ) ) {
+						return new WP_Error( 'c99_campaign_snapshot_engine', 'Every existing Campaign Studio table must use transactional storage.', array( 'status' => 409 ) );
+					}
+					$wpdb->last_error = '';
+					$create_row = $wpdb->get_row( 'SHOW CREATE TABLE ' . $quoted, ARRAY_N );
+					$create_sql = is_array( $create_row ) ? (string) ( $create_row[1] ?? '' ) : '';
+				}
+				if ( '' !== (string) $wpdb->last_error || ! is_string( $create_sql ) || '' === $create_sql ) {
+					return new WP_Error( 'c99_campaign_snapshot_schema', 'A Campaign Studio table schema could not be inspected.', array( 'status' => 500 ) );
+				}
+				$normalized_schema = str_replace( (string) $table, '__complete99_campaign_' . $key . '__', $create_sql );
+				$wpdb->last_error = '';
+				$rows = $wpdb->get_results( 'SELECT * FROM ' . $quoted . ' ORDER BY `id` ASC LIMIT 5001', ARRAY_A );
+				if ( '' !== (string) $wpdb->last_error || ! is_array( $rows ) || 5000 < count( $rows ) ) {
+					return new WP_Error( 'c99_campaign_snapshot_rows', 'A Campaign Studio table exceeds the bounded rollback snapshot.', array( 'status' => 409 ) );
+				}
+				$rows = $canonicalize_json_value( $rows );
+				$encoded_rows = wp_json_encode( $rows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+				if ( false === $encoded_rows ) {
+					return new WP_Error( 'c99_campaign_snapshot_encode', 'A Campaign Studio table snapshot could not be encoded.', array( 'status' => 500 ) );
+				}
+				$total_bytes += strlen( $encoded_rows );
+				if ( 8 * 1024 * 1024 < $total_bytes ) {
+					return new WP_Error( 'c99_campaign_snapshot_capacity', 'The Campaign Studio rollback snapshot exceeds its byte ceiling.', array( 'status' => 409 ) );
+				}
+				$result[ $key ] = array(
+					'exists'        => true,
+					'engine'        => $engine,
+					'schema_sha256' => hash( 'sha256', $normalized_schema ),
+					'rows'          => $rows,
+				);
+			}
+			return $result;
+		};
+
 		$ops_snapshot_valid = static function ( $snapshot ) use ( $ops_table_names ) {
 			if ( ! is_array( $snapshot ) || array_keys( $snapshot ) !== array_keys( $ops_table_names() ) ) {
 				return false;
@@ -1310,6 +1554,96 @@ add_action(
 					return new WP_Error(
 						'c99_ops_restore_ambiguous',
 						'Rollback found both canonical and quarantined copies of a candidate operations table.',
+						array( 'status' => 409, 'table' => $key )
+					);
+				}
+				$forward[ $key ] = $quarantine_record['exists'] ? $quarantine_record : $canonical_record;
+			}
+			return $forward;
+		};
+
+		$campaign_snapshot_valid = static function ( $snapshot ) use ( $campaign_table_names ) {
+			if ( ! is_array( $snapshot ) || array_keys( $snapshot ) !== array_keys( $campaign_table_names() ) ) {
+				return false;
+			}
+			foreach ( $snapshot as $record ) {
+				if ( ! is_array( $record ) || array( 'exists', 'engine', 'schema_sha256', 'rows' ) !== array_keys( $record ) || ! is_bool( $record['exists'] ) || ! is_array( $record['rows'] ) || 5000 < count( $record['rows'] ) ) {
+					return false;
+				}
+				if ( $record['exists'] ) {
+					if ( ! in_array( $record['engine'], array( 'INNODB', 'XTRADB', 'SQLITE' ), true ) || ! is_string( $record['schema_sha256'] ) || ! preg_match( '/^[a-f0-9]{64}$/', $record['schema_sha256'] ) ) {
+						return false;
+					}
+					foreach ( $record['rows'] as $row ) {
+						if ( ! is_array( $row ) ) {
+							return false;
+						}
+					}
+				} elseif ( '' !== $record['engine'] || '' !== $record['schema_sha256'] || array() !== $record['rows'] ) {
+					return false;
+				}
+			}
+			return true;
+		};
+
+		$campaign_snapshot_digest = static function ( $snapshot ) use ( $canonicalize_json_value, $campaign_snapshot_valid ) {
+			if ( ! $campaign_snapshot_valid( $snapshot ) ) {
+				return '';
+			}
+			$encoded = wp_json_encode( $canonicalize_json_value( $snapshot ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			return false === $encoded ? '' : hash( 'sha256', $encoded );
+		};
+
+		$campaign_snapshot_has_tables = static function ( $snapshot ) use ( $campaign_snapshot_valid ) {
+			if ( ! $campaign_snapshot_valid( $snapshot ) ) {
+				return false;
+			}
+			foreach ( $snapshot as $record ) {
+				if ( true === $record['exists'] ) {
+					return true;
+				}
+			}
+			return false;
+		};
+
+		$campaign_snapshot_all_tables = static function ( $snapshot ) use ( $campaign_snapshot_valid ) {
+			if ( ! $campaign_snapshot_valid( $snapshot ) ) {
+				return false;
+			}
+			foreach ( $snapshot as $record ) {
+				if ( true !== $record['exists'] ) {
+					return false;
+				}
+			}
+			return true;
+		};
+
+		$campaign_reconstruct_forward = static function ( $baseline, $canonical, $quarantine ) use ( $canonicalize_json_value, $campaign_snapshot_valid ) {
+			if ( ! $campaign_snapshot_valid( $baseline ) || ! $campaign_snapshot_valid( $canonical ) || ! $campaign_snapshot_valid( $quarantine ) ) {
+				return new WP_Error( 'c99_campaign_restore_snapshot', 'The Campaign Studio rollback table state is invalid.', array( 'status' => 500 ) );
+			}
+			$forward = array();
+			foreach ( $baseline as $key => $baseline_record ) {
+				$canonical_record  = $canonical[ $key ];
+				$quarantine_record = $quarantine[ $key ];
+				if ( $baseline_record['exists'] ) {
+					if (
+						$quarantine_record['exists']
+						|| $canonicalize_json_value( $baseline_record ) !== $canonicalize_json_value( $canonical_record )
+					) {
+						return new WP_Error(
+							'c99_campaign_restore_existing_changed',
+							'Rollback refused because a baseline Campaign Studio table changed during the candidate deployment.',
+							array( 'status' => 409, 'table' => $key )
+						);
+					}
+					$forward[ $key ] = $canonical_record;
+					continue;
+				}
+				if ( $canonical_record['exists'] && $quarantine_record['exists'] ) {
+					return new WP_Error(
+						'c99_campaign_restore_ambiguous',
+						'Rollback found both canonical and quarantined copies of a candidate Campaign Studio table.',
 						array( 'status' => 409, 'table' => $key )
 					);
 				}
@@ -1399,29 +1733,48 @@ add_action(
 				: true;
 		};
 
-		$ops_rejoin_forward = static function ( $deployment_id, $baseline, $expected_forward_sha256 ) use ( $capture_ops_tables, $ops_table_names, $ops_quarantine_names, $ops_snapshot_digest, $ops_snapshot_has_tables, $ops_reconstruct_forward, $ops_atomic_rename ) {
-			if ( ! is_string( $expected_forward_sha256 ) || ! preg_match( '/^[a-f0-9]{64}$/', $expected_forward_sha256 ) ) {
-				return new WP_Error( 'c99_ops_forward_digest', 'The recorded forward operations-table fingerprint is invalid.', array( 'status' => 500 ) );
+		$protected_rejoin_forward = static function ( $deployment_id, $ops_baseline, $campaign_baseline, $expected_ops_sha256, $expected_campaign_sha256 ) use ( $capture_ops_tables, $capture_campaign_tables, $ops_table_names, $campaign_table_names, $ops_quarantine_names, $campaign_quarantine_names, $ops_snapshot_digest, $campaign_snapshot_digest, $ops_snapshot_has_tables, $campaign_snapshot_has_tables, $ops_reconstruct_forward, $campaign_reconstruct_forward, $ops_atomic_rename ) {
+			if (
+				! is_string( $expected_ops_sha256 )
+				|| ! preg_match( '/^[a-f0-9]{64}$/', $expected_ops_sha256 )
+				|| ! is_string( $expected_campaign_sha256 )
+				|| ! preg_match( '/^[a-f0-9]{64}$/', $expected_campaign_sha256 )
+			) {
+				return new WP_Error( 'c99_protected_forward_digest', 'The recorded protected-table fingerprints are invalid.', array( 'status' => 500 ) );
 			}
-			$canonical_names  = $ops_table_names();
-			$quarantine_names = $ops_quarantine_names( $deployment_id );
-			$canonical        = $capture_ops_tables( $canonical_names );
-			$quarantine       = $capture_ops_tables( $quarantine_names );
-			if ( is_wp_error( $canonical ) || is_wp_error( $quarantine ) ) {
-				return new WP_Error( 'c99_ops_rejoin_probe', 'The operations rollback retry state could not be inspected.', array( 'status' => 500 ) );
+			$ops_names                 = $ops_table_names();
+			$campaign_names            = $campaign_table_names();
+			$ops_quarantine_names      = $ops_quarantine_names( $deployment_id );
+			$campaign_quarantine_names = $campaign_quarantine_names( $deployment_id );
+			$ops_canonical             = $capture_ops_tables( $ops_names );
+			$campaign_canonical        = $capture_campaign_tables( $campaign_names );
+			$ops_quarantine            = $capture_ops_tables( $ops_quarantine_names );
+			$campaign_quarantine       = $capture_campaign_tables( $campaign_quarantine_names );
+			if ( is_wp_error( $ops_canonical ) || is_wp_error( $campaign_canonical ) || is_wp_error( $ops_quarantine ) || is_wp_error( $campaign_quarantine ) ) {
+				return new WP_Error( 'c99_protected_rejoin_probe', 'The protected rollback retry state could not be inspected.', array( 'status' => 500 ) );
 			}
-			$forward = $ops_reconstruct_forward( $baseline, $canonical, $quarantine );
-			if ( is_wp_error( $forward ) ) {
-				return $forward;
+			$forward_ops      = $ops_reconstruct_forward( $ops_baseline, $ops_canonical, $ops_quarantine );
+			$forward_campaign = $campaign_reconstruct_forward( $campaign_baseline, $campaign_canonical, $campaign_quarantine );
+			if ( is_wp_error( $forward_ops ) ) {
+				return $forward_ops;
 			}
-			$forward_sha256 = $ops_snapshot_digest( $forward );
-			if ( '' === $forward_sha256 || ! hash_equals( $expected_forward_sha256, $forward_sha256 ) ) {
-				return new WP_Error( 'c99_ops_forward_changed', 'Rollback refused because the candidate operations tables changed.', array( 'status' => 409 ) );
+			if ( is_wp_error( $forward_campaign ) ) {
+				return $forward_campaign;
+			}
+			$ops_sha256      = $ops_snapshot_digest( $forward_ops );
+			$campaign_sha256 = $campaign_snapshot_digest( $forward_campaign );
+			if ( '' === $ops_sha256 || ! hash_equals( $expected_ops_sha256, $ops_sha256 ) || '' === $campaign_sha256 || ! hash_equals( $expected_campaign_sha256, $campaign_sha256 ) ) {
+				return new WP_Error( 'c99_protected_forward_changed', 'Rollback refused because the candidate protected tables changed.', array( 'status' => 409 ) );
 			}
 			$pairs = array();
-			foreach ( $baseline as $key => $baseline_record ) {
-				if ( ! $baseline_record['exists'] && $quarantine[ $key ]['exists'] ) {
-					$pairs[ $quarantine_names[ $key ] ] = $canonical_names[ $key ];
+			foreach ( $ops_baseline as $key => $record ) {
+				if ( ! $record['exists'] && $ops_quarantine[ $key ]['exists'] ) {
+					$pairs[ $ops_quarantine_names[ $key ] ] = $ops_names[ $key ];
+				}
+			}
+			foreach ( $campaign_baseline as $key => $record ) {
+				if ( ! $record['exists'] && $campaign_quarantine[ $key ]['exists'] ) {
+					$pairs[ $campaign_quarantine_names[ $key ] ] = $campaign_names[ $key ];
 				}
 			}
 			if ( ! empty( $pairs ) ) {
@@ -1430,63 +1783,98 @@ add_action(
 					return $renamed;
 				}
 			}
-			$rejoined          = $capture_ops_tables( $canonical_names );
-			$quarantine_after  = $capture_ops_tables( $quarantine_names );
-			$rejoined_sha256   = is_wp_error( $rejoined ) ? '' : $ops_snapshot_digest( $rejoined );
-			$quarantine_absent = ! is_wp_error( $quarantine_after ) && ! $ops_snapshot_has_tables( $quarantine_after );
-			if ( '' === $rejoined_sha256 || ! hash_equals( $expected_forward_sha256, $rejoined_sha256 ) || ! $quarantine_absent ) {
-				return new WP_Error( 'c99_ops_rejoin_readback', 'The exact forward operations-table state could not be re-established.', array( 'status' => 500 ) );
+			$ops_rejoined             = $capture_ops_tables( $ops_names );
+			$campaign_rejoined        = $capture_campaign_tables( $campaign_names );
+			$ops_quarantine_after     = $capture_ops_tables( $ops_quarantine_names );
+			$campaign_quarantine_after= $capture_campaign_tables( $campaign_quarantine_names );
+			if (
+				is_wp_error( $ops_rejoined )
+				|| is_wp_error( $campaign_rejoined )
+				|| is_wp_error( $ops_quarantine_after )
+				|| is_wp_error( $campaign_quarantine_after )
+				|| ! hash_equals( $expected_ops_sha256, $ops_snapshot_digest( $ops_rejoined ) )
+				|| ! hash_equals( $expected_campaign_sha256, $campaign_snapshot_digest( $campaign_rejoined ) )
+				|| $ops_snapshot_has_tables( $ops_quarantine_after )
+				|| $campaign_snapshot_has_tables( $campaign_quarantine_after )
+			) {
+				return new WP_Error( 'c99_protected_rejoin_readback', 'The exact forward protected-table state could not be re-established.', array( 'status' => 500 ) );
 			}
 			return array(
-				'forward_ops_sha256' => $rejoined_sha256,
-				'tables_rejoined'     => count( $pairs ),
+				'forward_ops_sha256'      => $expected_ops_sha256,
+				'forward_campaign_sha256' => $expected_campaign_sha256,
+				'tables_rejoined'          => count( $pairs ),
 			);
 		};
 
-		$ops_cleanup_quarantine = static function ( $deployment_id, $baseline, $expected_forward_sha256 ) use ( $canonicalize_json_value, $capture_ops_tables, $ops_table_names, $ops_quarantine_names, $ops_snapshot_valid, $ops_snapshot_digest, $ops_snapshot_has_tables, $ops_reconstruct_forward, $ops_drop_tables ) {
-			if ( ! $ops_snapshot_valid( $baseline ) || ! is_string( $expected_forward_sha256 ) || ! preg_match( '/^[a-f0-9]{64}$/', $expected_forward_sha256 ) ) {
-				return new WP_Error( 'c99_ops_cleanup_proof', 'The operations rollback cleanup proof is invalid.', array( 'status' => 500 ) );
+		$protected_cleanup_quarantine = static function ( $deployment_id, $ops_baseline, $campaign_baseline, $expected_ops_sha256, $expected_campaign_sha256 ) use ( $canonicalize_json_value, $capture_ops_tables, $capture_campaign_tables, $ops_table_names, $campaign_table_names, $ops_quarantine_names, $campaign_quarantine_names, $ops_snapshot_valid, $campaign_snapshot_valid, $ops_snapshot_digest, $campaign_snapshot_digest, $ops_snapshot_has_tables, $campaign_snapshot_has_tables, $ops_reconstruct_forward, $campaign_reconstruct_forward, $ops_drop_tables ) {
+			if (
+				! $ops_snapshot_valid( $ops_baseline )
+				|| ! $campaign_snapshot_valid( $campaign_baseline )
+				|| ! is_string( $expected_ops_sha256 )
+				|| ! preg_match( '/^[a-f0-9]{64}$/', $expected_ops_sha256 )
+				|| ! is_string( $expected_campaign_sha256 )
+				|| ! preg_match( '/^[a-f0-9]{64}$/', $expected_campaign_sha256 )
+			) {
+				return new WP_Error( 'c99_protected_cleanup_proof', 'The protected rollback cleanup proof is invalid.', array( 'status' => 500 ) );
 			}
-			$canonical_names  = $ops_table_names();
-			$quarantine_names = $ops_quarantine_names( $deployment_id );
-			$canonical        = $capture_ops_tables( $canonical_names );
-			$quarantine       = $capture_ops_tables( $quarantine_names );
-			if ( is_wp_error( $canonical ) || is_wp_error( $quarantine ) ) {
-				return new WP_Error( 'c99_ops_cleanup_probe', 'The operations rollback quarantine could not be inspected.', array( 'status' => 500 ) );
+			$ops_names                 = $ops_table_names();
+			$campaign_names            = $campaign_table_names();
+			$ops_quarantine_names      = $ops_quarantine_names( $deployment_id );
+			$campaign_quarantine_names = $campaign_quarantine_names( $deployment_id );
+			$ops_canonical             = $capture_ops_tables( $ops_names );
+			$campaign_canonical        = $capture_campaign_tables( $campaign_names );
+			$ops_quarantine            = $capture_ops_tables( $ops_quarantine_names );
+			$campaign_quarantine       = $capture_campaign_tables( $campaign_quarantine_names );
+			if ( is_wp_error( $ops_canonical ) || is_wp_error( $campaign_canonical ) || is_wp_error( $ops_quarantine ) || is_wp_error( $campaign_quarantine ) ) {
+				return new WP_Error( 'c99_protected_cleanup_probe', 'The protected rollback quarantine could not be inspected.', array( 'status' => 500 ) );
 			}
-			if ( $canonicalize_json_value( $baseline ) !== $canonicalize_json_value( $canonical ) ) {
-				return new WP_Error( 'c99_ops_cleanup_baseline', 'Operations rollback cleanup requires an exact canonical baseline readback.', array( 'status' => 409 ) );
+			if ( $canonicalize_json_value( $ops_baseline ) !== $canonicalize_json_value( $ops_canonical ) || $canonicalize_json_value( $campaign_baseline ) !== $canonicalize_json_value( $campaign_canonical ) ) {
+				return new WP_Error( 'c99_protected_cleanup_baseline', 'Protected rollback cleanup requires an exact canonical baseline readback.', array( 'status' => 409 ) );
 			}
-			if ( ! $ops_snapshot_has_tables( $quarantine ) ) {
+			if ( ! $ops_snapshot_has_tables( $ops_quarantine ) && ! $campaign_snapshot_has_tables( $campaign_quarantine ) ) {
 				return array( 'already_clean' => true, 'tables_dropped' => 0 );
 			}
-			$forward = $ops_reconstruct_forward( $baseline, $canonical, $quarantine );
-			if ( is_wp_error( $forward ) ) {
-				return $forward;
+			$forward_ops      = $ops_reconstruct_forward( $ops_baseline, $ops_canonical, $ops_quarantine );
+			$forward_campaign = $campaign_reconstruct_forward( $campaign_baseline, $campaign_canonical, $campaign_quarantine );
+			if ( is_wp_error( $forward_ops ) ) {
+				return $forward_ops;
 			}
-			$forward_sha256 = $ops_snapshot_digest( $forward );
-			if ( '' === $forward_sha256 || ! hash_equals( $expected_forward_sha256, $forward_sha256 ) ) {
-				return new WP_Error( 'c99_ops_cleanup_forward_changed', 'The quarantined operations tables do not match the recorded forward state.', array( 'status' => 409 ) );
+			if ( is_wp_error( $forward_campaign ) ) {
+				return $forward_campaign;
+			}
+			if ( ! hash_equals( $expected_ops_sha256, $ops_snapshot_digest( $forward_ops ) ) || ! hash_equals( $expected_campaign_sha256, $campaign_snapshot_digest( $forward_campaign ) ) ) {
+				return new WP_Error( 'c99_protected_cleanup_forward_changed', 'The quarantined protected tables do not match the recorded forward state.', array( 'status' => 409 ) );
 			}
 			$drop = array();
-			foreach ( $quarantine as $key => $record ) {
+			foreach ( $ops_quarantine as $key => $record ) {
 				if ( $record['exists'] ) {
-					$drop[] = $quarantine_names[ $key ];
+					$drop[] = $ops_quarantine_names[ $key ];
+				}
+			}
+			foreach ( $campaign_quarantine as $key => $record ) {
+				if ( $record['exists'] ) {
+					$drop[] = $campaign_quarantine_names[ $key ];
 				}
 			}
 			$dropped = $ops_drop_tables( $drop );
 			if ( is_wp_error( $dropped ) ) {
 				return $dropped;
 			}
-			$canonical_after  = $capture_ops_tables( $canonical_names );
-			$quarantine_after = $capture_ops_tables( $quarantine_names );
+			$ops_after                 = $capture_ops_tables( $ops_names );
+			$campaign_after            = $capture_campaign_tables( $campaign_names );
+			$ops_quarantine_after      = $capture_ops_tables( $ops_quarantine_names );
+			$campaign_quarantine_after = $capture_campaign_tables( $campaign_quarantine_names );
 			if (
-				is_wp_error( $canonical_after )
-				|| is_wp_error( $quarantine_after )
-				|| $canonicalize_json_value( $baseline ) !== $canonicalize_json_value( $canonical_after )
-				|| $ops_snapshot_has_tables( $quarantine_after )
+				is_wp_error( $ops_after )
+				|| is_wp_error( $campaign_after )
+				|| is_wp_error( $ops_quarantine_after )
+				|| is_wp_error( $campaign_quarantine_after )
+				|| $canonicalize_json_value( $ops_baseline ) !== $canonicalize_json_value( $ops_after )
+				|| $canonicalize_json_value( $campaign_baseline ) !== $canonicalize_json_value( $campaign_after )
+				|| $ops_snapshot_has_tables( $ops_quarantine_after )
+				|| $campaign_snapshot_has_tables( $campaign_quarantine_after )
 			) {
-				return new WP_Error( 'c99_ops_cleanup_readback', 'The operations rollback quarantine cleanup could not be verified.', array( 'status' => 500 ) );
+				return new WP_Error( 'c99_protected_cleanup_readback', 'The protected rollback quarantine cleanup could not be verified.', array( 'status' => 500 ) );
 			}
 			return array( 'already_clean' => false, 'tables_dropped' => count( $drop ) );
 		};
@@ -1601,7 +1989,7 @@ add_action(
 			);
 		};
 
-		$capture_database_state = static function () use ( $config, $capture_ops_tables ) {
+		$capture_database_state = static function () use ( $config, $capture_ops_tables, $capture_campaign_tables, $campaign_snapshot_has_tables ) {
 			global $wpdb;
 			$query_error = static function ( $stage ) {
 				return new WP_Error(
@@ -1613,29 +2001,84 @@ add_action(
 			if ( $config['local_test'] && 'db_capture' === $config['test_fault'] ) {
 				return $query_error( 'injected' );
 			}
+			$ops_tables = $capture_ops_tables();
+			if ( is_wp_error( $ops_tables ) ) {
+				return $ops_tables;
+			}
+			$campaign_tables = $capture_campaign_tables();
+			if ( is_wp_error( $campaign_tables ) ) {
+				return $campaign_tables;
+			}
+			$wpdb->last_error = '';
+			$campaign_marker = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT option_name, option_value, autoload FROM {$wpdb->options} WHERE option_name = %s",
+					'complete99_campaign_schema_version'
+				),
+				ARRAY_A
+			);
+			if ( '' !== (string) $wpdb->last_error || ( null !== $campaign_marker && ! is_array( $campaign_marker ) ) ) {
+				return $query_error( 'campaign_marker' );
+			}
+			$wpdb->last_error = '';
+			$campaign_lifecycle_rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT option_name, option_value, autoload FROM {$wpdb->options} WHERE option_name = %s LIMIT 2",
+					'complete99_campaign_lifecycle_reservation_v1'
+				),
+				ARRAY_A
+			);
+			if (
+				'' !== (string) $wpdb->last_error
+				|| ! is_array( $campaign_lifecycle_rows )
+				|| 1 < count( $campaign_lifecycle_rows )
+			) {
+				return $query_error( 'campaign_lifecycle_reservation_cardinality' );
+			}
+			$campaign_lifecycle_reservation = 1 === count( $campaign_lifecycle_rows )
+				? $campaign_lifecycle_rows[0]
+				: null;
+			$campaign_component = is_array( $campaign_marker )
+				|| is_array( $campaign_lifecycle_reservation )
+				|| $campaign_snapshot_has_tables( $campaign_tables );
 			$option_names = array(
 				'active_plugins',
 				'complete99_last_deployment_id',
 				'complete99_evaluation_catalog_receipt',
 				'complete99_os_public_url',
 				'complete99_os_url',
-				'complete99_ops_schema_version',
-				'complete99_platform_version',
-				'page_on_front',
-				'rewrite_rules',
-				'show_on_front',
-				$wpdb->prefix . 'user_roles',
+			);
+			if ( $campaign_component ) {
+				$option_names[] = 'complete99_campaign_schema_version';
+				$option_names[] = 'complete99_campaign_lifecycle_reservation_v1';
+			}
+			$option_names = array_merge(
+				$option_names,
+				array(
+					'complete99_ops_schema_version',
+					'complete99_platform_version',
+					'page_on_front',
+					'rewrite_rules',
+					'show_on_front',
+					$wpdb->prefix . 'user_roles',
+				)
 			);
 			$options = array();
 			foreach ( $option_names as $option_name ) {
-				$wpdb->last_error = '';
-				$row = $wpdb->get_row(
-					$wpdb->prepare(
-						"SELECT option_name, option_value, autoload FROM {$wpdb->options} WHERE option_name = %s",
-						$option_name
-					),
-					ARRAY_A
-				);
+				if ( 'complete99_campaign_schema_version' === $option_name ) {
+					$row = $campaign_marker;
+				} elseif ( 'complete99_campaign_lifecycle_reservation_v1' === $option_name ) {
+					$row = $campaign_lifecycle_reservation;
+				} else {
+					$wpdb->last_error = '';
+					$row = $wpdb->get_row(
+						$wpdb->prepare(
+							"SELECT option_name, option_value, autoload FROM {$wpdb->options} WHERE option_name = %s",
+							$option_name
+						),
+						ARRAY_A
+					);
+				}
 				if ( '' !== (string) $wpdb->last_error || ( null !== $row && ! is_array( $row ) ) ) {
 					return $query_error( 'option' );
 				}
@@ -1716,20 +2159,190 @@ add_action(
 					}
 				}
 			}
-			$ops_tables = $capture_ops_tables();
-			if ( is_wp_error( $ops_tables ) ) {
-				return $ops_tables;
-			}
-			return array(
+			$snapshot = array(
 				'options'   => $options,
 				'postmeta'  => $postmeta,
 				'posts'     => $posts,
 				'seed_ids'  => $seed_ids,
 				'evaluation_ids'=> $evaluation_ids,
 				'ops_tables'=> $ops_tables,
-				'sync_secret_existed'=> $sync_secret_existed,
-				'sync_secret_configured'=> $sync_secret_configured,
 			);
+			if ( $campaign_component ) {
+				$snapshot['campaign_tables'] = $campaign_tables;
+			}
+			$snapshot['sync_secret_existed']    = $sync_secret_existed;
+			$snapshot['sync_secret_configured'] = $sync_secret_configured;
+			return $snapshot;
+		};
+
+		/**
+		 * Drain any mutation that began before the option reservation and hold the
+		 * exact Campaign/Ops writer advisory lock through baseline capture. Once the
+		 * baseline is released, the durable deploy option keeps every later writer
+		 * fail closed through forward install, rollback and finalization.
+		 */
+		$capture_quiescent_database_state = static function () use ( $config, $capture_database_state ) {
+			global $wpdb;
+			$database_class = strtolower( get_class( $wpdb ) );
+			$database_type  = defined( 'DB_ENGINE' ) ? strtolower( (string) DB_ENGINE ) : '';
+			if ( $config['local_test'] && ( 'sqlite' === $database_type || str_contains( $database_class, 'sqlite' ) ) ) {
+				return $capture_database_state();
+			}
+			if ( true !== $wpdb->is_mysql ) {
+				return new WP_Error( 'c99_campaign_quiescence_driver', 'The deployment cannot serialize the Campaign rollback baseline.', array( 'status' => 409 ) );
+			}
+			$name = 'c99_campaign_slot_' . substr( hash( 'sha256', 'rollback-capacity' ), 0, 40 );
+			$previous_suppress = $wpdb->suppress_errors( true );
+			$wpdb->last_error = '';
+			$acquired = $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, %d)', $name, 10 ) );
+			$acquire_error = (string) $wpdb->last_error;
+			if ( '' !== $acquire_error || 1 !== (int) $acquired ) {
+				$wpdb->suppress_errors( $previous_suppress );
+				return new WP_Error( 'c99_campaign_quiescence_busy', 'The Campaign mutation boundary did not drain before baseline capture.', array( 'status' => 423 ) );
+			}
+			try {
+				$snapshot = $capture_database_state();
+			} catch ( \Throwable $error ) {
+				$snapshot = new WP_Error( 'c99_campaign_quiescence_capture', 'The quiescent rollback baseline raised an exception.', array( 'status' => 500 ) );
+			}
+			$wpdb->last_error = '';
+			$released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $name ) );
+			$release_error = (string) $wpdb->last_error;
+			$wpdb->suppress_errors( $previous_suppress );
+			if ( '' !== $release_error || 1 !== (int) $released ) {
+				return new WP_Error( 'c99_campaign_quiescence_release', 'The Campaign baseline lock could not be released cleanly.', array( 'status' => 500 ) );
+			}
+			return $snapshot;
+		};
+
+		$database_snapshot_generation = static function ( $snapshot ) {
+			if ( ! is_array( $snapshot ) ) {
+				return 0;
+			}
+			if ( array_key_exists( 'campaign_tables', $snapshot ) ) {
+				return array_key_exists( 'ops_tables', $snapshot ) ? 3 : 0;
+			}
+			return array_key_exists( 'ops_tables', $snapshot ) ? 2 : 1;
+		};
+
+		$campaign_lifecycle_reservation_valid = static function ( $row ) {
+			if (
+				! is_array( $row )
+				|| array( 'option_name', 'option_value', 'autoload' ) !== array_keys( $row )
+				|| ! is_string( $row['option_name'] )
+				|| ! is_string( $row['option_value'] )
+				|| ! is_string( $row['autoload'] )
+				|| 'complete99_campaign_lifecycle_reservation_v1' !== $row['option_name']
+				|| 'no' !== $row['autoload']
+			) {
+				return false;
+			}
+			$value = json_decode( $row['option_value'], true, 8, JSON_BIGINT_AS_STRING );
+			if (
+				JSON_ERROR_NONE !== json_last_error()
+				|| ! is_array( $value )
+				|| array( 'changedAt', 'generation', 'schemaVersion', 'state' ) !== array_keys( $value )
+				|| ! is_string( $value['changedAt'] )
+				|| ! is_int( $value['generation'] )
+				|| 1 > $value['generation']
+				|| PHP_INT_MAX === $value['generation']
+				|| 'complete99-campaign-lifecycle-reservation/v1' !== ( $value['schemaVersion'] ?? null )
+				|| ! in_array( $value['state'] ?? null, array( 'active', 'suspending', 'inactive' ), true )
+				|| ! preg_match( '/^[1-9][0-9]{3}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/D', $value['changedAt'] )
+			) {
+				return false;
+			}
+			$date = \DateTimeImmutable::createFromFormat(
+				'!Y-m-d\\TH:i:s\\Z',
+				$value['changedAt'],
+				new \DateTimeZone( 'UTC' )
+			);
+			$date_errors = \DateTimeImmutable::getLastErrors();
+			if (
+				false === $date
+				|| $value['changedAt'] !== $date->format( 'Y-m-d\\TH:i:s\\Z' )
+				|| ( is_array( $date_errors ) && ( 0 !== $date_errors['warning_count'] || 0 !== $date_errors['error_count'] ) )
+			) {
+				return false;
+			}
+			if ( ! defined( 'JSON_UNESCAPED_LINE_TERMINATORS' ) ) {
+				return false;
+			}
+			$canonical = wp_json_encode(
+				$value,
+				JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_LINE_TERMINATORS
+			);
+			return is_string( $canonical ) && hash_equals( $row['option_value'], $canonical );
+		};
+
+		$campaign_snapshot_coherent = static function ( $snapshot ) use ( $database_snapshot_generation, $campaign_snapshot_valid, $campaign_snapshot_all_tables, $campaign_lifecycle_reservation_valid ) {
+			$generation = $database_snapshot_generation( $snapshot );
+			$options    = is_array( $snapshot ) && is_array( $snapshot['options'] ?? null ) ? $snapshot['options'] : null;
+			if ( ! is_array( $options ) ) {
+				return false;
+			}
+			if ( 1 === $generation || 2 === $generation ) {
+				return ! array_key_exists( 'complete99_campaign_schema_version', $options )
+					&& ! array_key_exists( 'complete99_campaign_lifecycle_reservation_v1', $options );
+			}
+			if ( 3 !== $generation || ! $campaign_snapshot_valid( $snapshot['campaign_tables'] ?? null ) ) {
+				return false;
+			}
+			$marker = $options['complete99_campaign_schema_version'] ?? null;
+			$lifecycle_reservation = $options['complete99_campaign_lifecycle_reservation_v1'] ?? null;
+			return is_array( $marker )
+				&& array( 'option_name', 'option_value', 'autoload' ) === array_keys( $marker )
+				&& 'complete99_campaign_schema_version' === (string) $marker['option_name']
+				&& 'complete99-campaign-schema/v1' === (string) $marker['option_value']
+				&& $campaign_lifecycle_reservation_valid( $lifecycle_reservation )
+				&& $campaign_snapshot_all_tables( $snapshot['campaign_tables'] );
+		};
+
+		$normalize_database_snapshot = static function ( $snapshot, $generation ) use ( $ops_absent_snapshot, $campaign_absent_snapshot ) {
+			if ( ! is_array( $snapshot ) || ! in_array( $generation, array( 1, 2, 3 ), true ) || ! is_array( $snapshot['options'] ?? null ) ) {
+				return new WP_Error( 'c99_db_snapshot_generation', 'The database rollback journal generation is invalid.', array( 'status' => 500 ) );
+			}
+			$options = array();
+			foreach ( $snapshot['options'] as $option_name => $row ) {
+				if ( 1 === $generation && 'complete99_platform_version' === $option_name ) {
+					$options['complete99_campaign_schema_version'] = null;
+					$options['complete99_campaign_lifecycle_reservation_v1'] = null;
+					$options['complete99_ops_schema_version']      = null;
+				} elseif ( 2 === $generation && 'complete99_ops_schema_version' === $option_name ) {
+					$options['complete99_campaign_schema_version'] = null;
+					$options['complete99_campaign_lifecycle_reservation_v1'] = null;
+				}
+				$options[ $option_name ] = $row;
+			}
+			return array(
+				'options'                   => $options,
+				'postmeta'                  => $snapshot['postmeta'],
+				'posts'                     => $snapshot['posts'],
+				'seed_ids'                  => $snapshot['seed_ids'],
+				'evaluation_ids'            => $snapshot['evaluation_ids'],
+				'ops_tables'                => 1 === $generation ? $ops_absent_snapshot() : $snapshot['ops_tables'],
+				'campaign_tables'           => 3 === $generation ? $snapshot['campaign_tables'] : $campaign_absent_snapshot(),
+				'sync_secret_existed'       => $snapshot['sync_secret_existed'],
+				'sync_secret_configured'    => $snapshot['sync_secret_configured'],
+			);
+		};
+
+		$project_database_snapshot = static function ( $snapshot, $generation ) {
+			if ( ! is_array( $snapshot ) || ! in_array( $generation, array( 1, 2, 3 ), true ) || ! is_array( $snapshot['options'] ?? null ) ) {
+				return new WP_Error( 'c99_db_snapshot_projection', 'The database rollback journal projection is invalid.', array( 'status' => 500 ) );
+			}
+			$projected = $snapshot;
+			if ( 3 > $generation ) {
+				unset(
+					$projected['options']['complete99_campaign_schema_version'],
+					$projected['options']['complete99_campaign_lifecycle_reservation_v1'],
+					$projected['campaign_tables']
+				);
+			}
+			if ( 2 > $generation ) {
+				unset( $projected['options']['complete99_ops_schema_version'], $projected['ops_tables'] );
+			}
+			return $projected;
 		};
 
 		$capture_database_state_consistent = static function () use ( $capture_database_state, $config ) {
@@ -1766,9 +2379,12 @@ add_action(
 			return $snapshot;
 		};
 
-		$database_snapshot_manifest = static function ( $snapshot ) use ( $canonicalize_json_value ) {
+		$database_snapshot_manifest = static function ( $snapshot ) use ( $canonicalize_json_value, $campaign_snapshot_coherent ) {
 			if ( ! is_array( $snapshot ) ) {
 				return new WP_Error( 'c99_db_manifest_snapshot', 'The database observation snapshot is invalid.', array( 'status' => 500 ) );
+			}
+			if ( ! $campaign_snapshot_coherent( $snapshot ) ) {
+				return new WP_Error( 'c99_db_manifest_campaign_schema', 'The Campaign Studio schema marker and exact seven-table cohort are incoherent.', array( 'status' => 409 ) );
 			}
 			$options_without_deployment_marker = $snapshot['options'] ?? null;
 			if ( ! is_array( $options_without_deployment_marker ) ) {
@@ -1786,6 +2402,13 @@ add_action(
 			if ( array_key_exists( 'ops_tables', $snapshot ) ) {
 				$components['ops_tables'] = $snapshot['ops_tables'];
 				$schema = 'complete99-database-snapshot-manifest/v2';
+			}
+			if ( array_key_exists( 'campaign_tables', $snapshot ) ) {
+				if ( ! array_key_exists( 'ops_tables', $snapshot ) ) {
+					return new WP_Error( 'c99_db_manifest_generation', 'Campaign Studio tables require the operations-table manifest component.', array( 'status' => 500 ) );
+				}
+				$components['campaign_tables'] = $snapshot['campaign_tables'];
+				$schema = 'complete99-database-snapshot-manifest/v3';
 			}
 			$manifest = array(
 				'schema'                 => $schema,
@@ -1825,7 +2448,10 @@ add_action(
 			}
 			$schema = (string) ( $manifest['schema'] ?? '' );
 			$components = array( 'options_without_deployment_marker', 'posts', 'postmeta', 'seed_ids', 'evaluation_ids' );
-			if ( 'complete99-database-snapshot-manifest/v2' === $schema ) {
+			if ( 'complete99-database-snapshot-manifest/v3' === $schema ) {
+				$components[] = 'ops_tables';
+				$components[] = 'campaign_tables';
+			} elseif ( 'complete99-database-snapshot-manifest/v2' === $schema ) {
 				$components[] = 'ops_tables';
 			} elseif ( 'complete99-database-snapshot-manifest/v1' !== $schema ) {
 				return false;
@@ -1851,7 +2477,7 @@ add_action(
 				if (
 					! is_int( $manifest[ $count_key ] ?? null )
 					|| 0 > $manifest[ $count_key ]
-					|| ( 'ops_tables' === $component && 7 !== $manifest[ $count_key ] )
+					|| ( in_array( $component, array( 'ops_tables', 'campaign_tables' ), true ) && 7 !== $manifest[ $count_key ] )
 					|| ! is_string( $manifest[ $digest_key ] ?? null )
 					|| ! preg_match( '/^[a-f0-9]{64}$/', $manifest[ $digest_key ] )
 				) {
@@ -1929,43 +2555,66 @@ add_action(
 				: new WP_Error( 'c99_db_journal_json', 'The decrypted database rollback journal is invalid.', array( 'status' => 500 ) );
 		};
 
-		$restore_database_state = static function ( $snapshot, $deployment_id, $expected_forward_ops_sha256 ) use ( $capture_database_state, $capture_ops_tables, $ops_table_names, $ops_quarantine_names, $ops_snapshot_valid, $ops_snapshot_digest, $ops_snapshot_has_tables, $ops_reconstruct_forward, $ops_atomic_rename, $ops_rejoin_forward ) {
+		$restore_database_state = static function ( $snapshot, $deployment_id, $snapshot_generation, $expected_forward_ops_sha256, $expected_forward_campaign_sha256 ) use ( $capture_database_state, $database_snapshot_generation, $normalize_database_snapshot, $capture_ops_tables, $capture_campaign_tables, $ops_table_names, $campaign_table_names, $ops_quarantine_names, $campaign_quarantine_names, $ops_snapshot_valid, $campaign_snapshot_valid, $ops_snapshot_digest, $campaign_snapshot_digest, $ops_reconstruct_forward, $campaign_reconstruct_forward, $ops_atomic_rename, $protected_rejoin_forward ) {
 			global $wpdb;
 			if (
 				! is_array( $snapshot )
-				|| ! isset( $snapshot['options'], $snapshot['posts'], $snapshot['postmeta'], $snapshot['seed_ids'], $snapshot['evaluation_ids'], $snapshot['ops_tables'], $snapshot['sync_secret_existed'], $snapshot['sync_secret_configured'] )
+				|| ! in_array( $snapshot_generation, array( 1, 2, 3 ), true )
+				|| ! isset( $snapshot['options'], $snapshot['posts'], $snapshot['postmeta'], $snapshot['seed_ids'], $snapshot['evaluation_ids'], $snapshot['ops_tables'], $snapshot['campaign_tables'], $snapshot['sync_secret_existed'], $snapshot['sync_secret_configured'] )
 				|| ! is_array( $snapshot['seed_ids'] )
 				|| ! is_array( $snapshot['evaluation_ids'] )
 				|| ! $ops_snapshot_valid( $snapshot['ops_tables'] )
+				|| ! $campaign_snapshot_valid( $snapshot['campaign_tables'] )
 				|| ! is_bool( $snapshot['sync_secret_existed'] )
 				|| ! is_bool( $snapshot['sync_secret_configured'] )
 				|| ( $snapshot['sync_secret_configured'] && ! $snapshot['sync_secret_existed'] )
 			) {
 				return new WP_Error( 'c99_db_snapshot_invalid', 'The database rollback journal is invalid.', array( 'status' => 500 ) );
 			}
-			if ( ! is_string( $expected_forward_ops_sha256 ) || ! preg_match( '/^[a-f0-9]{64}$/', $expected_forward_ops_sha256 ) ) {
-				return new WP_Error( 'c99_ops_forward_digest', 'The recorded forward operations-table fingerprint is invalid.', array( 'status' => 500 ) );
+			if (
+				! is_string( $expected_forward_ops_sha256 )
+				|| ! preg_match( '/^[a-f0-9]{64}$/', $expected_forward_ops_sha256 )
+				|| ! is_string( $expected_forward_campaign_sha256 )
+				|| ! preg_match( '/^[a-f0-9]{64}$/', $expected_forward_campaign_sha256 )
+			) {
+				return new WP_Error( 'c99_protected_forward_digest', 'The recorded forward protected-table fingerprints are invalid.', array( 'status' => 500 ) );
 			}
 
-			$canonical_names  = $ops_table_names();
-			$quarantine_names = $ops_quarantine_names( $deployment_id );
-			$canonical        = $capture_ops_tables( $canonical_names );
-			$quarantine       = $capture_ops_tables( $quarantine_names );
-			if ( is_wp_error( $canonical ) || is_wp_error( $quarantine ) ) {
-				return new WP_Error( 'c99_ops_restore_probe', 'The operations tables could not be inspected before rollback.', array( 'status' => 500 ) );
+			$ops_names                  = $ops_table_names();
+			$campaign_names             = $campaign_table_names();
+			$ops_quarantine_names       = $ops_quarantine_names( $deployment_id );
+			$campaign_quarantine_names  = $campaign_quarantine_names( $deployment_id );
+			$ops_canonical              = $capture_ops_tables( $ops_names );
+			$campaign_canonical         = $capture_campaign_tables( $campaign_names );
+			$ops_quarantine             = $capture_ops_tables( $ops_quarantine_names );
+			$campaign_quarantine        = $capture_campaign_tables( $campaign_quarantine_names );
+			if ( is_wp_error( $ops_canonical ) || is_wp_error( $campaign_canonical ) || is_wp_error( $ops_quarantine ) || is_wp_error( $campaign_quarantine ) ) {
+				return new WP_Error( 'c99_protected_restore_probe', 'The protected tables could not be inspected before rollback.', array( 'status' => 500 ) );
 			}
-			$forward_ops = $ops_reconstruct_forward( $snapshot['ops_tables'], $canonical, $quarantine );
-			if ( is_wp_error( $forward_ops ) ) {
-				return $forward_ops;
+			$forward_ops      = $ops_reconstruct_forward( $snapshot['ops_tables'], $ops_canonical, $ops_quarantine );
+			$forward_campaign = $campaign_reconstruct_forward( $snapshot['campaign_tables'], $campaign_canonical, $campaign_quarantine );
+			if ( is_wp_error( $forward_ops ) || is_wp_error( $forward_campaign ) ) {
+				return is_wp_error( $forward_ops ) ? $forward_ops : $forward_campaign;
 			}
-			$forward_ops_sha256 = $ops_snapshot_digest( $forward_ops );
-			if ( '' === $forward_ops_sha256 || ! hash_equals( $expected_forward_ops_sha256, $forward_ops_sha256 ) ) {
-				return new WP_Error( 'c99_ops_forward_changed', 'Rollback refused because the candidate operations tables changed.', array( 'status' => 409 ) );
+			$forward_ops_sha256      = $ops_snapshot_digest( $forward_ops );
+			$forward_campaign_sha256 = $campaign_snapshot_digest( $forward_campaign );
+			if (
+				'' === $forward_ops_sha256
+				|| '' === $forward_campaign_sha256
+				|| ! hash_equals( $expected_forward_ops_sha256, $forward_ops_sha256 )
+				|| ! hash_equals( $expected_forward_campaign_sha256, $forward_campaign_sha256 )
+			) {
+				return new WP_Error( 'c99_protected_forward_changed', 'Rollback refused because the candidate protected tables changed.', array( 'status' => 409 ) );
 			}
 			$detach_pairs = array();
 			foreach ( $snapshot['ops_tables'] as $key => $baseline_record ) {
-				if ( ! $baseline_record['exists'] && $canonical[ $key ]['exists'] ) {
-					$detach_pairs[ $canonical_names[ $key ] ] = $quarantine_names[ $key ];
+				if ( ! $baseline_record['exists'] && $ops_canonical[ $key ]['exists'] ) {
+					$detach_pairs[ $ops_names[ $key ] ] = $ops_quarantine_names[ $key ];
+				}
+			}
+			foreach ( $snapshot['campaign_tables'] as $key => $baseline_record ) {
+				if ( ! $baseline_record['exists'] && $campaign_canonical[ $key ]['exists'] ) {
+					$detach_pairs[ $campaign_names[ $key ] ] = $campaign_quarantine_names[ $key ];
 				}
 			}
 			if ( ! empty( $detach_pairs ) ) {
@@ -1974,19 +2623,24 @@ add_action(
 					return $detached;
 				}
 			}
-			$quarantine = $capture_ops_tables( $quarantine_names );
-			if ( is_wp_error( $quarantine ) ) {
-				return new WP_Error( 'c99_ops_detach_readback', 'The operations rollback quarantine could not be verified.', array( 'status' => 500 ) );
+			$ops_quarantine      = $capture_ops_tables( $ops_quarantine_names );
+			$campaign_quarantine = $capture_campaign_tables( $campaign_quarantine_names );
+			if ( is_wp_error( $ops_quarantine ) || is_wp_error( $campaign_quarantine ) ) {
+				return new WP_Error( 'c99_protected_detach_readback', 'The protected rollback quarantine could not be verified.', array( 'status' => 500 ) );
 			}
-			$quarantined_count = 0;
-			foreach ( $quarantine as $record ) {
-				$quarantined_count += $record['exists'] ? 1 : 0;
+			$ops_quarantined_count = 0;
+			foreach ( $ops_quarantine as $record ) {
+				$ops_quarantined_count += $record['exists'] ? 1 : 0;
+			}
+			$campaign_quarantined_count = 0;
+			foreach ( $campaign_quarantine as $record ) {
+				$campaign_quarantined_count += $record['exists'] ? 1 : 0;
 			}
 			$started = false !== $wpdb->query( 'START TRANSACTION' );
 			if ( ! $started ) {
-				$rejoined = $ops_rejoin_forward( $deployment_id, $snapshot['ops_tables'], $expected_forward_ops_sha256 );
+				$rejoined = $protected_rejoin_forward( $deployment_id, $snapshot['ops_tables'], $snapshot['campaign_tables'], $expected_forward_ops_sha256, $expected_forward_campaign_sha256 );
 				return is_wp_error( $rejoined )
-					? new WP_Error( 'c99_db_transaction_ops_detached', 'The database rollback transaction could not start and the operations quarantine requires operator recovery.', array( 'status' => 500 ) )
+					? new WP_Error( 'c99_db_transaction_protected_detached', 'The database rollback transaction could not start and the protected quarantine requires operator recovery.', array( 'status' => 500 ) )
 					: new WP_Error( 'c99_db_transaction', 'The database rollback transaction could not start.', array( 'status' => 500 ) );
 			}
 			$commit_attempted = false;
@@ -2131,9 +2785,13 @@ add_action(
 						throw new \RuntimeException( 'postmeta_restore' );
 					}
 				}
-				$precommit_snapshot = $capture_database_state();
-				$precommit_json     = is_wp_error( $precommit_snapshot ) ? false : wp_json_encode( $precommit_snapshot );
-				$baseline_json      = wp_json_encode( $snapshot );
+				$precommit_snapshot   = $capture_database_state();
+				$precommit_generation = is_wp_error( $precommit_snapshot ) ? 0 : $database_snapshot_generation( $precommit_snapshot );
+				$precommit_normalized = is_wp_error( $precommit_snapshot )
+					? $precommit_snapshot
+					: $normalize_database_snapshot( $precommit_snapshot, $precommit_generation );
+				$precommit_json = is_wp_error( $precommit_normalized ) ? false : wp_json_encode( $precommit_normalized );
+				$baseline_json  = wp_json_encode( $snapshot );
 				if (
 					false === $precommit_json
 					|| false === $baseline_json
@@ -2149,16 +2807,16 @@ add_action(
 				if ( $commit_attempted ) {
 					return new WP_Error(
 						'c99_db_restore_commit_unknown',
-						'The database rollback commit outcome is unknown; deterministic retry must reconcile the operations quarantine.',
+						'The database rollback commit outcome is unknown; deterministic retry must reconcile the protected quarantine.',
 						array( 'status' => 500 )
 					);
 				}
 				$rolled_back = false !== $wpdb->query( 'ROLLBACK' );
 				$rejoined    = $rolled_back
-					? $ops_rejoin_forward( $deployment_id, $snapshot['ops_tables'], $expected_forward_ops_sha256 )
+					? $protected_rejoin_forward( $deployment_id, $snapshot['ops_tables'], $snapshot['campaign_tables'], $expected_forward_ops_sha256, $expected_forward_campaign_sha256 )
 					: new WP_Error( 'c99_db_restore_rollback', 'The failed database transaction could not be rolled back.', array( 'status' => 500 ) );
 				return is_wp_error( $rejoined )
-					? new WP_Error( 'c99_db_restore_ops_detached', 'The database rollback failed and the operations quarantine requires operator recovery.', array( 'status' => 500 ) )
+					? new WP_Error( 'c99_db_restore_protected_detached', 'The database rollback failed and the protected quarantine requires operator recovery.', array( 'status' => 500 ) )
 					: new WP_Error( 'c99_db_restore', 'The database rollback journal could not be restored.', array( 'status' => 500, 'stage' => sanitize_key( $error->getMessage() ) ) );
 			}
 			wp_cache_flush();
@@ -2166,8 +2824,11 @@ add_action(
 				'options_restored' => count( $snapshot['options'] ),
 				'posts_restored'   => count( $snapshot['posts'] ),
 				'meta_restored'    => count( $snapshot['postmeta'] ),
-				'ops_tables_quarantined'=> $quarantined_count,
-				'ops_quarantine_pending'=> 0 < $quarantined_count,
+				'ops_tables_quarantined'=> $ops_quarantined_count,
+				'campaign_tables_quarantined'=> $campaign_quarantined_count,
+				'ops_quarantine_pending'=> 0 < $ops_quarantined_count,
+				'campaign_quarantine_pending'=> 0 < $campaign_quarantined_count,
+				'protected_quarantine_pending'=> 0 < ( $ops_quarantined_count + $campaign_quarantined_count ),
 				'sync_configuration_restored'=> true,
 			);
 		};
@@ -2207,7 +2868,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function () use ( $config, $bootstrap_filesystem, $verify_site_identity, $auto_update_enabled, $acquire_lock, $release_lock, $process_lock_available, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $capture_robots_snapshot, $ops_quarantine_residue ) {
+				'callback'            => static function () use ( $config, $bootstrap_filesystem, $verify_site_identity, $auto_update_enabled, $acquire_lock, $release_lock, $process_lock_available, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $campaign_snapshot_coherent, $capture_robots_snapshot, $ops_quarantine_residue ) {
 					global $wp_filesystem;
 					$site_identity = $verify_site_identity();
 					if ( is_wp_error( $site_identity ) ) {
@@ -2282,6 +2943,13 @@ add_action(
 					$database_snapshot = $capture_database_state();
 					if ( is_wp_error( $database_snapshot ) ) {
 						return $database_snapshot;
+					}
+					if ( ! $campaign_snapshot_coherent( $database_snapshot ) ) {
+						return new WP_Error(
+							'c99_deploy_campaign_schema_drift',
+							'Campaign Studio schema marker and exact seven-table cohort must be wholly absent or wholly valid before deployment.',
+							array( 'status' => 409 )
+						);
 					}
 					$database_json     = wp_json_encode( $database_snapshot );
 					if ( false === $database_json ) {
@@ -2371,6 +3039,11 @@ add_action(
 					$current = file_exists( $plugin_path ) ? get_plugin_data( $plugin_path, false, false ) : array();
 					$phase = (string) ( $state['phase'] ?? ( $lock_owned ? ( $lock['phase'] ?? 'locked' ) : 'finalized' ) );
 					$interrupted_installing_status = $lock_owned && 'installing' === $phase;
+					$rollback_journal_status = $lock_owned && in_array(
+						$phase,
+						array( 'installing', 'candidate_activation_pending', 'candidate_activation_complete', 'installed_pending_stabilization' ),
+						true
+					);
 					$interrupted_adopted_status = $lock_owned
 						&& in_array( $phase, array( 'installed', 'committing', 'commit_failed', 'committed', 'cleanup_failed' ), true )
 						&& ! empty( $state['adopted_forward_no_rollback'] ?? $lock['adopted_forward_no_rollback'] ?? false );
@@ -2400,7 +3073,7 @@ add_action(
 					$projected_database_fingerprint = '';
 					if ( '' !== $projected_deployment_id ) {
 						if (
-							! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $projected_deployment_id )
+							! preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $projected_deployment_id )
 							|| ! str_starts_with( $projected_deployment_id, 'c99-' )
 							|| ! is_array( $database_snapshot )
 							|| ! is_array( $database_snapshot['options']['complete99_last_deployment_id'] ?? null )
@@ -2453,6 +3126,8 @@ add_action(
 						&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' )
 						&& class_exists( 'Complete99_Ops', false )
 						&& method_exists( 'Complete99_Ops', 'assert_invariants' )
+						&& class_exists( 'Complete99_Campaigns', false )
+						&& method_exists( 'Complete99_Campaigns', 'assert_invariants' )
 						&& class_exists( 'Complete99_Culinary_Science', false )
 						&& method_exists( 'Complete99_Culinary_Science', 'assert_invariants' );
 					$migration_failed = $runtime_loaded ? (bool) Complete99_Platform::migration_failed() : true;
@@ -2463,19 +3138,20 @@ add_action(
 							Complete99_Settings::assert_defaults();
 							Complete99_Platform::assert_evaluation_catalog_invariants();
 							Complete99_Ops::assert_invariants();
+							Complete99_Campaigns::assert_invariants();
 							Complete99_Culinary_Science::assert_invariants();
 							$migration_invariants_valid = true;
 						} catch ( \Throwable $error ) {
 							$migration_invariants_valid = false;
 						}
 					}
-					$baseline_database_snapshot = $interrupted_installing_status
+					$baseline_database_snapshot = $rollback_journal_status
 						? $decrypt_database_state( $state['database_journal'] ?? array() )
 						: array();
-					$baseline_database_json = $interrupted_installing_status && ! is_wp_error( $baseline_database_snapshot )
+					$baseline_database_json = $rollback_journal_status && ! is_wp_error( $baseline_database_snapshot )
 						? wp_json_encode( $baseline_database_snapshot )
 						: false;
-					$baseline_database_journal_valid = $interrupted_installing_status
+					$baseline_database_journal_valid = $rollback_journal_status
 						&& is_array( $baseline_database_snapshot )
 						&& false !== $baseline_database_json
 						&& preg_match( '/^[a-f0-9]{64}$/', (string) ( $state['database_fingerprint'] ?? '' ) )
@@ -2609,6 +3285,12 @@ add_action(
 						'expected_sha256'  => (string) ( $state['expected_sha256'] ?? $lock['expected_sha256'] ?? '' ),
 						'expected_version' => (string) ( $state['expected_version'] ?? $state['installed_version'] ?? $lock['expected_version'] ?? '' ),
 						'installed_plugin_sha256'=> (string) ( $state['installed_plugin_sha256'] ?? $lock['installed_plugin_sha256'] ?? '' ),
+						'candidate_activation_required'=> ! empty( $state['candidate_activation_required'] ?? $lock['candidate_activation_required'] ?? false ),
+						'candidate_activation_phase'=> (string) ( $state['candidate_activation_phase'] ?? $lock['candidate_activation_phase'] ?? '' ),
+						'candidate_activation_completed_at'=> isset( $state['candidate_activation_completed_at'] ) ? (int) $state['candidate_activation_completed_at'] : 0,
+						'candidate_database_fingerprint'=> (string) ( $state['candidate_database_fingerprint'] ?? $lock['candidate_database_fingerprint'] ?? '' ),
+						'candidate_requested_active'=> ! empty( $state['candidate_requested_active'] ?? $lock['candidate_requested_active'] ?? false ),
+						'candidate_prior_active'=> ! empty( $state['candidate_prior_active'] ?? $lock['candidate_prior_active'] ?? false ),
 						'committed_outcome'=> (string) ( $state['committed_outcome'] ?? $lock['committed_outcome'] ?? '' ),
 						'committed_expected_active'=> (bool) ( $state['committed_expected_active'] ?? $lock['committed_expected_active'] ?? false ),
 						'committed_expected_absent'=> (bool) ( $state['committed_expected_absent'] ?? $lock['committed_expected_absent'] ?? false ),
@@ -2737,13 +3419,13 @@ add_action(
 					$config_valid = $config_valid
 						&& true === ( $interrupted['finalized_attestation_enabled'] ?? null )
 						&& $config['deployment_id'] === $probe_id
-						&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $probe_id )
-						&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $target_deployment_id )
+						&& preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $probe_id )
+						&& preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $target_deployment_id )
 						&& str_starts_with( $target_deployment_id, 'c99-' )
 						&& $target_deployment_id !== $probe_id
 						&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', $expected_version )
 						&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $interrupted['prior_version'] ?? '' ) )
-						&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', (string) ( $interrupted['prior_deployment'] ?? '' ) )
+						&& preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', (string) ( $interrupted['prior_deployment'] ?? '' ) )
 						&& is_array( $expected_manifest )
 						&& ! empty( $expected_manifest )
 						&& $database_snapshot_manifest_valid( $expected_manifest, $expected_manifest_sha256 )
@@ -2816,9 +3498,11 @@ add_action(
 							&& class_exists( 'Complete99_Platform', false )
 							&& method_exists( 'Complete99_Platform', 'migration_failed' )
 							&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' )
-							&& class_exists( 'Complete99_Ops', false )
-							&& method_exists( 'Complete99_Ops', 'assert_invariants' )
-							&& class_exists( 'Complete99_Culinary_Science', false )
+						&& class_exists( 'Complete99_Ops', false )
+						&& method_exists( 'Complete99_Ops', 'assert_invariants' )
+						&& class_exists( 'Complete99_Campaigns', false )
+						&& method_exists( 'Complete99_Campaigns', 'assert_invariants' )
+						&& class_exists( 'Complete99_Culinary_Science', false )
 							&& method_exists( 'Complete99_Culinary_Science', 'assert_invariants' );
 						$migration_failed = ! $runtime_loaded || (bool) Complete99_Platform::migration_failed();
 						$migration_invariants_valid = false;
@@ -2826,9 +3510,10 @@ add_action(
 							try {
 								Complete99_Content::assert_migration_invariants();
 								Complete99_Settings::assert_defaults();
-								Complete99_Platform::assert_evaluation_catalog_invariants();
-								Complete99_Ops::assert_invariants();
-								Complete99_Culinary_Science::assert_invariants();
+							Complete99_Platform::assert_evaluation_catalog_invariants();
+							Complete99_Ops::assert_invariants();
+							Complete99_Campaigns::assert_invariants();
+							Complete99_Culinary_Science::assert_invariants();
 								$migration_invariants_valid = true;
 							} catch ( \Throwable $error ) {
 								$migration_invariants_valid = false;
@@ -3041,7 +3726,7 @@ add_action(
 							&& is_string( $interrupted_config['prior_version'] ?? null )
 							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+$/', $interrupted_config['prior_version'] )
 							&& is_string( $interrupted_config['prior_deployment'] ?? null )
-							&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $interrupted_config['prior_deployment'] )
+							&& preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $interrupted_config['prior_deployment'] )
 							&& str_starts_with( $interrupted_config['prior_deployment'], 'c99-' )
 							&& is_array( $interrupted_config['reviewed_database_storage'] ?? null )
 							&& array( 'engine', 'tables' ) === array_keys( $interrupted_config['reviewed_database_storage'] )
@@ -3261,6 +3946,8 @@ add_action(
 						&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' )
 						&& class_exists( 'Complete99_Ops', false )
 						&& method_exists( 'Complete99_Ops', 'assert_invariants' )
+						&& class_exists( 'Complete99_Campaigns', false )
+						&& method_exists( 'Complete99_Campaigns', 'assert_invariants' )
 						&& class_exists( 'Complete99_Culinary_Science', false )
 						&& method_exists( 'Complete99_Culinary_Science', 'assert_invariants' );
 					$runtime_version        = defined( 'COMPLETE99_PLATFORM_VERSION' ) ? (string) COMPLETE99_PLATFORM_VERSION : '';
@@ -3313,9 +4000,10 @@ add_action(
 					try {
 						Complete99_Content::assert_migration_invariants();
 						Complete99_Settings::assert_defaults();
-						Complete99_Platform::assert_evaluation_catalog_invariants();
-						Complete99_Ops::assert_invariants();
-						Complete99_Culinary_Science::assert_invariants();
+							Complete99_Platform::assert_evaluation_catalog_invariants();
+							Complete99_Ops::assert_invariants();
+							Complete99_Campaigns::assert_invariants();
+							Complete99_Culinary_Science::assert_invariants();
 					} catch ( \Throwable $error ) {
 						return new WP_Error(
 							'c99_stabilize_migration_invariants',
@@ -3443,9 +4131,11 @@ add_action(
 							&& class_exists( 'Complete99_Platform', false )
 							&& method_exists( 'Complete99_Platform', 'migration_failed' )
 							&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' )
-							&& class_exists( 'Complete99_Ops', false )
-							&& method_exists( 'Complete99_Ops', 'assert_invariants' )
-							&& class_exists( 'Complete99_Culinary_Science', false )
+						&& class_exists( 'Complete99_Ops', false )
+						&& method_exists( 'Complete99_Ops', 'assert_invariants' )
+						&& class_exists( 'Complete99_Campaigns', false )
+						&& method_exists( 'Complete99_Campaigns', 'assert_invariants' )
+						&& class_exists( 'Complete99_Culinary_Science', false )
 							&& method_exists( 'Complete99_Culinary_Science', 'assert_invariants' )
 							&& false === (bool) Complete99_Platform::migration_failed();
 						if (
@@ -3462,6 +4152,7 @@ add_action(
 							Complete99_Settings::assert_defaults();
 							Complete99_Platform::assert_evaluation_catalog_invariants();
 							Complete99_Ops::assert_invariants();
+							Complete99_Campaigns::assert_invariants();
 							Complete99_Culinary_Science::assert_invariants();
 						} catch ( \Throwable $error ) {
 							return new WP_Error( 'c99_stabilize_interrupted_post_claim_invariants', 'Interrupted-forward migration invariants changed after lease adoption.', array( 'status' => 409 ) );
@@ -4163,7 +4854,7 @@ add_action(
 					$final         = $request->get_param( 'final' );
 					if (
 						$config['deployment_id'] !== $deployment_id
-						|| ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id )
+						|| ! preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $deployment_id )
 						|| ! preg_match( '/^[a-f0-9]{64}$/', $expected_sha )
 						|| ! hash_equals( (string) $config['expected_artifact_sha256'], $expected_sha )
 						|| ! is_int( $expected_size )
@@ -4447,7 +5138,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $validate_embedded_artifact_identity, $inspect_staged_artifact, $validate_staged_archive, $consume_staged_artifact, $cleanup_staging, $state_directory, $auto_update_enabled, $purge_caches, $claim_lock, $release_lock, $acquire_process_lock, $release_process_lock, $write_state_file, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $encrypt_database_state, $decrypt_database_state, $capture_robots_snapshot, $apply_managed_robots, $restore_managed_robots, $ops_quarantine_residue ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $validate_embedded_artifact_identity, $inspect_staged_artifact, $validate_staged_archive, $consume_staged_artifact, $cleanup_staging, $state_directory, $auto_update_enabled, $purge_caches, $claim_lock, $release_lock, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $write_state_file, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $verify_transactional_storage, $verify_migration_advisory_lock, $capture_database_state, $capture_quiescent_database_state, $campaign_snapshot_coherent, $encrypt_database_state, $decrypt_database_state, $capture_robots_snapshot, $apply_managed_robots, $restore_managed_robots, $ops_quarantine_residue ) {
 					global $wp_filesystem;
 
 					$filesystem = $bootstrap_filesystem();
@@ -4498,7 +5189,7 @@ add_action(
 					if ( $config['slug'] !== $slug || 'plugin' !== $type ) {
 						return new WP_Error( 'c99_deploy_allowlist', 'The requested component is not allowlisted.', array( 'status' => 403 ) );
 					}
-					if ( $config['deployment_id'] !== $deployment_id || ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id ) ) {
+					if ( $config['deployment_id'] !== $deployment_id || ! preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $deployment_id ) ) {
 						return new WP_Error( 'c99_deploy_id', 'The deployment ID is invalid.', array( 'status' => 400 ) );
 					}
 					if (
@@ -4524,6 +5215,7 @@ add_action(
 					}
 					$stage_cleanup_on_exit = false;
 					$stage_cleanup_result  = true;
+					$deployment_worker_fence = null;
 					try {
 					$staged_before_claim = $inspect_staged_artifact( $deployment_id );
 					if ( is_wp_error( $staged_before_claim ) ) {
@@ -4533,6 +5225,11 @@ add_action(
 					$lock = $claim_lock( $deployment_id, array( 'reserved' ), 'locked', true, false );
 					if ( is_wp_error( $lock ) ) {
 						return $lock;
+					}
+					$deployment_worker_fence = $acquire_worker_fence();
+					if ( is_wp_error( $deployment_worker_fence ) ) {
+						$release_lock( $deployment_id, $lock );
+						return $deployment_worker_fence;
 					}
 					$stage_cleanup_on_exit = true;
 					$staged_after_claim = $inspect_staged_artifact( $deployment_id );
@@ -4601,10 +5298,18 @@ add_action(
 							return $prior_plugin_sha256;
 						}
 					}
-					$database_snapshot = $capture_database_state();
+					$database_snapshot = $capture_quiescent_database_state();
 					if ( is_wp_error( $database_snapshot ) ) {
 						$release_lock( $deployment_id, $lock );
 						return $database_snapshot;
+					}
+					if ( ! $campaign_snapshot_coherent( $database_snapshot ) ) {
+						$release_lock( $deployment_id, $lock );
+						return new WP_Error(
+							'c99_deploy_campaign_schema_drift',
+							'Campaign Studio schema marker and exact seven-table cohort must be wholly absent or wholly valid before deployment.',
+							array( 'status' => 409 )
+						);
 					}
 					$database_json = wp_json_encode( $database_snapshot );
 					if ( false === $database_json ) {
@@ -4813,10 +5518,24 @@ add_action(
 							if ( is_wp_error( $owned ) ) {
 								return $owned;
 							}
-							$activation = activate_plugin( $config['plugin_file'] );
-							if ( is_wp_error( $activation ) ) {
-								return $activation;
+							/* PHP classes cannot be replaced in-process. Persist a candidate-code handoff. */
+							$installed_plugin_sha256 = $directory_sha256( $target_dir );
+							if ( is_wp_error( $installed_plugin_sha256 ) || ! hash_equals( (string) $config['expected_plugin_sha256'], (string) $installed_plugin_sha256 ) ) {
+								return new WP_Error( 'c99_candidate_handoff_digest', 'The candidate plugin bytes could not be authenticated for fresh-request activation.', array( 'status' => 500 ) );
 							}
+							return array(
+								'installed' => true,
+								'continuation_required' => true,
+								'deployment_id' => $deployment_id,
+								'installed_plugin_sha256' => $installed_plugin_sha256,
+								'prior_active' => $was_active,
+								'requested_active' => true,
+								'slug' => $slug,
+								'version' => $version,
+								'sha256' => $actual,
+								'active' => is_plugin_active( $config['plugin_file'] ),
+								'backup_ready' => true,
+							);
 						}
 						$owned = $heartbeat_state( $state_dir, $deployment_id, 'installing' );
 						if ( is_wp_error( $owned ) ) {
@@ -4909,11 +5628,16 @@ add_action(
 						$pending_cleanup = $set_state_phase(
 							$state_dir,
 							$deployment_id,
-							'installed_pending_cleanup',
+							! empty( $install_response['continuation_required'] ) ? 'candidate_activation_pending' : 'installed_pending_cleanup',
 							array(
-								'forward_ready'     => true,
+								'forward_ready'     => empty( $install_response['continuation_required'] ),
 								'installed_version' => $version,
 								'installed_active'  => ! empty( $install_response['active'] ),
+								'candidate_activation_required' => ! empty( $install_response['continuation_required'] ),
+								'candidate_activation_phase' => ! empty( $install_response['continuation_required'] ) ? 'pending' : '',
+								'candidate_requested_active' => ! empty( $install_response['requested_active'] ),
+								'candidate_prior_active' => ! empty( $install_response['prior_active'] ),
+								'installed_plugin_sha256' => (string) ( $install_response['installed_plugin_sha256'] ?? '' ),
 								'temp_removed'      => false,
 								'temp_path'         => $temp,
 							)
@@ -4928,7 +5652,7 @@ add_action(
 					}
 					$temp_removed = ! $wp_filesystem->exists( $temp ) || ( $wp_filesystem->delete( $temp ) && ! $wp_filesystem->exists( $temp ) );
 					if ( ! $temp_removed ) {
-						$failure_phase = is_array( $install_response ) ? 'installed_pending_cleanup' : 'failed';
+					$failure_phase = is_array( $install_response ) && ! empty( $install_response['continuation_required'] ) ? 'candidate_activation_pending' : ( is_array( $install_response ) ? 'installed_pending_cleanup' : 'failed' );
 						$set_state_phase( $state_dir, $deployment_id, $failure_phase, array( 'temp_removed' => false, 'temp_path' => $temp ) );
 						return new WP_Error(
 							'c99_deploy_temp_cleanup',
@@ -4949,13 +5673,18 @@ add_action(
 						$installed_state = $set_state_phase(
 							$state_dir,
 							$deployment_id,
-							'installed_pending_stabilization',
+							! empty( $install_response['continuation_required'] ) ? 'candidate_activation_pending' : 'installed_pending_stabilization',
 							array(
 								'temp_removed'      => true,
 								'temp_path'         => '',
 								'installed_version' => $version,
 								'installed_active'  => ! empty( $install_response['active'] ),
-								'forward_ready'     => true,
+								'forward_ready'     => empty( $install_response['continuation_required'] ),
+								'candidate_activation_required' => ! empty( $install_response['continuation_required'] ),
+								'candidate_activation_phase' => ! empty( $install_response['continuation_required'] ) ? 'pending' : '',
+								'candidate_requested_active' => ! empty( $install_response['requested_active'] ),
+								'candidate_prior_active' => ! empty( $install_response['prior_active'] ),
+								'installed_plugin_sha256' => (string) ( $install_response['installed_plugin_sha256'] ?? '' ),
 							)
 						);
 						if ( is_wp_error( $installed_state ) ) {
@@ -4970,13 +5699,108 @@ add_action(
 					}
 					return $install_response;
 					} finally {
+						$worker_fence_release = is_array( $deployment_worker_fence ) ? $release_worker_fence( $deployment_worker_fence ) : true;
 						if ( $stage_cleanup_on_exit ) {
 							$stage_cleanup_result = $cleanup_staging( $deployment_id );
 						}
 						$release_process_lock( $process_lock );
+						if ( is_wp_error( $worker_fence_release ) ) {
+							return $worker_fence_release;
+						}
 						if ( is_wp_error( $stage_cleanup_result ) ) {
 							return $stage_cleanup_result;
 						}
+					}
+				},
+			)
+		);
+
+		register_rest_route(
+			'complete99-deploy/v1',
+			$route_prefix . '/continue-activation',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => $permission,
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $heartbeat_state, $set_state_phase, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $apply_managed_robots, $purge_caches, $capture_database_state, $decrypt_database_state, $campaign_snapshot_coherent, $core_plugin_active_persisted, $deployment_id_valid ) {
+					global $wp_filesystem;
+					$filesystem = $bootstrap_filesystem();
+					if ( is_wp_error( $filesystem ) ) { return $filesystem; }
+					$site = $verify_site_identity();
+					if ( is_wp_error( $site ) ) { return $site; }
+					$params = $request->get_json_params();
+					$keys = is_array( $params ) ? array_keys( $params ) : array();
+					sort( $keys, SORT_STRING );
+					$deployment_id = (string) $request->get_param( 'deployment_id' );
+					if ( array( 'deployment_id', 'token' ) !== $keys || ! $deployment_id_valid( $deployment_id ) || ! hash_equals( (string) $config['deployment_id'], $deployment_id ) ) { return new WP_Error( 'c99_candidate_activation_request', 'Candidate activation continuation request is invalid.', array( 'status' => 400 ) ); }
+					$process = $acquire_process_lock();
+					if ( is_wp_error( $process ) ) { return $process; }
+					$fence = null;
+					try {
+						$state_dir = $state_directory( $deployment_id );
+						$state_path = trailingslashit( $state_dir ) . 'state.json';
+						$state = $wp_filesystem->exists( $state_path ) ? json_decode( $wp_filesystem->get_contents( $state_path ), true ) : null;
+						$lock = $read_lock( true );
+						$phase = is_array( $state ) ? (string) ( $state['phase'] ?? '' ) : '';
+						if ( ! is_array( $state ) || ! is_array( $lock ) || ! in_array( $phase, array( 'candidate_activation_pending', 'candidate_activation_complete', 'installed_pending_stabilization' ), true ) || ! hash_equals( $deployment_id, (string) ( $state['deployment_id'] ?? '' ) ) || ! hash_equals( $deployment_id, (string) ( $lock['deployment_id'] ?? '' ) ) || (int) ( $state['fence'] ?? 0 ) !== (int) ( $lock['fence'] ?? -1 ) || ! hash_equals( (string) ( $state['owner_id'] ?? '' ), (string) ( $lock['owner_id'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_activation_state', 'Candidate activation continuation lacks exact durable reservation and journal ownership.', array( 'status' => 409, 'phase' => $phase ) ); }
+						$fence = $acquire_worker_fence();
+						if ( is_wp_error( $fence ) ) { return $fence; }
+						$fresh_state = json_decode( $wp_filesystem->get_contents( $state_path ), true );
+						$fresh_lock = $read_lock( true );
+						if ( ! is_array( $fresh_state ) || ! is_array( $fresh_lock ) || ! hash_equals( wp_json_encode( $state ), wp_json_encode( $fresh_state ) ) || ! hash_equals( wp_json_encode( $lock ), wp_json_encode( $fresh_lock ) ) ) { return new WP_Error( 'c99_candidate_activation_race', 'Candidate activation ownership changed after worker-fence acquisition.', array( 'status' => 409 ) ); }
+						$journal = $decrypt_database_state( $state['database_journal'] ?? array() );
+						$journal_json = is_wp_error( $journal ) ? false : wp_json_encode( $journal );
+						if ( is_wp_error( $journal ) || false === $journal_json || ! preg_match( '/\A[a-f0-9]{64}\z/', (string) ( $state['database_fingerprint'] ?? '' ) ) || ! hash_equals( (string) $state['database_fingerprint'], hash( 'sha256', $journal_json ) ) || ! $campaign_snapshot_coherent( $journal ) ) { return new WP_Error( 'c99_candidate_activation_journal', 'Candidate activation continuation could not authenticate its exact rollback journal.', array( 'status' => 409 ) ); }
+						$target_dir = trailingslashit( WP_PLUGIN_DIR ) . $config['slug'];
+						$plugin_path = trailingslashit( WP_PLUGIN_DIR ) . $config['plugin_file'];
+						$digest = $directory_sha256( $target_dir );
+						if ( is_wp_error( $digest ) || ! hash_equals( (string) $config['expected_plugin_sha256'], (string) $digest ) || ! hash_equals( (string) ( $state['installed_plugin_sha256'] ?? '' ), (string) $digest ) || ! file_exists( $plugin_path ) ) { return new WP_Error( 'c99_candidate_activation_plugin', 'Candidate plugin bytes do not match the authenticated handoff.', array( 'status' => 409 ) ); }
+						require_once ABSPATH . 'wp-admin/includes/plugin.php';
+						require_once $plugin_path;
+						if ( ! defined( 'COMPLETE99_PLATFORM_VERSION' ) || ! hash_equals( (string) $config['expected_version'], (string) COMPLETE99_PLATFORM_VERSION ) || ! class_exists( 'Complete99_Platform', false ) || ! method_exists( 'Complete99_Platform', 'recover_active_upgrade' ) || ! class_exists( 'Complete99_Campaigns', false ) || ! method_exists( 'Complete99_Campaigns', 'assert_invariants' ) ) { return new WP_Error( 'c99_candidate_activation_runtime', 'Fresh candidate classes are not the reviewed runtime.', array( 'status' => 409 ) ); }
+						$core_active = $core_plugin_active_persisted( $config['plugin_file'] );
+						if ( is_wp_error( $core_active ) ) { return $core_active; }
+						if ( in_array( $phase, array( 'candidate_activation_complete', 'installed_pending_stabilization' ), true ) ) {
+							$complete_exact = true === $core_active && ! empty( $state['forward_ready'] ) && ! empty( $state['installed_active'] ) && 'complete' === (string) ( $state['candidate_activation_phase'] ?? '' ) && is_int( $state['candidate_activation_completed_at'] ?? null ) && 0 < $state['candidate_activation_completed_at'] && preg_match( '/\A[a-f0-9]{64}\z/', (string) ( $state['candidate_database_fingerprint'] ?? '' ) );
+							try { $complete_exact = $complete_exact && true === Complete99_Campaigns::assert_invariants(); } catch ( \Throwable $error ) { $complete_exact = false; }
+							$current_snapshot = $complete_exact ? $capture_database_state() : null;
+							$current_snapshot_json = is_wp_error( $current_snapshot ) || ! is_array( $current_snapshot ) ? false : wp_json_encode( $current_snapshot );
+							$complete_exact = $complete_exact && false !== $current_snapshot_json && hash_equals( (string) $state['candidate_database_fingerprint'], hash( 'sha256', $current_snapshot_json ) );
+							if ( ! $complete_exact ) { return new WP_Error( 'c99_candidate_activation_complete_invalid', 'Candidate activation completion proof is not exact.', array( 'status' => 409 ) ); }
+							if ( 'installed_pending_stabilization' === $phase ) {
+								$aligned = $set_state_phase( $state_dir, $deployment_id, $phase, array( 'candidate_activation_phase' => 'complete', 'candidate_activation_completed_at' => (int) $state['candidate_activation_completed_at'], 'candidate_database_fingerprint' => (string) $state['candidate_database_fingerprint'], 'forward_ready' => true, 'installed_active' => true ) );
+								return is_wp_error( $aligned ) ? $aligned : array( 'continued' => true, 'idempotent' => true, 'phase' => $phase, 'active' => true, 'deployment_id' => $deployment_id );
+							}
+							$pending = $set_state_phase( $state_dir, $deployment_id, 'installed_pending_stabilization', array( 'candidate_activation_phase' => 'complete', 'candidate_activation_completed_at' => (int) $state['candidate_activation_completed_at'], 'candidate_database_fingerprint' => (string) $state['candidate_database_fingerprint'], 'forward_ready' => true, 'installed_active' => true ) );
+							return is_wp_error( $pending ) ? $pending : array( 'continued' => true, 'idempotent' => true, 'phase' => 'installed_pending_stabilization', 'active' => true, 'deployment_id' => $deployment_id );
+						}
+						if ( ! empty( $state['candidate_prior_active'] ) ) {
+							if ( true !== $core_active ) { return new WP_Error( 'c99_candidate_activation_core_state', 'Active upgrade lost persisted core plugin membership.', array( 'status' => 409 ) ); }
+							$activation = Complete99_Platform::recover_active_upgrade();
+						} elseif ( true === $core_active ) {
+							/* Prior activate_plugin may have persisted core truth before its response was lost. */
+							$activation = Complete99_Platform::recover_active_upgrade();
+						} else {
+							$activation = activate_plugin( $config['plugin_file'] );
+						}
+						if ( is_wp_error( $activation ) ) { return $activation; }
+						$core_after = $core_plugin_active_persisted( $config['plugin_file'] );
+						if ( true !== $core_after ) { return is_wp_error( $core_after ) ? $core_after : new WP_Error( 'c99_candidate_activation_core_readback', 'Core active plugin persistence was not acknowledged.', array( 'status' => 500 ) ); }
+						update_option( 'complete99_last_deployment_id', $deployment_id, false );
+						$robots = $apply_managed_robots( $state_dir, $state );
+						if ( is_wp_error( $robots ) ) { return $robots; }
+						$purged = $purge_caches();
+						if ( is_wp_error( $purged ) ) { return $purged; }
+						$snapshot = $capture_database_state();
+						$snapshot_json = is_wp_error( $snapshot ) || ! is_array( $snapshot ) ? false : wp_json_encode( $snapshot );
+						if ( is_wp_error( $snapshot ) || false === $snapshot_json || ! $campaign_snapshot_coherent( $snapshot ) ) { return new WP_Error( 'c99_candidate_activation_snapshot', 'Candidate activation database proof is unavailable.', array( 'status' => 500 ) ); }
+						$complete = $set_state_phase( $state_dir, $deployment_id, 'candidate_activation_complete', array( 'candidate_activation_phase' => 'complete', 'candidate_activation_completed_at' => time(), 'candidate_database_fingerprint' => hash( 'sha256', $snapshot_json ), 'forward_ready' => true, 'installed_active' => true, 'robots_applied' => true, 'robots_managed_sha256' => (string) ( $robots['sha256'] ?? '' ) ) );
+						if ( is_wp_error( $complete ) ) { return $complete; }
+						$pending = $set_state_phase( $state_dir, $deployment_id, 'installed_pending_stabilization', array( 'candidate_activation_phase' => 'complete', 'candidate_activation_completed_at' => (int) $complete['candidate_activation_completed_at'], 'candidate_database_fingerprint' => (string) $complete['candidate_database_fingerprint'], 'forward_ready' => true, 'installed_active' => true ) );
+						return is_wp_error( $pending ) ? $pending : array( 'continued' => true, 'phase' => 'installed_pending_stabilization', 'active' => true, 'deployment_id' => $deployment_id );
+					} finally {
+						$fence_release = is_array( $fence ) ? $release_worker_fence( $fence ) : true;
+						$release_process_lock( $process );
+						if ( is_wp_error( $fence_release ) ) { return $fence_release; }
 					}
 				},
 			)
@@ -4988,7 +5812,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $capture_database_state, $restore_database_state, $decrypt_database_state, $restore_managed_robots, $reapply_managed_robots, $capture_ops_tables, $ops_absent_snapshot, $ops_quarantine_names, $ops_quarantine_residue, $ops_snapshot_valid, $ops_snapshot_digest, $ops_snapshot_has_tables, $ops_reconstruct_forward, $ops_rejoin_forward, $ops_cleanup_quarantine ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $adopt_state_lease, $heartbeat_state, $set_state_phase, $make_test_lock_stale, $directory_sha256, $capture_database_state, $database_snapshot_generation, $campaign_snapshot_coherent, $normalize_database_snapshot, $project_database_snapshot, $restore_database_state, $decrypt_database_state, $restore_managed_robots, $reapply_managed_robots, $capture_ops_tables, $capture_campaign_tables, $ops_quarantine_names, $campaign_quarantine_names, $ops_quarantine_residue, $ops_snapshot_valid, $campaign_snapshot_valid, $ops_snapshot_digest, $campaign_snapshot_digest, $ops_snapshot_has_tables, $campaign_snapshot_has_tables, $ops_reconstruct_forward, $campaign_reconstruct_forward, $protected_rejoin_forward, $protected_cleanup_quarantine ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -5006,6 +5830,7 @@ add_action(
 					if ( is_wp_error( $process_lock ) ) {
 						return $process_lock;
 					}
+					$deployment_worker_fence = null;
 					try {
 					$staging_cleaned = $cleanup_staging( $deployment_id );
 					if ( is_wp_error( $staging_cleaned ) ) {
@@ -5075,7 +5900,7 @@ add_action(
 							)
 						);
 					}
-					if ( ! $interrupted_phase && ! in_array( $phase, array( 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup', 'failed', 'rollback_failed', 'commit_failed' ), true ) ) {
+					if ( ! $interrupted_phase && ! in_array( $phase, array( 'candidate_activation_pending', 'candidate_activation_complete', 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup', 'failed', 'rollback_failed', 'commit_failed' ), true ) ) {
 						return new WP_Error(
 							'c99_rollback_not_ready',
 							'Rollback is refused while the deployment is not in a terminal mutable phase.',
@@ -5084,13 +5909,17 @@ add_action(
 					}
 					$lease = $claim_lock(
 						$deployment_id,
-						array( 'prepared', 'installing', 'rolling_back', 'committing', 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup', 'failed', 'rollback_failed', 'commit_failed' ),
+						array( 'prepared', 'installing', 'candidate_activation_pending', 'candidate_activation_complete', 'rolling_back', 'committing', 'installed', 'installed_pending_stabilization', 'installed_pending_cleanup', 'failed', 'rollback_failed', 'commit_failed' ),
 						$phase,
 						false,
 						$interrupted_phase
 					);
 					if ( is_wp_error( $lease ) ) {
 						return $lease;
+					}
+					$deployment_worker_fence = $acquire_worker_fence();
+					if ( is_wp_error( $deployment_worker_fence ) ) {
+						return $deployment_worker_fence;
 					}
 					$adopted = $adopt_state_lease( $state_dir, $deployment_id, $lease );
 					if ( is_wp_error( $adopted ) ) {
@@ -5111,9 +5940,10 @@ add_action(
 						return $journal_snapshot;
 					}
 					$journal_keys = array_keys( $journal_snapshot );
-					$legacy_journal_keys = array( 'options', 'postmeta', 'posts', 'seed_ids', 'evaluation_ids', 'sync_secret_existed', 'sync_secret_configured' );
-					$current_journal_keys = array( 'options', 'postmeta', 'posts', 'seed_ids', 'evaluation_ids', 'ops_tables', 'sync_secret_existed', 'sync_secret_configured' );
-					$legacy_option_keys = array(
+					$v1_journal_keys = array( 'options', 'postmeta', 'posts', 'seed_ids', 'evaluation_ids', 'sync_secret_existed', 'sync_secret_configured' );
+					$v2_journal_keys = array( 'options', 'postmeta', 'posts', 'seed_ids', 'evaluation_ids', 'ops_tables', 'sync_secret_existed', 'sync_secret_configured' );
+					$v3_journal_keys = array( 'options', 'postmeta', 'posts', 'seed_ids', 'evaluation_ids', 'ops_tables', 'campaign_tables', 'sync_secret_existed', 'sync_secret_configured' );
+					$v1_option_keys = array(
 						'active_plugins',
 						'complete99_last_deployment_id',
 						'complete99_evaluation_catalog_receipt',
@@ -5125,16 +5955,28 @@ add_action(
 						'show_on_front',
 						$wpdb->prefix . 'user_roles',
 					);
-					$legacy_database_journal = $legacy_journal_keys === $journal_keys;
+					$v2_option_keys = $v1_option_keys;
+					array_splice( $v2_option_keys, 5, 0, array( 'complete99_ops_schema_version' ) );
+					$v3_option_keys = $v2_option_keys;
+					array_splice( $v3_option_keys, 5, 0, array( 'complete99_campaign_schema_version' ) );
+					array_splice( $v3_option_keys, 6, 0, array( 'complete99_campaign_lifecycle_reservation_v1' ) );
+					$journal_generation = $v1_journal_keys === $journal_keys
+						? 1
+						: ( $v2_journal_keys === $journal_keys ? 2 : ( $v3_journal_keys === $journal_keys ? 3 : 0 ) );
+					$expected_option_keys = 1 === $journal_generation
+						? $v1_option_keys
+						: ( 2 === $journal_generation ? $v2_option_keys : $v3_option_keys );
 					if (
-						( ! $legacy_database_journal && $current_journal_keys !== $journal_keys )
+						0 === $journal_generation
 						|| ! is_array( $journal_snapshot['options'] ?? null )
 						|| ! is_array( $journal_snapshot['posts'] ?? null )
 						|| ! is_array( $journal_snapshot['postmeta'] ?? null )
 						|| ! is_array( $journal_snapshot['seed_ids'] ?? null )
 						|| ! is_array( $journal_snapshot['evaluation_ids'] ?? null )
-						|| ( $legacy_database_journal && $legacy_option_keys !== array_keys( $journal_snapshot['options'] ) )
-						|| ( ! $legacy_database_journal && ! $ops_snapshot_valid( $journal_snapshot['ops_tables'] ?? null ) )
+						|| $expected_option_keys !== array_keys( $journal_snapshot['options'] )
+						|| ( 2 <= $journal_generation && ! $ops_snapshot_valid( $journal_snapshot['ops_tables'] ?? null ) )
+						|| ( 3 === $journal_generation && ! $campaign_snapshot_valid( $journal_snapshot['campaign_tables'] ?? null ) )
+						|| ( 3 === $journal_generation && ! $campaign_snapshot_coherent( $journal_snapshot ) )
 						|| ! is_bool( $journal_snapshot['sync_secret_existed'] ?? null )
 						|| ! is_bool( $journal_snapshot['sync_secret_configured'] ?? null )
 						|| ( $journal_snapshot['sync_secret_configured'] && ! $journal_snapshot['sync_secret_existed'] )
@@ -5150,91 +5992,127 @@ add_action(
 					) {
 						return new WP_Error( 'c99_db_snapshot_digest', 'The database rollback journal failed integrity validation.', array( 'status' => 500 ) );
 					}
-					$database_snapshot = $journal_snapshot;
-					if ( $legacy_database_journal ) {
-						$normalized_options = array();
-						foreach ( $journal_snapshot['options'] as $option_name => $option_row ) {
-							if ( 'complete99_platform_version' === $option_name ) {
-								$normalized_options['complete99_ops_schema_version'] = null;
-							}
-							$normalized_options[ $option_name ] = $option_row;
-						}
-						$database_snapshot = array(
-							'options'                   => $normalized_options,
-							'postmeta'                  => $journal_snapshot['postmeta'],
-							'posts'                     => $journal_snapshot['posts'],
-							'seed_ids'                  => $journal_snapshot['seed_ids'],
-							'evaluation_ids'            => $journal_snapshot['evaluation_ids'],
-							'ops_tables'                => $ops_absent_snapshot(),
-							'sync_secret_existed'       => $journal_snapshot['sync_secret_existed'],
-							'sync_secret_configured'    => $journal_snapshot['sync_secret_configured'],
-						);
+					$database_snapshot = $normalize_database_snapshot( $journal_snapshot, $journal_generation );
+					if ( is_wp_error( $database_snapshot ) ) {
+						return $database_snapshot;
 					}
 					$normalized_baseline_json = wp_json_encode( $database_snapshot );
 					if ( false === $normalized_baseline_json ) {
 						return new WP_Error( 'c99_db_snapshot_encode', 'The normalized database rollback journal could not be encoded.', array( 'status' => 500 ) );
 					}
 					$comparison_baseline_fingerprint = hash( 'sha256', $normalized_baseline_json );
-					$current_database_snapshot = $capture_database_state();
-					$current_database_json = is_wp_error( $current_database_snapshot )
+					$current_database_snapshot   = $capture_database_state();
+					$current_database_generation = is_wp_error( $current_database_snapshot ) ? 0 : $database_snapshot_generation( $current_database_snapshot );
+					$current_normalized_snapshot = is_wp_error( $current_database_snapshot )
+						? $current_database_snapshot
+						: $normalize_database_snapshot( $current_database_snapshot, $current_database_generation );
+					$current_database_json = is_wp_error( $current_normalized_snapshot )
 						? false
-						: wp_json_encode( $current_database_snapshot );
-					if ( is_wp_error( $current_database_snapshot ) || false === $current_database_json ) {
+						: wp_json_encode( $current_normalized_snapshot );
+					if ( is_wp_error( $current_normalized_snapshot ) || false === $current_database_json ) {
 						return new WP_Error( 'c99_rollback_database_probe', 'The current plugin-owned database fingerprint could not be captured.', array( 'status' => 500 ) );
 					}
 					$current_database_fingerprint = hash( 'sha256', $current_database_json );
-					$current_recorded_snapshot = $current_database_snapshot;
-					if ( $legacy_database_journal ) {
-						unset( $current_recorded_snapshot['options']['complete99_ops_schema_version'] );
-						unset( $current_recorded_snapshot['ops_tables'] );
+					$current_recorded_snapshot = 3 > $journal_generation
+						? $project_database_snapshot( $current_normalized_snapshot, $journal_generation )
+						: $current_database_snapshot;
+					if ( is_wp_error( $current_recorded_snapshot ) ) {
+						return $current_recorded_snapshot;
 					}
 					$current_recorded_json = wp_json_encode( $current_recorded_snapshot );
 					$current_recorded_fingerprint = false === $current_recorded_json ? '' : hash( 'sha256', $current_recorded_json );
 					$post_install_fingerprint = (string) ( $state['post_install_database_fingerprint'] ?? '' );
 					$pending_sync_fingerprint = (string) ( $state['sync_configured_database_fingerprint'] ?? '' );
 					$recorded_forward_ops_sha256 = (string) ( $state['rollback_forward_ops_sha256'] ?? '' );
-					if ( '' !== $recorded_forward_ops_sha256 && ! preg_match( '/^[a-f0-9]{64}$/', $recorded_forward_ops_sha256 ) ) {
-						return new WP_Error( 'c99_ops_forward_digest', 'The recorded forward operations-table fingerprint is invalid.', array( 'status' => 500 ) );
+					$recorded_forward_campaign_sha256 = (string) ( $state['rollback_forward_campaign_sha256'] ?? '' );
+					if (
+						( '' !== $recorded_forward_ops_sha256 && ! preg_match( '/^[a-f0-9]{64}$/', $recorded_forward_ops_sha256 ) )
+						|| ( '' !== $recorded_forward_campaign_sha256 && ! preg_match( '/^[a-f0-9]{64}$/', $recorded_forward_campaign_sha256 ) )
+					) {
+						return new WP_Error( 'c99_protected_forward_digest', 'A recorded forward protected-table fingerprint is invalid.', array( 'status' => 500 ) );
 					}
-					$quarantine_names    = $ops_quarantine_names( $deployment_id );
-					$quarantine_snapshot = $capture_ops_tables( $quarantine_names );
-					if ( is_wp_error( $quarantine_snapshot ) ) {
-						return new WP_Error( 'c99_ops_rollback_quarantine_probe', 'The operations rollback quarantine could not be inspected.', array( 'status' => 500 ) );
+					$ops_quarantine_names      = $ops_quarantine_names( $deployment_id );
+					$campaign_quarantine_names = $campaign_quarantine_names( $deployment_id );
+					$ops_quarantine_snapshot      = $capture_ops_tables( $ops_quarantine_names );
+					$campaign_quarantine_snapshot = $capture_campaign_tables( $campaign_quarantine_names );
+					if ( is_wp_error( $ops_quarantine_snapshot ) || is_wp_error( $campaign_quarantine_snapshot ) ) {
+						return new WP_Error( 'c99_protected_rollback_quarantine_probe', 'The protected rollback quarantine could not be inspected.', array( 'status' => 500 ) );
 					}
-					$ops_quarantine_present = $ops_snapshot_has_tables( $quarantine_snapshot );
-					if ( $legacy_database_journal && ( $ops_quarantine_present || $ops_snapshot_has_tables( $current_database_snapshot['ops_tables'] ) ) ) {
+					$ops_quarantine_present      = $ops_snapshot_has_tables( $ops_quarantine_snapshot );
+					$campaign_quarantine_present = $campaign_snapshot_has_tables( $campaign_quarantine_snapshot );
+					if (
+						1 === $journal_generation
+						&& (
+							$ops_quarantine_present
+							|| $campaign_quarantine_present
+							|| $ops_snapshot_has_tables( $current_normalized_snapshot['ops_tables'] )
+							|| $campaign_snapshot_has_tables( $current_normalized_snapshot['campaign_tables'] )
+						)
+					) {
 						return new WP_Error(
-							'c99_ops_legacy_journal_conflict',
-							'Historical rollback refused because operations tables exist outside the authenticated legacy journal.',
+							'c99_protected_legacy_journal_conflict',
+							'Historical v1 rollback refused because protected tables exist outside the authenticated journal.',
 							array( 'status' => 409 )
 						);
 					}
 					$reconstructed_forward_ops = $ops_reconstruct_forward(
 						$database_snapshot['ops_tables'],
-						$current_database_snapshot['ops_tables'],
-						$quarantine_snapshot
+						$current_normalized_snapshot['ops_tables'],
+						$ops_quarantine_snapshot
 					);
-					if ( is_wp_error( $reconstructed_forward_ops ) ) {
-						return $reconstructed_forward_ops;
+					$reconstructed_forward_campaign = $campaign_reconstruct_forward(
+						$database_snapshot['campaign_tables'],
+						$current_normalized_snapshot['campaign_tables'],
+						$campaign_quarantine_snapshot
+					);
+					if ( is_wp_error( $reconstructed_forward_ops ) || is_wp_error( $reconstructed_forward_campaign ) ) {
+						return is_wp_error( $reconstructed_forward_ops ) ? $reconstructed_forward_ops : $reconstructed_forward_campaign;
 					}
-					$reconstructed_forward_ops_sha256 = $ops_snapshot_digest( $reconstructed_forward_ops );
-					if ( '' === $reconstructed_forward_ops_sha256 ) {
-						return new WP_Error( 'c99_ops_forward_digest', 'The forward operations-table fingerprint could not be calculated.', array( 'status' => 500 ) );
+					$reconstructed_forward_ops_sha256      = $ops_snapshot_digest( $reconstructed_forward_ops );
+					$reconstructed_forward_campaign_sha256 = $campaign_snapshot_digest( $reconstructed_forward_campaign );
+					if ( '' === $reconstructed_forward_ops_sha256 || '' === $reconstructed_forward_campaign_sha256 ) {
+						return new WP_Error( 'c99_protected_forward_digest', 'A forward protected-table fingerprint could not be calculated.', array( 'status' => 500 ) );
+					}
+					$historical_campaign_projection = 3 > $journal_generation
+						&& $ops_quarantine_present
+						&& ! $campaign_quarantine_present
+						&& ! $campaign_snapshot_has_tables( $database_snapshot['campaign_tables'] )
+						&& ! $campaign_snapshot_has_tables( $current_normalized_snapshot['campaign_tables'] )
+						&& ! array_key_exists( 'complete99_campaign_schema_version', $current_database_snapshot['options'] ?? array() )
+						&& ! array_key_exists( 'complete99_campaign_lifecycle_reservation_v1', $current_database_snapshot['options'] ?? array() );
+					if ( '' === $recorded_forward_campaign_sha256 && $historical_campaign_projection ) {
+						$campaign_projection_checkpoint = $set_state_phase(
+							$state_dir,
+							$deployment_id,
+							$phase,
+							array( 'rollback_forward_campaign_sha256' => $reconstructed_forward_campaign_sha256 )
+						);
+						if ( is_wp_error( $campaign_projection_checkpoint ) ) {
+							return $campaign_projection_checkpoint;
+						}
+						$state                              = $campaign_projection_checkpoint;
+						$recorded_forward_campaign_sha256 = $reconstructed_forward_campaign_sha256;
 					}
 
-					if ( $ops_quarantine_present ) {
+					$protected_quarantine_present = $ops_quarantine_present || $campaign_quarantine_present;
+					if ( $protected_quarantine_present ) {
 						if (
 							'' === $recorded_forward_ops_sha256
 							|| ! hash_equals( $recorded_forward_ops_sha256, $reconstructed_forward_ops_sha256 )
+							|| '' === $recorded_forward_campaign_sha256
+							|| ! hash_equals( $recorded_forward_campaign_sha256, $reconstructed_forward_campaign_sha256 )
 						) {
-							return new WP_Error( 'c99_ops_rollback_retry_proof', 'Rollback retry refused because the quarantined operations tables lack exact forward-state proof.', array( 'status' => 409 ) );
+							return new WP_Error( 'c99_protected_rollback_retry_proof', 'Rollback retry refused because the quarantined protected tables lack exact forward-state proof.', array( 'status' => 409 ) );
 						}
-						$synthetic_forward_snapshot               = $current_database_snapshot;
+						$synthetic_forward_snapshot               = $current_normalized_snapshot;
 						$synthetic_forward_snapshot['ops_tables'] = $reconstructed_forward_ops;
-						$synthetic_recorded_snapshot = $synthetic_forward_snapshot;
-						if ( $legacy_database_journal ) {
-							unset( $synthetic_recorded_snapshot['options']['complete99_ops_schema_version'] );
-							unset( $synthetic_recorded_snapshot['ops_tables'] );
+						$synthetic_forward_snapshot['campaign_tables'] = $reconstructed_forward_campaign;
+						$synthetic_recorded_generation = 1 === $journal_generation
+							? 1
+							: ( $campaign_snapshot_has_tables( $reconstructed_forward_campaign ) ? 3 : 2 );
+						$synthetic_recorded_snapshot = $project_database_snapshot( $synthetic_forward_snapshot, $synthetic_recorded_generation );
+						if ( is_wp_error( $synthetic_recorded_snapshot ) ) {
+							return $synthetic_recorded_snapshot;
 						}
 						$synthetic_forward_json = wp_json_encode( $synthetic_recorded_snapshot );
 						$synthetic_forward_fingerprint = false === $synthetic_forward_json ? '' : hash( 'sha256', $synthetic_forward_json );
@@ -5248,30 +6126,43 @@ add_action(
 						);
 						if ( ! hash_equals( $comparison_baseline_fingerprint, $current_database_fingerprint ) ) {
 							if ( ! $synthetic_is_recorded_forward ) {
-								return new WP_Error( 'c99_ops_rollback_retry_conflict', 'Rollback retry found an unrecognized database state around the operations quarantine.', array( 'status' => 409 ) );
+								return new WP_Error( 'c99_protected_rollback_retry_conflict', 'Rollback retry found an unrecognized database state around the protected quarantine.', array( 'status' => 409 ) );
 							}
-							$rejoined = $ops_rejoin_forward( $deployment_id, $database_snapshot['ops_tables'], $recorded_forward_ops_sha256 );
+							$rejoined = $protected_rejoin_forward( $deployment_id, $database_snapshot['ops_tables'], $database_snapshot['campaign_tables'], $recorded_forward_ops_sha256, $recorded_forward_campaign_sha256 );
 							if ( is_wp_error( $rejoined ) ) {
 								return $rejoined;
 							}
-							$current_database_snapshot = $capture_database_state();
-							$current_database_json = is_wp_error( $current_database_snapshot ) ? false : wp_json_encode( $current_database_snapshot );
-							if ( is_wp_error( $current_database_snapshot ) || false === $current_database_json ) {
-								return new WP_Error( 'c99_ops_rejoin_database_probe', 'The database could not be verified after rejoining the forward operations tables.', array( 'status' => 500 ) );
+							$current_database_snapshot   = $capture_database_state();
+							$current_database_generation = is_wp_error( $current_database_snapshot ) ? 0 : $database_snapshot_generation( $current_database_snapshot );
+							$current_normalized_snapshot = is_wp_error( $current_database_snapshot )
+								? $current_database_snapshot
+								: $normalize_database_snapshot( $current_database_snapshot, $current_database_generation );
+							$current_database_json = is_wp_error( $current_normalized_snapshot ) ? false : wp_json_encode( $current_normalized_snapshot );
+							if ( is_wp_error( $current_normalized_snapshot ) || false === $current_database_json ) {
+								return new WP_Error( 'c99_protected_rejoin_database_probe', 'The database could not be verified after rejoining the forward protected tables.', array( 'status' => 500 ) );
 							}
 							$current_database_fingerprint = hash( 'sha256', $current_database_json );
-							$current_recorded_snapshot = $current_database_snapshot;
-							if ( $legacy_database_journal ) {
-								unset( $current_recorded_snapshot['options']['complete99_ops_schema_version'] );
-								unset( $current_recorded_snapshot['ops_tables'] );
+							$current_recorded_snapshot = 3 > $journal_generation
+								? $project_database_snapshot( $current_normalized_snapshot, $journal_generation )
+								: $current_database_snapshot;
+							if ( is_wp_error( $current_recorded_snapshot ) ) {
+								return $current_recorded_snapshot;
 							}
 							$current_recorded_json = wp_json_encode( $current_recorded_snapshot );
 							$current_recorded_fingerprint = false === $current_recorded_json ? '' : hash( 'sha256', $current_recorded_json );
-							$quarantine_snapshot = $capture_ops_tables( $quarantine_names );
-							if ( is_wp_error( $quarantine_snapshot ) || $ops_snapshot_has_tables( $quarantine_snapshot ) ) {
-								return new WP_Error( 'c99_ops_rejoin_residue', 'The operations quarantine remains after forward-state recovery.', array( 'status' => 500 ) );
+							$ops_quarantine_snapshot      = $capture_ops_tables( $ops_quarantine_names );
+							$campaign_quarantine_snapshot = $capture_campaign_tables( $campaign_quarantine_names );
+							if (
+								is_wp_error( $ops_quarantine_snapshot )
+								|| is_wp_error( $campaign_quarantine_snapshot )
+								|| $ops_snapshot_has_tables( $ops_quarantine_snapshot )
+								|| $campaign_snapshot_has_tables( $campaign_quarantine_snapshot )
+							) {
+								return new WP_Error( 'c99_protected_rejoin_residue', 'The protected quarantine remains after forward-state recovery.', array( 'status' => 500 ) );
 							}
 							$ops_quarantine_present = false;
+							$campaign_quarantine_present = false;
+							$protected_quarantine_present = false;
 						}
 					}
 
@@ -5295,30 +6186,42 @@ add_action(
 							array( 'status' => 409 )
 						);
 					}
-					$forward_ops_sha256 = $recorded_forward_ops_sha256;
+					$forward_ops_sha256      = $recorded_forward_ops_sha256;
+					$forward_campaign_sha256 = $recorded_forward_campaign_sha256;
 					if ( $database_restore_required ) {
-						$current_forward_ops_sha256 = $ops_snapshot_digest( $current_database_snapshot['ops_tables'] );
-						if ( '' === $current_forward_ops_sha256 ) {
-							return new WP_Error( 'c99_ops_forward_digest', 'The current forward operations-table fingerprint is invalid.', array( 'status' => 500 ) );
+						$current_forward_ops_sha256      = $ops_snapshot_digest( $current_normalized_snapshot['ops_tables'] );
+						$current_forward_campaign_sha256 = $campaign_snapshot_digest( $current_normalized_snapshot['campaign_tables'] );
+						if ( '' === $current_forward_ops_sha256 || '' === $current_forward_campaign_sha256 ) {
+							return new WP_Error( 'c99_protected_forward_digest', 'A current forward protected-table fingerprint is invalid.', array( 'status' => 500 ) );
 						}
-						if ( '' !== $forward_ops_sha256 && ! hash_equals( $forward_ops_sha256, $current_forward_ops_sha256 ) ) {
-							return new WP_Error( 'c99_ops_forward_changed', 'Rollback refused because the candidate operations tables changed.', array( 'status' => 409 ) );
+						if (
+							( '' !== $forward_ops_sha256 && ! hash_equals( $forward_ops_sha256, $current_forward_ops_sha256 ) )
+							|| ( '' !== $forward_campaign_sha256 && ! hash_equals( $forward_campaign_sha256, $current_forward_campaign_sha256 ) )
+						) {
+							return new WP_Error( 'c99_protected_forward_changed', 'Rollback refused because the candidate protected tables changed.', array( 'status' => 409 ) );
 						}
-						$forward_ops_sha256 = $current_forward_ops_sha256;
-						if ( '' === $recorded_forward_ops_sha256 ) {
-							$ops_checkpoint = $set_state_phase(
+						$forward_ops_sha256      = $current_forward_ops_sha256;
+						$forward_campaign_sha256 = $current_forward_campaign_sha256;
+						if ( '' === $recorded_forward_ops_sha256 || '' === $recorded_forward_campaign_sha256 ) {
+							$protected_checkpoint = $set_state_phase(
 								$state_dir,
 								$deployment_id,
 								$phase,
-								array( 'rollback_forward_ops_sha256' => $forward_ops_sha256 )
+								array(
+									'rollback_forward_ops_sha256'      => $forward_ops_sha256,
+									'rollback_forward_campaign_sha256' => $forward_campaign_sha256,
+								)
 							);
-							if ( is_wp_error( $ops_checkpoint ) ) {
-								return $ops_checkpoint;
+							if ( is_wp_error( $protected_checkpoint ) ) {
+								return $protected_checkpoint;
 							}
-							$state = $ops_checkpoint;
+							$state = $protected_checkpoint;
 						}
-					} elseif ( $ops_quarantine_present && '' === $forward_ops_sha256 ) {
-						return new WP_Error( 'c99_ops_rollback_retry_proof', 'Rollback quarantine cleanup requires the recorded forward operations-table fingerprint.', array( 'status' => 409 ) );
+					} elseif (
+						$protected_quarantine_present
+						&& ( '' === $forward_ops_sha256 || '' === $forward_campaign_sha256 )
+					) {
+						return new WP_Error( 'c99_protected_rollback_retry_proof', 'Rollback quarantine cleanup requires both recorded forward protected-table fingerprints.', array( 'status' => 409 ) );
 					}
 
 					$had_plugin       = ! empty( $state['had_plugin'] );
@@ -5555,7 +6458,7 @@ add_action(
 						}
 					}
 					}
-					$compensate_forward = static function ( $error_code, $message, $status, $expected_database_fingerprint = '' ) use ( $config, $wp_filesystem, $target_dir, $restore_stage, $displaced_dir, $plugin_path, $forward_plugin_sha256, $forward_was_active, $directory_sha256, $capture_database_state, $set_state_phase, $state_dir, $deployment_id, $state, $reapply_managed_robots ) {
+					$compensate_forward = static function ( $error_code, $message, $status, $expected_database_fingerprint = '' ) use ( $config, $wp_filesystem, $target_dir, $restore_stage, $displaced_dir, $plugin_path, $forward_plugin_sha256, $forward_was_active, $directory_sha256, $capture_database_state, $database_snapshot_generation, $normalize_database_snapshot, $set_state_phase, $state_dir, $deployment_id, $state, $reapply_managed_robots ) {
 						$compensation_error = '';
 						if ( $wp_filesystem->exists( $target_dir ) ) {
 							if ( $wp_filesystem->exists( $restore_stage ) || ! @rename( $target_dir, $restore_stage ) ) {
@@ -5605,9 +6508,13 @@ add_action(
 						}
 						if ( '' === $compensation_error && '' !== $expected_database_fingerprint ) {
 							$compensated_snapshot = $capture_database_state();
-							$compensated_json = is_wp_error( $compensated_snapshot )
+							$compensated_generation = is_wp_error( $compensated_snapshot ) ? 0 : $database_snapshot_generation( $compensated_snapshot );
+							$compensated_normalized = is_wp_error( $compensated_snapshot )
+								? $compensated_snapshot
+								: $normalize_database_snapshot( $compensated_snapshot, $compensated_generation );
+							$compensated_json = is_wp_error( $compensated_normalized )
 								? false
-								: wp_json_encode( $compensated_snapshot );
+								: wp_json_encode( $compensated_normalized );
 							$compensated_fingerprint = false === $compensated_json ? '' : hash( 'sha256', $compensated_json );
 							if ( ! hash_equals( $expected_database_fingerprint, $compensated_fingerprint ) ) {
 								$compensation_error = 'database_fingerprint';
@@ -5664,12 +6571,14 @@ add_action(
 						return $owned;
 					}
 					$pre_restore_snapshot = $capture_database_state();
-					$pre_restore_json = is_wp_error( $pre_restore_snapshot )
-						? false
-						: wp_json_encode( $pre_restore_snapshot );
+					$pre_restore_generation = is_wp_error( $pre_restore_snapshot ) ? 0 : $database_snapshot_generation( $pre_restore_snapshot );
+					$pre_restore_normalized = is_wp_error( $pre_restore_snapshot )
+						? $pre_restore_snapshot
+						: $normalize_database_snapshot( $pre_restore_snapshot, $pre_restore_generation );
+					$pre_restore_json = is_wp_error( $pre_restore_normalized ) ? false : wp_json_encode( $pre_restore_normalized );
 					$pre_restore_fingerprint = false === $pre_restore_json ? '' : hash( 'sha256', $pre_restore_json );
 					if (
-						is_wp_error( $pre_restore_snapshot )
+						is_wp_error( $pre_restore_normalized )
 						|| ! preg_match( '/^[a-f0-9]{64}$/', $pre_restore_fingerprint )
 						|| ! hash_equals( $current_database_fingerprint, $pre_restore_fingerprint )
 					) {
@@ -5680,7 +6589,7 @@ add_action(
 						);
 					}
 					if ( $database_restore_required ) {
-						$database_restore = $restore_database_state( $database_snapshot, $deployment_id, $forward_ops_sha256 );
+						$database_restore = $restore_database_state( $database_snapshot, $deployment_id, $journal_generation, $forward_ops_sha256, $forward_campaign_sha256 );
 						if ( is_wp_error( $database_restore ) ) {
 							return $compensate_forward(
 								'c99_db_restore_compensated',
@@ -5702,14 +6611,18 @@ add_action(
 						return $owned;
 					}
 					$restored_database_snapshot = $capture_database_state();
-					$restored_database_json = is_wp_error( $restored_database_snapshot )
+					$restored_database_generation = is_wp_error( $restored_database_snapshot ) ? 0 : $database_snapshot_generation( $restored_database_snapshot );
+					$restored_database_normalized = is_wp_error( $restored_database_snapshot )
+						? $restored_database_snapshot
+						: $normalize_database_snapshot( $restored_database_snapshot, $restored_database_generation );
+					$restored_database_json = is_wp_error( $restored_database_normalized )
 						? false
-						: wp_json_encode( $restored_database_snapshot );
+						: wp_json_encode( $restored_database_normalized );
 					$restored_database_fingerprint = false === $restored_database_json
 						? ''
 						: hash( 'sha256', $restored_database_json );
 					if (
-						is_wp_error( $restored_database_snapshot )
+						is_wp_error( $restored_database_normalized )
 						|| ! hash_equals( $comparison_baseline_fingerprint, $restored_database_fingerprint )
 					) {
 						$set_state_phase( $state_dir, $deployment_id, 'rollback_failed' );
@@ -5719,19 +6632,23 @@ add_action(
 						$set_state_phase( $state_dir, $deployment_id, 'rollback_failed' );
 						return new WP_Error( 'c99_rollback_activation_state', 'The restored plugin activation state does not match the rollback journal.', array( 'status' => 500 ) );
 					}
-					$ops_cleanup = array( 'already_clean' => true, 'tables_dropped' => 0 );
-					if ( $database_restore_required || $ops_quarantine_present ) {
-						$ops_cleanup = $ops_cleanup_quarantine( $deployment_id, $database_snapshot['ops_tables'], $forward_ops_sha256 );
-						if ( is_wp_error( $ops_cleanup ) ) {
+					$protected_cleanup = array( 'already_clean' => true, 'tables_dropped' => 0 );
+					if ( $database_restore_required || $protected_quarantine_present ) {
+						$protected_cleanup = $protected_cleanup_quarantine( $deployment_id, $database_snapshot['ops_tables'], $database_snapshot['campaign_tables'], $forward_ops_sha256, $forward_campaign_sha256 );
+						if ( is_wp_error( $protected_cleanup ) ) {
 							$set_state_phase( $state_dir, $deployment_id, 'rollback_failed' );
-							return $ops_cleanup;
+							return $protected_cleanup;
 						}
 						$clean_database_snapshot = $capture_database_state();
-						$clean_database_json = is_wp_error( $clean_database_snapshot ) ? false : wp_json_encode( $clean_database_snapshot );
+						$clean_database_generation = is_wp_error( $clean_database_snapshot ) ? 0 : $database_snapshot_generation( $clean_database_snapshot );
+						$clean_database_normalized = is_wp_error( $clean_database_snapshot )
+							? $clean_database_snapshot
+							: $normalize_database_snapshot( $clean_database_snapshot, $clean_database_generation );
+						$clean_database_json = is_wp_error( $clean_database_normalized ) ? false : wp_json_encode( $clean_database_normalized );
 						$clean_database_fingerprint = false === $clean_database_json ? '' : hash( 'sha256', $clean_database_json );
-						if ( is_wp_error( $clean_database_snapshot ) || ! hash_equals( $comparison_baseline_fingerprint, $clean_database_fingerprint ) ) {
+						if ( is_wp_error( $clean_database_normalized ) || ! hash_equals( $comparison_baseline_fingerprint, $clean_database_fingerprint ) ) {
 							$set_state_phase( $state_dir, $deployment_id, 'rollback_failed' );
-							return new WP_Error( 'c99_ops_cleanup_database_readback', 'The database baseline changed during operations quarantine cleanup.', array( 'status' => 500 ) );
+							return new WP_Error( 'c99_protected_cleanup_database_readback', 'The database baseline changed during protected quarantine cleanup.', array( 'status' => 500 ) );
 						}
 					}
 					$owned = $heartbeat_state( $state_dir, $deployment_id, 'rolling_back' );
@@ -5750,6 +6667,7 @@ add_action(
 						array(
 							'database_restored' => true,
 							'ops_quarantine_cleaned'=> true,
+							'protected_quarantine_cleaned'=> true,
 							'rollback_applied'  => true,
 						)
 					);
@@ -5782,14 +6700,19 @@ add_action(
 						'prior_active'    => ! empty( $state['was_active'] ),
 						'prior_deployment'=> isset( $state['prior_deployment'] ) ? (string) $state['prior_deployment'] : '',
 						'database_restore'=> $database_restore,
-						'ops_quarantine_cleanup'=> $ops_cleanup,
+						'ops_quarantine_cleanup'=> $protected_cleanup,
+						'protected_quarantine_cleanup'=> $protected_cleanup,
 						'robots_prior_exists'=> ! empty( $state['robots_prior_exists'] ),
 						'robots_prior_sha256'=> (string) ( $state['robots_prior_sha256'] ?? '' ),
 						'robots_restore'  => $robots_restore,
 						'cache_purge'     => $cache_purge,
 					);
 					} finally {
+						$worker_fence_release = is_array( $deployment_worker_fence ) ? $release_worker_fence( $deployment_worker_fence ) : true;
 						$release_process_lock( $process_lock );
+						if ( is_wp_error( $worker_fence_release ) ) {
+							return $worker_fence_release;
+						}
 					}
 				},
 			)
@@ -5801,7 +6724,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $claim_lock, $heartbeat_lock, $acquire_process_lock, $release_process_lock, $directory_sha256, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $managed_robots_path, $purge_caches, $write_state_file, $protect_recovery_evidence_root, $verify_transactional_storage, $canonicalize_json_value ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $claim_lock, $heartbeat_lock, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $managed_robots_path, $purge_caches, $write_state_file, $protect_recovery_evidence_root, $verify_transactional_storage, $canonicalize_json_value ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -5957,10 +6880,10 @@ add_action(
 					}
 					if (
 						$config['deployment_id'] !== $deployment_id
-						|| ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id )
+						|| ! preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $deployment_id )
 						|| ! str_starts_with( $deployment_id, 'c99-' )
 						|| $deployment_id !== $observed_deployment
-						|| ! preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $prior_deployment )
+						|| ! preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $prior_deployment )
 						|| ! str_starts_with( $prior_deployment, 'c99-' )
 						|| $deployment_id === $prior_deployment
 						|| ! preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', $prior_version )
@@ -6014,6 +6937,7 @@ add_action(
 					if ( is_wp_error( $process_lock ) ) {
 						return $process_lock;
 					}
+					$deployment_worker_fence = null;
 					try {
 						$state_dir = $state_directory( $deployment_id );
 						$state_file = trailingslashit( $state_dir ) . 'state.json';
@@ -6054,6 +6978,10 @@ add_action(
 						);
 						if ( is_wp_error( $lease ) ) {
 							return $lease;
+						}
+						$deployment_worker_fence = $acquire_worker_fence();
+						if ( is_wp_error( $deployment_worker_fence ) ) {
+							return $deployment_worker_fence;
 						}
 						$storage = $verify_transactional_storage();
 						if ( is_wp_error( $storage ) ) {
@@ -6608,7 +7536,11 @@ add_action(
 						}
 						return $response;
 					} finally {
+						$worker_fence_release = is_array( $deployment_worker_fence ) ? $release_worker_fence( $deployment_worker_fence ) : true;
 						$release_process_lock( $process_lock );
+						if ( is_wp_error( $worker_fence_release ) ) {
+							return $worker_fence_release;
+						}
 					}
 				},
 			)
@@ -6620,7 +7552,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $directory_sha256, $protect_recovery_evidence_root, $ops_quarantine_residue ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $lock_owner, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $heartbeat_lock, $release_lock, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $adopt_state_lease, $heartbeat_state, $set_state_phase, $managed_robots_path, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $directory_sha256, $protect_recovery_evidence_root, $ops_quarantine_residue ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -6638,6 +7570,7 @@ add_action(
 					if ( is_wp_error( $process_lock ) ) {
 						return $process_lock;
 					}
+					$deployment_worker_fence = null;
 					try {
 					$staging_cleaned = $cleanup_staging( $deployment_id );
 					if ( is_wp_error( $staging_cleaned ) ) {
@@ -6731,6 +7664,10 @@ add_action(
 					);
 					if ( is_wp_error( $lease ) ) {
 						return $lease;
+					}
+					$deployment_worker_fence = $acquire_worker_fence();
+					if ( is_wp_error( $deployment_worker_fence ) ) {
+						return $deployment_worker_fence;
 					}
 					if ( $state_exists && ! $adopted_forward_cleanup_residue ) {
 						$adopted = $adopt_state_lease( $state_dir, $deployment_id, $lease );
@@ -6835,7 +7772,7 @@ add_action(
 						$config_valid = $config_valid
 							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $interrupted_config['expected_version'] ?? '' ) )
 							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', (string) ( $interrupted_config['prior_version'] ?? '' ) )
-							&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', (string) ( $interrupted_config['prior_deployment'] ?? '' ) )
+							&& preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', (string) ( $interrupted_config['prior_deployment'] ?? '' ) )
 							&& $storage_valid( $expected_storage );
 						$cleanup_prior_live = trailingslashit( $state_dir ) . 'robots.prior-live';
 						if (
@@ -6985,18 +7922,21 @@ add_action(
 							&& method_exists( 'Complete99_Platform', 'migration_failed' )
 							&& false === (bool) Complete99_Platform::migration_failed()
 							&& method_exists( 'Complete99_Platform', 'assert_evaluation_catalog_invariants' )
-							&& class_exists( 'Complete99_Ops', false )
-							&& method_exists( 'Complete99_Ops', 'assert_invariants' )
-							&& class_exists( 'Complete99_Culinary_Science', false )
+						&& class_exists( 'Complete99_Ops', false )
+						&& method_exists( 'Complete99_Ops', 'assert_invariants' )
+						&& class_exists( 'Complete99_Campaigns', false )
+						&& method_exists( 'Complete99_Campaigns', 'assert_invariants' )
+						&& class_exists( 'Complete99_Culinary_Science', false )
 							&& method_exists( 'Complete99_Culinary_Science', 'assert_invariants' );
 						$invariants_valid = false;
 						if ( $runtime_valid ) {
 							try {
 								Complete99_Content::assert_migration_invariants();
 								Complete99_Settings::assert_defaults();
-								Complete99_Platform::assert_evaluation_catalog_invariants();
-								Complete99_Ops::assert_invariants();
-								Complete99_Culinary_Science::assert_invariants();
+							Complete99_Platform::assert_evaluation_catalog_invariants();
+							Complete99_Ops::assert_invariants();
+							Complete99_Campaigns::assert_invariants();
+							Complete99_Culinary_Science::assert_invariants();
 								$invariants_valid = true;
 							} catch ( \Throwable $error ) {
 								$invariants_valid = false;
@@ -7486,7 +8426,7 @@ add_action(
 								&& preg_match( '/^[a-f0-9]{64}$/', $expected_database_fingerprint )
 								&& preg_match( '/^[a-f0-9]{64}$/', $expected_robots_sha256 )
 								&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$/', $expected_version )
-								&& preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $expected_deployment )
+								&& preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $expected_deployment )
 								&& $plugin_paths_safe
 								&& $wp_filesystem->is_dir( $target_dir )
 								&& $wp_filesystem->exists( $plugin_path )
@@ -7651,7 +8591,11 @@ add_action(
 						'cache_purge' => $cache_purge,
 					);
 					} finally {
+						$worker_fence_release = is_array( $deployment_worker_fence ) ? $release_worker_fence( $deployment_worker_fence ) : true;
 						$release_process_lock( $process_lock );
+						if ( is_wp_error( $worker_fence_release ) ) {
+							return $worker_fence_release;
+						}
 					}
 				},
 			)

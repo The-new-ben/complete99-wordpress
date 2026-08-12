@@ -158,9 +158,11 @@ rights or Google indexability.
 The first slice is the P1 foundation: a WordPress-native Complete99 OS menu and
 dashboard, WordPress capability boundary, operational schema foundation,
 private status API and exact migration away from the hardcoded ChatGPT Sites
-defaults. The slice is read-only: it intentionally does not claim that every
-operational module or historic record has already moved, and it will not be
-called live until the exact 1.21 artifact is deployed and independently proven.
+defaults. That slice is read-only: it intentionally does not claim that every
+operational module or historic record has already moved. It was independently
+proven for 1.21 and remains an authenticated part
+of the 1.22 candidate; neither source candidate is called live without its own
+exact deployment and production evidence.
 
 ## Completion definition
 

@@ -1,0 +1,132 @@
+.c99-public-campaign {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 22px;
+	max-width: 1180px;
+	margin: 20px auto;
+	padding: 22px 26px;
+	border-radius: 16px;
+	background: #142b25;
+	color: #fff;
+	box-shadow: 0 12px 34px rgba(0, 0, 0, .14);
+}
+
+.c99-public-campaign img {
+	width: min(220px, 35%);
+	height: 140px;
+	border-radius: 12px;
+	object-fit: cover;
+}
+
+.c99-public-campaign h2 {
+	margin: 0 0 8px;
+	color: #fff;
+}
+
+.c99-public-campaign p {
+	margin: 0 0 14px;
+}
+
+.c99-public-campaign [data-c99-campaign-click] {
+	display: inline-flex;
+	align-items: center;
+	min-height: 44px;
+	padding: 10px 18px;
+	border-radius: 999px;
+	background: #d7b46a;
+	color: #142b25;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.c99-public-campaign__measurement {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px 12px;
+	margin-top: 16px;
+	padding-top: 16px;
+	border-top: 1px solid rgba(255, 255, 255, .35);
+}
+
+.c99-public-campaign__measurement p {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.c99-public-campaign__measurement button,
+.c99-public-campaign__measurement a {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 44px;
+	padding: 9px 16px;
+	border: 2px solid #fff;
+	border-radius: 999px;
+	font: inherit;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.c99-public-campaign__measurement button {
+	background: #fff;
+	color: #142b25;
+	cursor: pointer;
+}
+
+.c99-public-campaign__measurement [data-c99-measurement-grant],
+.c99-public-campaign__measurement [data-c99-measurement-decline] {
+	min-width: 172px;
+	background: #fff;
+	color: #142b25;
+}
+
+.c99-public-campaign__measurement [data-c99-measurement-change] {
+	background: transparent;
+	color: #fff;
+}
+
+.c99-public-campaign__measurement a {
+	border-color: transparent;
+	background: transparent;
+	color: #fff;
+	text-decoration: underline;
+	text-underline-offset: .2em;
+}
+
+.c99-public-campaign a:focus,
+.c99-public-campaign button:focus {
+	outline: 3px solid #fff;
+	outline-offset: 3px;
+}
+
+.c99-public-campaign a:focus-visible,
+.c99-public-campaign button:focus-visible {
+	outline: 3px solid #fff;
+	outline-offset: 3px;
+}
+
+.c99-public-campaign button:disabled {
+	cursor: default;
+}
+
+.c99-public-campaign [hidden] {
+	display: none !important;
+}
+
+@media (max-width: 640px) {
+	.c99-public-campaign {
+		align-items: stretch;
+		flex-direction: column;
+	}
+
+	.c99-public-campaign img {
+		width: 100%;
+		height: 180px;
+	}
+
+	.c99-public-campaign__measurement button {
+		width: 100%;
+	}
+}

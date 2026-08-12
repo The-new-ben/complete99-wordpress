@@ -595,16 +595,57 @@ integrity metadata is isolated in `complete99-platform-integrity.json`.
 The package is uploaded directly by the authenticated workflow. No mutable
 public raw-branch ZIP is used.
 
-Database rollback snapshots use an exact schema boundary. Historical snapshots
-without operations tables retain manifest v1. Current snapshots use manifest v2
-and add one component for the seven private `c99_ops_*` tables plus their schema
-marker in the option journal. Candidate-created first-install tables are moved
-atomically to deterministic quarantine names before the core WordPress rollback
-transaction. They are dropped only after exact baseline readback. A table that
-existed at baseline must remain unchanged, and any ambiguous retry or quarantine
-residue blocks finalization and the next deployment.
+Database rollback snapshots use exact generational boundaries. Historical v1
+omits protected tables; v2 adds exactly seven private `c99_ops_*` tables; v3 adds
+exactly seven Campaign Studio tables. Each cohort has its own schema/row digest
+and forward-state fingerprint, while both cohorts share one atomic detach/rejoin
+boundary and one post-readback cleanup boundary. Campaign v3 is coherent only
+when `complete99_campaign_schema_version` equals
+`complete99-campaign-schema/v1` and all seven tables exist. Historical v1/v2
+journals are authenticated before missing components are projected. A table that
+existed at baseline must remain unchanged, and any ambiguous retry, mixed schema
+or `c99rb_*` residue blocks finalization and the next deployment.
 
-The 1.21 artifact may proceed only through protected `main`, a green required CI
+Campaign and Ops writers share the bridge's `rollback-capacity` advisory lock.
+Every writer first rejects a durable deployment reservation, then rechecks that
+reservation after acquiring the shared lock. `/run` acquires the same lock and
+drains pre-reservation writers immediately before its real rollback baseline;
+post-reservation writers receive 423. Exact bridge-compatible pre/post scans cap
+each table at 4,500 rows and each seven-table cohort at 4 MiB, below the bridge's
+5,000-row/8 MiB capture ceiling. `writeReady` additionally reserves 64 rows per
+table and 256 KiB per cohort for expiry, cancellation, suppression and
+compensation. Anonymous events have a separate 2,500-row/2.5 MiB table sub-cap
+and five-hour ephemeral retention, so public traffic cannot consume protected
+lifecycle headroom or expose private capacity metrics.
+
+WordPress cron is derived rather than rollback-owned state. The bridge excludes
+the serialized `cron` option and never mutates it. Campaign durable state is
+committed before exact three-argument hooks are reconciled. Normal deactivation
+keyset-suspends all jobs. Normal `init` performs only a bounded database check
+and enqueues the generic no-argument worker; it performs no provider/network
+work. Each worker invocation processes at most two 50-row keyset batches or five
+seconds, schedules the next exact due/future attempt, revalidates authority and
+package truth and repairs missing or drifted argument-bound hooks.
+
+Campaign Studio keeps external publication disabled. WordPress owns governed
+records, approval, owned-site scheduling, exact persisted package preview/copy/
+download, protected campaign-bound evidence, human-attested receipts, observed
+results, anonymous-unverified aggregates and versioned moderation transitions.
+Prepared external packages expose an exact `complete99-prepared-channel-package/v1`
+adapter only when blocker-free; blocked richer WordPress envelopes never claim
+that closed legacy schema. Adapter destination and payload share the same
+source/medium/campaign tracked URL and actual command-bound preparation time.
+
+The frozen consumer-menu payload is not relabelled for advertising. A separate
+`complete99-consumer-media-rights/v1` server-side overlay pins the exact thirteen
+legacy food-photo stems and its canonical digest. Those records retain
+`complete99_archive` provenance and permit illustrative public editorial use
+only; paid media and Campaign use remain false with no photographer/contract
+receipt. Bundled REST fails closed if the overlay is absent or invalid, and
+Campaign invariant/asset resolution revalidates it directly. The checked-in
+brand illustration remains the only built-in Campaign image choice.
+
+The 1.22 artifact may proceed only through protected `main`, a green required CI
 result and this controlled workflow. It activates only the exact reviewed
 search-policy allowlist; it does not publish held Science content. A later valid
 owner receipt requires a newly reviewed and rebuilt artifact with all four exact

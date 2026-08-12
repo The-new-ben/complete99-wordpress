@@ -1127,6 +1127,14 @@ final class Complete99_REST {
 		if ( is_array( $items ) ) {
 			return $items;
 		}
+		if ( ! class_exists( 'Complete99_Consumer_Media_Rights' ) ) {
+			return array();
+		}
+		try {
+			Complete99_Consumer_Media_Rights::assert_invariants();
+		} catch ( \Throwable $error ) {
+			return array();
+		}
 		$records = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
 		$items   = array();
 		foreach ( is_array( $records ) ? $records : array() as $record ) {
@@ -1139,11 +1147,15 @@ final class Complete99_REST {
 					continue 2;
 				}
 			}
+			$media_rights = Complete99_Consumer_Media_Rights::record_for_asset( $record['image_asset'] ?? '' );
+			if ( empty( $media_rights ) || true !== ( $media_rights['illustrative_public_use'] ?? null ) ) {
+				continue;
+			}
 			$record['slug']                       = sanitize_title( (string) $record['slug'] );
 			$record['verification_state']         = 'launch_ready';
 			$record['updated_at']                 = self::BUNDLED_CATALOG_UPDATED_AT;
-			$record['media_provenance']            = 'business_owned';
-			$record['media_rights_state']          = 'approved_public_use';
+			$record['media_provenance']            = sanitize_key( (string) $media_rights['media_provenance'] );
+			$record['media_rights_state']          = sanitize_key( (string) $media_rights['media_rights_state'] );
 			$record['vegetarian']                  = in_array( 'vegetarian', (array) ( $record['facets'] ?? array() ), true );
 			$record['_complete99_source']          = 'wordpress_bundle';
 			$items[]                               = $record;

@@ -52,7 +52,7 @@
 			if (!payload || payload.status_schema !== 'complete99-ops-status/v1' || payload.ready !== true) {
 				throw new Error('status-contract-invalid');
 			}
-			if (payload.auth_provider !== 'wordpress' || payload.write_commands_enabled !== false) {
+			if (payload.auth_provider !== 'wordpress' || payload.write_commands_enabled !== true || !payload.campaigns || payload.campaigns.ready !== true) {
 				throw new Error('status-boundary-invalid');
 			}
 

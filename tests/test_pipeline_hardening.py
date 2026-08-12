@@ -361,7 +361,7 @@ class PipelineHardeningTests(unittest.TestCase):
         metadata, artifact, raw = DEPLOY.load_artifact(
             (ROOT / "plugin-dist").resolve()
         )
-        self.assertEqual("1.21.0", metadata["version"])
+        self.assertEqual("1.22.0", metadata["version"])
         self.assertRegex(metadata["installed_sha256"], r"^[a-f0-9]{64}$")
 
         entries: list[bytes] = []
@@ -899,7 +899,7 @@ class PipelineHardeningTests(unittest.TestCase):
             rollback,
         )
         restore_call = rollback.index(
-            "$database_restore = $restore_database_state( $database_snapshot, $deployment_id, $forward_ops_sha256 )"
+            "$database_restore = $restore_database_state( $database_snapshot, $deployment_id, $journal_generation, $forward_ops_sha256, $forward_campaign_sha256 )"
         )
         compensate_call = rollback.index(
             "'c99_db_restore_compensated'", restore_call
@@ -982,7 +982,7 @@ class PipelineHardeningTests(unittest.TestCase):
         self.assertLess(
             rollback.index("$restore_managed_robots( $state_dir, $state )"),
             rollback.index(
-                "$restore_database_state( $database_snapshot, $deployment_id, $forward_ops_sha256 )"
+                "$restore_database_state( $database_snapshot, $deployment_id, $journal_generation, $forward_ops_sha256, $forward_campaign_sha256 )"
             ),
         )
         self.assertGreaterEqual(status.count("$robots_forward_ready"), 1)
@@ -1206,7 +1206,8 @@ class PipelineHardeningTests(unittest.TestCase):
             1,
         )[0]
         self.assertIn(
-            "array( 'installed', 'installed_pending_stabilization', "
+            "array( 'candidate_activation_pending', 'candidate_activation_complete', "
+            "'installed', 'installed_pending_stabilization', "
             "'installed_pending_cleanup', 'failed', 'rollback_failed', "
             "'commit_failed' )",
             rollback,

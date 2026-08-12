@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.21.0
+Release target: Complete99 Platform 1.22.0
 
 ## Automated gates
 
@@ -25,25 +25,62 @@ Release target: Complete99 Platform 1.21.0
 - The install route refuses `package_base64`, requires a completed staged
   artifact, and rechecks its exact size and SHA-256 before and after claiming the
   deployment lease.
-- The database snapshot manifest accepts exact historical v1 records and exact
-  v2 records only. V2 adds one `ops_tables` component with count exactly seven;
-  v1/v2 hybrids, missing components and extra components are rejected.
-- Operations rollback capture includes the seven allowlisted `c99_ops_*` tables,
-  the `complete99_ops_schema_version` marker, normalized schema digests and rows
-  ordered by `id`, with 5,000 rows per table and 8 MiB total as hard ceilings.
-- A first-install rollback proves the absent baseline, atomically quarantines
-  candidate tables before the core database transaction, restores the exact
-  baseline, removes only the proven quarantine and leaves zero `c99rb_*`
-  residue. An identical redeploy recreates exactly seven transactional tables.
-- A baseline-present retry is accepted only when every pre-existing operations
-  table has unchanged schema and rows. Status exposes rollback residue, while
-  preflight, install and finalization refuse residue or an unproven forward
-  digest.
+- The database snapshot manifest accepts exact historical v1 and v2 records and
+  exact v3 records. V2 adds the seven-table `ops_tables` component; v3 adds the
+  seven-table `campaign_tables` component. Hybrids, missing/extra components and
+  either protected-table count other than seven are rejected.
+- Protected rollback capture includes the seven allowlisted `c99_ops_*` tables,
+  the seven allowlisted Campaign Studio tables, both schema markers, normalized
+  schema digests and rows ordered by `id`. Each table is capped at 5,000 rows;
+  each seven-table cohort has an independent 8 MiB ceiling.
+- Campaign/Operations writes use the same deployment advisory boundary and exact
+  canonical ordering as the bridge. Runtime hard limits are 4,500 rows/table and
+  4 MiB/cohort; `writeReady` reserves 64 rows/table and 256 KiB/cohort. Public
+  events remain below a 2,500-row/2.5 MiB sub-cap with five-hour ephemeral
+  retention and never return protected capacity details.
+- `/run` drains the shared advisory lock immediately before its real baseline.
+  A pre-reservation writer is included in baseline, a post-reservation writer is
+  rejected with 423, and success/failure leaves no advisory-lock residue.
+- Campaign Studio is accepted before mutation only when its marker is exactly
+  `complete99-campaign-schema/v1` and all seven tables exist, or when both marker
+  and tables are wholly absent. Any partial or mixed cohort fails preflight and
+  `/run` with no plugin change.
+- A first-install rollback proves the absent baseline, atomically quarantines all
+  candidate-created operations and Campaign tables in one rename boundary before
+  the core database transaction, restores the exact baseline, removes only the
+  separately fingerprinted quarantine cohorts and leaves zero `c99rb_*` residue.
+- Historical v1/v2 journals are authenticated in their original byte shape
+  before absent protected components are synthesized for comparison. Retry,
+  rollback and cleanup require both recorded forward cohort digests; ambiguity,
+  mutation or residue fails closed before redeploy or finalization.
+- The serialized WordPress `cron` option is deliberately outside the rollback
+  journal and bridge mutation scope. Campaign migrations do not schedule hooks;
+  durable job state is persisted first, and normal `init` only enqueues a generic
+  no-argument worker. Bounded repeated worker invocations rebuild/correct exact
+  three-argument hooks and schedule the earliest future retry. Normal plugin
+  deactivation keyset-suspends every scheduled/active job, compensates failures
+  and proves zero unsuspended rows.
+- Campaign acceptance covers command-bound exact external adapter artifacts,
+  persisted preview/copy/download, protected idempotent evidence upload/stream,
+  receipt/result/unverified-signal truth, versioned moderation transitions,
+  double-submit and cancelled-prompt guards, locked cancel/expiry readback/event
+  races, and zero generic cache flushes from anonymous event traffic.
+- The repository-scoped `complete99-deploy` and `complete99-monitor` Windows
+  runners live outside the checkout and synchronized user folders, use separate
+  labels and environments, run exactly one listener each and use the installed
+  Python 3.11 runtime without `actions/setup-python`. The monitor's 15-minute
+  schedule is treated as queueable rather than real-time; a fresh inspectable
+  durable heartbeat is required before owned placements are enabled.
+- The separate consumer-media-rights overlay authenticates exactly thirteen
+  `complete99_archive` photo stems and leaves paid/Campaign use unauthorized with
+  empty receipt digests. Tamper/removal fails closed, the frozen consumer-menu
+  digest remains valid, archive dishes are absent from Campaign choices and the
+  exact-digest built-in brand illustration remains available.
 - Every fresh/status/interrupted-forward/stabilize/finalize checkpoint requires
-  and calls both the Complete99 operations invariant and the Culinary Science
-  invariant. Missing operations storage/capability or a fail-closed zero-route
+  and calls the Complete99 operations, Campaign Studio and Culinary Science
+  invariants. Missing protected storage/capability or a fail-closed zero-route
   Museum overlay cannot finalize after a database-version short circuit.
-- The public update manifest matches version 1.21.0 and its versioned package URL.
+- The public update manifest matches version 1.22.0 and its versioned package URL.
 - The generated-asset manifest is treated as an editorial evidence registry,
   never as proof that a file is installed in the package.
 - The default-deny Science media policy inventories exactly 47 stems and 175

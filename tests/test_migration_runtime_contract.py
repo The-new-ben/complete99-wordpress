@@ -27,6 +27,60 @@ BRIDGE = ROOT / "deploy" / "temporary-bridge.php"
 
 
 class MigrationRuntimeContractTests(unittest.TestCase):
+    def test_core_activation_and_deactivation_finalize_only_after_option_persistence(self) -> None:
+        platform = PLATFORM.read_text(encoding="utf-8")
+        self.assertIn("add_action( 'activated_plugin'", platform)
+        self.assertIn("add_action( 'deactivated_plugin'", platform)
+        self.assertIn("SELECT option_id,option_value FROM {$wpdb->options}", platform)
+        self.assertIn("ORDER BY option_id ASC LIMIT 2", platform)
+        activation = platform.split("public static function activate()", 1)[1].split(
+            "private static function register_lifecycle_shutdown_guard", 1
+        )[0]
+        self.assertNotIn("complete_activation_recovery", activation)
+        self.assertIn("self::$activation_pending_token", activation)
+        persisted = platform.split("public static function activation_persisted", 1)[1].split(
+            "public static function recover_active_upgrade", 1
+        )[0]
+        self.assertIn("plugin_activation_is_persisted( true )", persisted)
+        self.assertIn("complete_activation_recovery", persisted)
+        deactivation = platform.split("public static function deactivate()", 1)[1]
+        self.assertIn("begin_deactivation_suspension()", deactivation)
+        self.assertIn("is_wp_error( $prepared )", deactivation)
+        self.assertIn("plugin_activation_is_persisted( false )", deactivation)
+        self.assertIn("complete_deactivation_suspension", deactivation)
+        self.assertIn("is_wp_error( $finalized )", deactivation)
+        self.assertIn("lifecycle_shutdown_guard", platform)
+
+    @unittest.skipUnless(shutil.which("php"), "PHP is required for the runtime contract")
+    def test_core_activation_persistence_gate_executes_against_exact_row(self) -> None:
+        platform_path = PLATFORM.as_posix().replace("'", "\\'")
+        script = r"""
+define('ABSPATH',__DIR__);define('ARRAY_A','ARRAY_A');define('COMPLETE99_PLATFORM_FILE','complete99-platform/complete99-platform.php');
+class WP_Error{} function is_wp_error($v){return $v instanceof WP_Error;} function plugin_basename($v){return basename(dirname($v)).'/'.basename($v);} function maybe_unserialize($v){$x=@unserialize($v);return false===$x&&'b:0;'!==$v?$v:$x;} function flush_rewrite_rules($hard=true){$GLOBALS['flushed']=true;}
+class C99CoreWpdb{public $options='wp_options';public $last_error='';public $rows=array();public function prepare($q,...$a){return array($q,$a);}public function get_results($q,$mode=null){return $this->rows;}}
+class Complete99_Campaigns{public static $complete=array();public static $suspend=array();public static function complete_activation_recovery($t){self::$complete[]=$t;return true;}public static function abort_activation_recovery($t){return true;}public static function begin_deactivation_suspension(){self::$suspend[]='begin';return array('token'=>str_repeat('b',64));}public static function complete_deactivation_suspension($t){self::$suspend[]='complete:'.$t;return true;}public static function abort_deactivation_suspension($t){self::$suspend[]='abort:'.$t;return true;}}
+$wpdb=new C99CoreWpdb();require '__PLATFORM_PATH__';$gate=new ReflectionMethod('Complete99_Platform','plugin_activation_is_persisted');$gate->setAccessible(true);$token=new ReflectionProperty('Complete99_Platform','activation_pending_token');$token->setAccessible(true);$deact=new ReflectionProperty('Complete99_Platform','deactivation_pending_token');$deact->setAccessible(true);
+function row($plugins){return array(array('option_id'=>9,'option_value'=>serialize($plugins)));}
+$wpdb->rows=row(array('complete99-platform/complete99-platform.php'));$active=$gate->invoke(null,true);$inactiveFalse=$gate->invoke(null,false);$token->setValue(null,str_repeat('a',64));Complete99_Platform::activation_persisted('complete99-platform/complete99-platform.php',false);$tokenAfter=$token->getValue();
+$wpdb->rows=row(array('other/plugin.php'));$inactive=$gate->invoke(null,false);$deact->setValue(null,str_repeat('b',64));Complete99_Platform::deactivation_persisted('complete99-platform/complete99-platform.php',false);$deactAfter=$deact->getValue();
+$wpdb->rows=array();$missing=$gate->invoke(null,true);$wpdb->rows=array(array('option_id'=>1,'option_value'=>serialize(array())),array('option_id'=>2,'option_value'=>serialize(array())));$duplicate=$gate->invoke(null,true);$wpdb->rows=array(array('option_id'=>1,'option_value'=>'not-serialized'));$malformed=$gate->invoke(null,true);
+echo json_encode(array('active'=>$active,'inactiveFalse'=>$inactiveFalse,'inactive'=>$inactive,'missing'=>$missing,'duplicate'=>$duplicate,'malformed'=>$malformed,'complete'=>Complete99_Campaigns::$complete,'tokenAfter'=>$tokenAfter,'suspend'=>Complete99_Campaigns::$suspend,'deactAfter'=>$deactAfter,'flushed'=>!empty($GLOBALS['flushed'])),JSON_THROW_ON_ERROR);
+""".replace("__PLATFORM_PATH__", platform_path)
+        result = json.loads(subprocess.run(
+            ["php", "-r", script], cwd=ROOT, capture_output=True, text=True,
+            encoding="utf-8", timeout=20, check=True,
+        ).stdout)
+        self.assertTrue(result["active"], result)
+        self.assertFalse(result["inactiveFalse"], result)
+        self.assertTrue(result["inactive"], result)
+        for key in ("missing", "duplicate", "malformed"):
+            self.assertFalse(result[key], result)
+        self.assertEqual(["a" * 64], result["complete"], result)
+        self.assertEqual("", result["tokenAfter"], result)
+        self.assertEqual(["complete:" + "b" * 64], result["suspend"], result)
+        self.assertEqual("", result["deactAfter"], result)
+        self.assertTrue(result["flushed"], result)
+
     def test_cross_request_lock_is_bounded_and_always_released(self) -> None:
         platform = PLATFORM.read_text(encoding="utf-8")
         migration = platform[platform.index("private static function run_migration") :]
@@ -101,6 +155,13 @@ class Complete99_Settings {{
     public static function assert_defaults() {{}}
 }}
 class Complete99_Ops {{
+    public static function prepare_schema() {{}}
+    public static function install() {{}}
+    public static function assert_invariants() {{}}
+}}
+class Complete99_Campaigns {{
+    public static function begin_authority_write($source) {{ return true; }}
+    public static function end_authority_write() {{ return true; }}
     public static function prepare_schema() {{}}
     public static function install() {{}}
     public static function assert_invariants() {{}}
@@ -247,6 +308,13 @@ class Complete99_Settings {{
     public static function assert_defaults() {{}}
 }}
 class Complete99_Ops {{
+    public static function prepare_schema() {{}}
+    public static function install() {{}}
+    public static function assert_invariants() {{}}
+}}
+class Complete99_Campaigns {{
+    public static function begin_authority_write($source) {{ return true; }}
+    public static function end_authority_write() {{ return true; }}
     public static function prepare_schema() {{}}
     public static function install() {{}}
     public static function assert_invariants() {{}}
@@ -496,6 +564,11 @@ class Complete99_Content {{
 class Complete99_Leads {{}}
 class Complete99_Settings {{}}
 class Complete99_Ops {{
+    public static function prepare_schema() {{}}
+}}
+class Complete99_Campaigns {{
+    public static function begin_authority_write($source) {{ return true; }}
+    public static function end_authority_write() {{ return true; }}
     public static function prepare_schema() {{}}
 }}
 

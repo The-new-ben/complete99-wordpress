@@ -20,6 +20,7 @@ CONSUMER = PLUGIN / "includes" / "class-complete99-consumer.php"
 CONTENT = PLUGIN / "includes" / "class-complete99-content.php"
 FRONTEND = PLUGIN / "includes" / "class-complete99-frontend.php"
 REST = PLUGIN / "includes" / "class-complete99-rest.php"
+MEDIA_RIGHTS = PLUGIN / "data" / "consumer-media-rights.php"
 LIVE_DISH_SITEMAP = PLUGIN / "includes" / "class-complete99-live-dish-sitemap-provider.php"
 CONSUMER_CONTENT = PLUGIN / "data" / "consumer-content.php"
 PUBLIC_SCRIPT = PLUGIN / "assets" / "js" / "public.js"
@@ -523,11 +524,11 @@ echo wp_json_encode(array(
         cls.css = CONSUMER_CSS.read_text(encoding="utf-8")
         cls.materializer = MATERIALIZER.read_text(encoding="utf-8")
 
-    def test_release_version_is_exact_1_21_0(self) -> None:
+    def test_release_version_is_exact_1_22_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.21\.0$")
-        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.21.0' );", source)
-        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.21.0' );", source)
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.22\.0$")
+        self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.22.0' );", source)
+        self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.22.0' );", source)
 
     def test_product_receipt_identity_uses_unfiltered_edit_context(self) -> None:
         identity = self.live_catalog.split(
@@ -1786,9 +1787,16 @@ echo json_encode(array('held' => $held, 'ready' => $ready), JSON_THROW_ON_ERROR 
         self.assertIn("wordpress_bundle_with_synced_controls", resolver)
         self.assertIn("data/consumer-menu.php", bundled)
         self.assertIn("'launch_ready'", bundled)
-        self.assertIn("'business_owned'", bundled)
-        self.assertIn("'approved_public_use'", bundled)
+        self.assertIn("Complete99_Consumer_Media_Rights::assert_invariants", bundled)
+        self.assertIn("Complete99_Consumer_Media_Rights::record_for_asset", bundled)
+        self.assertIn("$media_rights['media_provenance']", bundled)
+        self.assertIn("$media_rights['media_rights_state']", bundled)
         self.assertIn("'_complete99_source'", bundled)
+        self.assertTrue(all("media_provenance" not in row for row in menu))
+        self.assertTrue(all("media_rights_state" not in row for row in menu))
+        rights_source = MEDIA_RIGHTS.read_text(encoding="utf-8")
+        self.assertEqual(13, rights_source.count("'media_provenance'          => 'complete99_archive'"))
+        self.assertEqual(13, rights_source.count("'campaign_use_authorized'   => false"))
 
         consumer_menu = self.consumer.split("public static function menu_items", 1)[1].split(
             "public static function image_url", 1
