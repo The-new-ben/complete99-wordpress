@@ -4093,6 +4093,15 @@ def main() -> int:
             status_fields["projected_deployment_id"] = orphaned_proof["proof"][
                 "prior_run"
             ]["deployment_id"]
+        elif interrupted_proof is not None:
+            # The bridge exposes transactional storage only with a consistent
+            # database observation.  Projecting the already-reviewed failed
+            # deployment ID is read-only, preserves the raw fingerprint and
+            # current deployment fields, and avoids weakening recovery proof
+            # validation for pending-stabilization journals.
+            status_fields["projected_deployment_id"] = interrupted_proof[
+                "proof"
+            ]["failed_run"]["deployment_id"]
         status = deployer.bridge_call(
             client,
             "status",

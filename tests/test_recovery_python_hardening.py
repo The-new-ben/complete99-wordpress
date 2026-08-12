@@ -3716,6 +3716,10 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             ["status"],
             [call.args[1] for call in fake.bridge_call.call_args_list],
         )
+        self.assertEqual(
+            loaded["proof"]["failed_run"]["deployment_id"],
+            fake.bridge_call.call_args.kwargs["projected_deployment_id"],
+        )
         audit = write_audit.call_args.args[1]
         self.assertEqual("interrupted_forward_observed", audit["result"])
         self.assertEqual("observe_interrupted_forward", audit["decision"])
@@ -3911,6 +3915,10 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             loaded=loaded,
             status=status,
             observe_only=False,
+        )
+        self.assertEqual(
+            loaded["proof"]["failed_run"]["deployment_id"],
+            fake.bridge_call.call_args.kwargs["projected_deployment_id"],
         )
         adopt.assert_called_once()
         rollback.assert_not_called()
