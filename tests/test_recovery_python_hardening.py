@@ -2092,6 +2092,62 @@ class RecoveryProofTests(unittest.TestCase):
 
 
 class InterruptedForwardRecoveryTests(unittest.TestCase):
+    def test_real_1_22_pending_stabilization_v1_proof_is_bound(self) -> None:
+        loaded = RECOVER.load_interrupted_forward_proof(
+            DEPLOY,
+            "docs/recovery-proofs/c99-prod-31598196288-1.json",
+        )
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        package = RECOVER.validate_interrupted_forward_dist(
+            DEPLOY,
+            ROOT / "plugin-dist",
+            loaded,
+        )
+        self.assertEqual("complete99-interrupted-forward-proof/v1", loaded["schema"])
+        self.assertEqual("1.22.0", package["version"])
+        self.assertEqual(
+            "9482ec75a92818e870e263036e291df9def80ad810414fb5d661e2cdb66908eb",
+            loaded["recovery_identity"]["database_fingerprint"],
+        )
+
+    def test_pending_stabilization_diagnostic_captures_candidate_checkpoint(self) -> None:
+        loaded = interrupted_forward_loaded(version=1)
+        status = interrupted_forward_status(loaded)
+        status.update(
+            {
+                "candidate_activation_completed_at": 1_786_533_000,
+                "candidate_activation_phase": "complete",
+                "candidate_activation_required": True,
+                "candidate_database_fingerprint": "e" * 64,
+                "candidate_prior_active": True,
+                "candidate_requested_active": True,
+                "forward_ready": True,
+                "forward_stabilization_candidate": True,
+                "interrupted_forward_candidate": False,
+                "phase": "installed_pending_stabilization",
+                "recovery_ready": False,
+                "temp_removed": True,
+            }
+        )
+        observed = RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+            DEPLOY,
+            status,
+            loaded,
+        )
+        self.assertEqual(
+            "installed_pending_stabilization",
+            observed["safe_status"]["phase"],
+        )
+        self.assertTrue(
+            observed["safe_status"]["forward_stabilization_candidate"]
+        )
+        self.assertEqual(
+            "e" * 64,
+            observed["safe_status"]["candidate_database_fingerprint"],
+        )
+        self.assertFalse(observed["recovery_authority"])
+
     def test_real_v1_proof_and_exact_dist_are_bound(self) -> None:
         loaded = RECOVER.load_interrupted_forward_proof(
             DEPLOY,
@@ -2886,6 +2942,20 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             with self.subTest(bounded_bridge_phase=phase):
                 phase_changed = copy.deepcopy(exact)
                 phase_changed["phase"] = phase
+                if phase == "installed_pending_stabilization":
+                    phase_changed.update(
+                        {
+                            "candidate_activation_completed_at": 1_786_533_000,
+                            "candidate_activation_phase": "complete",
+                            "candidate_activation_required": True,
+                            "candidate_database_fingerprint": "e" * 64,
+                            "candidate_prior_active": True,
+                            "candidate_requested_active": True,
+                            "forward_ready": True,
+                            "forward_stabilization_candidate": True,
+                            "temp_removed": True,
+                        }
+                    )
                 captured = RECOVER.capture_interrupted_forward_mismatch_diagnostic(
                     DEPLOY,
                     phase_changed,

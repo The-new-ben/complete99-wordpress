@@ -1081,6 +1081,22 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             package["installed_sha256"],
         )
 
+    def test_repository_1_22_pending_stabilization_proof_is_exact(self) -> None:
+        proof = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31598196288-1.json",
+            ROOT,
+        )
+        package = VALIDATOR.validate_interrupted_forward_dist(
+            ROOT / "plugin-dist",
+            proof,
+        )
+        self.assertEqual("complete99-interrupted-forward-proof/v1", proof["schema"])
+        self.assertEqual("1.22.0", package["version"])
+        self.assertEqual(
+            "9482ec75a92818e870e263036e291df9def80ad810414fb5d661e2cdb66908eb",
+            proof["recovery_identity"]["database_fingerprint"],
+        )
+
     def test_repository_robots_checkpoint_adoption_v3_proof_is_exact(self) -> None:
         proof = VALIDATOR.load_interrupted_forward_proof(
             "docs/recovery-proofs/c99-prod-31217684760-1-v2.json",
@@ -1640,6 +1656,21 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                 changed_receipt = changed["interrupted_forward_observation"]
                 safe = changed_receipt["safe_status"]
                 safe["phase"] = phase
+                changed["discovery"]["owner_phase"] = phase
+                if phase == "installed_pending_stabilization":
+                    safe.update(
+                        {
+                            "candidate_activation_completed_at": 1_786_533_000,
+                            "candidate_activation_phase": "complete",
+                            "candidate_activation_required": True,
+                            "candidate_database_fingerprint": "e" * 64,
+                            "candidate_prior_active": True,
+                            "candidate_requested_active": True,
+                            "forward_ready": True,
+                            "forward_stabilization_candidate": True,
+                            "temp_removed": True,
+                        }
+                    )
                 changed_receipt["mismatches"] = (
                     VALIDATOR.interrupted_status_mismatches(
                         safe,

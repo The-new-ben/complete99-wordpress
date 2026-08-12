@@ -1,0 +1,279 @@
+{
+  "artifact": "complete99-platform-1.21.0.zip",
+  "artifact_staging": {
+    "artifact_sha256": "399fd19aafde8721f4ca0f85aedde1fd8f929f7e28f7b4d674c9d0293f1accbd",
+    "artifact_size": 27962452,
+    "chunk_bytes": 1048576,
+    "chunk_count": 27,
+    "complete": true,
+    "final_next_offset": 27962452
+  },
+  "artifact_staging_after_exercise": {
+    "artifact_sha256": "399fd19aafde8721f4ca0f85aedde1fd8f929f7e28f7b4d674c9d0293f1accbd",
+    "artifact_size": 27962452,
+    "chunk_bytes": 1048576,
+    "chunk_count": 27,
+    "complete": true,
+    "final_next_offset": 27962452
+  },
+  "bootstrap_cleanup": {
+    "exact_name": "c99-deploy-bootstrap",
+    "known_id": 5,
+    "known_id_matched": false,
+    "removed_ids": [],
+    "row_absence_verified": true
+  },
+  "bridge_site_identity": {
+    "home_host": "complete99.co.il",
+    "rest_host": "complete99.co.il",
+    "siteurl_host": "complete99.co.il"
+  },
+  "bridge_site_identity_after_exercise": {
+    "home_host": "complete99.co.il",
+    "rest_host": "complete99.co.il",
+    "siteurl_host": "complete99.co.il"
+  },
+  "cleanup": {
+    "removed_ids": [
+      217
+    ],
+    "route_404": true,
+    "row_absence_verified": true,
+    "snippet_active": false,
+    "snippet_deleted": true
+  },
+  "commit": "77185dd9e16fe23f68a87005e1394eb8dfaf7ae1",
+  "deployment_id": "c99-prod-31437559134-1",
+  "dry_run": false,
+  "finalize": {
+    "cache_purge": {
+      "ezcache_detected": false,
+      "object_cache_flushed": true
+    },
+    "finalized": true,
+    "lock_released": true,
+    "response_recovered": false,
+    "state_removed": true
+  },
+  "finished_at": "2026-08-10T22:20:12Z",
+  "health": {
+    "component": "complete99-platform",
+    "database_version": "1.21.0",
+    "deployment_id": "c99-prod-31437559134-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.21.0"
+  },
+  "health_after_exercise": {
+    "component": "complete99-platform",
+    "database_version": "1.21.0",
+    "deployment_id": "c99-prod-31437559134-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.21.0"
+  },
+  "identity": {
+    "id": 1,
+    "roles": [
+      "administrator"
+    ],
+    "site_identity": {
+      "home": "https://complete99.co.il",
+      "url": "https://complete99.co.il"
+    }
+  },
+  "install": {
+    "baseline_database_fingerprint": "ba10e3c97917910f023a1d09b7cbc5954633ccbeb58060519854971c8d11e85a",
+    "cache_purge": {
+      "ezcache_detected": false,
+      "object_cache_flushed": true
+    },
+    "had_plugin": true,
+    "installed_plugin_sha256": "98727e96eefdc858637537a285be5b7e80981821f0c48e7ee0268758311675e8",
+    "prior_active": true,
+    "prior_deployment": "c99-prod-31429662234-1",
+    "prior_plugin_sha256": "7af8c0be9b01f88223ca712ea6da3389245586505bd564640c6f07b9eee54d9d",
+    "prior_version": "1.20.0",
+    "robots_prior_exists": true,
+    "robots_prior_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "temp_removed": true
+  },
+  "install_after_exercise": {
+    "baseline_database_fingerprint": "ba10e3c97917910f023a1d09b7cbc5954633ccbeb58060519854971c8d11e85a",
+    "cache_purge": {
+      "ezcache_detected": false,
+      "object_cache_flushed": true
+    },
+    "had_plugin": true,
+    "installed_plugin_sha256": "98727e96eefdc858637537a285be5b7e80981821f0c48e7ee0268758311675e8",
+    "prior_active": true,
+    "prior_deployment": "c99-prod-31429662234-1",
+    "prior_plugin_sha256": "7af8c0be9b01f88223ca712ea6da3389245586505bd564640c6f07b9eee54d9d",
+    "prior_version": "1.20.0",
+    "robots_prior_exists": true,
+    "robots_prior_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "temp_removed": true
+  },
+  "local_test": false,
+  "preflight": {
+    "auto_update_enabled": false,
+    "current_active": true,
+    "current_deployment": "c99-prod-31429662234-1",
+    "current_version": "1.20.0",
+    "database_fingerprint": "ba10e3c97917910f023a1d09b7cbc5954633ccbeb58060519854971c8d11e85a",
+    "direct_filesystem": true,
+    "free_bytes": null,
+    "had_plugin": true,
+    "lock_reserved": true,
+    "plugin_main_exists": true,
+    "required_free_bytes": 224223904,
+    "robots_prior_exists": true,
+    "robots_prior_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "target_dir_exists": true,
+    "transactional_storage": {
+      "engine": "INNODB",
+      "tables": 3
+    }
+  },
+  "prior_health": {
+    "component": "complete99-platform",
+    "database_version": "1.20.0",
+    "deployment_id": "c99-prod-31429662234-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.20.0"
+  },
+  "prior_rendered_home": {
+    "body_sha256": "a4dcc99f5e4c8925792ed48ffa3254d80286ba0db7eab378af4fa1f398359e39",
+    "deployment_id": "c99-prod-31429662234-1",
+    "exact_path": "/",
+    "version": "1.20.0"
+  },
+  "rendered_home": {
+    "body_sha256": "d7d10f375ab35b704549f2dab8e64bfb60d596ca84dbac6e7f91946d62775193",
+    "deployment_id": "c99-prod-31437559134-1",
+    "exact_path": "/",
+    "version": "1.21.0"
+  },
+  "rendered_home_after_exercise": {
+    "body_sha256": "d7d10f375ab35b704549f2dab8e64bfb60d596ca84dbac6e7f91946d62775193",
+    "deployment_id": "c99-prod-31437559134-1",
+    "exact_path": "/",
+    "version": "1.21.0"
+  },
+  "result": "deployed",
+  "robots": {
+    "sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "status": 200
+  },
+  "robots_after_exercise": {
+    "sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "status": 200
+  },
+  "rollback": {
+    "database_restore": {
+      "meta_restored": 3012,
+      "ops_quarantine_pending": true,
+      "ops_tables_quarantined": 7,
+      "options_restored": 11,
+      "posts_restored": 371,
+      "sync_configuration_restored": true
+    },
+    "prior_deployment": "c99-prod-31429662234-1",
+    "prior_version": "1.20.0",
+    "robots_prior_exists": true,
+    "robots_prior_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "robots_restore": {
+      "already_restored": true,
+      "not_managed": false,
+      "response_recovered": false,
+      "restored": true
+    },
+    "rolled_back": true
+  },
+  "rollback_exercise": true,
+  "rollback_finalize": {
+    "cache_purge": {
+      "ezcache_detected": false,
+      "object_cache_flushed": true
+    },
+    "finalized": true,
+    "lock_released": true,
+    "response_recovered": false,
+    "state_removed": true
+  },
+  "rollback_health": {
+    "component": "complete99-platform",
+    "database_version": "1.20.0",
+    "deployment_id": "c99-prod-31429662234-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.20.0"
+  },
+  "rollback_integrity": {
+    "database_fingerprint": "ba10e3c97917910f023a1d09b7cbc5954633ccbeb58060519854971c8d11e85a",
+    "database_restored": true,
+    "plugin_absent": false,
+    "plugin_files_restored": true,
+    "robots_prior_exists": true,
+    "robots_restored": true,
+    "robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e"
+  },
+  "rollback_rendered_home": {
+    "body_sha256": "a4dcc99f5e4c8925792ed48ffa3254d80286ba0db7eab378af4fa1f398359e39",
+    "deployment_id": "c99-prod-31429662234-1",
+    "exact_path": "/",
+    "version": "1.20.0"
+  },
+  "rollback_robots": {
+    "sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "status": 200
+  },
+  "sha256": "399fd19aafde8721f4ca0f85aedde1fd8f929f7e28f7b4d674c9d0293f1accbd",
+  "slug": "complete99-platform",
+  "source_sha256": "0c07c4df46872b559d847932ccda190b121be2b7c8da88a079ccee241a0b4670",
+  "stabilize": {
+    "cache_purge": {
+      "ezcache_detected": false,
+      "object_cache_flushed": true
+    },
+    "database_version": "1.21.0",
+    "deployment_id": "c99-prod-31437559134-1",
+    "initial_failure_context": {},
+    "installed_plugin_sha256": "98727e96eefdc858637537a285be5b7e80981821f0c48e7ee0268758311675e8",
+    "post_install_database_fingerprint": "d7900e9ea443e2ca78dc634990cc578c916872297dd0c249b0e74cd92472abcd",
+    "response_recovered": false,
+    "stabilization_attempts": 1,
+    "stabilized": true,
+    "stabilized_from_phase": "installed_pending_stabilization",
+    "version": "1.21.0"
+  },
+  "stabilize_after_exercise": {
+    "cache_purge": {
+      "ezcache_detected": false,
+      "object_cache_flushed": true
+    },
+    "database_version": "1.21.0",
+    "deployment_id": "c99-prod-31437559134-1",
+    "initial_failure_context": {},
+    "installed_plugin_sha256": "98727e96eefdc858637537a285be5b7e80981821f0c48e7ee0268758311675e8",
+    "post_install_database_fingerprint": "eb39d82877754eabf9d68404173533704d3b922b4fd2870698520542b50848ae",
+    "response_recovered": false,
+    "stabilization_attempts": 1,
+    "stabilized": true,
+    "stabilized_from_phase": "installed_pending_stabilization",
+    "version": "1.21.0"
+  },
+  "stale_bridges_recovered": [],
+  "started_at": "2026-08-10T22:18:21Z",
+  "sync_configuration_after_exercise": {
+    "changed": false,
+    "configured": true,
+    "database_fingerprint": "eb39d82877754eabf9d68404173533704d3b922b4fd2870698520542b50848ae",
+    "idempotent": true,
+    "response_recovered": false
+  },
+  "version": "1.21.0"
+}

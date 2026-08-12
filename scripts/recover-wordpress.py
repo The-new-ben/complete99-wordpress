@@ -926,10 +926,11 @@ def validate_interrupted_forward_source_audits(
     failed_health = failed_audit.get("prior_health")
     failed_home = failed_audit.get("prior_rendered_home")
     failed_cleanup = failed_audit.get("failure_rollback")
+    failed_error = failed_audit.get("error")
     if (
         failed_audit.get("dry_run") is not False
         or failed_audit.get("result") != "failed"
-        or failed_audit.get("error") != "HTTPDeployError"
+        or failed_error not in {"DeployError", "HTTPDeployError"}
         or failed_audit.get("failed_gate") != "install"
         or failed_audit.get("commit") != failed["commit"]
         or failed_audit.get("version") != failed["version"]
@@ -981,29 +982,49 @@ def validate_interrupted_forward_source_audits(
             "Interrupted forward failed deploy audit conflicts with the proof"
         )
 
-    recovery_status = recovery_audit.get("initial_status")
+    raw_recovery_status = recovery_audit.get("initial_status")
+    recovery_status = (
+        raw_recovery_status if isinstance(raw_recovery_status, dict) else {}
+    )
+    recovery_status_shape = {
+        "database_fingerprint",
+        "database_manifest_sha256",
+        "database_storage",
+        "lock_owned",
+        "phase",
+        "process_lock_available",
+        "projected_database_fingerprint",
+        "projected_deployment_id",
+        "recovery_ready",
+        "state_exists",
+    }
+    legacy_interrupted_install = (
+        failed_error == "HTTPDeployError"
+        and recovery_status.get("phase") == "installing"
+        and recovery_status.get("recovery_ready") is True
+        and "stabilization_failure" not in recovery_audit
+    )
+    pending_stabilization = (
+        failed_error == "DeployError"
+        and recovery_status.get("phase") == "installed_pending_stabilization"
+        and recovery_status.get("recovery_ready") is False
+        and exact_json_equal(
+            recovery_audit.get("stabilization_failure"),
+            {
+                "error": "HTTPDeployError",
+                "phase": "installed_pending_stabilization",
+            },
+        )
+    )
     if (
         recovery_audit.get("result") != "failed"
         or recovery_audit.get("error") != "HTTPDeployError"
         or recovery_audit.get("discovery") is not None
-        or not isinstance(recovery_status, dict)
-        or set(recovery_status)
-        != {
-            "database_fingerprint",
-            "database_manifest_sha256",
-            "database_storage",
-            "lock_owned",
-            "phase",
-            "process_lock_available",
-            "projected_database_fingerprint",
-            "projected_deployment_id",
-            "recovery_ready",
-            "state_exists",
-        }
-        or recovery_status.get("phase") != "installing"
+        or not isinstance(raw_recovery_status, dict)
+        or set(recovery_status) != recovery_status_shape
+        or not (legacy_interrupted_install or pending_stabilization)
         or recovery_status.get("state_exists") is not True
         or recovery_status.get("lock_owned") is not True
-        or recovery_status.get("recovery_ready") is not True
         or recovery_status.get("process_lock_available") is not True
         or recovery_status.get("projected_database_fingerprint") != ""
         or recovery_status.get("projected_deployment_id") != ""
@@ -2355,6 +2376,18 @@ INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS = (
     "runtime_version",
 )
 
+INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS = (
+    "candidate_activation_completed_at",
+    "candidate_activation_phase",
+    "candidate_activation_required",
+    "candidate_database_fingerprint",
+    "candidate_prior_active",
+    "candidate_requested_active",
+    "forward_ready",
+    "forward_stabilization_candidate",
+    "temp_removed",
+)
+
 INTERRUPTED_FORWARD_SAFE_PHASES = {
     "",
     "cleanup_failed",
@@ -2414,6 +2447,20 @@ def validate_interrupted_forward_safe_status_shape(
     safe_status = {
         key: status[key] for key in INTERRUPTED_FORWARD_SAFE_STATUS_KEYS
     }
+    if safe_status.get("phase") == "installed_pending_stabilization":
+        if any(
+            key not in status
+            for key in INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS
+        ):
+            raise deployer.DeployError(
+                f"{label} stabilization checkpoint fields are missing"
+            )
+        safe_status.update(
+            {
+                key: status[key]
+                for key in INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS
+            }
+        )
     digest = deployer.re.compile(r"[a-f0-9]{64}")
     version = deployer.re.compile(
         r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?"
@@ -2464,6 +2511,30 @@ def validate_interrupted_forward_safe_status_shape(
         or safe_status["phase"] not in INTERRUPTED_FORWARD_SAFE_PHASES
     ):
         raise deployer.DeployError(f"{label} safe phase status is invalid")
+    if safe_status["phase"] == "installed_pending_stabilization" and (
+        type(safe_status.get("candidate_activation_completed_at")) is not int
+        or safe_status["candidate_activation_completed_at"] <= 0
+        or safe_status["candidate_activation_completed_at"]
+        > 9_223_372_036_854_775_807
+        or safe_status.get("candidate_activation_phase") != "complete"
+        or type(safe_status.get("candidate_database_fingerprint")) is not str
+        or digest.fullmatch(safe_status["candidate_database_fingerprint"])
+        is None
+        or any(
+            type(safe_status.get(field)) is not bool
+            for field in (
+                "candidate_activation_required",
+                "candidate_prior_active",
+                "candidate_requested_active",
+                "forward_ready",
+                "forward_stabilization_candidate",
+                "temp_removed",
+            )
+        )
+    ):
+        raise deployer.DeployError(
+            f"{label} stabilization checkpoint status is invalid"
+        )
     return safe_status
 
 
