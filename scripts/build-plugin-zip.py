@@ -20,7 +20,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-12 00:00:00"
+RELEASE_LAST_UPDATED = "2026-08-12 14:38:02"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -588,6 +588,13 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Made every activation-recovery bootstrap enter the durable suspending lifecycle, complete the bounded cleanup and public-absence receipt chain, and only then restore active Campaign truth.</li>"
+                "<li>Repaired the two receipt-less 1.22 bootstrap states only under exact lifecycle and worker ownership, while partial or conflicting immutable receipt identities remain fail closed.</li>"
+                "<li>Corrected resumed-generation capacity binding so active and inactive lifecycle states authenticate the exact prior inactive receipt instead of an adjacent generation.</li>"
+                "<li>Preserved the reviewed Campaign, Operations, deployment, consumer, commerce and Science boundaries; no legacy Campaign record or external-provider publication is imported or claimed.</li>"
+                "</ul>"
+                "<h4>1.22.0</h4>"
                 "<ul>"
                 "<li>Added a private WordPress-native Campaign Studio with location-scoped authorization, versioned approvals and packages, protected evidence, owned-site scheduling, exact public readback, human and system receipts, observed results, privacy-safe aggregate measurement and accountable moderation transitions.</li>"
                 "<li>Made owned placements fail closed through deterministic package, slot, lifecycle, authority and receipt bindings; bounded quarantine, absence proofs, generation recovery and cache cleanup preserve historical truth without claiming external-provider publication.</li>"

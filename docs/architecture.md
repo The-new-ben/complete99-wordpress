@@ -645,7 +645,7 @@ receipt. Bundled REST fails closed if the overlay is absent or invalid, and
 Campaign invariant/asset resolution revalidates it directly. The checked-in
 brand illustration remains the only built-in Campaign image choice.
 
-The 1.22 artifact may proceed only through protected `main`, a green required CI
+The current 1.22.1 artifact may proceed only through protected `main`, a green required CI
 result and this controlled workflow. It activates only the exact reviewed
 search-policy allowlist; it does not publish held Science content. A later valid
 owner receipt requires a newly reviewed and rebuilt artifact with all four exact

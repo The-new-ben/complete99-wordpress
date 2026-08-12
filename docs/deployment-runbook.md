@@ -430,7 +430,37 @@ earlier probe-finalize response was lost, the next run waits for that unstarted
 probe lease, releases only its exact state-free reservation, and repeats the full
 attestation under a new probe.
 
-## Release 1.22.0 Campaign Studio and lifecycle verification
+## Release 1.22.1 Campaign bootstrap proof recovery
+
+Release 1.22.1 is the corrective Campaign release. It does not adopt a failed
+1.22 forward candidate whose Campaign invariants are false. Before deployment:
+
+1. Confirm the plugin header and constants are exactly `1.22.1` and
+   `c99-wp-1.22.1`, and the versioned Science policy is named for `1.22.1` while
+   retaining the reviewed 47-stem, 175-file, 70-delivery and 105-repository-only
+   boundary.
+2. Confirm a fresh activation-recovery install seeds lifecycle `suspending`,
+   completes the bounded aggregate cleanup, cron-empty and public-absence
+   receipts, reaches receipt-bound `inactive`, and only then transitions active.
+   Receipt-less direct inactive-to-active bootstrap is forbidden.
+3. Confirm exact legacy `inactive` generation 1 and `active` generation 2 states
+   are repaired only while the activation owner holds both lifecycle and worker
+   fences and every generation-1 lifecycle receipt identity is wholly empty.
+   Any partial, duplicate or conflicting provider/audit evidence fails closed.
+4. Confirm inactive capacity binds receipt generation `G-1`, while resumed active
+   capacity binds receipt generation `G-2` and its `inactiveGeneration=G-1`.
+   Direct active generation 1 remains the only receipt-free non-recovery genesis.
+5. For locked deployment `c99-prod-31598196288-1`, use the normal exact-main
+   workflow recovery preflight. Stabilization must fail on the recorded Campaign
+   invariant, trigger authenticated rollback to the exact reviewed 1.21 baseline,
+   and verify that rollback before 1.22.1 mutation begins. Do not create or use a
+   v2 forward-adoption proof for that unhealthy candidate.
+6. After the corrected deployment, require Campaign capacity, lifecycle, cron,
+   evidence and suppression invariants to be inspectable and ready; then require
+   the dedicated worker's fresh 15-minute heartbeat before enabling an owned
+   placement.
+
+## Release 1.22.0 Campaign Studio baseline (historical)
 
 Release 1.22.0 adds the reviewed WordPress-native Campaign boundary without
 claiming that legacy Campaign data, external provider publication or production

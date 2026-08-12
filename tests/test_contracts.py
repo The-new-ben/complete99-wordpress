@@ -185,14 +185,18 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("added no WooCommerce offers, stock, supplier claims", changelog)
         self.assertIn("payment activation or role assignments", changelog)
 
-    def test_release_1_22_0_manifest_describes_campaign_migration_and_frozen_history(self) -> None:
+    def test_release_1_22_1_manifest_describes_bootstrap_repair_and_frozen_history(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
-        self.assertTrue(changelog.startswith("<h4>1.22.0</h4>"))
+        self.assertTrue(changelog.startswith("<h4>1.22.1</h4>"))
+        self.assertIn("durable suspending lifecycle", changelog)
+        self.assertIn("receipt-less 1.22 bootstrap states", changelog)
+        self.assertIn("Corrected resumed-generation capacity binding", changelog)
+        self.assertIn("<h4>1.22.0</h4>", changelog)
         self.assertIn("private WordPress-native Campaign Studio", changelog)
         self.assertIn("deterministic package, slot, lifecycle, authority and receipt bindings", changelog)
         self.assertIn("deployment manifest v3 and fresh-request activation handoff", changelog)

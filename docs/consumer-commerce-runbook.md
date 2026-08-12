@@ -1,9 +1,13 @@
 # Consumer site and commerce runbook
 
 Last reviewed: 2026-08-12
-Release target: Complete99 Platform 1.22.0
+Release target: Complete99 Platform 1.22.1
 
-## Current 1.22.0 WordPress, Museum and transaction-truth boundary
+## Current 1.22.1 WordPress, Museum and transaction-truth boundary
+
+Release 1.22.1 changes only Campaign lifecycle bootstrap and proof recovery. It
+does not change products, prices, stock, checkout, payments, Museum delivery or
+consumer-media rights.
 
 Release 1.22.0 adds private Campaign governance and owned-site placement
 readback without changing consumer commerce truth. It creates no product,
