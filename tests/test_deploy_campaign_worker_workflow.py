@@ -35,6 +35,17 @@ class Complete99DeployCampaignWorkerContracts(unittest.TestCase):
 
         self.assertIn("final identical-artifact redeploy", job)
         self.assertNotIn("1.21", job)
+        self.assertEqual(2, job.count("if: inputs.rollback_exercise != true"))
+        self.assertIn(
+            "- name: Check out the exact deployed source for the worker gate\n"
+            "        if: inputs.rollback_exercise != true",
+            job,
+        )
+        self.assertIn(
+            "- name: Require a fresh Campaign worker heartbeat from the final release\n"
+            "        if: inputs.rollback_exercise != true",
+            job,
+        )
         self.assertIn("python scripts/monitor-campaign-worker.py", job)
         self.assertIn("persist-credentials: false", job)
         self.assertIn("fetch-depth: 1", job)
