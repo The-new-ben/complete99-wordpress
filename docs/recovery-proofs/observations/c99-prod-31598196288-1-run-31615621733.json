@@ -1,0 +1,220 @@
+{
+  "bootstrap_cleanup": {
+    "exact_name": "c99-deploy-bootstrap",
+    "known_id": 5,
+    "known_id_matched": false,
+    "removed_ids": [],
+    "row_absence_verified": true
+  },
+  "bridge_site_identity": {
+    "home_host": "complete99.co.il",
+    "rest_host": "complete99.co.il",
+    "siteurl_host": "complete99.co.il"
+  },
+  "cleanup": {
+    "removed_ids": [
+      236
+    ],
+    "route_404": true,
+    "row_absence_verified": true,
+    "snippet_active": false,
+    "snippet_deleted": true
+  },
+  "commit": "355097c2b9c408ebc00cfcc55acecc24732acd86",
+  "decision": "observe_interrupted_forward_mismatch_diagnostic",
+  "deployment_id": "c99-prod-31598196288-1",
+  "discovery": {
+    "bootstrap_cleanup": {
+      "exact_name": "c99-deploy-bootstrap",
+      "known_id": 5,
+      "known_id_matched": false,
+      "removed_ids": [],
+      "row_absence_verified": true
+    },
+    "cleanup": {
+      "removed_ids": [
+        235
+      ],
+      "route_404": true,
+      "row_absence_verified": true,
+      "snippet_active": false,
+      "snippet_deleted": true
+    },
+    "owner_deployment_id": "c99-prod-31598196288-1",
+    "owner_phase": "installed_pending_stabilization",
+    "probe_id": "c99-recovery-probe-31615621733-2",
+    "result": "owner-discovered"
+  },
+  "finished_at": "2026-08-12T16:07:16Z",
+  "health": {
+    "component": "complete99-platform",
+    "database_version": "1.22.0",
+    "deployment_id": "c99-prod-31598196288-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.22.0"
+  },
+  "identity": {
+    "id": 1,
+    "roles": [
+      "administrator"
+    ],
+    "site_identity": {
+      "home": "https://complete99.co.il",
+      "url": "https://complete99.co.il"
+    }
+  },
+  "interrupted_forward_observation": {
+    "diagnostic_only": true,
+    "mismatches": [
+      "baseline_sync_configured",
+      "baseline_sync_secret_existed",
+      "interrupted_forward_candidate",
+      "migration_invariants_valid",
+      "phase",
+      "recovery_ready"
+    ],
+    "proof_consumed": false,
+    "recovery_authority": false,
+    "safe_status": {
+      "adopted_forward_no_rollback": false,
+      "baseline_database_fingerprint": "eb39d82877754eabf9d68404173533704d3b922b4fd2870698520542b50848ae",
+      "baseline_database_journal_valid": true,
+      "baseline_sync_configured": false,
+      "baseline_sync_secret_existed": false,
+      "campaign_capacity_diagnostic": {
+        "campaign_cohort_inspectable": true,
+        "fresh_install_empty": true,
+        "lifecycle_reserve_inspectable": false,
+        "operations_cohort_inspectable": true,
+        "prior_inactive_receipt_valid": false,
+        "quarantine_reserve_inspectable": false
+      },
+      "campaign_lifecycle": {
+        "canonical": true,
+        "generation": 2,
+        "state": "active"
+      },
+      "campaign_operational": {
+        "cache_ready": true,
+        "capabilities_ready": true,
+        "capacity_inspectable": false,
+        "capacity_ready": false,
+        "capacity_write_ready": false,
+        "cron_inspectable": true,
+        "cron_ready": false,
+        "evidence_inspectable": true,
+        "evidence_ready": true,
+        "ready": false,
+        "suppression_inspectable": true,
+        "suppression_invalid": false,
+        "suppression_ready": true,
+        "suppression_recoverable_pending": false
+      },
+      "candidate_activation_completed_at": 1786539183,
+      "candidate_activation_phase": "complete",
+      "candidate_activation_required": true,
+      "candidate_database_fingerprint": "9482ec75a92818e870e263036e291df9def80ad810414fb5d661e2cdb66908eb",
+      "candidate_prior_active": true,
+      "candidate_requested_active": true,
+      "current_active": true,
+      "current_database_version": "1.22.0",
+      "current_deployment": "c99-prod-31598196288-1",
+      "current_plugin_main_exists": true,
+      "current_plugin_sha256": "0046b5cfcd2db0a5ec87c2a75dc7f1d7956cad2e43bde0983c2f4e84b2836c1e",
+      "current_robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "current_sync_configured": true,
+      "current_target_dir_exists": true,
+      "current_version": "1.22.0",
+      "database_fingerprint": "9482ec75a92818e870e263036e291df9def80ad810414fb5d661e2cdb66908eb",
+      "database_fingerprint_available": true,
+      "database_manifest": {
+        "campaign_tables_count": 7,
+        "campaign_tables_sha256": "5e0f5d16a1e03bd17a1dee50577c2359888733c8456f33b7cf3c50b963e308a8",
+        "evaluation_ids_count": 72,
+        "evaluation_ids_sha256": "9e68465010fd0a9c345ad8937e093bdbc72b41ac5b624dd9f32924aa2d7d787b",
+        "ops_tables_count": 7,
+        "ops_tables_sha256": "0bac556548dbdc9159b0b20b7ccfa9a3bade9999a5fad3c2c6b800fa578275e0",
+        "options_without_deployment_marker_count": 12,
+        "options_without_deployment_marker_sha256": "3b467bc820331c0a6a5d1827c565220f220e9b86d3eaa1e880c4b28602b8fab9",
+        "postmeta_count": 3012,
+        "postmeta_sha256": "98c579285351d730d79bc9d98a9f4047cea8e49bfa8abaf1ffa75a3be827c40d",
+        "posts_count": 379,
+        "posts_sha256": "62d7453276bbe5e02a23a5dde00bf983ade4eeb2a12dfcbb1c52a11c4acb2992",
+        "schema": "complete99-database-snapshot-manifest/v3",
+        "seed_ids_count": 78,
+        "seed_ids_sha256": "00455cb67da773d904bd01979070c5fcc07fd82acdc5adaf07df60d9e8e99eba",
+        "sync_secret_configured": true,
+        "sync_secret_existed": true
+      },
+      "database_manifest_sha256": "9a7f5e30fffa30d0c6f7654a8223063b605d79607111421f666e2992516d6595",
+      "database_restored": false,
+      "database_storage": {
+        "engine": "INNODB",
+        "tables": 3
+      },
+      "deployment_id": "c99-prod-31598196288-1",
+      "expected_sha256": "f10d0cdca46485fc21b62f7e41c7b0dcf9f21e7153e8627f7d11185bb66044cb",
+      "expected_version": "1.22.0",
+      "forward_ready": true,
+      "forward_stabilization_candidate": true,
+      "had_plugin": true,
+      "installed_plugin_sha256": "0046b5cfcd2db0a5ec87c2a75dc7f1d7956cad2e43bde0983c2f4e84b2836c1e",
+      "interrupted_forward_candidate": false,
+      "interrupted_forward_database_manifest_sha256": "",
+      "interrupted_forward_proof_sha256": "",
+      "lock_owned": true,
+      "migration_failed": false,
+      "migration_invariant_checks": {
+        "campaigns": false,
+        "content": true,
+        "culinary_science": true,
+        "evaluation_catalog": true,
+        "ops": true,
+        "settings": true
+      },
+      "migration_invariants_valid": false,
+      "no_rollback_artifacts": true,
+      "phase": "installed_pending_stabilization",
+      "post_install_database_fingerprint": "",
+      "prior_active": true,
+      "prior_deployment": "c99-prod-31437559134-1",
+      "prior_plugin_main_exists": true,
+      "prior_plugin_sha256": "98727e96eefdc858637537a285be5b7e80981821f0c48e7ee0268758311675e8",
+      "prior_target_dir_exists": true,
+      "prior_version": "1.21.0",
+      "process_lock_available": true,
+      "recovery_ready": false,
+      "robots_applied": true,
+      "robots_managed_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "robots_prior_exists": true,
+      "robots_prior_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "robots_restored": false,
+      "runtime_loaded": true,
+      "runtime_version": "1.22.0",
+      "state_exists": true,
+      "temp_removed": true
+    },
+    "safe_status_sha256": "129c4527f50872bc22f8ca0b3b8612c25872adb6d71779ba68df8293c4359e24",
+    "schema": "complete99-interrupted-forward-observation/v3"
+  },
+  "interrupted_forward_proof": {
+    "path": "docs/recovery-proofs/c99-prod-31598196288-1.json",
+    "proof_sha256": "e2b2aa48e0d24ed8ae66b700bc7ff880e1030eff53b18dfe9453a74100998ce8",
+    "schema": "complete99-interrupted-forward-proof/v1"
+  },
+  "local_test": false,
+  "proof_consumed": false,
+  "rendered_home": {
+    "body_sha256": "1808d523eb98c3bfbbe1244436678f1e4249648bfdc864bc3ecd937b91869afc",
+    "deployment_id": "c99-prod-31598196288-1",
+    "exact_path": "/",
+    "version": "1.22.0"
+  },
+  "result": "interrupted_forward_mismatch_diagnostic_observed",
+  "robots": {
+    "sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "status": 200
+  },
+  "started_at": "2026-08-12T16:06:48Z"
+}

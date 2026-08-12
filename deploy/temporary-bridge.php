@@ -28,6 +28,7 @@ add_action(
 			'allowed_hosts' => __C99_ALLOWED_HOSTS__,
 			'recovery_lease_seconds'=> 240,
 			'interrupted_forward' => array(
+				'adoption_schema'                    => '__C99_INTERRUPTED_FORWARD_ADOPTION_SCHEMA__',
 				'finalized_attestation_enabled'     => __C99_INTERRUPTED_FORWARD_FINALIZED_ATTESTATION__,
 				'target_deployment_id'              => '__C99_INTERRUPTED_FORWARD_TARGET_DEPLOYMENT_ID__',
 				'expected_artifact_sha256'          => '',
@@ -38,6 +39,8 @@ add_action(
 				'reviewed_database_manifest'        => json_decode( base64_decode( '__C99_REVIEWED_DATABASE_MANIFEST_BASE64__' ), true ),
 				'reviewed_database_manifest_sha256' => '__C99_REVIEWED_DATABASE_MANIFEST_SHA256__',
 				'reviewed_database_storage'         => json_decode( base64_decode( '__C99_REVIEWED_DATABASE_STORAGE_BASE64__' ), true ),
+				'reviewed_safe_status'              => json_decode( base64_decode( '__C99_REVIEWED_SAFE_STATUS_BASE64__' ), true ),
+				'reviewed_safe_status_sha256'       => '__C99_REVIEWED_SAFE_STATUS_SHA256__',
 				'prior_database_fingerprint'        => '__C99_PRIOR_DATABASE_FINGERPRINT__',
 				'prior_plugin_sha256'                => '__C99_PRIOR_PLUGIN_SHA256__',
 				'prior_deployment'                   => '__C99_PRIOR_DEPLOYMENT_ID__',
@@ -3532,6 +3535,7 @@ add_action(
 					$expected_manifest_sha256 = (string) ( $interrupted['reviewed_database_manifest_sha256'] ?? '' );
 					$expected_storage = $interrupted['reviewed_database_storage'] ?? null;
 					$expected_robots_sha256 = (string) ( $interrupted['prior_robots_sha256'] ?? '' );
+					$pending_repair = 'complete99-interrupted-forward-adoption/v4' === (string) ( $interrupted['adoption_schema'] ?? '' );
 					$storage_keys = is_array( $expected_storage ) ? array_keys( $expected_storage ) : array();
 					sort( $storage_keys, SORT_STRING );
 					$digest_keys = array(
@@ -3642,10 +3646,12 @@ add_action(
 							try {
 								Complete99_Content::assert_migration_invariants();
 								Complete99_Settings::assert_defaults();
-							Complete99_Platform::assert_evaluation_catalog_invariants();
-							Complete99_Ops::assert_invariants();
-							Complete99_Campaigns::assert_invariants();
-							Complete99_Culinary_Science::assert_invariants();
+								Complete99_Platform::assert_evaluation_catalog_invariants();
+								Complete99_Ops::assert_invariants();
+								if ( ! $pending_repair ) {
+									Complete99_Campaigns::assert_invariants();
+								}
+								Complete99_Culinary_Science::assert_invariants();
 								$migration_invariants_valid = true;
 							} catch ( \Throwable $error ) {
 								$migration_invariants_valid = false;
@@ -3746,7 +3752,7 @@ add_action(
 							'active'                    => true,
 							'runtime_loaded'            => true,
 							'migration_failed'          => false,
-							'migration_invariants_valid'=> true,
+							'migration_invariants_valid'=> ! $pending_repair,
 							'sync_configured'           => true,
 							'robots_sha256'             => $post_robots_sha256,
 							'target_state_absent'       => true,
@@ -3766,7 +3772,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $decrypt_database_state, $managed_robots_path, $managed_robots_contents ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $cleanup_staging, $state_directory, $purge_caches, $read_lock, $claim_lock, $acquire_process_lock, $release_process_lock, $adopt_state_lease, $set_state_phase, $directory_sha256, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $decrypt_database_state, $managed_robots_path, $managed_robots_contents, $canonicalize_json_value ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -3779,6 +3785,46 @@ add_action(
 					$deployment_id = sanitize_text_field( (string) $request->get_param( 'deployment_id' ) );
 					if ( $config['deployment_id'] !== $deployment_id ) {
 						return new WP_Error( 'c99_stabilize_id', 'The stabilization deployment ID is invalid.', array( 'status' => 400 ) );
+					}
+					$pre_interrupted_config = is_array( $config['interrupted_forward'] ?? null ) ? $config['interrupted_forward'] : array();
+					$pre_interrupted_proof = (string) $request->get_param( 'interrupted_forward_proof_sha256' );
+					$pending_repair_request = '' !== $pre_interrupted_proof
+						&& 'complete99-interrupted-forward-adoption/v4' === (string) ( $pre_interrupted_config['adoption_schema'] ?? '' );
+					if ( $pending_repair_request ) {
+						$reviewed_safe_status = $pre_interrupted_config['reviewed_safe_status'] ?? null;
+						$reviewed_safe_status_sha256 = (string) ( $pre_interrupted_config['reviewed_safe_status_sha256'] ?? '' );
+						$reviewed_safe_json = is_array( $reviewed_safe_status )
+							? wp_json_encode( $canonicalize_json_value( $reviewed_safe_status ), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+							: false;
+						if (
+							! is_array( $reviewed_safe_status )
+							|| false === $reviewed_safe_json
+							|| ! preg_match( '/^[a-f0-9]{64}$/', $reviewed_safe_status_sha256 )
+							|| ! hash_equals( $reviewed_safe_status_sha256, hash( 'sha256', $reviewed_safe_json ) )
+							|| ! preg_match( '/^[a-f0-9]{64}$/', $pre_interrupted_proof )
+							|| ! hash_equals( (string) ( $pre_interrupted_config['proof_sha256'] ?? '' ), $pre_interrupted_proof )
+						) {
+							return new WP_Error( 'c99_stabilize_pending_review_config', 'Pending-stabilization repair lacks its exact reviewed status.', array( 'status' => 409 ) );
+						}
+						$status_request = new WP_REST_Request( 'POST', '/complete99-deploy/v1/' . $deployment_id . '/status' );
+						$status_request->set_param( 'token', (string) $request->get_param( 'token' ) );
+						$status_request->set_param( 'deployment_id', $deployment_id );
+						$status_request->set_param( 'projected_deployment_id', $deployment_id );
+						$status_response = rest_do_request( $status_request );
+						$status_data = $status_response instanceof WP_REST_Response ? $status_response->get_data() : null;
+						$live_safe_status = array();
+						if ( is_array( $status_data ) ) {
+							foreach ( array_keys( $reviewed_safe_status ) as $reviewed_status_key ) {
+								if ( ! array_key_exists( $reviewed_status_key, $status_data ) ) {
+									$live_safe_status = array();
+									break;
+								}
+								$live_safe_status[ $reviewed_status_key ] = $status_data[ $reviewed_status_key ];
+							}
+						}
+						if ( $canonicalize_json_value( $live_safe_status ) !== $canonicalize_json_value( $reviewed_safe_status ) ) {
+							return new WP_Error( 'c99_stabilize_pending_review_changed', 'Pending-stabilization repair checkpoint changed after review.', array( 'status' => 409 ) );
+						}
 					}
 					$process_lock = $acquire_process_lock();
 					if ( is_wp_error( $process_lock ) ) {
@@ -3808,7 +3854,8 @@ add_action(
 						&& empty( $state['rollback_compensated'] )
 						&& empty( $state['rollback_compensation_error'] );
 					$interrupted_forward_proof_sha256 = (string) $request->get_param( 'interrupted_forward_proof_sha256' );
-					$interrupted_forward = 'installing' === $phase;
+					$interrupted_forward_pending = $pending_repair_request && 'installed_pending_stabilization' === $phase;
+					$interrupted_forward = 'installing' === $phase || $interrupted_forward_pending;
 					$interrupted_forward_adopted = 'installed' === $phase && ! empty( $state['adopted_forward_no_rollback'] );
 					$interrupted_config  = is_array( $config['interrupted_forward'] ?? null )
 						? $config['interrupted_forward']
@@ -3818,7 +3865,7 @@ add_action(
 					if ( '' !== $interrupted_forward_proof_sha256 && ! $interrupted_forward && ! $interrupted_forward_adopted ) {
 						return new WP_Error(
 							'c99_stabilize_interrupted_phase',
-							'Interrupted-forward proof is accepted only for a stale installing phase.',
+							'Interrupted-forward proof is accepted only for a reviewed stale forward phase.',
 							array( 'status' => 409, 'phase' => $phase )
 						);
 					}
@@ -3853,6 +3900,7 @@ add_action(
 							}
 						}
 						$interrupted_config_valid = $interrupted_config_valid
+							&& in_array( (string) ( $interrupted_config['adoption_schema'] ?? '' ), array( 'complete99-interrupted-forward-adoption/v1', 'complete99-interrupted-forward-adoption/v2', 'complete99-interrupted-forward-adoption/v3', 'complete99-interrupted-forward-adoption/v4' ), true )
 							&& is_string( $interrupted_config['expected_version'] ?? null )
 							&& preg_match( '/^[0-9]+\.[0-9]+\.[0-9]+$/', $interrupted_config['expected_version'] )
 							&& is_string( $interrupted_config['prior_version'] ?? null )
@@ -3876,8 +3924,9 @@ add_action(
 						}
 						$lock_updated_at = (int) ( $lock['updated_at'] ?? $lock['started_at'] ?? 0 );
 						$lock_age = 0 < $lock_updated_at ? max( 0, time() - $lock_updated_at ) : 0;
+						$interrupted_source_phase = $interrupted_forward_pending ? 'installed_pending_stabilization' : 'installing';
 						if (
-							'installing' !== (string) ( $lock['phase'] ?? '' )
+							$interrupted_source_phase !== (string) ( $lock['phase'] ?? '' )
 							|| 0 >= $lock_updated_at
 							|| $lock_age < (int) $config['recovery_lease_seconds']
 							|| '' === (string) ( $state['owner_id'] ?? '' )
@@ -3916,7 +3965,12 @@ add_action(
 							&& true === ( $state['was_active'] ?? null )
 							&& true === ( $state['robots_prior_exists'] ?? null )
 							&& hash_equals( $interrupted_config['prior_robots_sha256'], (string) ( $state['robots_prior_sha256'] ?? '' ) )
-							&& empty( $state['temp_removed'] );
+							&& ( $interrupted_forward_pending ? true === ( $state['temp_removed'] ?? null ) : empty( $state['temp_removed'] ) )
+							&& ( ! $interrupted_forward_pending || '' === (string) ( $state['temp_path'] ?? '' ) )
+							&& ( ! $interrupted_forward_pending || true === ( $state['forward_ready'] ?? null ) )
+							&& ( ! $interrupted_forward_pending || true === ( $state['installed_active'] ?? null ) )
+							&& ( ! $interrupted_forward_pending || 'complete' === (string) ( $state['candidate_activation_phase'] ?? '' ) )
+							&& ( ! $interrupted_forward_pending || hash_equals( $interrupted_config['reviewed_database_fingerprint'], (string) ( $state['candidate_database_fingerprint'] ?? '' ) ) );
 						if ( ! $state_identity_valid ) {
 							return new WP_Error( 'c99_stabilize_interrupted_state_identity', 'Interrupted-forward state does not match the reviewed release and baseline identities.', array( 'status' => 409 ) );
 						}
@@ -3942,18 +3996,20 @@ add_action(
 							return new WP_Error( 'c99_stabilize_interrupted_database_journal', 'Interrupted-forward database baseline or configured sync journal failed exact validation.', array( 'status' => 409 ) );
 						}
 						$interrupted_temp_path = (string) ( $state['temp_path'] ?? '' );
-						$temp_root = rtrim( strtolower( wp_normalize_path( get_temp_dir() ) ), '/' );
-						$normalized_temp = strtolower( wp_normalize_path( $interrupted_temp_path ) );
-						if (
-							'' === $interrupted_temp_path
-							|| '' === $temp_root
-							|| dirname( $normalized_temp ) !== $temp_root
-							|| ! str_ends_with( $normalized_temp, '.zip' )
-							|| str_contains( $normalized_temp, '/../' )
-							|| is_link( $interrupted_temp_path )
-							|| is_dir( $interrupted_temp_path )
-						) {
-							return new WP_Error( 'c99_stabilize_interrupted_temp_path', 'Interrupted-forward package cleanup path is unsafe.', array( 'status' => 409 ) );
+						if ( ! $interrupted_forward_pending ) {
+							$temp_root = rtrim( strtolower( wp_normalize_path( get_temp_dir() ) ), '/' );
+							$normalized_temp = strtolower( wp_normalize_path( $interrupted_temp_path ) );
+							if (
+								'' === $interrupted_temp_path
+								|| '' === $temp_root
+								|| dirname( $normalized_temp ) !== $temp_root
+								|| ! str_ends_with( $normalized_temp, '.zip' )
+								|| str_contains( $normalized_temp, '/../' )
+								|| is_link( $interrupted_temp_path )
+								|| is_dir( $interrupted_temp_path )
+							) {
+								return new WP_Error( 'c99_stabilize_interrupted_temp_path', 'Interrupted-forward package cleanup path is unsafe.', array( 'status' => 409 ) );
+							}
 						}
 						foreach ( array( 'robots.forward', 'robots.rollback-prior' ) as $rollback_artifact ) {
 							if ( file_exists( trailingslashit( $state_dir ) . $rollback_artifact ) || is_link( trailingslashit( $state_dir ) . $rollback_artifact ) ) {
@@ -4132,10 +4188,12 @@ add_action(
 					try {
 						Complete99_Content::assert_migration_invariants();
 						Complete99_Settings::assert_defaults();
-							Complete99_Platform::assert_evaluation_catalog_invariants();
-							Complete99_Ops::assert_invariants();
+						Complete99_Platform::assert_evaluation_catalog_invariants();
+						Complete99_Ops::assert_invariants();
+						if ( ! $interrupted_forward_pending ) {
 							Complete99_Campaigns::assert_invariants();
-							Complete99_Culinary_Science::assert_invariants();
+						}
+						Complete99_Culinary_Science::assert_invariants();
 					} catch ( \Throwable $error ) {
 						return new WP_Error(
 							'c99_stabilize_migration_invariants',
@@ -4223,8 +4281,8 @@ add_action(
 
 						$lease = $claim_lock(
 							$deployment_id,
-							array( 'installing' ),
-							'installing',
+							array( $interrupted_source_phase ),
+							$interrupted_source_phase,
 							false,
 							true
 						);
@@ -4237,7 +4295,7 @@ add_action(
 						}
 						$state = $adopted;
 						if (
-							'installing' !== (string) ( $state['phase'] ?? '' )
+							$interrupted_source_phase !== (string) ( $state['phase'] ?? '' )
 							|| ! empty( $state['rollback_applied'] )
 							|| ! empty( $state['database_restored'] )
 							|| ! empty( $state['rollback_compensated'] )
@@ -4250,6 +4308,11 @@ add_action(
 							|| $interrupted_config['prior_deployment'] !== (string) ( $state['prior_deployment'] ?? '' )
 							|| $interrupted_config['prior_version'] !== (string) ( $state['prior_version'] ?? '' )
 							|| $interrupted_temp_path !== (string) ( $state['temp_path'] ?? '' )
+							|| ( $interrupted_forward_pending && true !== ( $state['forward_ready'] ?? null ) )
+							|| ( $interrupted_forward_pending && true !== ( $state['temp_removed'] ?? null ) )
+							|| ( $interrupted_forward_pending && true !== ( $state['installed_active'] ?? null ) )
+							|| ( $interrupted_forward_pending && 'complete' !== (string) ( $state['candidate_activation_phase'] ?? '' ) )
+							|| ( $interrupted_forward_pending && ! hash_equals( $interrupted_config['reviewed_database_fingerprint'], (string) ( $state['candidate_database_fingerprint'] ?? '' ) ) )
 						) {
 							return new WP_Error( 'c99_stabilize_interrupted_adoption_state', 'Interrupted-forward state changed while the stale lease was adopted.', array( 'status' => 409 ) );
 						}
@@ -4284,7 +4347,9 @@ add_action(
 							Complete99_Settings::assert_defaults();
 							Complete99_Platform::assert_evaluation_catalog_invariants();
 							Complete99_Ops::assert_invariants();
-							Complete99_Campaigns::assert_invariants();
+							if ( ! $interrupted_forward_pending ) {
+								Complete99_Campaigns::assert_invariants();
+							}
 							Complete99_Culinary_Science::assert_invariants();
 						} catch ( \Throwable $error ) {
 							return new WP_Error( 'c99_stabilize_interrupted_post_claim_invariants', 'Interrupted-forward migration invariants changed after lease adoption.', array( 'status' => 409 ) );
@@ -4335,7 +4400,7 @@ add_action(
 						if ( ! hash_equals( $interrupted_config['prior_robots_sha256'], $post_claim_robots_sha256 ) ) {
 							return new WP_Error( 'c99_stabilize_interrupted_post_claim_robots', 'Interrupted-forward robots.txt changed after lease adoption.', array( 'status' => 409 ) );
 						}
-						if ( file_exists( $interrupted_temp_path ) ) {
+						if ( '' !== $interrupted_temp_path && file_exists( $interrupted_temp_path ) ) {
 							$post_claim_artifact_sha256 = @hash_file( 'sha256', $interrupted_temp_path );
 							if (
 								false === $post_claim_artifact_sha256
@@ -4345,8 +4410,10 @@ add_action(
 								return new WP_Error( 'c99_stabilize_interrupted_temp_cleanup', 'Interrupted-forward reviewed package could not be removed safely.', array( 'status' => 500 ) );
 							}
 						}
-						clearstatcache( true, $interrupted_temp_path );
-						if ( file_exists( $interrupted_temp_path ) || is_link( $interrupted_temp_path ) || is_dir( $interrupted_temp_path ) ) {
+						if ( '' !== $interrupted_temp_path ) {
+							clearstatcache( true, $interrupted_temp_path );
+						}
+						if ( '' !== $interrupted_temp_path && ( file_exists( $interrupted_temp_path ) || is_link( $interrupted_temp_path ) || is_dir( $interrupted_temp_path ) ) ) {
 							return new WP_Error( 'c99_stabilize_interrupted_temp_readback', 'Interrupted-forward package cleanup failed readback.', array( 'status' => 500 ) );
 						}
 						$stabilized = $set_state_phase(
@@ -4373,7 +4440,7 @@ add_action(
 								'adopted_forward_no_rollback'              => true,
 								'adopted_forward_at'                       => time(),
 								'stabilized'                               => true,
-								'stabilized_from_phase'                    => 'installing',
+								'stabilized_from_phase'                    => $interrupted_source_phase,
 							)
 						);
 						if ( is_wp_error( $stabilized ) ) {
@@ -4383,7 +4450,7 @@ add_action(
 							'stabilized'                       => true,
 							'idempotent'                       => false,
 							'adopted_forward_no_rollback'      => true,
-							'stabilized_from_phase'            => 'installing',
+							'stabilized_from_phase'            => $interrupted_source_phase,
 							'version'                          => $expected_version,
 							'database_version'                 => $expected_version,
 							'deployment_id'                    => $deployment_id,
@@ -7878,6 +7945,7 @@ add_action(
 						$interrupted_config = is_array( $config['interrupted_forward'] ?? null )
 							? $config['interrupted_forward']
 							: array();
+						$pending_repair = 'complete99-interrupted-forward-adoption/v4' === (string) ( $interrupted_config['adoption_schema'] ?? '' );
 						$expected_storage = $interrupted_config['reviewed_database_storage'] ?? null;
 						$storage_valid = static function ( $storage ) {
 							$keys = is_array( $storage ) ? array_keys( $storage ) : array();
@@ -7931,6 +7999,7 @@ add_action(
 							|| (int) ( $current_state['fence'] ?? 0 ) !== (int) ( $current_lock['fence'] ?? 0 )
 							|| true !== ( $current_state['adopted_forward_no_rollback'] ?? null )
 							|| true !== ( $current_state['stabilized'] ?? null )
+							|| ( $pending_repair && 'installed_pending_stabilization' !== (string) ( $current_state['stabilized_from_phase'] ?? '' ) )
 							|| true !== ( $current_state['forward_ready'] ?? null )
 							|| true !== ( $current_state['temp_removed'] ?? null )
 							|| '' !== (string) ( $current_state['temp_path'] ?? '' )
@@ -8065,10 +8134,12 @@ add_action(
 							try {
 								Complete99_Content::assert_migration_invariants();
 								Complete99_Settings::assert_defaults();
-							Complete99_Platform::assert_evaluation_catalog_invariants();
-							Complete99_Ops::assert_invariants();
-							Complete99_Campaigns::assert_invariants();
-							Complete99_Culinary_Science::assert_invariants();
+								Complete99_Platform::assert_evaluation_catalog_invariants();
+								Complete99_Ops::assert_invariants();
+								if ( ! $pending_repair ) {
+									Complete99_Campaigns::assert_invariants();
+								}
+								Complete99_Culinary_Science::assert_invariants();
 								$invariants_valid = true;
 							} catch ( \Throwable $error ) {
 								$invariants_valid = false;

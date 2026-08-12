@@ -1147,6 +1147,85 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
         )
         self.assertEqual("1.18.0", package["version"])
 
+    def test_repository_pending_stabilization_adoption_v4_is_exact(self) -> None:
+        loaded = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31598196288-1-v2.json",
+            ROOT,
+        )
+        adoption = loaded["proof"]["forward_adoption"]
+        receipt = loaded["reviewed_forward_observation"]
+        self.assertEqual(
+            "complete99-interrupted-forward-proof/v2", loaded["schema"]
+        )
+        self.assertEqual(
+            "complete99-interrupted-forward-adoption/v4",
+            adoption["schema"],
+        )
+        self.assertEqual(31615621733, adoption["observation_run_id"])
+        self.assertEqual(2, adoption["observation_run_attempt"])
+        self.assertEqual(
+            "6fd99bae0c732ae2df254341d2e3501d7d377c383adc2a034667bf6e86bfd8d9",
+            loaded["proof_sha256"],
+        )
+        self.assertEqual(
+            "129c4527f50872bc22f8ca0b3b8612c25872adb6d71779ba68df8293c4359e24",
+            receipt["safe_status_sha256"],
+        )
+        self.assertEqual(
+            VALIDATOR.INTERRUPTED_FORWARD_PENDING_STABILIZATION_MISMATCHES,
+            receipt["mismatches"],
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shutil.copytree(
+                ROOT / "docs" / "recovery-proofs",
+                root / "docs" / "recovery-proofs",
+            )
+            proof_path = (
+                root
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31598196288-1-v2.json"
+            )
+            envelope = json.loads(proof_path.read_text(encoding="utf-8"))
+            adoption_copy = envelope["proof"]["forward_adoption"]
+            audit_path = root / adoption_copy["observation_audit_path"]
+            audit = json.loads(audit_path.read_text(encoding="utf-8"))
+            observation = audit["interrupted_forward_observation"]
+            observation["safe_status"]["campaign_operational"]["ready"] = True
+            observation["safe_status_sha256"] = VALIDATOR.canonical_json_sha256(
+                observation["safe_status"]
+            )
+            audit_path.write_text(
+                json.dumps(
+                    audit,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+            adoption_copy["observation_audit_sha256"] = hashlib.sha256(
+                audit_path.read_bytes()
+            ).hexdigest()
+            envelope["proof_sha256"] = VALIDATOR.canonical_json_sha256(
+                envelope["proof"]
+            )
+            proof_path.write_text(
+                json.dumps(
+                    envelope,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaises(VALIDATOR.AuditValidationError):
+                VALIDATOR.load_interrupted_forward_proof(
+                    str(proof_path),
+                    root,
+                )
     def test_independent_robots_checkpoint_authority_rejects_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository_root = Path(temporary)
@@ -2434,6 +2513,98 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             loaded,
             probe_id,
         )
+
+    def test_pending_stabilization_v4_recovery_audit_is_exact(self) -> None:
+        loaded = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31598196288-1-v2.json",
+            ROOT,
+        )
+        proof = loaded["proof"]
+        failed = proof["failed_run"]
+        prior = proof["prior_run"]
+        adoption = proof["forward_adoption"]
+        probe_id = "c99-recovery-probe-40000000005-1"
+        receipt = {
+            "adopted_forward_no_rollback": True,
+            "cache_purge": {"deferred_to_finalize": True},
+            "database_manifest": adoption["observed_database_manifest"],
+            "database_manifest_sha256": adoption[
+                "observed_database_manifest_sha256"
+            ],
+            "database_storage": adoption["observed_database_storage"],
+            "database_version": failed["version"],
+            "deployment_id": failed["deployment_id"],
+            "idempotent": False,
+            "installed_plugin_sha256": failed["installed_plugin_sha256"],
+            "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            "post_install_database_fingerprint": adoption[
+                "observed_database_fingerprint"
+            ],
+            "stabilized": True,
+            "stabilized_from_phase": "installed_pending_stabilization",
+            "version": failed["version"],
+        }
+        status = {
+            "adopted_forward_no_rollback": True,
+            "database_fingerprint": adoption["observed_database_fingerprint"],
+            "database_manifest_sha256": adoption[
+                "observed_database_manifest_sha256"
+            ],
+            "deployment_id": failed["deployment_id"],
+            "installed_plugin_sha256": failed["installed_plugin_sha256"],
+            "interrupted_forward_proof_sha256": loaded["proof_sha256"],
+            "phase": "installed",
+            "state_exists": True,
+            "version": failed["version"],
+        }
+        discovery = interrupted_discovery(failed["deployment_id"], probe_id)
+        discovery["owner_phase"] = "installed_pending_stabilization"
+        audit = {
+            **interrupted_common(failed["deployment_id"]),
+            **interrupted_health_home_robots(failed, prior),
+            **interrupted_health_home_robots(failed, prior, "pre_adoption_"),
+            "adopted_forward_no_rollback": True,
+            "decision": "adopt_interrupted_forward",
+            "discovery": discovery,
+            "finalize": finalize_record(),
+            "interrupted_forward_adoption": {"receipt": receipt, "status": status},
+            "interrupted_forward_proof": {
+                "path": loaded["path"],
+                "proof_sha256": loaded["proof_sha256"],
+                "schema": "complete99-interrupted-forward-proof/v2",
+            },
+            "pre_adoption_observation": loaded[
+                "reviewed_forward_observation"
+            ],
+            "result": "recovered",
+        }
+        VALIDATOR.validate_interrupted_forward_recovery_audit(
+            audit,
+            loaded,
+            probe_id,
+        )
+
+        changed = copy.deepcopy(audit)
+        changed["interrupted_forward_adoption"]["receipt"][
+            "stabilized_from_phase"
+        ] = "installing"
+        with self.assertRaises(VALIDATOR.AuditValidationError):
+            VALIDATOR.validate_interrupted_forward_recovery_audit(
+                changed,
+                loaded,
+                probe_id,
+            )
+
+        changed = copy.deepcopy(audit)
+        changed["pre_adoption_observation"]["safe_status"][
+            "candidate_activation_phase"
+        ] = "pending"
+        with self.assertRaises(VALIDATOR.AuditValidationError):
+            VALIDATOR.validate_interrupted_forward_recovery_audit(
+                changed,
+                loaded,
+                probe_id,
+            )
 
     def test_interrupted_already_finalized_audit_is_exact_and_dispatchable(
         self,

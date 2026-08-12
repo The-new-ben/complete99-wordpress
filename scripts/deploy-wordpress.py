@@ -989,6 +989,7 @@ def render_bridge(
     expected_artifact_size: int = 0,
     expected_plugin_sha256: str = "",
     expected_version: str = "",
+    interrupted_forward_adoption_schema: str = "",
     interrupted_forward_proof_sha256: str = "",
     interrupted_forward_finalized_attestation: bool = False,
     interrupted_forward_target_deployment_id: str = "",
@@ -996,6 +997,8 @@ def render_bridge(
     reviewed_database_manifest: dict[str, Any] | None = None,
     reviewed_database_manifest_sha256: str = "",
     reviewed_database_storage: dict[str, Any] | None = None,
+    reviewed_safe_status: dict[str, Any] | None = None,
+    reviewed_safe_status_sha256: str = "",
     prior_database_fingerprint: str = "",
     prior_plugin_sha256: str = "",
     prior_deployment_id: str = "",
@@ -1031,6 +1034,7 @@ def render_bridge(
         "interrupted-forward proof": interrupted_forward_proof_sha256,
         "reviewed database": reviewed_database_fingerprint,
         "reviewed database manifest": reviewed_database_manifest_sha256,
+        "reviewed safe status": reviewed_safe_status_sha256,
         "prior database": prior_database_fingerprint,
         "prior plugin": prior_plugin_sha256,
         "prior robots": prior_robots_sha256,
@@ -1075,6 +1079,37 @@ def render_bridge(
     reviewed_manifest = reviewed_database_manifest or {}
     if reviewed_manifest and not isinstance(reviewed_manifest, dict):
         raise DeployError("Temporary bridge reviewed database manifest is invalid")
+    if interrupted_forward_adoption_schema not in {
+        "",
+        "complete99-interrupted-forward-adoption/v1",
+        "complete99-interrupted-forward-adoption/v2",
+        "complete99-interrupted-forward-adoption/v3",
+        "complete99-interrupted-forward-adoption/v4",
+    }:
+        raise DeployError("Temporary bridge interrupted-forward adoption schema is invalid")
+    reviewed_status = reviewed_safe_status or {}
+    if reviewed_status and not isinstance(reviewed_status, dict):
+        raise DeployError("Temporary bridge reviewed safe status is invalid")
+    reviewed_status_json = json.dumps(
+        reviewed_status,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    if (
+        interrupted_forward_adoption_schema
+        == "complete99-interrupted-forward-adoption/v4"
+        and (
+            not reviewed_status
+            or re.fullmatch(r"[a-f0-9]{64}", reviewed_safe_status_sha256)
+            is None
+            or not secrets.compare_digest(
+                hashlib.sha256(reviewed_status_json.encode("utf-8")).hexdigest(),
+                reviewed_safe_status_sha256,
+            )
+        )
+    ):
+        raise DeployError("Temporary bridge reviewed repair status is invalid")
     reviewed_manifest_json = json.dumps(
         reviewed_manifest,
         ensure_ascii=False,
@@ -1102,7 +1137,11 @@ def render_bridge(
         or interrupted_forward_target_deployment_id == deployment_id
         or not reviewed_manifest
         or not reviewed_storage
-        or any(not value for value in digest_identities.values())
+        or any(
+            not value
+            for label, value in digest_identities.items()
+            if label != "reviewed safe status"
+        )
         or not expected_version
         or not prior_version
         or not prior_deployment_id
@@ -1138,6 +1177,9 @@ def render_bridge(
         "__C99_INTERRUPTED_FORWARD_PROOF_SHA256__": (
             interrupted_forward_proof_sha256
         ),
+        "__C99_INTERRUPTED_FORWARD_ADOPTION_SCHEMA__": (
+            interrupted_forward_adoption_schema
+        ),
         "__C99_INTERRUPTED_FORWARD_FINALIZED_ATTESTATION__": (
             "true" if interrupted_forward_finalized_attestation else "false"
         ),
@@ -1159,6 +1201,10 @@ def render_bridge(
                 sort_keys=True,
             ).encode("ascii")
         ).decode("ascii"),
+        "__C99_REVIEWED_SAFE_STATUS_BASE64__": base64.b64encode(
+            reviewed_status_json.encode("utf-8")
+        ).decode("ascii"),
+        "__C99_REVIEWED_SAFE_STATUS_SHA256__": reviewed_safe_status_sha256,
         "__C99_PRIOR_DATABASE_FINGERPRINT__": prior_database_fingerprint,
         "__C99_PRIOR_PLUGIN_SHA256__": prior_plugin_sha256,
         "__C99_PRIOR_DEPLOYMENT_ID__": prior_deployment_id,

@@ -1649,6 +1649,290 @@ def validate_interrupted_forward_robots_checkpoint_observation_audit(
     return observation
 
 
+def validate_interrupted_forward_pending_stabilization_observation_audit(
+    deployer: Any,
+    audit: dict[str, Any],
+    failed: dict[str, Any],
+    prior: dict[str, Any],
+    adoption: dict[str, Any],
+) -> dict[str, Any]:
+    """Authenticate one reviewed, forward-ready Campaign repair checkpoint."""
+    validate_reviewed_audit_common(
+        deployer,
+        audit,
+        failed["deployment_id"],
+        "Interrupted forward pending-stabilization observation",
+    )
+    expected_keys = {
+        "bootstrap_cleanup",
+        "bridge_site_identity",
+        "cleanup",
+        "commit",
+        "decision",
+        "deployment_id",
+        "discovery",
+        "finished_at",
+        "health",
+        "identity",
+        "interrupted_forward_observation",
+        "interrupted_forward_proof",
+        "local_test",
+        "proof_consumed",
+        "rendered_home",
+        "result",
+        "robots",
+        "started_at",
+    }
+    discovery = audit.get("discovery")
+    observation = audit.get("interrupted_forward_observation")
+    expected_probe_id = (
+        f"c99-recovery-probe-{adoption['observation_run_id']}-"
+        f"{adoption['observation_run_attempt']}"
+    )
+    expected_historical_path = (
+        f"docs/recovery-proofs/{failed['deployment_id']}.json"
+    )
+    discovery_bootstrap = (
+        discovery.get("bootstrap_cleanup") if isinstance(discovery, dict) else None
+    )
+    discovery_cleanup = (
+        discovery.get("cleanup") if isinstance(discovery, dict) else None
+    )
+    if (
+        set(audit) != expected_keys
+        or audit.get("commit") != adoption["observation_commit"]
+        or audit.get("decision")
+        != "observe_interrupted_forward_mismatch_diagnostic"
+        or audit.get("result")
+        != "interrupted_forward_mismatch_diagnostic_observed"
+        or audit.get("proof_consumed") is not False
+        or not isinstance(discovery, dict)
+        or set(discovery)
+        != {
+            "bootstrap_cleanup",
+            "cleanup",
+            "owner_deployment_id",
+            "owner_phase",
+            "probe_id",
+            "result",
+        }
+        or discovery.get("probe_id") != expected_probe_id
+        or discovery.get("owner_deployment_id") != failed["deployment_id"]
+        or discovery.get("owner_phase") != "installed_pending_stabilization"
+        or discovery.get("result") != "owner-discovered"
+        or not exact_json_equal(
+            discovery_bootstrap,
+            {
+                "exact_name": "c99-deploy-bootstrap",
+                "known_id": 5,
+                "known_id_matched": False,
+                "removed_ids": [],
+                "row_absence_verified": True,
+            },
+        )
+        or not isinstance(discovery_cleanup, dict)
+        or set(discovery_cleanup)
+        != {
+            "removed_ids",
+            "route_404",
+            "row_absence_verified",
+            "snippet_active",
+            "snippet_deleted",
+        }
+        or not isinstance(discovery_cleanup.get("removed_ids"), list)
+        or len(discovery_cleanup["removed_ids"]) != 1
+        or type(discovery_cleanup["removed_ids"][0]) is not int
+        or discovery_cleanup["removed_ids"][0] <= 0
+        or discovery_cleanup.get("route_404") is not True
+        or discovery_cleanup.get("row_absence_verified") is not True
+        or discovery_cleanup.get("snippet_active") is not False
+        or discovery_cleanup.get("snippet_deleted") is not True
+        or not isinstance(observation, dict)
+        or not exact_json_equal(
+            audit.get("interrupted_forward_proof"),
+            {
+                "path": expected_historical_path,
+                "proof_sha256": adoption["observation_proof_sha256"],
+                "schema": "complete99-interrupted-forward-proof/v1",
+            },
+        )
+    ):
+        raise deployer.DeployError(
+            "Interrupted forward pending-stabilization observation schema is invalid"
+        )
+    if set(observation) != {
+        "diagnostic_only",
+        "mismatches",
+        "proof_consumed",
+        "recovery_authority",
+        "safe_status",
+        "safe_status_sha256",
+        "schema",
+    }:
+        raise deployer.DeployError(
+            "Interrupted forward pending-stabilization receipt schema is invalid"
+        )
+    safe_status = validate_interrupted_forward_safe_status_shape(
+        deployer,
+        observation.get("safe_status"),
+        "Interrupted forward pending-stabilization",
+    )
+    expected_mismatches = interrupted_forward_status_mismatches(
+        safe_status,
+        {
+            "proof": {"failed_run": failed, "prior_run": prior},
+            "recovery_identity": {
+                "database_fingerprint": adoption["observed_database_fingerprint"],
+                "database_manifest_sha256": adoption[
+                    "observed_database_manifest_sha256"
+                ],
+            },
+        },
+    )
+    expected_campaign = {
+        "cache_ready": True,
+        "capabilities_ready": True,
+        "capacity_inspectable": False,
+        "capacity_ready": False,
+        "capacity_write_ready": False,
+        "cron_inspectable": True,
+        "cron_ready": False,
+        "evidence_inspectable": True,
+        "evidence_ready": True,
+        "ready": False,
+        "suppression_inspectable": True,
+        "suppression_invalid": False,
+        "suppression_ready": True,
+        "suppression_recoverable_pending": False,
+    }
+    expected_capacity = {
+        "campaign_cohort_inspectable": True,
+        "fresh_install_empty": True,
+        "lifecycle_reserve_inspectable": False,
+        "operations_cohort_inspectable": True,
+        "prior_inactive_receipt_valid": False,
+        "quarantine_reserve_inspectable": False,
+    }
+    expected_invariants = {
+        "campaigns": False,
+        "content": True,
+        "culinary_science": True,
+        "evaluation_catalog": True,
+        "ops": True,
+        "settings": True,
+    }
+    if (
+        observation.get("schema")
+        != "complete99-interrupted-forward-observation/v3"
+        or observation.get("diagnostic_only") is not True
+        or observation.get("proof_consumed") is not False
+        or observation.get("recovery_authority") is not False
+        or not exact_json_equal(
+            observation.get("mismatches"),
+            INTERRUPTED_FORWARD_PENDING_STABILIZATION_MISMATCHES,
+        )
+        or expected_mismatches
+        != INTERRUPTED_FORWARD_PENDING_STABILIZATION_MISMATCHES
+        or observation.get("safe_status_sha256")
+        != canonical_proof_sha256(safe_status)
+        or safe_status.get("phase") != "installed_pending_stabilization"
+        or safe_status.get("recovery_ready") is not False
+        or safe_status.get("interrupted_forward_candidate") is not False
+        or safe_status.get("migration_invariants_valid") is not False
+        or safe_status.get("baseline_sync_secret_existed") is not False
+        or safe_status.get("baseline_sync_configured") is not False
+        or safe_status.get("baseline_database_journal_valid") is not True
+        or safe_status.get("forward_ready") is not True
+        or safe_status.get("forward_stabilization_candidate") is not True
+        or safe_status.get("temp_removed") is not True
+        or safe_status.get("candidate_activation_required") is not True
+        or safe_status.get("candidate_activation_phase") != "complete"
+        or safe_status.get("candidate_prior_active") is not True
+        or safe_status.get("candidate_requested_active") is not True
+        or safe_status.get("candidate_database_fingerprint")
+        != adoption["observed_database_fingerprint"]
+        or safe_status.get("database_fingerprint")
+        != adoption["observed_database_fingerprint"]
+        or safe_status.get("database_manifest_sha256")
+        != adoption["observed_database_manifest_sha256"]
+        or not exact_json_equal(
+            safe_status.get("database_manifest"),
+            adoption["observed_database_manifest"],
+        )
+        or not exact_json_equal(
+            safe_status.get("database_storage"),
+            adoption["observed_database_storage"],
+        )
+        or safe_status.get("deployment_id")
+        != adoption["observed_deployment_id"]
+        or safe_status.get("current_deployment")
+        != adoption["observed_deployment_id"]
+        or safe_status.get("current_plugin_sha256")
+        != adoption["observed_plugin_sha256"]
+        or safe_status.get("installed_plugin_sha256")
+        != adoption["observed_plugin_sha256"]
+        or safe_status.get("current_robots_sha256")
+        != adoption["observed_robots_sha256"]
+        or safe_status.get("robots_managed_sha256")
+        != adoption["observed_robots_sha256"]
+        or safe_status.get("current_version") != adoption["observed_version"]
+        or safe_status.get("current_database_version")
+        != adoption["observed_version"]
+        or safe_status.get("runtime_version") != adoption["observed_version"]
+        or safe_status.get("current_active") is not True
+        or safe_status.get("current_sync_configured") is not True
+        or safe_status.get("runtime_loaded") is not True
+        or safe_status.get("migration_failed") is not False
+        or safe_status.get("no_rollback_artifacts") is not True
+        or safe_status.get("lock_owned") is not True
+        or safe_status.get("process_lock_available") is not True
+        or safe_status.get("state_exists") is not True
+        or not exact_json_equal(
+            safe_status.get("migration_invariant_checks"), expected_invariants
+        )
+        or not exact_json_equal(
+            safe_status.get("campaign_operational"), expected_campaign
+        )
+        or not exact_json_equal(
+            safe_status.get("campaign_capacity_diagnostic"), expected_capacity
+        )
+        or not exact_json_equal(
+            safe_status.get("campaign_lifecycle"),
+            {"canonical": True, "generation": 2, "state": "active"},
+        )
+        or not exact_json_equal(
+            audit.get("health"),
+            {
+                "component": "complete99-platform",
+                "database_version": adoption["observed_version"],
+                "deployment_id": adoption["observed_deployment_id"],
+                "status": "ok",
+                "sync_configured": True,
+                "version": adoption["observed_version"],
+            },
+        )
+        or not exact_json_equal(
+            audit.get("robots"),
+            {"sha256": adoption["observed_robots_sha256"], "status": 200},
+        )
+        or not isinstance(audit.get("rendered_home"), dict)
+        or audit["rendered_home"].get("deployment_id")
+        != adoption["observed_deployment_id"]
+        or audit["rendered_home"].get("version")
+        != adoption["observed_version"]
+        or audit["rendered_home"].get("exact_path") != "/"
+        or deployer.re.fullmatch(
+            r"[a-f0-9]{64}",
+            str(audit["rendered_home"].get("body_sha256", "")),
+        )
+        is None
+    ):
+        raise deployer.DeployError(
+            "Interrupted forward pending-stabilization observation conflicts with the reviewed state"
+        )
+    return observation
+
+
 def load_interrupted_forward_proof(
     deployer: Any,
     raw_path: str,
@@ -1878,6 +2162,8 @@ def load_interrupted_forward_proof(
             "target_artifact_sha256",
             "target_installed_plugin_sha256",
         }
+        if adoption_schema == "complete99-interrupted-forward-adoption/v4":
+            adoption_keys.add("observation_run_attempt")
         if (
             not isinstance(adoption, dict)
             or set(adoption) != adoption_keys
@@ -1886,9 +2172,18 @@ def load_interrupted_forward_proof(
                 "complete99-interrupted-forward-adoption/v1",
                 "complete99-interrupted-forward-adoption/v2",
                 "complete99-interrupted-forward-adoption/v3",
+                "complete99-interrupted-forward-adoption/v4",
             }
             or type(adoption.get("observation_run_id")) is not int
             or adoption["observation_run_id"] <= failed["run_id"]
+            or (
+                adoption_schema == "complete99-interrupted-forward-adoption/v4"
+                and (
+                    type(adoption.get("observation_run_attempt")) is not int
+                    or adoption["observation_run_attempt"] < 1
+                    or adoption["observation_run_attempt"] > 100
+                )
+            )
             or type(adoption.get("observation_commit")) is not str
             or commit.fullmatch(adoption["observation_commit"]) is None
             or adoption["observation_commit"]
@@ -1909,6 +2204,7 @@ def load_interrupted_forward_proof(
                 in {
                     "complete99-interrupted-forward-adoption/v1",
                     "complete99-interrupted-forward-adoption/v3",
+                    "complete99-interrupted-forward-adoption/v4",
                 }
                 and (
                     adoption.get("observed_database_fingerprint")
@@ -2012,6 +2308,16 @@ def load_interrupted_forward_proof(
                     adoption,
                 )
             )
+        elif adoption_schema == "complete99-interrupted-forward-adoption/v4":
+            reviewed_forward_observation = (
+                validate_interrupted_forward_pending_stabilization_observation_audit(
+                    deployer,
+                    observation_audit,
+                    failed,
+                    prior,
+                    adoption,
+                )
+            )
         else:
             validate_interrupted_forward_observation_audit(
                 deployer,
@@ -2084,7 +2390,11 @@ def interrupted_forward_bridge_fields(
     ]
     reviewed_database_manifest: dict[str, Any] = {}
     reviewed_database_storage: dict[str, Any] = {}
+    adoption_schema = ""
+    reviewed_safe_status: dict[str, Any] = {}
+    reviewed_safe_status_sha256 = ""
     if isinstance(adoption, dict):
+        adoption_schema = str(adoption.get("schema", ""))
         reviewed_database_fingerprint = adoption[
             "observed_database_fingerprint"
         ]
@@ -2093,7 +2403,18 @@ def interrupted_forward_bridge_fields(
         ]
         reviewed_database_manifest = adoption["observed_database_manifest"]
         reviewed_database_storage = adoption["observed_database_storage"]
+        reviewed_observation = loaded_proof.get("reviewed_forward_observation")
+        if (
+            adoption_schema == "complete99-interrupted-forward-adoption/v4"
+            and isinstance(reviewed_observation, dict)
+            and isinstance(reviewed_observation.get("safe_status"), dict)
+        ):
+            reviewed_safe_status = reviewed_observation["safe_status"]
+            reviewed_safe_status_sha256 = str(
+                reviewed_observation.get("safe_status_sha256", "")
+            )
     return {
+        "interrupted_forward_adoption_schema": adoption_schema,
         "expected_artifact_sha256": failed["artifact_sha256"],
         "expected_plugin_sha256": failed["installed_plugin_sha256"],
         "expected_version": failed["version"],
@@ -2115,6 +2436,8 @@ def interrupted_forward_bridge_fields(
         "reviewed_database_manifest": reviewed_database_manifest,
         "reviewed_database_manifest_sha256": reviewed_database_manifest_sha256,
         "reviewed_database_storage": reviewed_database_storage,
+        "reviewed_safe_status": reviewed_safe_status,
+        "reviewed_safe_status_sha256": reviewed_safe_status_sha256,
     }
 
 
@@ -2263,6 +2586,15 @@ INTERRUPTED_FORWARD_ROBOTS_CHECKPOINT_MISMATCHES = [
     "interrupted_forward_candidate",
     "robots_applied",
     "robots_managed_sha256",
+]
+
+INTERRUPTED_FORWARD_PENDING_STABILIZATION_MISMATCHES = [
+    "baseline_sync_configured",
+    "baseline_sync_secret_existed",
+    "interrupted_forward_candidate",
+    "migration_invariants_valid",
+    "phase",
+    "recovery_ready",
 ]
 
 INTERRUPTED_FORWARD_SAFE_STATUS_KEYS = (
@@ -2752,6 +3084,35 @@ def validate_interrupted_forward_robots_checkpoint_status(
     return observed
 
 
+def validate_interrupted_forward_pending_stabilization_status(
+    deployer: Any,
+    status: Any,
+    loaded_proof: dict[str, Any],
+) -> dict[str, Any]:
+    """Recreate the exact reviewed repair checkpoint before any mutation."""
+    adoption = loaded_proof["proof"].get("forward_adoption")
+    reviewed = loaded_proof.get("reviewed_forward_observation")
+    if (
+        not isinstance(adoption, dict)
+        or adoption.get("schema")
+        != "complete99-interrupted-forward-adoption/v4"
+        or not isinstance(reviewed, dict)
+    ):
+        raise deployer.DeployError(
+            "Pending-stabilization repair requires its reviewed adoption v4 proof"
+        )
+    observed = capture_interrupted_forward_mismatch_diagnostic(
+        deployer,
+        status,
+        loaded_proof,
+    )
+    if not exact_json_equal(observed, reviewed):
+        raise deployer.DeployError(
+            "Pending-stabilization repair checkpoint changed after review"
+        )
+    return observed
+
+
 def validate_interrupted_forward_database_mismatch_status(
     deployer: Any,
     status: dict[str, Any],
@@ -2895,6 +3256,18 @@ def validate_interrupted_forward_adoption_status(
         raise deployer.DeployError(
             "Interrupted forward adoption requires a reviewed v2 proof"
         )
+    pending_repair = (
+        adoption.get("schema")
+        == "complete99-interrupted-forward-adoption/v4"
+    )
+    expected_invariant_checks = {
+        "campaigns": not pending_repair,
+        "content": True,
+        "culinary_science": True,
+        "evaluation_catalog": True,
+        "ops": True,
+        "settings": True,
+    }
     validate_database_manifest(
         deployer,
         status.get("database_manifest"),
@@ -2926,7 +3299,14 @@ def validate_interrupted_forward_adoption_status(
         or status.get("runtime_loaded") is not True
         or status.get("runtime_version") != failed["version"]
         or status.get("migration_failed") is not False
-        or status.get("migration_invariants_valid") is not True
+        or status.get("migration_invariants_valid") is not (not pending_repair)
+        or (
+            pending_repair
+            and not exact_json_equal(
+                status.get("migration_invariant_checks"),
+                expected_invariant_checks,
+            )
+        )
         or status.get("no_rollback_artifacts") is not True
         or status.get("current_deployment") != failed["deployment_id"]
         or status.get("current_database_version") != failed["version"]
@@ -2993,6 +3373,10 @@ def validate_interrupted_forward_finalize_status(
         raise deployer.DeployError(
             "Interrupted forward finalize resume requires a reviewed adopted terminal state"
         )
+    pending_repair = (
+        adoption.get("schema")
+        == "complete99-interrupted-forward-adoption/v4"
+    )
     validate_database_manifest(
         deployer,
         status.get("database_manifest"),
@@ -3024,7 +3408,21 @@ def validate_interrupted_forward_finalize_status(
         or status.get("runtime_loaded") is not True
         or status.get("runtime_version") != failed["version"]
         or status.get("migration_failed") is not False
-        or status.get("migration_invariants_valid") is not True
+        or status.get("migration_invariants_valid") is not (not pending_repair)
+        or (
+            pending_repair
+            and not exact_json_equal(
+                status.get("migration_invariant_checks"),
+                {
+                    "campaigns": False,
+                    "content": True,
+                    "culinary_science": True,
+                    "evaluation_catalog": True,
+                    "ops": True,
+                    "settings": True,
+                },
+            )
+        )
         or status.get("no_rollback_artifacts") is not True
         or status.get("interrupted_forward_candidate") is not False
         or status.get("current_deployment") != failed["deployment_id"]
@@ -3102,6 +3500,11 @@ def validate_interrupted_forward_finalized_attestation(
     failed = proof["failed_run"]
     prior = proof["prior_run"]
     adoption = proof.get("forward_adoption")
+    pending_repair = (
+        isinstance(adoption, dict)
+        and adoption.get("schema")
+        == "complete99-interrupted-forward-adoption/v4"
+    )
     expected_keys = {
         "active",
         "already_finalized",
@@ -3174,7 +3577,7 @@ def validate_interrupted_forward_finalized_attestation(
         or response.get("active") is not True
         or response.get("runtime_loaded") is not True
         or response.get("migration_failed") is not False
-        or response.get("migration_invariants_valid") is not True
+        or response.get("migration_invariants_valid") is not (not pending_repair)
         or response.get("sync_configured") is not True
         or response.get("robots_sha256") != prior["robots_sha256"]
         or response.get("target_state_absent") is not True
@@ -3206,6 +3609,12 @@ def adopt_interrupted_forward(
         raise deployer.DeployError(
             "Interrupted forward adoption requires the exact reviewed v2 deployment"
         )
+    expected_source_phase = (
+        "installed_pending_stabilization"
+        if adoption.get("schema")
+        == "complete99-interrupted-forward-adoption/v4"
+        else "installing"
+    )
     response = deployer.bridge_call(
         client,
         "stabilize",
@@ -3247,7 +3656,7 @@ def adopt_interrupted_forward(
         or response.get("stabilized") is not True
         or type(idempotent) is not bool
         or response.get("adopted_forward_no_rollback") is not True
-        or response.get("stabilized_from_phase") != "installing"
+        or response.get("stabilized_from_phase") != expected_source_phase
         or response.get("version") != failed["version"]
         or response.get("database_version") != failed["version"]
         or response.get("deployment_id") != failed["deployment_id"]
@@ -4323,10 +4732,16 @@ def main() -> int:
                     audit["result"] = "interrupted_forward_observed"
                 raise ObservationComplete()
 
-            if status.get("phase") == "installing":
-                forward_adoption = interrupted_proof["proof"].get(
-                    "forward_adoption"
-                )
+            forward_adoption = interrupted_proof["proof"].get(
+                "forward_adoption"
+            )
+            pending_repair = (
+                isinstance(forward_adoption, dict)
+                and forward_adoption.get("schema")
+                == "complete99-interrupted-forward-adoption/v4"
+                and status.get("phase") == "installed_pending_stabilization"
+            )
+            if status.get("phase") == "installing" or pending_repair:
                 if (
                     isinstance(forward_adoption, dict)
                     and forward_adoption.get("schema")
@@ -4334,6 +4749,14 @@ def main() -> int:
                 ):
                     observation = (
                         validate_interrupted_forward_robots_checkpoint_status(
+                            deployer,
+                            status,
+                            interrupted_proof,
+                        )
+                    )
+                elif pending_repair:
+                    observation = (
+                        validate_interrupted_forward_pending_stabilization_status(
                             deployer,
                             status,
                             interrupted_proof,

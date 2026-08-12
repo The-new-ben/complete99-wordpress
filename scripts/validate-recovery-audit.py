@@ -858,6 +858,15 @@ INTERRUPTED_FORWARD_ROBOTS_CHECKPOINT_MISMATCHES = [
     "robots_managed_sha256",
 ]
 
+INTERRUPTED_FORWARD_PENDING_STABILIZATION_MISMATCHES = [
+    "baseline_sync_configured",
+    "baseline_sync_secret_existed",
+    "interrupted_forward_candidate",
+    "migration_invariants_valid",
+    "phase",
+    "recovery_ready",
+]
+
 INTERRUPTED_FORWARD_SAFE_STATUS_KEYS = {
     "adopted_forward_no_rollback",
     "baseline_database_fingerprint",
@@ -1863,6 +1872,137 @@ def validate_interrupted_robots_checkpoint_observation_audit(
     return observation
 
 
+def validate_interrupted_pending_stabilization_observation_audit(
+    audit: dict[str, Any],
+    failed: dict[str, Any],
+    prior: dict[str, Any],
+    recovery_identity: dict[str, str],
+    proof_path: str,
+    proof_sha256: str,
+    expected_probe_id: str,
+    adoption: dict[str, Any],
+    *,
+    expected_commit: str | None = None,
+) -> dict[str, Any]:
+    """Authorize only the exact reviewed forward-ready Campaign repair state."""
+    safe = validate_interrupted_mismatch_diagnostic_audit(
+        audit,
+        failed,
+        prior,
+        recovery_identity,
+        proof_path,
+        proof_sha256,
+        expected_probe_id,
+        expected_commit=expected_commit,
+    )
+    observation = require_mapping(
+        audit.get("interrupted_forward_observation"),
+        "Interrupted forward pending-stabilization receipt",
+    )
+    expected_campaign = {
+        "cache_ready": True,
+        "capabilities_ready": True,
+        "capacity_inspectable": False,
+        "capacity_ready": False,
+        "capacity_write_ready": False,
+        "cron_inspectable": True,
+        "cron_ready": False,
+        "evidence_inspectable": True,
+        "evidence_ready": True,
+        "ready": False,
+        "suppression_inspectable": True,
+        "suppression_invalid": False,
+        "suppression_ready": True,
+        "suppression_recoverable_pending": False,
+    }
+    expected_capacity = {
+        "campaign_cohort_inspectable": True,
+        "fresh_install_empty": True,
+        "lifecycle_reserve_inspectable": False,
+        "operations_cohort_inspectable": True,
+        "prior_inactive_receipt_valid": False,
+        "quarantine_reserve_inspectable": False,
+    }
+    require(
+        exact_json_equal(
+            observation.get("mismatches"),
+            INTERRUPTED_FORWARD_PENDING_STABILIZATION_MISMATCHES,
+        )
+        and safe.get("phase") == "installed_pending_stabilization"
+        and safe.get("recovery_ready") is False
+        and safe.get("interrupted_forward_candidate") is False
+        and safe.get("migration_invariants_valid") is False
+        and safe.get("baseline_sync_configured") is False
+        and safe.get("baseline_sync_secret_existed") is False
+        and safe.get("baseline_database_journal_valid") is True
+        and safe.get("forward_ready") is True
+        and safe.get("forward_stabilization_candidate") is True
+        and safe.get("temp_removed") is True
+        and safe.get("candidate_activation_required") is True
+        and safe.get("candidate_activation_phase") == "complete"
+        and safe.get("candidate_prior_active") is True
+        and safe.get("candidate_requested_active") is True
+        and safe.get("candidate_database_fingerprint")
+        == adoption.get("observed_database_fingerprint")
+        and safe.get("database_fingerprint")
+        == adoption.get("observed_database_fingerprint")
+        and safe.get("database_manifest_sha256")
+        == adoption.get("observed_database_manifest_sha256")
+        and exact_json_equal(
+            safe.get("database_manifest"),
+            adoption.get("observed_database_manifest"),
+        )
+        and exact_json_equal(
+            safe.get("database_storage"),
+            adoption.get("observed_database_storage"),
+        )
+        and safe.get("deployment_id") == adoption.get("observed_deployment_id")
+        and safe.get("current_deployment")
+        == adoption.get("observed_deployment_id")
+        and safe.get("current_plugin_sha256")
+        == adoption.get("observed_plugin_sha256")
+        and safe.get("installed_plugin_sha256")
+        == adoption.get("observed_plugin_sha256")
+        and safe.get("current_robots_sha256")
+        == adoption.get("observed_robots_sha256")
+        and safe.get("robots_managed_sha256")
+        == adoption.get("observed_robots_sha256")
+        and safe.get("current_version") == adoption.get("observed_version")
+        and safe.get("current_database_version")
+        == adoption.get("observed_version")
+        and safe.get("runtime_version") == adoption.get("observed_version")
+        and safe.get("current_active") is True
+        and safe.get("current_sync_configured") is True
+        and safe.get("runtime_loaded") is True
+        and safe.get("migration_failed") is False
+        and safe.get("no_rollback_artifacts") is True
+        and safe.get("lock_owned") is True
+        and safe.get("process_lock_available") is True
+        and safe.get("state_exists") is True
+        and exact_json_equal(
+            safe.get("migration_invariant_checks"),
+            {
+                "campaigns": False,
+                "content": True,
+                "culinary_science": True,
+                "evaluation_catalog": True,
+                "ops": True,
+                "settings": True,
+            },
+        )
+        and exact_json_equal(safe.get("campaign_operational"), expected_campaign)
+        and exact_json_equal(
+            safe.get("campaign_capacity_diagnostic"), expected_capacity
+        )
+        and exact_json_equal(
+            safe.get("campaign_lifecycle"),
+            {"canonical": True, "generation": 2, "state": "active"},
+        ),
+        "Interrupted forward pending-stabilization observation is not the exact reviewed exception",
+    )
+    return observation
+
+
 def load_interrupted_forward_proof(
     raw_path: str,
     repository_root: Path,
@@ -2036,34 +2176,44 @@ def load_interrupted_forward_proof(
     if schema == "complete99-interrupted-forward-proof/v2":
         adoption = require_mapping(adoption, "Interrupted forward adoption")
         adoption_schema = adoption.get("schema")
+        adoption_keys = {
+            "observation_audit_path",
+            "observation_audit_sha256",
+            "observation_commit",
+            "observation_proof_sha256",
+            "observation_run_id",
+            "observed_database_fingerprint",
+            "observed_database_manifest",
+            "observed_database_manifest_sha256",
+            "observed_database_storage",
+            "observed_deployment_id",
+            "observed_plugin_sha256",
+            "observed_robots_sha256",
+            "observed_version",
+            "schema",
+            "target_artifact_sha256",
+            "target_installed_plugin_sha256",
+        }
+        if adoption_schema == "complete99-interrupted-forward-adoption/v4":
+            adoption_keys.add("observation_run_attempt")
         require(
-            set(adoption)
-            == {
-                "observation_audit_path",
-                "observation_audit_sha256",
-                "observation_commit",
-                "observation_proof_sha256",
-                "observation_run_id",
-                "observed_database_fingerprint",
-                "observed_database_manifest",
-                "observed_database_manifest_sha256",
-                "observed_database_storage",
-                "observed_deployment_id",
-                "observed_plugin_sha256",
-                "observed_robots_sha256",
-                "observed_version",
-                "schema",
-                "target_artifact_sha256",
-                "target_installed_plugin_sha256",
-            }
+            set(adoption) == adoption_keys
             and adoption_schema
             in {
                 "complete99-interrupted-forward-adoption/v1",
                 "complete99-interrupted-forward-adoption/v2",
                 "complete99-interrupted-forward-adoption/v3",
+                "complete99-interrupted-forward-adoption/v4",
             }
             and type(adoption.get("observation_run_id")) is int
             and adoption["observation_run_id"] > failed["run_id"]
+            and (
+                adoption_schema != "complete99-interrupted-forward-adoption/v4"
+                or (
+                    type(adoption.get("observation_run_attempt")) is int
+                    and 1 <= adoption["observation_run_attempt"] <= 100
+                )
+            )
             and type(adoption.get("observation_commit")) is str
             and COMMIT.fullmatch(adoption["observation_commit"]) is not None
             and adoption["observation_commit"]
@@ -2082,6 +2232,7 @@ def load_interrupted_forward_proof(
                 not in {
                     "complete99-interrupted-forward-adoption/v1",
                     "complete99-interrupted-forward-adoption/v3",
+                    "complete99-interrupted-forward-adoption/v4",
                 }
                 or (
                     adoption.get("observed_database_fingerprint")
@@ -2178,6 +2329,21 @@ def load_interrupted_forward_proof(
                     historical_relative,
                     base_proof_sha256,
                     f"c99-recovery-probe-{adoption['observation_run_id']}-1",
+                    adoption,
+                    expected_commit=adoption["observation_commit"],
+                )
+            )
+        elif adoption_schema == "complete99-interrupted-forward-adoption/v4":
+            reviewed_forward_observation = (
+                validate_interrupted_pending_stabilization_observation_audit(
+                    observation_audit,
+                    failed,
+                    prior,
+                    recovery_identity,
+                    historical_relative,
+                    base_proof_sha256,
+                    f"c99-recovery-probe-{adoption['observation_run_id']}-"
+                    f"{adoption['observation_run_attempt']}",
                     adoption,
                     expected_commit=adoption["observation_commit"],
                 )
@@ -2302,6 +2468,12 @@ def validate_interrupted_adoption(
     proof = loaded["proof"]
     failed = proof["failed_run"]
     adoption = proof["forward_adoption"]
+    expected_source_phase = (
+        "installed_pending_stabilization"
+        if adoption.get("schema")
+        == "complete99-interrupted-forward-adoption/v4"
+        else "installing"
+    )
     receipt = require_mapping(
         adoption_audit.get("receipt"),
         "Interrupted forward adoption receipt",
@@ -2328,7 +2500,7 @@ def validate_interrupted_adoption(
         and receipt.get("stabilized") is True
         and type(idempotent) is bool
         and receipt.get("adopted_forward_no_rollback") is True
-        and receipt.get("stabilized_from_phase") == "installing"
+        and receipt.get("stabilized_from_phase") == expected_source_phase
         and receipt.get("version") == failed["version"]
         and receipt.get("database_version") == failed["version"]
         and receipt.get("deployment_id") == failed["deployment_id"]
@@ -2499,7 +2671,12 @@ def validate_interrupted_forward_recovery_audit(
         "Interrupted forward recovery used the wrong terminal path",
     )
     expected_owner_phase = (
-        "installing"
+        (
+            "installed_pending_stabilization"
+            if adoption.get("schema")
+            == "complete99-interrupted-forward-adoption/v4"
+            else "installing"
+        )
         if has_pre_adoption
         else (
             "installed"
@@ -2540,7 +2717,10 @@ def validate_interrupted_forward_recovery_audit(
         )
         if (
             adoption.get("schema")
-            == "complete99-interrupted-forward-adoption/v3"
+            in {
+                "complete99-interrupted-forward-adoption/v3",
+                "complete99-interrupted-forward-adoption/v4",
+            }
         ):
             require(
                 exact_json_equal(
@@ -2611,6 +2791,10 @@ def expected_interrupted_finalized_attestation(
     failed = proof["failed_run"]
     prior = proof["prior_run"]
     adoption = proof["forward_adoption"]
+    pending_repair = (
+        adoption.get("schema")
+        == "complete99-interrupted-forward-adoption/v4"
+    )
     return {
         "active": True,
         "already_finalized": True,
@@ -2624,7 +2808,7 @@ def expected_interrupted_finalized_attestation(
         "database_storage": adoption["observed_database_storage"],
         "finalized_deployment_id": failed["deployment_id"],
         "migration_failed": False,
-        "migration_invariants_valid": True,
+        "migration_invariants_valid": not pending_repair,
         "plugin_sha256": failed["installed_plugin_sha256"],
         "probe_deployment_id": probe_id,
         "probe_lock_phase": "reserved",
