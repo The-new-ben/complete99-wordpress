@@ -11,9 +11,15 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.22.0`. Production truth comes
+The source tree targets Complete99 Platform `1.22.1`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.22.1 repairs the Campaign lifecycle bootstrap: activation recovery
+must now complete its bounded cleanup, public-absence and inactive receipt chain
+before Campaign truth becomes active. It also repairs the two exact receipt-less
+1.22 bootstrap states under retained lifecycle and worker ownership; conflicting
+or partial immutable evidence remains fail closed.
 
 Release 1.22.0 adds a private WordPress-native Campaign Studio with governed
 drafts, approvals, prepared packages, owned-site scheduling, exact readback,

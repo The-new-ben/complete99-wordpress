@@ -30,6 +30,20 @@ def copy_historical_1_18_dist(destination: Path) -> Path:
     return destination
 
 
+def copy_historical_1_22_dist(destination: Path) -> Path:
+    source = ROOT / "plugin-dist"
+    destination.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        source / "complete99-platform-1.22.0.zip",
+        destination / "complete99-platform-1.22.0.zip",
+    )
+    shutil.copy2(
+        source / "complete99-platform-1.22.0-integrity.json",
+        destination / "complete99-platform-integrity.json",
+    )
+    return destination
+
+
 def load_module(name: str, path: Path):
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
@@ -1086,10 +1100,11 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             "docs/recovery-proofs/c99-prod-31598196288-1.json",
             ROOT,
         )
-        package = VALIDATOR.validate_interrupted_forward_dist(
-            ROOT / "plugin-dist",
-            proof,
-        )
+        with tempfile.TemporaryDirectory() as directory:
+            package = VALIDATOR.validate_interrupted_forward_dist(
+                copy_historical_1_22_dist(Path(directory)),
+                proof,
+            )
         self.assertEqual("complete99-interrupted-forward-proof/v1", proof["schema"])
         self.assertEqual("1.22.0", package["version"])
         self.assertEqual(

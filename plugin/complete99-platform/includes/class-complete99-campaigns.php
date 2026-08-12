@@ -1797,15 +1797,34 @@ final class Complete99_Campaigns {
 	}
 
 	/** Reserve only immutable lifecycle pairs still owed by the current/next generation. */
+	private static function lifecycle_prior_inactive_receipt_requirement( $state, $generation ) {
+		$state = (string) $state;
+		$generation = is_int( $generation ) ? $generation : 0;
+		if ( ! in_array( $state, array( 'active', 'inactive' ), true ) || 1 > $generation ) {
+			return new WP_Error( 'complete99_campaign_lifecycle_prior_identity', 'Lifecycle prior-receipt identity is invalid.', array( 'status' => 503 ) );
+		}
+		if ( 'active' === $state && 1 === $generation ) { return null; }
+		if ( 'active' === $state ) {
+			if ( 3 > $generation ) { return new WP_Error( 'complete99_campaign_lifecycle_bootstrap_unproven', 'Active lifecycle bootstrap truth is missing its durable inactive transition.', array( 'status' => 503 ) ); }
+			return array( 'receiptGeneration' => $generation - 2, 'inactiveGeneration' => $generation - 1 );
+		}
+		if ( 2 > $generation ) { return new WP_Error( 'complete99_campaign_lifecycle_bootstrap_unproven', 'Inactive lifecycle bootstrap truth is missing its durable suspension transition.', array( 'status' => 503 ) ); }
+		return array( 'receiptGeneration' => $generation - 1, 'inactiveGeneration' => $generation );
+	}
+
 	private static function lifecycle_capacity_reservation() {
 		global $wpdb;
 		$status = self::lifecycle_reservation_status( false );
 		if ( is_wp_error( $status ) ) { return $status; }
 		$result = array( 'missingRows' => 0, 'campaignCanonicalBytes' => 0, 'operationsCanonicalBytes' => 0 );
 		$state = (string) $status['state'];
-		if ( in_array( $state, array( 'active', 'inactive' ), true ) && 1 < (int) $status['generation'] ) {
-			$prior = self::stored_lifecycle_receipt( (int) $status['generation'] - 1, 'inactive', false );
-			if ( is_wp_error( $prior ) || (int) ( $prior['inactiveGeneration'] ?? 0 ) !== (int) $status['generation'] ) { return is_wp_error( $prior ) ? $prior : new WP_Error( 'complete99_campaign_lifecycle_reserve_prior', 'Lifecycle capacity is not bound to the prior inactive cleanup chain.', array( 'status' => 503 ) ); }
+		if ( in_array( $state, array( 'active', 'inactive' ), true ) ) {
+			$requirement = self::lifecycle_prior_inactive_receipt_requirement( $state, (int) $status['generation'] );
+			if ( is_wp_error( $requirement ) ) { return $requirement; }
+			if ( is_array( $requirement ) ) {
+				$prior = self::stored_lifecycle_receipt( (int) $requirement['receiptGeneration'], 'inactive', false );
+				if ( is_wp_error( $prior ) || (int) ( $prior['inactiveGeneration'] ?? 0 ) !== (int) $requirement['inactiveGeneration'] ) { return is_wp_error( $prior ) ? $prior : new WP_Error( 'complete99_campaign_lifecycle_reserve_prior', 'Lifecycle capacity is not bound to the prior inactive cleanup chain.', array( 'status' => 503 ) ); }
+			}
 		}
 		if ( 'inactive' === $state ) { return $result; }
 		$generation = (int) $status['generation'] + ( 'active' === $state ? 1 : 0 );
@@ -6383,18 +6402,61 @@ final class Complete99_Campaigns {
 		return '' !== (string) $wpdb->last_error || ! is_numeric( $count ) ? new WP_Error( 'complete99_campaign_lifecycle_cleanup_rescan', 'Lifecycle cleanup queue rescan failed.', array( 'status' => 503 ) ) : 0 === (int) $count;
 	}
 
+	/** Prove an immutable lifecycle identity is wholly unused before legacy repair. */
+	private static function lifecycle_receipt_slot_empty( $generation, $phase ) {
+		global $wpdb;
+		if ( ! is_int( $generation ) || 1 > $generation || ! in_array( (string) $phase, array( 'suspending', 'drained', 'inactive' ), true ) ) {
+			return new WP_Error( 'complete99_campaign_lifecycle_legacy_slot_identity', 'Legacy lifecycle receipt identity is invalid.', array( 'status' => 503 ) );
+		}
+		$seed = self::LIFECYCLE_RECEIPT_CAMPAIGN_ID . '|' . $generation . '|' . (string) $phase;
+		$receipt_id = 'lrc_' . substr( hash( 'sha256', $seed ), 0, 60 );
+		$external_id = 'lifecycle:' . $generation . ':' . (string) $phase;
+		$event_id = 'evt_' . substr( hash( 'sha256', $seed ), 0, 60 );
+		$tables = self::table_names();
+		$ops = Complete99_Ops::table_names();
+		$wpdb->last_error = '';
+		$providers = $wpdb->get_results( $wpdb->prepare( "SELECT id FROM {$tables['provider_receipts']} WHERE receipt_id=%s OR (provider_key=%s AND external_id=%s) ORDER BY id ASC LIMIT 2", $receipt_id, self::LIFECYCLE_RECEIPT_PROVIDER, $external_id ), ARRAY_A );
+		$provider_error = (string) $wpdb->last_error;
+		$wpdb->last_error = '';
+		$audits = $wpdb->get_results( $wpdb->prepare( "SELECT id FROM {$ops['audit_events']} WHERE event_id=%s ORDER BY id ASC LIMIT 2", $event_id ), ARRAY_A );
+		if ( '' !== $provider_error || '' !== (string) $wpdb->last_error || ! is_array( $providers ) || ! is_array( $audits ) || 1 < count( $providers ) || 1 < count( $audits ) ) {
+			return new WP_Error( 'complete99_campaign_lifecycle_legacy_slot_unavailable', 'Legacy lifecycle receipt identity is unavailable or duplicated.', array( 'status' => 503 ) );
+		}
+		return empty( $providers ) && empty( $audits );
+	}
+
+	/** Move the two receipt-less 1.22 bootstrap states through the full durable drain. */
+	private static function repair_legacy_bootstrap_lifecycle( $status ) {
+		if ( ! self::$activation_recovery_mode || ! is_array( $status ) ) { return $status; }
+		$state = (string) ( $status['state'] ?? '' );
+		$generation = (int) ( $status['generation'] ?? 0 );
+		$legacy = ( 'inactive' === $state && 1 === $generation ) || ( 'active' === $state && 2 === $generation );
+		if ( ! $legacy ) { return $status; }
+		if ( ! self::$lifecycle_role_lock_owned || ! self::$worker_execution_fence_owned ) {
+			return new WP_Error( 'complete99_campaign_lifecycle_legacy_repair_order', 'Legacy lifecycle bootstrap repair requires exact activation ownership.', array( 'status' => 503 ) );
+		}
+		foreach ( array( 'suspending', 'drained', 'inactive' ) as $phase ) {
+			$empty = self::lifecycle_receipt_slot_empty( 1, $phase );
+			if ( is_wp_error( $empty ) ) { return $empty; }
+			if ( true !== $empty ) { return new WP_Error( 'complete99_campaign_lifecycle_legacy_repair_collision', 'Legacy lifecycle bootstrap repair found partial immutable proof.', array( 'status' => 503 ) ); }
+		}
+		return self::transition_lifecycle_reservation_locked( $status, 'suspending' );
+	}
+
 	/** Seed exactly one non-autoloaded reservation during the protected migration. */
 	private static function install_lifecycle_reservation() {
 		global $wpdb;
 		$status = self::lifecycle_reservation_status( false );
 		if ( ! is_wp_error( $status ) ) {
+			$status = self::repair_legacy_bootstrap_lifecycle( $status );
+			if ( is_wp_error( $status ) ) { throw new \RuntimeException( $status->get_error_message() ); }
 			if ( ! self::$activation_recovery_mode && ! hash_equals( 'active', (string) $status['state'] ) ) { throw new \RuntimeException( 'Campaign lifecycle reservation is not active during installation.' ); }
 			return true;
 		}
 		if ( 'complete99_campaign_lifecycle_cardinality' !== $status->get_error_code() || 0 !== (int) ( (array) $status->get_error_data() )['rowCount'] ) {
 			throw new \RuntimeException( 'Campaign lifecycle reservation is malformed during installation.' );
 		}
-		$payload = self::lifecycle_reservation_payload( self::$activation_recovery_mode ? 'inactive' : 'active', 1, gmdate( 'Y-m-d\TH:i:s\Z' ) );
+		$payload = self::lifecycle_reservation_payload( self::$activation_recovery_mode ? 'suspending' : 'active', 1, gmdate( 'Y-m-d\TH:i:s\Z' ) );
 		if ( is_wp_error( $payload ) ) { throw new \RuntimeException( $payload->get_error_message() ); }
 		$json = self::canonical_json( $payload );
 		$wpdb->last_error = '';
@@ -9548,7 +9610,6 @@ final class Complete99_Campaigns {
 	}
 
 	private static function resume_schedules_fenced( $current ) {
-		global $wpdb;
 		if ( ! self::$worker_execution_fence_owned || ! self::$lifecycle_role_lock_owned || ! is_array( $current ) ) { return new WP_Error( 'complete99_campaign_lifecycle_resume_order', 'Campaign resume requires exact lifecycle and worker ownership.', array( 'status' => 503 ) ); }
 		if ( hash_equals( 'suspending', (string) $current['state'] ) ) {
 			$current = self::suspend_schedules_fenced( $current );
@@ -9556,21 +9617,15 @@ final class Complete99_Campaigns {
 		}
 		if ( hash_equals( 'active', (string) ( $current['state'] ?? '' ) ) ) { return $current; }
 		if ( ! hash_equals( 'inactive', (string) ( $current['state'] ?? '' ) ) ) { return new WP_Error( 'complete99_campaign_lifecycle_resume_state', 'Campaign lifecycle cannot resume from malformed state.', array( 'status' => 503 ) ); }
-		$final = 1 < (int) $current['generation'] ? self::stored_lifecycle_receipt( (int) $current['generation'] - 1, 'inactive', false ) : new WP_Error( 'complete99_campaign_lifecycle_fresh_install', 'Fresh lifecycle installation has no prior inactive receipt.' );
-		if ( is_wp_error( $final ) ) {
-			if ( ! self::$activation_recovery_mode || 1 !== (int) $current['generation'] ) { return $final; }
-			$tables = self::table_names();
-			$wpdb->last_error = '';
-			$campaign_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$tables['campaigns']}" );
-			$placement_count = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$tables['placements']} WHERE placement_id<>%s", self::public_quarantine_placement_id() ) );
-			if ( '' !== (string) $wpdb->last_error || ! is_numeric( $campaign_count ) || ! is_numeric( $placement_count ) || 0 !== (int) $campaign_count || 0 !== (int) $placement_count ) { return new WP_Error( 'complete99_campaign_lifecycle_fresh_install_nonempty', 'Fresh inactive lifecycle truth is not empty.', array( 'status' => 503 ) ); }
-		} else {
-			if ( (int) ( $final['inactiveGeneration'] ?? 0 ) !== (int) $current['generation'] ) { return new WP_Error( 'complete99_campaign_lifecycle_resume_receipt_stale', 'Campaign lifecycle inactive receipt is stale.', array( 'status' => 503 ) ); }
-			$urls = self::lifecycle_public_absence_urls();
-			$verified_at = gmdate( 'Y-m-d\TH:i:s\Z' );
-			$absence = is_wp_error( $urls ) ? $urls : self::prove_public_quarantine_absence( $urls, $verified_at );
-			if ( is_wp_error( $absence ) ) { return $absence; }
-		}
+		$requirement = self::lifecycle_prior_inactive_receipt_requirement( 'inactive', (int) $current['generation'] );
+		if ( is_wp_error( $requirement ) ) { return $requirement; }
+		$final = self::stored_lifecycle_receipt( (int) $requirement['receiptGeneration'], 'inactive', false );
+		if ( is_wp_error( $final ) ) { return $final; }
+		if ( (int) ( $final['inactiveGeneration'] ?? 0 ) !== (int) $requirement['inactiveGeneration'] ) { return new WP_Error( 'complete99_campaign_lifecycle_resume_receipt_stale', 'Campaign lifecycle inactive receipt is stale.', array( 'status' => 503 ) ); }
+		$urls = self::lifecycle_public_absence_urls();
+		$verified_at = gmdate( 'Y-m-d\TH:i:s\Z' );
+		$absence = is_wp_error( $urls ) ? $urls : self::prove_public_quarantine_absence( $urls, $verified_at );
+		if ( is_wp_error( $absence ) ) { return $absence; }
 		$queued = self::enqueue_reconcile_trigger( time() + self::SYSTEM_CRON_INTERVAL_SECONDS );
 		if ( is_wp_error( $queued ) ) { return $queued; }
 		$current = self::transition_lifecycle_reservation_locked( $current, 'active' );

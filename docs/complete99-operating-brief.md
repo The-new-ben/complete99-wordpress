@@ -1,7 +1,7 @@
 # Complete99 operating brief
 
 Last updated: 2026-08-12
-Status: source release target 1.22.0, with the WordPress-native Complete99 OS foundation and private Campaign Studio, exact seven-table Operations and Campaign cohorts, table-aware rollback and lifecycle recovery, zero-traffic worker monitoring, digest-pinned search activation for 18 reviewed Science/Museum owners across 36 bilingual canonical routes, truthful Product/Offer gating, 36 unchanged public products and disabled payments; external publication remains manual and every held, private, section-only, query-state and untested-preparation boundary remains fail closed
+Status: source release target 1.22.1, with the WordPress-native Complete99 OS foundation and private Campaign Studio, exact seven-table Operations and Campaign cohorts, table-aware rollback and durable bootstrap/lifecycle recovery, zero-traffic worker monitoring, digest-pinned search activation for 18 reviewed Science/Museum owners across 36 bilingual canonical routes, truthful Product/Offer gating, 36 unchanged public products and disabled payments; external publication remains manual and every held, private, section-only, query-state and untested-preparation boundary remains fail closed
 
 This is the private source of truth for the Complete99 public website, operating
 platform, knowledge system, commerce foundation, growth work, and future

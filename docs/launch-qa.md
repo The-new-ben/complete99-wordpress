@@ -1,6 +1,6 @@
 # Launch QA
 
-Release target: Complete99 Platform 1.22.0
+Release target: Complete99 Platform 1.22.1
 
 ## Automated gates
 
@@ -57,9 +57,10 @@ Release target: Complete99 Platform 1.22.0
   journal and bridge mutation scope. Campaign migrations do not schedule hooks;
   durable job state is persisted first, and normal `init` only enqueues a generic
   no-argument worker. Bounded repeated worker invocations rebuild/correct exact
-  three-argument hooks and schedule the earliest future retry. Normal plugin
-  deactivation keyset-suspends every scheduled/active job, compensates failures
-  and proves zero unsuspended rows.
+  three-argument hooks and schedule the earliest future retry. Deactivation uses
+  one generation-bound aggregate suspension, bounded cron/cleanup batches and
+  immutable historical/current public-absence receipts without per-campaign
+  revision fanout.
 - Campaign acceptance covers command-bound exact external adapter artifacts,
   persisted preview/copy/download, protected idempotent evidence upload/stream,
   receipt/result/unverified-signal truth, versioned moderation transitions,
@@ -80,7 +81,7 @@ Release target: Complete99 Platform 1.22.0
   and calls the Complete99 operations, Campaign Studio and Culinary Science
   invariants. Missing protected storage/capability or a fail-closed zero-route
   Museum overlay cannot finalize after a database-version short circuit.
-- The public update manifest matches version 1.22.0 and its versioned package URL.
+- The public update manifest matches version 1.22.1 and its versioned package URL.
 - The generated-asset manifest is treated as an editorial evidence registry,
   never as proof that a file is installed in the package.
 - The default-deny Science media policy inventories exactly 47 stems and 175
