@@ -1761,6 +1761,12 @@ define('ABSPATH', __DIR__);
 $dir=sys_get_temp_dir().DIRECTORY_SEPARATOR.'c99-symlink-'.bin2hex(random_bytes(8));
 mkdir($dir,0700,true);$target=$dir.DIRECTORY_SEPARATOR.'target';$link=$dir.DIRECTORY_SEPARATOR.'evidence';file_put_contents($target,'x');
 if(!@symlink($target,$link)){@unlink($target);@rmdir($dir);echo json_encode(array('supported'=>false),JSON_THROW_ON_ERROR);exit;}
+define('COMPLETE99_PRIVATE_EVIDENCE_DIR',$dir);define('WP_CONTENT_DIR',$dir.DIRECTORY_SEPARATOR.'public-content');
+class WP_Error{} function is_wp_error($value){return $value instanceof WP_Error;}
+function untrailingslashit($value){return rtrim((string)$value,"/\\");}
+function trailingslashit($value){return untrailingslashit($value).'/';}
+function wp_normalize_path($value){return str_replace('\\','/',(string)$value);}
+function wp_upload_dir(){return array('basedir'=>COMPLETE99_PRIVATE_EVIDENCE_DIR.DIRECTORY_SEPARATOR.'public-uploads');}
 @unlink($target);require '__CAMPAIGN_PATH__';
 $method=new ReflectionMethod('Complete99_Campaigns','private_evidence_byte_path_state');$method->setAccessible(true);
 $state=$method->invoke(null,$link,array('sizeBytes'=>1,'sha256'=>hash('sha256','x')));
