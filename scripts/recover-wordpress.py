@@ -1946,6 +1946,195 @@ def validate_interrupted_forward_pending_stabilization_observation_audit(
     return observation
 
 
+def validate_interrupted_forward_candidate_repair_observation_audit(
+    deployer: Any,
+    audit: dict[str, Any],
+    historical: dict[str, Any],
+    adoption: dict[str, Any],
+) -> dict[str, Any]:
+    """Authenticate the exact read-only checkpoint for candidate repair."""
+    proof = historical["proof"]
+    failed = proof["failed_run"]
+    prior = proof["prior_run"]
+    recovered = proof["recovered_baseline"]
+    validate_reviewed_audit_common(
+        deployer,
+        audit,
+        failed["deployment_id"],
+        "Interrupted forward candidate-repair observation",
+    )
+    expected_keys = {
+        "bootstrap_cleanup",
+        "bridge_site_identity",
+        "cleanup",
+        "commit",
+        "decision",
+        "deployment_id",
+        "discovery",
+        "finished_at",
+        "health",
+        "identity",
+        "interrupted_forward_observation",
+        "interrupted_forward_proof",
+        "local_test",
+        "proof_consumed",
+        "rendered_home",
+        "result",
+        "robots",
+        "started_at",
+    }
+    discovery = audit.get("discovery")
+    discovery_bootstrap = (
+        discovery.get("bootstrap_cleanup") if isinstance(discovery, dict) else None
+    )
+    discovery_cleanup = (
+        discovery.get("cleanup") if isinstance(discovery, dict) else None
+    )
+    expected_probe_id = (
+        f"c99-recovery-probe-{adoption['observation_run_id']}-"
+        f"{adoption['observation_run_attempt']}"
+    )
+    if (
+        set(audit) != expected_keys
+        or audit.get("commit") != adoption["observation_commit"]
+        or audit.get("decision")
+        != "observe_interrupted_forward_mismatch_diagnostic"
+        or audit.get("result")
+        != "interrupted_forward_mismatch_diagnostic_observed"
+        or audit.get("proof_consumed") is not False
+        or not isinstance(discovery, dict)
+        or set(discovery)
+        != {
+            "bootstrap_cleanup",
+            "cleanup",
+            "owner_deployment_id",
+            "owner_phase",
+            "probe_id",
+            "result",
+        }
+        or discovery.get("probe_id") != expected_probe_id
+        or discovery.get("owner_deployment_id") != failed["deployment_id"]
+        or discovery.get("owner_phase") != "candidate_activation_pending"
+        or discovery.get("result") != "owner-discovered"
+        or not exact_json_equal(
+            discovery_bootstrap,
+            {
+                "exact_name": "c99-deploy-bootstrap",
+                "known_id": 5,
+                "known_id_matched": False,
+                "removed_ids": [],
+                "row_absence_verified": True,
+            },
+        )
+        or not isinstance(discovery_cleanup, dict)
+        or set(discovery_cleanup)
+        != {
+            "removed_ids",
+            "route_404",
+            "row_absence_verified",
+            "snippet_active",
+            "snippet_deleted",
+        }
+        or not isinstance(discovery_cleanup.get("removed_ids"), list)
+        or len(discovery_cleanup["removed_ids"]) != 1
+        or type(discovery_cleanup["removed_ids"][0]) is not int
+        or discovery_cleanup["removed_ids"][0] <= 0
+        or discovery_cleanup.get("route_404") is not True
+        or discovery_cleanup.get("row_absence_verified") is not True
+        or discovery_cleanup.get("snippet_active") is not False
+        or discovery_cleanup.get("snippet_deleted") is not True
+        or not exact_json_equal(
+            audit.get("interrupted_forward_proof"),
+            {
+                "path": historical["path"],
+                "proof_sha256": historical["proof_sha256"],
+                "schema": historical["schema"],
+            },
+        )
+    ):
+        raise deployer.DeployError(
+            "Interrupted forward candidate-repair observation schema is invalid"
+        )
+    observation = audit.get("interrupted_forward_observation")
+    if not isinstance(observation, dict):
+        raise deployer.DeployError(
+            "Interrupted forward candidate-repair observation is missing"
+        )
+    safe_status = validate_interrupted_forward_safe_status_shape(
+        deployer,
+        observation.get("safe_status"),
+        "Interrupted forward candidate repair",
+    )
+    expected_observation = capture_interrupted_forward_mismatch_diagnostic(
+        deployer,
+        safe_status,
+        historical,
+    )
+    if (
+        not exact_json_equal(observation, expected_observation)
+        or observation.get("safe_status_sha256")
+        != adoption["observation_safe_status_sha256"]
+        or safe_status.get("phase") != "candidate_activation_pending"
+        or safe_status.get("database_fingerprint")
+        != adoption["observed_database_fingerprint"]
+        or safe_status.get("database_manifest_sha256")
+        != adoption["observed_database_manifest_sha256"]
+        or not exact_json_equal(
+            safe_status.get("database_manifest"),
+            adoption["observed_database_manifest"],
+        )
+        or not exact_json_equal(
+            safe_status.get("database_storage"),
+            adoption["observed_database_storage"],
+        )
+        or safe_status.get("deployment_id") != failed["deployment_id"]
+        or safe_status.get("current_deployment") != recovered["deployment_id"]
+        or safe_status.get("current_plugin_sha256")
+        != adoption["observed_plugin_sha256"]
+        or safe_status.get("installed_plugin_sha256")
+        != adoption["observed_plugin_sha256"]
+        or safe_status.get("current_robots_sha256")
+        != adoption["observed_robots_sha256"]
+        or safe_status.get("current_version") != adoption["observed_version"]
+        or safe_status.get("current_database_version")
+        != adoption["observed_version"]
+        or safe_status.get("runtime_version") != adoption["observed_version"]
+        or safe_status.get("lock_owned") is not True
+        or safe_status.get("process_lock_available") is not True
+        or safe_status.get("no_rollback_artifacts") is not True
+        or safe_status.get("recovery_ready") is not False
+        or not exact_json_equal(
+            audit.get("health"),
+            {
+                "component": "complete99-platform",
+                "database_version": failed["version"],
+                "deployment_id": recovered["deployment_id"],
+                "status": "ok",
+                "sync_configured": True,
+                "version": failed["version"],
+            },
+        )
+        or not exact_json_equal(
+            audit.get("robots"),
+            {"sha256": recovered["robots_sha256"], "status": 200},
+        )
+        or not isinstance(audit.get("rendered_home"), dict)
+        or audit["rendered_home"].get("deployment_id")
+        != recovered["deployment_id"]
+        or audit["rendered_home"].get("version") != failed["version"]
+        or audit["rendered_home"].get("exact_path") != "/"
+        or deployer.re.fullmatch(
+            r"[a-f0-9]{64}",
+            str(audit["rendered_home"].get("body_sha256", "")),
+        )
+        is None
+    ):
+        raise deployer.DeployError(
+            "Interrupted forward candidate-repair observation conflicts with the reviewed state"
+        )
+    return observation
+
+
 def load_interrupted_forward_proof(
     deployer: Any,
     raw_path: str,
@@ -1987,6 +2176,7 @@ def load_interrupted_forward_proof(
             "complete99-interrupted-forward-proof/v1",
             "complete99-interrupted-forward-proof/v2",
             "complete99-interrupted-forward-proof/v3",
+            "complete99-interrupted-forward-proof/v4",
         }
         or not isinstance(envelope.get("proof"), dict)
     ):
@@ -1999,9 +2189,13 @@ def load_interrupted_forward_proof(
         {"failed_run", "forward_adoption", "prior_run"}
         if schema == "complete99-interrupted-forward-proof/v2"
         else (
-            {"failed_run", "prior_run", "recovered_baseline"}
-            if schema == "complete99-interrupted-forward-proof/v3"
-            else {"failed_run", "prior_run"}
+            {"failed_run", "prior_run", "recovered_baseline", "forward_adoption"}
+            if schema == "complete99-interrupted-forward-proof/v4"
+            else (
+                {"failed_run", "prior_run", "recovered_baseline"}
+                if schema == "complete99-interrupted-forward-proof/v3"
+                else {"failed_run", "prior_run"}
+            )
         )
     )
     failed = proof.get("failed_run")
@@ -2114,7 +2308,11 @@ def load_interrupted_forward_proof(
         or failed["version"] == prior["version"]
         or failed["installed_plugin_sha256"] == prior["plugin_sha256"]
         or (
-            schema != "complete99-interrupted-forward-proof/v3"
+            schema
+            not in {
+                "complete99-interrupted-forward-proof/v3",
+                "complete99-interrupted-forward-proof/v4",
+            }
             and failed["baseline_database_fingerprint"]
             != prior["database_fingerprint"]
         )
@@ -2122,7 +2320,10 @@ def load_interrupted_forward_proof(
         raise deployer.DeployError(
             "Interrupted forward reviewed identities are invalid"
         )
-    if schema == "complete99-interrupted-forward-proof/v3":
+    if schema in {
+        "complete99-interrupted-forward-proof/v3",
+        "complete99-interrupted-forward-proof/v4",
+    }:
         recovered_keys = {
             "active",
             "database_fingerprint",
@@ -2241,9 +2442,18 @@ def load_interrupted_forward_proof(
     )
     base_proof = {"failed_run": failed, "prior_run": prior}
     base_proof_sha256 = canonical_proof_sha256(base_proof)
+    recovered_proof = {
+        "failed_run": failed,
+        "prior_run": prior,
+        "recovered_baseline": recovered_baseline,
+    }
+    recovered_proof_sha256 = canonical_proof_sha256(recovered_proof)
     adoption = proof.get("forward_adoption")
     reviewed_forward_observation: dict[str, Any] | None = None
-    if schema == "complete99-interrupted-forward-proof/v2":
+    if schema in {
+        "complete99-interrupted-forward-proof/v2",
+        "complete99-interrupted-forward-proof/v4",
+    }:
         adoption_schema = (
             adoption.get("schema") if isinstance(adoption, dict) else None
         )
@@ -2265,8 +2475,15 @@ def load_interrupted_forward_proof(
             "target_artifact_sha256",
             "target_installed_plugin_sha256",
         }
-        if adoption_schema == "complete99-interrupted-forward-adoption/v4":
+        if adoption_schema in {
+            "complete99-interrupted-forward-adoption/v4",
+            "complete99-interrupted-forward-adoption/v5",
+        }:
             adoption_keys.add("observation_run_attempt")
+        if adoption_schema == "complete99-interrupted-forward-adoption/v5":
+            adoption_keys.update(
+                {"candidate_repair", "observation_safe_status_sha256"}
+            )
         if (
             not isinstance(adoption, dict)
             or set(adoption) != adoption_keys
@@ -2276,11 +2493,16 @@ def load_interrupted_forward_proof(
                 "complete99-interrupted-forward-adoption/v2",
                 "complete99-interrupted-forward-adoption/v3",
                 "complete99-interrupted-forward-adoption/v4",
+                "complete99-interrupted-forward-adoption/v5",
             }
             or type(adoption.get("observation_run_id")) is not int
             or adoption["observation_run_id"] <= failed["run_id"]
             or (
-                adoption_schema == "complete99-interrupted-forward-adoption/v4"
+                adoption_schema
+                in {
+                    "complete99-interrupted-forward-adoption/v4",
+                    "complete99-interrupted-forward-adoption/v5",
+                }
                 and (
                     type(adoption.get("observation_run_attempt")) is not int
                     or adoption["observation_run_attempt"] < 1
@@ -2291,11 +2513,19 @@ def load_interrupted_forward_proof(
             or commit.fullmatch(adoption["observation_commit"]) is None
             or adoption["observation_commit"]
             in {failed["commit"], prior["commit"]}
-            or adoption.get("observation_proof_sha256") != base_proof_sha256
+            or adoption.get("observation_proof_sha256")
+            != (
+                recovered_proof_sha256
+                if adoption_schema == "complete99-interrupted-forward-adoption/v5"
+                else base_proof_sha256
+            )
             or adoption.get("target_artifact_sha256")
             != failed["artifact_sha256"]
-            or adoption.get("target_installed_plugin_sha256")
-            != failed["installed_plugin_sha256"]
+            or (
+                adoption_schema != "complete99-interrupted-forward-adoption/v5"
+                and adoption.get("target_installed_plugin_sha256")
+                != failed["installed_plugin_sha256"]
+            )
             or adoption.get("observed_deployment_id")
             != failed["deployment_id"]
             or adoption.get("observed_plugin_sha256")
@@ -2374,11 +2604,27 @@ def load_interrupted_forward_proof(
         if (
             historical is None
             or historical.get("schema")
-            != "complete99-interrupted-forward-proof/v1"
+            != (
+                "complete99-interrupted-forward-proof/v3"
+                if adoption_schema == "complete99-interrupted-forward-adoption/v5"
+                else "complete99-interrupted-forward-proof/v1"
+            )
             or historical.get("path")
             != f"docs/recovery-proofs/{failed['deployment_id']}.json"
-            or historical.get("proof_sha256") != base_proof_sha256
-            or not exact_json_equal(historical.get("proof"), base_proof)
+            or historical.get("proof_sha256")
+            != (
+                recovered_proof_sha256
+                if adoption_schema == "complete99-interrupted-forward-adoption/v5"
+                else base_proof_sha256
+            )
+            or not exact_json_equal(
+                historical.get("proof"),
+                (
+                    recovered_proof
+                    if adoption_schema == "complete99-interrupted-forward-adoption/v5"
+                    else base_proof
+                ),
+            )
         ):
             raise deployer.DeployError(
                 "Interrupted forward v2 historical proof does not match"
@@ -2418,6 +2664,72 @@ def load_interrupted_forward_proof(
                     observation_audit,
                     failed,
                     prior,
+                    adoption,
+                )
+            )
+        elif adoption_schema == "complete99-interrupted-forward-adoption/v5":
+            repair = adoption.get("candidate_repair")
+            repair_keys = {
+                "column",
+                "default",
+                "from_type",
+                "nullable",
+                "plugin_after_sha256",
+                "plugin_before_sha256",
+                "schema",
+                "source_after_sha256",
+                "source_before_sha256",
+                "source_path",
+                "table_suffix",
+                "to_type",
+            }
+            if (
+                schema != "complete99-interrupted-forward-proof/v4"
+                or not isinstance(repair, dict)
+                or set(repair) != repair_keys
+                or repair.get("schema")
+                != "complete99-campaign-provider-receipt-width-repair/v1"
+                or repair.get("source_path")
+                != "includes/class-complete99-campaigns.php"
+                or repair.get("table_suffix")
+                != "c99_campaign_provider_receipts"
+                or repair.get("column") != "external_state"
+                or repair.get("from_type") != "varchar(24)"
+                or repair.get("to_type") != "varchar(32)"
+                or repair.get("nullable") is not False
+                or repair.get("default") is not None
+                or any(
+                    type(repair.get(field)) is not str
+                    or digest.fullmatch(repair[field]) is None
+                    for field in (
+                        "source_before_sha256",
+                        "source_after_sha256",
+                        "plugin_before_sha256",
+                        "plugin_after_sha256",
+                    )
+                )
+                or repair["source_before_sha256"]
+                == repair["source_after_sha256"]
+                or repair["plugin_before_sha256"]
+                == repair["plugin_after_sha256"]
+                or repair["plugin_before_sha256"]
+                != failed["installed_plugin_sha256"]
+                or repair["plugin_before_sha256"]
+                != adoption["observed_plugin_sha256"]
+                or repair["plugin_after_sha256"]
+                != adoption["target_installed_plugin_sha256"]
+                or type(adoption.get("observation_safe_status_sha256")) is not str
+                or digest.fullmatch(adoption["observation_safe_status_sha256"])
+                is None
+            ):
+                raise deployer.DeployError(
+                    "Interrupted forward candidate repair identity is invalid"
+                )
+            reviewed_forward_observation = (
+                validate_interrupted_forward_candidate_repair_observation_audit(
+                    deployer,
+                    observation_audit,
+                    historical,
                     adoption,
                 )
             )
@@ -2494,8 +2806,10 @@ def interrupted_forward_bridge_fields(
     reviewed_database_manifest: dict[str, Any] = {}
     reviewed_database_storage: dict[str, Any] = {}
     adoption_schema = ""
+    bridge_prior = prior
     reviewed_safe_status: dict[str, Any] = {}
     reviewed_safe_status_sha256 = ""
+    candidate_repair: dict[str, Any] = {}
     if isinstance(adoption, dict):
         adoption_schema = str(adoption.get("schema", ""))
         reviewed_database_fingerprint = adoption[
@@ -2508,7 +2822,11 @@ def interrupted_forward_bridge_fields(
         reviewed_database_storage = adoption["observed_database_storage"]
         reviewed_observation = loaded_proof.get("reviewed_forward_observation")
         if (
-            adoption_schema == "complete99-interrupted-forward-adoption/v4"
+            adoption_schema
+            in {
+                "complete99-interrupted-forward-adoption/v4",
+                "complete99-interrupted-forward-adoption/v5",
+            }
             and isinstance(reviewed_observation, dict)
             and isinstance(reviewed_observation.get("safe_status"), dict)
         ):
@@ -2516,10 +2834,17 @@ def interrupted_forward_bridge_fields(
             reviewed_safe_status_sha256 = str(
                 reviewed_observation.get("safe_status_sha256", "")
             )
+        if adoption_schema == "complete99-interrupted-forward-adoption/v5":
+            candidate_repair = adoption["candidate_repair"]
+            bridge_prior = proof["recovered_baseline"]
     return {
         "interrupted_forward_adoption_schema": adoption_schema,
         "expected_artifact_sha256": failed["artifact_sha256"],
-        "expected_plugin_sha256": failed["installed_plugin_sha256"],
+        "expected_plugin_sha256": (
+            candidate_repair["plugin_after_sha256"]
+            if candidate_repair
+            else failed["installed_plugin_sha256"]
+        ),
         "expected_version": failed["version"],
         "interrupted_forward_finalized_attestation": (
             enable_finalized_attestation
@@ -2530,17 +2855,30 @@ def interrupted_forward_bridge_fields(
         "interrupted_forward_target_deployment_id": (
             failed["deployment_id"] if enable_finalized_attestation else ""
         ),
-        "prior_database_fingerprint": prior["database_fingerprint"],
-        "prior_deployment_id": prior["deployment_id"],
-        "prior_plugin_sha256": prior["plugin_sha256"],
-        "prior_robots_sha256": prior["robots_sha256"],
-        "prior_version": prior["version"],
+        "prior_database_fingerprint": bridge_prior["database_fingerprint"],
+        "prior_deployment_id": bridge_prior["deployment_id"],
+        "prior_plugin_sha256": bridge_prior["plugin_sha256"],
+        "prior_robots_sha256": bridge_prior["robots_sha256"],
+        "prior_version": bridge_prior["version"],
         "reviewed_database_fingerprint": reviewed_database_fingerprint,
         "reviewed_database_manifest": reviewed_database_manifest,
         "reviewed_database_manifest_sha256": reviewed_database_manifest_sha256,
         "reviewed_database_storage": reviewed_database_storage,
         "reviewed_safe_status": reviewed_safe_status,
         "reviewed_safe_status_sha256": reviewed_safe_status_sha256,
+        "candidate_repair_schema": str(candidate_repair.get("schema", "")),
+        "candidate_source_before_sha256": str(
+            candidate_repair.get("source_before_sha256", "")
+        ),
+        "candidate_source_after_sha256": str(
+            candidate_repair.get("source_after_sha256", "")
+        ),
+        "candidate_plugin_before_sha256": str(
+            candidate_repair.get("plugin_before_sha256", "")
+        ),
+        "candidate_plugin_after_sha256": str(
+            candidate_repair.get("plugin_after_sha256", "")
+        ),
     }
 
 
@@ -3222,6 +3560,44 @@ def validate_interrupted_forward_pending_stabilization_status(
     return observed
 
 
+def validate_interrupted_forward_candidate_repair_status(
+    deployer: Any,
+    status: Any,
+    loaded_proof: dict[str, Any],
+) -> dict[str, Any]:
+    """Recreate the reviewed candidate-repair checkpoint before mutation."""
+    adoption = loaded_proof["proof"].get("forward_adoption")
+    reviewed = loaded_proof.get("reviewed_forward_observation")
+    if (
+        loaded_proof.get("schema")
+        != "complete99-interrupted-forward-proof/v4"
+        or not isinstance(adoption, dict)
+        or adoption.get("schema")
+        != "complete99-interrupted-forward-adoption/v5"
+        or not isinstance(reviewed, dict)
+    ):
+        raise deployer.DeployError(
+            "Candidate repair requires its reviewed adoption v5 proof"
+        )
+    observed = capture_interrupted_forward_mismatch_diagnostic(
+        deployer,
+        status,
+        {
+            "proof": {
+                "failed_run": loaded_proof["proof"]["failed_run"],
+                "prior_run": loaded_proof["proof"]["prior_run"],
+                "recovered_baseline": loaded_proof["proof"]["recovered_baseline"],
+            },
+            "recovery_identity": loaded_proof["recovery_identity"],
+        },
+    )
+    if not exact_json_equal(observed, reviewed):
+        raise deployer.DeployError(
+            "Candidate repair checkpoint changed after read-only review"
+        )
+    return observed
+
+
 def validate_interrupted_forward_database_mismatch_status(
     deployer: Any,
     status: dict[str, Any],
@@ -3482,6 +3858,104 @@ def validate_interrupted_forward_finalize_status(
         raise deployer.DeployError(
             "Interrupted forward finalize resume requires a reviewed adopted terminal state"
         )
+    if adoption.get("schema") == "complete99-interrupted-forward-adoption/v5":
+        repair = adoption["candidate_repair"]
+        recovered = proof["recovered_baseline"]
+        state_exists = status.get("state_exists") is True
+        lock_only = (
+            status.get("state_exists") is False
+            and phase in {"committed", "cleanup_failed"}
+        )
+        validate_database_manifest(
+            deployer,
+            status.get("database_manifest"),
+            status.get("database_manifest_sha256"),
+            "Candidate repair finalize-resume database",
+        )
+        validate_transactional_storage(
+            deployer,
+            status.get("database_storage"),
+            "Candidate repair finalize-resume database",
+        )
+        validate_candidate_repair_receipt(
+            deployer,
+            status.get("candidate_repair_receipt"),
+            loaded_proof,
+        )
+        if (
+            not (state_exists or lock_only)
+            or status.get("deployment_id") != failed["deployment_id"]
+            or status.get("lock_owned") is not True
+            or status.get("process_lock_available") is not True
+            or status.get("recovery_ready") is not (phase == "committing")
+            or status.get("stabilized") is not True
+            or status.get("adopted_forward_no_rollback") is not True
+            or status.get("candidate_repair_started") is not True
+            or status.get("candidate_repair_no_rollback") is not True
+            or status.get("expected_sha256") != failed["artifact_sha256"]
+            or status.get("expected_version") != failed["version"]
+            or status.get("installed_plugin_sha256")
+            != repair["plugin_after_sha256"]
+            or status.get("current_plugin_sha256") != repair["plugin_after_sha256"]
+            or status.get("current_active") is not True
+            or status.get("current_version") != failed["version"]
+            or status.get("runtime_loaded") is not True
+            or status.get("runtime_version") != failed["version"]
+            or status.get("migration_failed") is not False
+            or status.get("migration_invariants_valid") is not True
+            or status.get("no_rollback_artifacts") is not True
+            or status.get("current_deployment") != failed["deployment_id"]
+            or status.get("current_database_version") != failed["version"]
+            or status.get("current_sync_configured") is not True
+            or status.get("robots_applied") is not True
+            or status.get("robots_managed_sha256") != recovered["robots_sha256"]
+            or status.get("current_robots_sha256") != recovered["robots_sha256"]
+            or status.get("interrupted_forward_proof_sha256")
+            != loaded_proof["proof_sha256"]
+            or type(status.get("post_install_database_fingerprint")) is not str
+            or deployer.re.fullmatch(
+                r"[a-f0-9]{64}", status["post_install_database_fingerprint"]
+            )
+            is None
+            or status.get("database_fingerprint")
+            != status["post_install_database_fingerprint"]
+            or status.get("interrupted_forward_database_manifest_sha256")
+            != status.get("database_manifest_sha256")
+            or status.get("committed_outcome") != "installed"
+            or status.get("committed_expected_active") is not True
+            or status.get("committed_expected_absent") is not False
+            or status.get("committed_expected_version") != failed["version"]
+            or status.get("committed_expected_deployment")
+            != failed["deployment_id"]
+            or status.get("committed_expected_plugin_sha256")
+            != repair["plugin_after_sha256"]
+            or status.get("committed_expected_robots_exists") is not True
+            or status.get("committed_expected_robots_sha256")
+            != recovered["robots_sha256"]
+        ):
+            raise deployer.DeployError(
+                "Candidate repair finalize resume is not the exact adopted release"
+            )
+        return {
+            "adopted_forward_no_rollback": True,
+            "committed_expected_active": True,
+            "committed_expected_absent": False,
+            "committed_expected_deployment": failed["deployment_id"],
+            "committed_expected_plugin_sha256": repair["plugin_after_sha256"],
+            "committed_expected_robots_exists": True,
+            "committed_expected_robots_sha256": recovered["robots_sha256"],
+            "committed_expected_version": failed["version"],
+            "committed_outcome": "installed",
+            "database_fingerprint": status["post_install_database_fingerprint"],
+            "database_manifest_sha256": status["database_manifest_sha256"],
+            "deployment_id": failed["deployment_id"],
+            "installed_plugin_sha256": repair["plugin_after_sha256"],
+            "interrupted_forward_proof_sha256": loaded_proof["proof_sha256"],
+            "phase": phase,
+            "schema": "complete99-interrupted-forward-finalize-resume/v2",
+            "state_exists": state_exists,
+            "version": failed["version"],
+        }
     pending_repair = (
         adoption.get("schema")
         == "complete99-interrupted-forward-adoption/v4"
@@ -3699,6 +4173,256 @@ def validate_interrupted_forward_finalized_attestation(
     return response
 
 
+def validate_candidate_repair_receipt(
+    deployer: Any,
+    receipt: Any,
+    loaded_proof: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate the exact durable source/schema repair receipt."""
+    adoption = loaded_proof["proof"].get("forward_adoption")
+    repair = adoption.get("candidate_repair") if isinstance(adoption, dict) else None
+    expected_keys = {
+        "charset",
+        "collation",
+        "column",
+        "completed_at",
+        "default",
+        "from_type",
+        "nullable",
+        "plugin_after_sha256",
+        "plugin_before_sha256",
+        "proof_sha256",
+        "schema",
+        "source_after_sha256",
+        "source_before_sha256",
+        "source_path",
+        "table",
+        "to_type",
+    }
+    if (
+        not isinstance(repair, dict)
+        or not isinstance(receipt, dict)
+        or set(receipt) != expected_keys
+        or receipt.get("schema") != repair["schema"]
+        or receipt.get("proof_sha256") != loaded_proof["proof_sha256"]
+        or receipt.get("source_path") != repair["source_path"]
+        or receipt.get("source_before_sha256")
+        != repair["source_before_sha256"]
+        or receipt.get("source_after_sha256") != repair["source_after_sha256"]
+        or receipt.get("plugin_before_sha256")
+        != repair["plugin_before_sha256"]
+        or receipt.get("plugin_after_sha256") != repair["plugin_after_sha256"]
+        or type(receipt.get("table")) is not str
+        or not receipt["table"].endswith(repair["table_suffix"])
+        or deployer.re.fullmatch(r"[A-Za-z0-9_]{1,190}", receipt["table"])
+        is None
+        or receipt.get("column") != repair["column"]
+        or receipt.get("from_type") != repair["from_type"]
+        or receipt.get("to_type") != repair["to_type"]
+        or receipt.get("nullable") is not False
+        or receipt.get("default") is not None
+        or receipt.get("charset") != "utf8mb4"
+        or type(receipt.get("collation")) is not str
+        or deployer.re.fullmatch(r"utf8mb4_[A-Za-z0-9_]+", receipt["collation"])
+        is None
+        or type(receipt.get("completed_at")) is not int
+        or receipt["completed_at"] <= 0
+    ):
+        raise deployer.DeployError(
+            "Candidate activation repair receipt is invalid"
+        )
+    return receipt
+
+
+def validate_candidate_repair_response(
+    deployer: Any,
+    response: Any,
+    loaded_proof: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate one exact bridge repair response."""
+    proof = loaded_proof["proof"]
+    failed = proof["failed_run"]
+    repair = proof["forward_adoption"]["candidate_repair"]
+    if (
+        not isinstance(response, dict)
+        or set(response)
+        != {
+            "column_type",
+            "deployment_id",
+            "idempotent",
+            "phase",
+            "plugin_sha256",
+            "receipt",
+            "repaired",
+            "source_sha256",
+        }
+        or response.get("repaired") is not True
+        or type(response.get("idempotent")) is not bool
+        or response.get("phase") != "candidate_activation_pending"
+        or response.get("deployment_id") != failed["deployment_id"]
+        or response.get("plugin_sha256") != repair["plugin_after_sha256"]
+        or response.get("source_sha256") != repair["source_after_sha256"]
+        or response.get("column_type") != repair["to_type"]
+    ):
+        raise deployer.DeployError(
+            "Candidate activation repair response is invalid"
+        )
+    validate_candidate_repair_receipt(
+        deployer,
+        response.get("receipt"),
+        loaded_proof,
+    )
+    return response
+
+
+def validate_candidate_repair_continue_response(
+    deployer: Any,
+    response: Any,
+    loaded_proof: dict[str, Any],
+) -> dict[str, Any]:
+    """Validate one exact repaired candidate activation response."""
+    proof = loaded_proof["proof"]
+    failed = proof["failed_run"]
+    repair = proof["forward_adoption"]["candidate_repair"]
+    expected_keys = {
+        "active",
+        "adopted_forward_no_rollback",
+        "continued",
+        "database_manifest",
+        "database_manifest_sha256",
+        "database_storage",
+        "deployment_id",
+        "idempotent",
+        "interrupted_forward_proof_sha256",
+        "phase",
+        "plugin_sha256",
+        "post_install_database_fingerprint",
+        "repair_receipt",
+        "stabilized",
+        "version",
+    }
+    if (
+        not isinstance(response, dict)
+        or set(response) != expected_keys
+        or response.get("continued") is not True
+        or type(response.get("idempotent")) is not bool
+        or response.get("active") is not True
+        or response.get("stabilized") is not True
+        or response.get("adopted_forward_no_rollback") is not True
+        or response.get("phase") != "installed"
+        or response.get("deployment_id") != failed["deployment_id"]
+        or response.get("version") != failed["version"]
+        or response.get("plugin_sha256") != repair["plugin_after_sha256"]
+        or response.get("interrupted_forward_proof_sha256")
+        != loaded_proof["proof_sha256"]
+        or type(response.get("post_install_database_fingerprint")) is not str
+        or deployer.re.fullmatch(
+            r"[a-f0-9]{64}", response["post_install_database_fingerprint"]
+        )
+        is None
+    ):
+        raise deployer.DeployError(
+            "Candidate repair activation response is invalid"
+        )
+    validate_database_manifest(
+        deployer,
+        response.get("database_manifest"),
+        response.get("database_manifest_sha256"),
+        "Candidate repair activation database",
+    )
+    validate_transactional_storage(
+        deployer,
+        response.get("database_storage"),
+        "Candidate repair activation database",
+    )
+    validate_candidate_repair_receipt(
+        deployer,
+        response.get("repair_receipt"),
+        loaded_proof,
+    )
+    return response
+
+
+def validate_candidate_repair_adoption_status(
+    deployer: Any,
+    status: Any,
+    loaded_proof: dict[str, Any],
+    continuation: dict[str, Any],
+) -> dict[str, Any]:
+    """Bind installed status to the exact repaired activation receipt."""
+    proof = loaded_proof["proof"]
+    failed = proof["failed_run"]
+    recovered = proof["recovered_baseline"]
+    repair = proof["forward_adoption"]["candidate_repair"]
+    if (
+        not isinstance(status, dict)
+        or status.get("deployment_id") != failed["deployment_id"]
+        or status.get("phase") != "installed"
+        or status.get("state_exists") is not True
+        or status.get("lock_owned") is not True
+        or status.get("process_lock_available") is not True
+        or status.get("stabilized") is not True
+        or status.get("adopted_forward_no_rollback") is not True
+        or status.get("candidate_repair_started") is not True
+        or status.get("candidate_repair_no_rollback") is not True
+        or status.get("expected_sha256") != failed["artifact_sha256"]
+        or status.get("expected_version") != failed["version"]
+        or status.get("installed_plugin_sha256")
+        != repair["plugin_after_sha256"]
+        or status.get("current_plugin_sha256") != repair["plugin_after_sha256"]
+        or status.get("current_active") is not True
+        or status.get("current_version") != failed["version"]
+        or status.get("current_database_version") != failed["version"]
+        or status.get("current_deployment") != failed["deployment_id"]
+        or status.get("current_sync_configured") is not True
+        or status.get("runtime_loaded") is not True
+        or status.get("runtime_version") != failed["version"]
+        or status.get("migration_failed") is not False
+        or status.get("migration_invariants_valid") is not True
+        or status.get("no_rollback_artifacts") is not True
+        or status.get("robots_applied") is not True
+        or status.get("robots_managed_sha256") != recovered["robots_sha256"]
+        or status.get("current_robots_sha256") != recovered["robots_sha256"]
+        or status.get("interrupted_forward_proof_sha256")
+        != loaded_proof["proof_sha256"]
+        or status.get("database_fingerprint")
+        != continuation["post_install_database_fingerprint"]
+        or status.get("post_install_database_fingerprint")
+        != continuation["post_install_database_fingerprint"]
+        or status.get("database_manifest_sha256")
+        != continuation["database_manifest_sha256"]
+        or status.get("interrupted_forward_database_manifest_sha256")
+        != continuation["database_manifest_sha256"]
+        or not exact_json_equal(
+            status.get("database_manifest"), continuation["database_manifest"]
+        )
+        or not exact_json_equal(
+            status.get("database_storage"), continuation["database_storage"]
+        )
+    ):
+        raise deployer.DeployError(
+            "Candidate repair adoption status is not the exact installed release"
+        )
+    validate_candidate_repair_receipt(
+        deployer,
+        status.get("candidate_repair_receipt"),
+        loaded_proof,
+    )
+    return {
+        "adopted_forward_no_rollback": True,
+        "database_fingerprint": continuation[
+            "post_install_database_fingerprint"
+        ],
+        "database_manifest_sha256": continuation["database_manifest_sha256"],
+        "deployment_id": failed["deployment_id"],
+        "installed_plugin_sha256": repair["plugin_after_sha256"],
+        "interrupted_forward_proof_sha256": loaded_proof["proof_sha256"],
+        "phase": "installed",
+        "state_exists": True,
+        "version": failed["version"],
+    }
+
+
 def adopt_interrupted_forward(
     deployer: Any,
     client: Any,
@@ -3711,13 +4435,225 @@ def adopt_interrupted_forward(
     adoption = proof.get("forward_adoption")
     if (
         loaded_proof.get("schema")
-        != "complete99-interrupted-forward-proof/v2"
+        not in {
+            "complete99-interrupted-forward-proof/v2",
+            "complete99-interrupted-forward-proof/v4",
+        }
         or not isinstance(adoption, dict)
         or deployment_id != failed["deployment_id"]
     ):
         raise deployer.DeployError(
-            "Interrupted forward adoption requires the exact reviewed v2 deployment"
+            "Interrupted forward adoption requires the exact reviewed deployment"
         )
+    if adoption.get("schema") == "complete99-interrupted-forward-adoption/v5":
+        initial_status = deployer.bridge_call(
+            client,
+            "status",
+            token,
+            deployment_id,
+        )
+        if (
+            initial_status.get("phase") == "installed"
+            and initial_status.get("adopted_forward_no_rollback") is True
+        ):
+            continuation = validate_candidate_repair_continue_response(
+                deployer,
+                {
+                    "active": True,
+                    "adopted_forward_no_rollback": True,
+                    "continued": True,
+                    "database_manifest": initial_status.get("database_manifest"),
+                    "database_manifest_sha256": initial_status.get(
+                        "database_manifest_sha256"
+                    ),
+                    "database_storage": initial_status.get("database_storage"),
+                    "deployment_id": deployment_id,
+                    "idempotent": True,
+                    "interrupted_forward_proof_sha256": loaded_proof[
+                        "proof_sha256"
+                    ],
+                    "phase": "installed",
+                    "plugin_sha256": adoption["candidate_repair"][
+                        "plugin_after_sha256"
+                    ],
+                    "post_install_database_fingerprint": initial_status.get(
+                        "post_install_database_fingerprint"
+                    ),
+                    "repair_receipt": initial_status.get(
+                        "candidate_repair_receipt"
+                    ),
+                    "stabilized": True,
+                    "version": failed["version"],
+                },
+                loaded_proof,
+            )
+            status_receipt = validate_candidate_repair_adoption_status(
+                deployer,
+                initial_status,
+                loaded_proof,
+                continuation,
+            )
+            repair = adoption["candidate_repair"]
+            repair_receipt = validate_candidate_repair_receipt(
+                deployer,
+                initial_status.get("candidate_repair_receipt"),
+                loaded_proof,
+            )
+            return {
+                "repair": {
+                    "column_type": repair["to_type"],
+                    "deployment_id": deployment_id,
+                    "idempotent": True,
+                    "phase": "candidate_activation_pending",
+                    "plugin_sha256": repair["plugin_after_sha256"],
+                    "receipt": repair_receipt,
+                    "repaired": True,
+                    "source_sha256": repair["source_after_sha256"],
+                },
+                "receipt": continuation,
+                "status": status_receipt,
+            }
+        if initial_status.get("phase") != "candidate_activation_pending":
+            raise deployer.DeployError(
+                "Candidate repair requires its pending or installed durable phase"
+            )
+        repair_response: dict[str, Any] | None = None
+        repair_error: Exception | None = None
+        for _attempt in range(2):
+            try:
+                raw_repair = deployer.bridge_call(
+                    client,
+                    "repair-candidate-activation",
+                    token,
+                    deployment_id,
+                    interrupted_forward_proof_sha256=loaded_proof["proof_sha256"],
+                )
+                repair_response = validate_candidate_repair_response(
+                    deployer,
+                    raw_repair,
+                    loaded_proof,
+                )
+                repair_error = None
+                break
+            except Exception as error:
+                repair_error = error
+                status = deployer.bridge_call(
+                    client,
+                    "status",
+                    token,
+                    deployment_id,
+                )
+                if (
+                    status.get("phase") == "candidate_activation_pending"
+                    and status.get("candidate_repair_started") is True
+                    and status.get("candidate_repair_no_rollback") is True
+                    and isinstance(status.get("candidate_repair_receipt"), dict)
+                    and status.get("candidate_repair_receipt")
+                ):
+                    receipt = validate_candidate_repair_receipt(
+                        deployer,
+                        status["candidate_repair_receipt"],
+                        loaded_proof,
+                    )
+                    repair = adoption["candidate_repair"]
+                    repair_response = {
+                        "column_type": repair["to_type"],
+                        "deployment_id": deployment_id,
+                        "idempotent": True,
+                        "phase": "candidate_activation_pending",
+                        "plugin_sha256": repair["plugin_after_sha256"],
+                        "receipt": receipt,
+                        "repaired": True,
+                        "source_sha256": repair["source_after_sha256"],
+                    }
+                    repair_error = None
+                    break
+        if repair_response is None:
+            assert repair_error is not None
+            raise repair_error
+
+        continuation: dict[str, Any] | None = None
+        continuation_error: Exception | None = None
+        for _attempt in range(2):
+            try:
+                raw_continuation = deployer.bridge_call(
+                    client,
+                    "continue-activation",
+                    token,
+                    deployment_id,
+                    interrupted_forward_proof_sha256=loaded_proof["proof_sha256"],
+                )
+                continuation = validate_candidate_repair_continue_response(
+                    deployer,
+                    raw_continuation,
+                    loaded_proof,
+                )
+                continuation_error = None
+                break
+            except Exception as error:
+                continuation_error = error
+                status = deployer.bridge_call(
+                    client,
+                    "status",
+                    token,
+                    deployment_id,
+                )
+                if (
+                    status.get("phase") == "installed"
+                    and status.get("adopted_forward_no_rollback") is True
+                ):
+                    continuation = {
+                        "active": True,
+                        "adopted_forward_no_rollback": True,
+                        "continued": True,
+                        "database_manifest": status.get("database_manifest"),
+                        "database_manifest_sha256": status.get(
+                            "database_manifest_sha256"
+                        ),
+                        "database_storage": status.get("database_storage"),
+                        "deployment_id": deployment_id,
+                        "idempotent": True,
+                        "interrupted_forward_proof_sha256": loaded_proof[
+                            "proof_sha256"
+                        ],
+                        "phase": "installed",
+                        "plugin_sha256": adoption["candidate_repair"][
+                            "plugin_after_sha256"
+                        ],
+                        "post_install_database_fingerprint": status.get(
+                            "post_install_database_fingerprint"
+                        ),
+                        "repair_receipt": status.get("candidate_repair_receipt"),
+                        "stabilized": True,
+                        "version": failed["version"],
+                    }
+                    continuation = validate_candidate_repair_continue_response(
+                        deployer,
+                        continuation,
+                        loaded_proof,
+                    )
+                    continuation_error = None
+                    break
+        if continuation is None:
+            assert continuation_error is not None
+            raise continuation_error
+        status = deployer.bridge_call(
+            client,
+            "status",
+            token,
+            deployment_id,
+        )
+        status_receipt = validate_candidate_repair_adoption_status(
+            deployer,
+            status,
+            loaded_proof,
+            continuation,
+        )
+        return {
+            "repair": repair_response,
+            "receipt": continuation,
+            "status": status_receipt,
+        }
     expected_source_phase = (
         "installed_pending_stabilization"
         if adoption.get("schema")
@@ -4405,11 +5341,12 @@ def main() -> int:
             raise deployer.DeployError(
                 "Interrupted forward observation cannot use --recovery-only"
             )
-        if not interrupted_observe_only and interrupted_proof.get("schema") != (
-            "complete99-interrupted-forward-proof/v2"
-        ):
+        if not interrupted_observe_only and interrupted_proof.get("schema") not in {
+            "complete99-interrupted-forward-proof/v2",
+            "complete99-interrupted-forward-proof/v4",
+        }:
             raise deployer.DeployError(
-                "Interrupted forward adoption requires the reviewed v2 proof"
+                "Interrupted forward adoption requires a reviewed recovery proof"
             )
         if not interrupted_observe_only and not recovery_only:
             raise deployer.DeployError(
@@ -4859,7 +5796,13 @@ def main() -> int:
                 == "complete99-interrupted-forward-adoption/v4"
                 and status.get("phase") == "installed_pending_stabilization"
             )
-            if status.get("phase") == "installing" or pending_repair:
+            candidate_repair = (
+                isinstance(forward_adoption, dict)
+                and forward_adoption.get("schema")
+                == "complete99-interrupted-forward-adoption/v5"
+                and status.get("phase") == "candidate_activation_pending"
+            )
+            if status.get("phase") == "installing" or pending_repair or candidate_repair:
                 if (
                     isinstance(forward_adoption, dict)
                     and forward_adoption.get("schema")
@@ -4880,6 +5823,14 @@ def main() -> int:
                             interrupted_proof,
                         )
                     )
+                elif candidate_repair:
+                    observation = (
+                        validate_interrupted_forward_candidate_repair_status(
+                            deployer,
+                            status,
+                            interrupted_proof,
+                        )
+                    )
                 else:
                     observation = validate_interrupted_forward_status(
                         deployer,
@@ -4887,17 +5838,22 @@ def main() -> int:
                         interrupted_proof,
                     )
                 audit["pre_adoption_observation"] = observation
+                pre_adoption_deployment = (
+                    live_baseline["deployment_id"]
+                    if candidate_repair
+                    else failed_forward["deployment_id"]
+                )
                 audit["pre_adoption_health"] = deployer.verify_health(
                     client,
                     failed_forward["version"],
-                    failed_forward["deployment_id"],
+                    pre_adoption_deployment,
                     require_sync_configured=True,
                 )
                 audit["pre_adoption_rendered_home"] = (
                     deployer.verify_rendered_home(
                         client,
                         failed_forward["version"],
-                        failed_forward["deployment_id"],
+                        pre_adoption_deployment,
                         prior_forward["deployment_id"],
                     )
                 )

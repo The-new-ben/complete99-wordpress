@@ -44,6 +44,9 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
         cls.stabilize = cls.bridge.split("$route_prefix . '/stabilize'", 1)[1].split(
             "$route_prefix . '/configure-sync'", 1
         )[0]
+        cls.candidate_repair = cls.bridge.split(
+            "$route_prefix . '/repair-candidate-activation'", 1
+        )[1].split("$route_prefix . '/continue-activation'", 1)[0]
         cls.rollback = cls.bridge.split("$route_prefix . '/rollback'", 1)[1].split(
             "$route_prefix . '/reconcile-orphaned-rollback'", 1
         )[0]
@@ -296,6 +299,46 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_candidate_repair_is_irreversible_exact_and_read_back(self) -> None:
+        durable_marker = "'candidate_repair_started' => true"
+        source_patch = "$replacements = array("
+        ddl = 'ALTER TABLE {$table_identifier} MODIFY COLUMN `external_state`'
+        receipt = "'candidate_repair_receipt' => $receipt"
+        self.assertIn(durable_marker, self.candidate_repair)
+        self.assertIn(source_patch, self.candidate_repair)
+        self.assertIn(ddl, self.candidate_repair)
+        self.assertIn(receipt, self.candidate_repair)
+        self.assertLess(
+            self.candidate_repair.index("$acquire_worker_fence()"),
+            self.candidate_repair.index(durable_marker),
+        )
+        self.assertLess(
+            self.candidate_repair.index(durable_marker),
+            self.candidate_repair.index(source_patch),
+        )
+        self.assertLess(
+            self.candidate_repair.index(source_patch),
+            self.candidate_repair.index(ddl),
+        )
+        self.assertLess(
+            self.candidate_repair.index(ddl),
+            self.candidate_repair.index(receipt),
+        )
+        self.assertLess(
+            self.candidate_repair.index(receipt),
+            self.candidate_repair.rindex("$release_worker_fence("),
+        )
+        self.assertIn(
+            "CHARACTER SET {$column_charset} COLLATE {$column_collation} NOT NULL",
+            self.candidate_repair,
+        )
+        self.assertIn("c99_rollback_candidate_repair", self.rollback)
+        self.assertIn("candidate_repair_started", self.rollback)
+        self.assertIn(
+            "$candidate_repair_receipt_valid( $current_state, true )",
+            self.finalize,
+        )
+
     @unittest.skipUnless(shutil.which("php"), "PHP is required for rendered bridge lint")
     def test_default_v1_and_v2_rendered_bridges_are_valid_php(self) -> None:
         manifest: dict[str, Any] = {
@@ -351,6 +394,26 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             )
         )
         pending_observation = pending_audit["interrupted_forward_observation"]
+        candidate_envelope = json.loads(
+            (
+                ROOT
+                / "docs"
+                / "recovery-proofs"
+                / "c99-prod-31620203121-1-v4.json"
+            ).read_text(encoding="utf-8")
+        )
+        candidate_proof = candidate_envelope["proof"]
+        candidate_adoption = candidate_proof["forward_adoption"]
+        candidate_repair = candidate_adoption["candidate_repair"]
+        candidate_audit = json.loads(
+            (ROOT / candidate_adoption["observation_audit_path"]).read_text(
+                encoding="utf-8"
+            )
+        )
+        candidate_observation = candidate_audit[
+            "interrupted_forward_observation"
+        ]
+        candidate_baseline = candidate_proof["recovered_baseline"]
         cases = {
             "default": {},
             "v1": identities,
@@ -418,6 +481,57 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
                     "safe_status_sha256"
                 ],
             },
+            "candidate-repair-v5": {
+                "candidate_plugin_after_sha256": candidate_repair[
+                    "plugin_after_sha256"
+                ],
+                "candidate_plugin_before_sha256": candidate_repair[
+                    "plugin_before_sha256"
+                ],
+                "candidate_repair_schema": candidate_repair["schema"],
+                "candidate_source_after_sha256": candidate_repair[
+                    "source_after_sha256"
+                ],
+                "candidate_source_before_sha256": candidate_repair[
+                    "source_before_sha256"
+                ],
+                "expected_artifact_sha256": candidate_proof["failed_run"][
+                    "artifact_sha256"
+                ],
+                "expected_plugin_sha256": candidate_repair[
+                    "plugin_after_sha256"
+                ],
+                "expected_version": candidate_proof["failed_run"]["version"],
+                "interrupted_forward_adoption_schema": candidate_adoption[
+                    "schema"
+                ],
+                "interrupted_forward_proof_sha256": candidate_envelope[
+                    "proof_sha256"
+                ],
+                "prior_database_fingerprint": candidate_baseline[
+                    "database_fingerprint"
+                ],
+                "prior_deployment_id": candidate_baseline["deployment_id"],
+                "prior_plugin_sha256": candidate_baseline["plugin_sha256"],
+                "prior_robots_sha256": candidate_baseline["robots_sha256"],
+                "prior_version": candidate_baseline["version"],
+                "reviewed_database_fingerprint": candidate_adoption[
+                    "observed_database_fingerprint"
+                ],
+                "reviewed_database_manifest": candidate_adoption[
+                    "observed_database_manifest"
+                ],
+                "reviewed_database_manifest_sha256": candidate_adoption[
+                    "observed_database_manifest_sha256"
+                ],
+                "reviewed_database_storage": candidate_adoption[
+                    "observed_database_storage"
+                ],
+                "reviewed_safe_status": candidate_observation["safe_status"],
+                "reviewed_safe_status_sha256": candidate_observation[
+                    "safe_status_sha256"
+                ],
+            },
         }
         with tempfile.TemporaryDirectory() as temporary:
             for label, fields in cases.items():
@@ -445,6 +559,10 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
                         0,
                         result.stdout + result.stderr,
                     )
+                    if label == "candidate-repair-v5":
+                        self.assertIn("/repair-candidate-activation", code)
+                        self.assertIn("c99_rollback_candidate_repair", code)
+                        self.assertNotIn("__C99_CANDIDATE_REPAIR_SCHEMA__", code)
 
 
 if __name__ == "__main__":

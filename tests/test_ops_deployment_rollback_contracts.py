@@ -438,7 +438,7 @@ class OpsDeploymentRollbackContractTests(unittest.TestCase):
             6,
         )
         self.assertEqual(
-            self.bridge.count("Complete99_Campaigns::assert_invariants();"), 5
+            self.bridge.count("Complete99_Campaigns::assert_invariants();"), 6
         )
         self.assertEqual(
             self.bridge.count("array( 'Complete99_Campaigns', 'assert_invariants' )"),
