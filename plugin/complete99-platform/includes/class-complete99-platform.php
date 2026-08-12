@@ -20,6 +20,9 @@ final class Complete99_Platform {
 	 * @var bool
 	 */
 	private static $migration_failed = false;
+	private static $activation_pending_token = '';
+	private static $deactivation_pending_token = '';
+	private static $lifecycle_shutdown_registered = false;
 
 	/**
 	 * Register all runtime hooks.
@@ -30,10 +33,13 @@ final class Complete99_Platform {
 		add_action( 'init', array( 'Complete99_Content', 'register_rewrites' ), 20 );
 		add_action( 'init', array( 'Complete99_Leads', 'register_post_type' ), 6 );
 		add_action( 'init', array( __CLASS__, 'maybe_upgrade' ), 40 );
+		add_action( 'activated_plugin', array( __CLASS__, 'activation_persisted' ), PHP_INT_MAX, 2 );
+		add_action( 'deactivated_plugin', array( __CLASS__, 'deactivation_persisted' ), PHP_INT_MAX, 2 );
 
 		Complete99_Content::boot_governance();
 		Complete99_Settings::boot();
 		Complete99_Ops::boot();
+		Complete99_Campaigns::boot();
 		Complete99_Leads::boot();
 		Complete99_REST::boot();
 		Complete99_Commerce::boot();
@@ -94,9 +100,76 @@ final class Complete99_Platform {
 	 * Install data model, roles, settings and deterministic launch content.
 	 */
 	public static function activate() {
-		$result = self::run_migration( true );
-		if ( is_wp_error( $result ) ) {
-			throw new \RuntimeException( 'Complete99 activation could not commit its database migration.' );
+		$recovery = Complete99_Campaigns::begin_activation_recovery();
+		if ( is_wp_error( $recovery ) ) { throw new \RuntimeException( 'Complete99 activation could not acquire lifecycle recovery ownership.' ); }
+		$token = (string) ( $recovery['token'] ?? '' );
+		try {
+			$result = self::run_migration( true );
+			if ( is_wp_error( $result ) ) { throw new \RuntimeException( 'Complete99 activation could not commit its database migration.' ); }
+			self::$activation_pending_token = $token;
+			self::register_lifecycle_shutdown_guard();
+		} catch ( \Throwable $error ) {
+			Complete99_Campaigns::abort_activation_recovery( $token );
+			throw $error;
+		}
+	}
+
+	private static function register_lifecycle_shutdown_guard() {
+		if ( ! self::$lifecycle_shutdown_registered ) {
+			register_shutdown_function( array( __CLASS__, 'lifecycle_shutdown_guard' ) );
+			self::$lifecycle_shutdown_registered = true;
+		}
+	}
+
+	/** Read the exact persisted core active_plugins row, bypassing object cache. */
+	private static function plugin_activation_is_persisted( $expected_active ) {
+		global $wpdb;
+		$wpdb->last_error = '';
+		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT option_id,option_value FROM {$wpdb->options} WHERE option_name=%s ORDER BY option_id ASC LIMIT 2", 'active_plugins' ), ARRAY_A );
+		if ( '' !== (string) $wpdb->last_error || ! is_array( $rows ) || 1 !== count( $rows ) || ! is_numeric( $rows[0]['option_id'] ?? null ) || 0 >= (int) $rows[0]['option_id'] ) { return false; }
+		$plugins = maybe_unserialize( (string) ( $rows[0]['option_value'] ?? '' ) );
+		if ( ! is_array( $plugins ) ) { return false; }
+		foreach ( $plugins as $plugin ) { if ( ! is_string( $plugin ) || '' === $plugin ) { return false; } }
+		$active = in_array( plugin_basename( COMPLETE99_PLATFORM_FILE ), $plugins, true );
+		return true === $expected_active ? $active : ! $active;
+	}
+
+	/** Finalize lifecycle active only after core persisted active_plugins. */
+	public static function activation_persisted( $plugin, $network_wide = false ) {
+		if ( ! hash_equals( plugin_basename( COMPLETE99_PLATFORM_FILE ), (string) $plugin ) || '' === self::$activation_pending_token || ! self::plugin_activation_is_persisted( true ) ) { return; }
+		$token = self::$activation_pending_token;
+		$resumed = Complete99_Campaigns::complete_activation_recovery( $token );
+		if ( is_wp_error( $resumed ) ) { throw new \RuntimeException( 'Complete99 activation could not restore active lifecycle truth after core persistence.' ); }
+		self::$activation_pending_token = '';
+	}
+
+	/** Fresh candidate-code continuation for an already-active deployment swap. */
+	public static function recover_active_upgrade() {
+		if ( ! self::plugin_activation_is_persisted( true ) ) { return new WP_Error( 'complete99_platform_active_upgrade_core_state', 'Candidate activation requires exact persisted active plugin truth.' ); }
+		$recovery = Complete99_Campaigns::begin_activation_recovery();
+		if ( is_wp_error( $recovery ) ) { return $recovery; }
+		$token = (string) ( $recovery['token'] ?? '' );
+		$completed = false;
+		try {
+			$migrated = self::run_migration( true );
+			if ( is_wp_error( $migrated ) ) { return $migrated; }
+			$resumed = Complete99_Campaigns::complete_activation_recovery( $token );
+			if ( is_wp_error( $resumed ) ) { return $resumed; }
+			$completed = true;
+			return true;
+		} finally {
+			if ( ! $completed ) { Complete99_Campaigns::abort_activation_recovery( $token ); }
+		}
+	}
+
+	public static function lifecycle_shutdown_guard() {
+		if ( '' !== self::$activation_pending_token ) {
+			Complete99_Campaigns::abort_activation_recovery( self::$activation_pending_token );
+			self::$activation_pending_token = '';
+		}
+		if ( '' !== self::$deactivation_pending_token ) {
+			Complete99_Campaigns::abort_deactivation_suspension( self::$deactivation_pending_token );
+			self::$deactivation_pending_token = '';
 		}
 	}
 
@@ -316,7 +389,14 @@ final class Complete99_Platform {
 			return $lock;
 		}
 		$transaction_started = false;
+		$authority_fenced = false;
 		try {
+			/* Retain the same boundary used by public Campaign reads across DDL, data writes and commit. */
+			$authority_fence = Complete99_Campaigns::begin_authority_write( 'wordpress_authority' );
+			if ( is_wp_error( $authority_fence ) ) {
+				throw new \RuntimeException( 'authority-fence' );
+			}
+			$authority_fenced = true;
 			$current = self::persisted_option( 'complete99_platform_version' );
 			if ( ! $hard_flush && COMPLETE99_PLATFORM_VERSION === (string) $current ) {
 				return true;
@@ -327,6 +407,7 @@ final class Complete99_Platform {
 				$deployment_id = COMPLETE99_PLATFORM_DEPLOYMENT_ID;
 			}
 			Complete99_Ops::prepare_schema();
+			Complete99_Campaigns::prepare_schema();
 			if ( false === $wpdb->query( 'START TRANSACTION' ) ) {
 				throw new \RuntimeException( 'transaction' );
 			}
@@ -343,6 +424,7 @@ final class Complete99_Platform {
 			Complete99_Evaluation_Catalog::register_meta();
 			Complete99_Inventory_Bridge::register_meta();
 			Complete99_Ops::install();
+			Complete99_Campaigns::install();
 			Complete99_Settings::install_defaults();
 			Complete99_Content::seed_launch_content();
 			$evaluation = Complete99_Evaluation_Catalog::materialize(
@@ -353,6 +435,7 @@ final class Complete99_Platform {
 			}
 			Complete99_Content::assert_migration_invariants();
 			Complete99_Ops::assert_invariants();
+			Complete99_Campaigns::assert_invariants();
 			Complete99_Settings::assert_defaults();
 			self::assert_evaluation_catalog_invariants();
 			Complete99_Culinary_Science::assert_invariants();
@@ -373,6 +456,11 @@ final class Complete99_Platform {
 				throw new \RuntimeException( 'commit' );
 			}
 			$transaction_started = false;
+			$authority_released = Complete99_Campaigns::end_authority_write();
+			$authority_fenced = false;
+			if ( ! $authority_released ) {
+				throw new \RuntimeException( 'authority-release' );
+			}
 			wp_cache_flush();
 			return true;
 		} catch ( \Throwable $error ) {
@@ -382,6 +470,9 @@ final class Complete99_Platform {
 			wp_cache_flush();
 			return new WP_Error( 'complete99_migration_failed', 'The Complete99 database migration could not be committed.' );
 		} finally {
+			if ( $authority_fenced ) {
+				Complete99_Campaigns::end_authority_write();
+			}
 			self::release_migration_lock( $lock );
 		}
 	}
@@ -397,6 +488,18 @@ final class Complete99_Platform {
 	 * Rewrite rules are removed on deactivation; content and settings remain.
 	 */
 	public static function deactivate() {
+		self::register_lifecycle_shutdown_guard();
+		$prepared = Complete99_Campaigns::begin_deactivation_suspension();
+		if ( is_wp_error( $prepared ) || ! preg_match( '/\A[a-f0-9]{64}\z/', (string) ( $prepared['token'] ?? '' ) ) ) { throw new \RuntimeException( 'Complete99 deactivation could not prove bounded Campaign suspension and public absence.' ); }
+		self::$deactivation_pending_token = (string) $prepared['token'];
+	}
+
+	public static function deactivation_persisted( $plugin, $network_wide = false ) {
+		if ( '' === self::$deactivation_pending_token || ! hash_equals( plugin_basename( COMPLETE99_PLATFORM_FILE ), (string) $plugin ) || ! self::plugin_activation_is_persisted( false ) ) { return; }
+		$token = self::$deactivation_pending_token;
+		$finalized = Complete99_Campaigns::complete_deactivation_suspension( $token );
+		if ( is_wp_error( $finalized ) ) { throw new \RuntimeException( 'Complete99 deactivation could not commit inactive lifecycle truth after core persistence.' ); }
 		flush_rewrite_rules();
+		self::$deactivation_pending_token = '';
 	}
 }

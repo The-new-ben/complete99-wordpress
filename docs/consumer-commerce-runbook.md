@@ -1,9 +1,14 @@
 # Consumer site and commerce runbook
 
-Last reviewed: 2026-08-11
-Release target: Complete99 Platform 1.21.0
+Last reviewed: 2026-08-12
+Release target: Complete99 Platform 1.22.0
 
-## Current 1.21.0 WordPress, Museum and transaction-truth boundary
+## Current 1.22.0 WordPress, Museum and transaction-truth boundary
+
+Release 1.22.0 adds private Campaign governance and owned-site placement
+readback without changing consumer commerce truth. It creates no product,
+price, stock, supplier, checkout or payment activation; the exact 36-product
+catalog and all readiness gates below remain authoritative.
 
 Release 1.21.0 keeps the culinary-science registry at 672 identities and Entity
 Studio at 728 subjects, and expands the source register to 375. Science schema

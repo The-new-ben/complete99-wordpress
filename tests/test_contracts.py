@@ -185,14 +185,35 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertIn("added no WooCommerce offers, stock, supplier claims", changelog)
         self.assertIn("payment activation or role assignments", changelog)
 
-    def test_release_1_21_0_manifest_describes_migration_search_and_store_truth(self) -> None:
+    def test_release_1_22_0_manifest_describes_campaign_migration_and_frozen_history(self) -> None:
         manifest = json.loads(
             (ROOT / "plugin-dist" / "complete99-platform.json").read_text(
                 encoding="utf-8"
             )
         )
         changelog = manifest["sections"]["changelog"]
-        self.assertTrue(changelog.startswith("<h4>1.21.0</h4>"))
+        self.assertTrue(changelog.startswith("<h4>1.22.0</h4>"))
+        self.assertIn("private WordPress-native Campaign Studio", changelog)
+        self.assertIn("deterministic package, slot, lifecycle, authority and receipt bindings", changelog)
+        self.assertIn("deployment manifest v3 and fresh-request activation handoff", changelog)
+        self.assertIn("dedicated authenticated Campaign worker and fifteen-minute heartbeat monitor", changelog)
+        self.assertIn("legacy Campaign demo seeds", changelog)
+        self.assertIn("70 approved delivery files ship while 105", changelog)
+        frozen_1_21 = (
+            "<h4>1.21.0</h4>"
+            "<ul>"
+            "<li>Began the owner-authorized migration of Complete99 operations into WordPress with a private, WordPress-authenticated Complete99 OS Today shell, an exact seven-table durable operations schema, capability- and nonce-protected status, and no ChatGPT login requirement. P1 remains deliberately read-only and imports no legacy operational records.</li>"
+            "<li>Added table-aware deployment manifest v2 rollback for the seven operations tables, including bounded encrypted snapshots, deterministic first-install quarantine and cleanup, unchanged baseline-present refusal, authenticated historical v1 recovery, and zero-residue preflight and finalization gates.</li>"
+            "<li>Activated search eligibility for 18 reviewed Culinary Science and Museum canonical owners across 36 Hebrew and English URLs through a digest-pinned fail-closed overlay. The unchanged v20 registry, untested ichiban-dashi preparation, eight section-only entities, query states and all held or private records retain their existing boundaries.</li>"
+            "<li>Made Product structured data truthful while checkout is held: public catalog products retain Product schema, but Offer schema appears only when both checkout and cart readiness pass.</li>"
+            "<li>Replaced only the exact legacy ChatGPT Sites application and asset defaults with WordPress-owned destinations while preserving any owner-configured canonical HTTPS value.</li>"
+            "<li>Preserved the exact 36 WooCommerce products, prices, stock authority, catalog visibility and disabled payment state, with no new product, supplier, imported legacy record or checkout activation.</li>"
+            "</ul>"
+        )
+        self.assertEqual(
+            frozen_1_21,
+            "<h4>1.21.0</h4>" + changelog.split("<h4>1.21.0</h4>", 1)[1].split("<h4>1.20.0</h4>", 1)[0],
+        )
         self.assertIn("private, WordPress-authenticated Complete99 OS Today shell", changelog)
         self.assertIn("exact seven-table durable operations schema", changelog)
         self.assertIn("no ChatGPT login requirement", changelog)
@@ -841,7 +862,7 @@ class Complete99ContractTests(unittest.TestCase):
 
     def test_github_actions_are_read_only_pinned_and_serialized(self) -> None:
         workflows = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
-        self.assertEqual(2, len(workflows))
+        self.assertEqual(3, len(workflows))
         for path in workflows:
             text = path.read_text(encoding="utf-8")
             self.assertRegex(text, r"(?m)^permissions:\n(?:  [a-z-]+: read\n)+")

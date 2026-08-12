@@ -20,7 +20,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-11 00:37:00"
+RELEASE_LAST_UPDATED = "2026-08-12 00:00:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -588,6 +588,15 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Added a private WordPress-native Campaign Studio with location-scoped authorization, versioned approvals and packages, protected evidence, owned-site scheduling, exact public readback, human and system receipts, observed results, privacy-safe aggregate measurement and accountable moderation transitions.</li>"
+                "<li>Made owned placements fail closed through deterministic package, slot, lifecycle, authority and receipt bindings; bounded quarantine, absence proofs, generation recovery and cache cleanup preserve historical truth without claiming external-provider publication.</li>"
+                "<li>Extended deployment manifest v3 and fresh-request activation handoff across the exact seven Campaign tables, lifecycle reservation and shared worker fence, with authenticated rollback, recovery and commit-ambiguity readback.</li>"
+                "<li>Added a dedicated authenticated Campaign worker and fifteen-minute heartbeat monitor so reconciliation, expiry, cleanup and quarantine recovery continue without public traffic; the production runners remain main-restricted and separately scoped.</li>"
+                "<li>Kept legacy Campaign demo seeds and historic external-OS records out of WordPress truth. Meta, TikTok, WhatsApp and Google Business remain manual prepared packages unless an independently verified provider receipt exists, and the legacy public host remains subject to route mapping and redirect proof.</li>"
+                "<li>Preserved the exact 36 WooCommerce products, prices, stock authority, disabled payment state, frozen consumer UI and default-deny Science media boundary: 70 approved delivery files ship while 105 held, source-evidence or superseded files remain repository-only.</li>"
+                "</ul>"
+                "<h4>1.21.0</h4>"
                 "<ul>"
                 "<li>Began the owner-authorized migration of Complete99 operations into WordPress with a private, WordPress-authenticated Complete99 OS Today shell, an exact seven-table durable operations schema, capability- and nonce-protected status, and no ChatGPT login requirement. P1 remains deliberately read-only and imports no legacy operational records.</li>"
                 "<li>Added table-aware deployment manifest v2 rollback for the seven operations tables, including bounded encrypted snapshots, deterministic first-install quarantine and cleanup, unchanged baseline-present refusal, authenticated historical v1 recovery, and zero-residue preflight and finalization gates.</li>"

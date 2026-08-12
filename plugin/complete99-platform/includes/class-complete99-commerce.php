@@ -510,6 +510,17 @@ final class Complete99_Commerce {
 	}
 
 	public static function save_product_readiness_fields( $product ) {
+		if ( ! class_exists( 'Complete99_Campaigns' ) ) { throw new \RuntimeException( 'Campaign authority fencing is unavailable.' ); }
+		$fenced = Complete99_Campaigns::begin_authority_write( 'commerce_product' );
+		if ( is_wp_error( $fenced ) ) { throw new \RuntimeException( $fenced->get_error_message() ); }
+		try {
+			self::save_product_readiness_fields_under_authority_fence( $product );
+		} finally {
+			if ( ! Complete99_Campaigns::end_authority_write() ) { throw new \RuntimeException( 'Commerce authority lock release could not be proven.' ); }
+		}
+	}
+
+	private static function save_product_readiness_fields_under_authority_fence( $product ) {
 		if ( ! is_object( $product )
 			|| ! method_exists( $product, 'update_meta_data' )
 			|| ( ! current_user_can( 'manage_woocommerce' ) && ! current_user_can( 'manage_options' ) ) ) {

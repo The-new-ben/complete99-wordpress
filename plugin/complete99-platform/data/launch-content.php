@@ -212,7 +212,14 @@ $legal_records = array(
 						'מידע טכני וספקי תשתית',
 						array(
 							'שרתי האתר ומנגנוני האבטחה עשויים לשמור כתובת רשת, זמן, כתובת עמוד, סוג דפדפן ואירועי אבטחה לצורך הפעלה, אבחון תקלה, מניעת תקיפה ועמידה בדרישות דין. ספקי אחסון, אבטחה ותחזוקה רשאים לעבד מידע טכני רק לצורך השירות שהם מספקים ובכפוף להתחייבויות הנדרשות.',
-							'אם יתווספו בעתיד כלי מדידה, פרסום או עוגיות שאינן חיוניות, יוצג מידע מתאים ותינתן בחירה כאשר הדין דורש זאת לפני הפעלתם לציבור.',
+						),
+					),
+					array(
+						'מדידת קמפיין אופציונלית',
+						array(
+							'באנר קמפיין מפעיל מדידה רק לאחר בחירה מפורשת עבור ההצבה שמוצגת בעמוד הנוכחי. ללא אישור לא נשמר מזהה מדידה ולא נשלח אירוע קמפיין.',
+							'לאחר אישור נשמר בהפעלת כרטיסיית הדפדפן מזהה אקראי וזמני שמוגבל להצבה ולמטרת המדידה הנוכחית, ונשלחים רק אירוע חשיפה ולחיצה על קריאת הפעולה. מזהי תביעת האירוע ומכסת השעה נשמרים עד חמש שעות; ספירות מצטברות יומיות ושעתיות שאינן מזהות נשמרות 90 יום.',
+							'מאגר הקמפיינים אינו משתמש בעוגיות ואינו שומר כתובת IP, מחרוזת User-Agent, פרטי קשר או פרטי תשלום. יומני האחסון והאבטחה הנפרדים מתוארים בסעיף הקודם. אות Global Privacy Control או Do Not Track משבית את המדידה, ואפשר לשנות את הבחירה או לבטל אישור מתוך הבאנר.',
 						),
 					),
 					array(
@@ -241,7 +248,14 @@ $legal_records = array(
 						'Technical information and infrastructure providers',
 						array(
 							'Website servers and security controls may retain network address, time, page address, browser type and security events to operate the service, diagnose faults, prevent attacks and meet legal obligations. Hosting, security and maintenance providers may process technical information only for the service they provide and under appropriate commitments.',
-							'If optional measurement, advertising or non-essential cookies are added later, appropriate information and a choice will be provided where required by law before they are enabled for public visitors.',
+						),
+					),
+					array(
+						'Optional campaign measurement',
+						array(
+							'A campaign banner measures only after an explicit choice for the placement rendered on the current page. Without permission, no measurement identifier is stored and no campaign event is sent.',
+							'After permission, a temporary random identifier scoped to the current placement and measurement purpose is kept in the browser tab session, and only an impression event and a click on the call to action are sent. Event-claim and hourly-budget identifiers are retained for up to five hours; nonidentifying daily and hourly aggregate counts are retained for 90 days.',
+							'Campaign storage uses no cookies and stores no IP address, User-Agent string, contact data or payment data. Separate hosting and security logs are described above. Global Privacy Control or Do Not Track disables this measurement, and the banner lets a visitor change the choice or withdraw permission.',
 						),
 					),
 					array(

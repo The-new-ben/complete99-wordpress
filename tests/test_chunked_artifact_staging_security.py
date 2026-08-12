@@ -529,7 +529,7 @@ class ChunkedArtifactBridgeSecurityContracts(unittest.TestCase):
         self.assertIn("'methods'             => 'POST'", stage)
         self.assertIn("'permission_callback' => $permission", stage)
         self.assertIn("$config['deployment_id'] !== $deployment_id", stage)
-        self.assertIn("preg_match( '/^[A-Za-z0-9._-]{8,96}$/', $deployment_id )", stage)
+        self.assertIn("preg_match( '/\\A[A-Za-z0-9._-]{8,96}\\z/', $deployment_id )", stage)
 
     def test_stage_is_bound_to_the_reserved_lock_owner_and_process_lock(self) -> None:
         stage = self.section(
@@ -861,10 +861,22 @@ class C99_Test_Filesystem {{
 
 class C99_Test_Wpdb {{
     public bool $is_mysql = true;
+    public bool $suppress = false;
     public string $prefix = 'wp_';
     public string $options = 'wp_options';
     public string $last_error = '';
     public function prepare($query, ...$args) {{ return array('query' => $query, 'args' => $args); }}
+    public function suppress_errors($suppress = null) {{
+        $previous = $this->suppress;
+        if (null !== $suppress) {{ $this->suppress = (bool) $suppress; }}
+        return $previous;
+    }}
+    public function get_var($prepared) {{
+        $query = (string) $prepared['query'];
+        if (str_starts_with($query, 'SELECT GET_LOCK(')) {{ return 1; }}
+        if (str_starts_with($query, 'SELECT RELEASE_LOCK(')) {{ return 1; }}
+        throw new RuntimeException('Unexpected scalar database query');
+    }}
     public function get_col($prepared) {{ return array(); }}
     public function query($prepared) {{
         $query = (string) $prepared['query'];

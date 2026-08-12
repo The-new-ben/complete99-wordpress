@@ -1016,6 +1016,14 @@ return array(
 						)
 					),
 					array(
+						'מדידת קמפיין אופציונלית',
+						array(
+							'באנר קמפיין מפעיל מדידה רק לאחר בחירה מפורשת עבור ההצבה שמוצגת בעמוד הנוכחי. ללא אישור לא נשמר מזהה מדידה ולא נשלח אירוע קמפיין.',
+							'לאחר אישור נשמר בהפעלת כרטיסיית הדפדפן מזהה אקראי וזמני שמוגבל להצבה ולמטרת המדידה הנוכחית, ונשלחים רק אירוע חשיפה ולחיצה על קריאת הפעולה. מזהי תביעת האירוע ומכסת השעה נשמרים עד חמש שעות; ספירות מצטברות יומיות ושעתיות שאינן מזהות נשמרות 90 יום.',
+							'מאגר הקמפיינים אינו משתמש בעוגיות ואינו שומר כתובת IP, מחרוזת User-Agent, פרטי קשר או פרטי תשלום. יומני האחסון והאבטחה הנפרדים מתוארים בסעיף הקודם. אות Global Privacy Control או Do Not Track משבית את המדידה, ואפשר לשנות את הבחירה או לבטל אישור מתוך הבאנר.',
+						)
+					),
+					array(
 						'יצירת קשר',
 						array(
 							'כאשר מתקשרים או מוסרים פרטים כדי לקבל מענה, משתמשים בהם לצורך השיחה והמשך הטיפול שהתבקש. משך השמירה תלוי בצורך המעשי ובחובות החלות על העסק.',
@@ -1052,6 +1060,14 @@ return array(
 							'Hosting and security providers may process a network address, visit time, requested page, browser type and security events. This information is used to operate the site, diagnose faults and protect it from misuse.',
 							'When cart functionality is active, it may store product identifiers, quantities, language and technical data needed to keep the cart between pages. Do not enter card details outside an active, secure payment screen.',
 							'Do not send medical information, an identity document, a password or information that is not needed for your question or order through a public channel.',
+						)
+					),
+					array(
+						'Optional campaign measurement',
+						array(
+							'A campaign banner measures only after an explicit choice for the placement rendered on the current page. Without permission, no measurement identifier is stored and no campaign event is sent.',
+							'After permission, a temporary random identifier scoped to the current placement and measurement purpose is kept in the browser tab session, and only an impression event and a click on the call to action are sent. Event-claim and hourly-budget identifiers are retained for up to five hours; nonidentifying daily and hourly aggregate counts are retained for 90 days.',
+							'Campaign storage uses no cookies and stores no IP address, User-Agent string, contact data or payment data. Separate hosting and security logs are described above. Global Privacy Control or Do Not Track disables this measurement, and the banner lets a visitor change the choice or withdraw permission.',
 						)
 					),
 					array(

@@ -12,6 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * adopt products or attachments that it does not own.
  */
 final class Complete99_Live_Catalog {
+	private static $advisory_lock_poisoned = false;
 	const NAMESPACE       = 'complete99/v1';
 	const RECEIPT_SCHEMA  = 'complete99-live-catalog-receipt/v1';
 	const STATUS_SCHEMA   = 'complete99-live-catalog-status/v1';
@@ -303,6 +304,18 @@ final class Complete99_Live_Catalog {
 	 * Apply the complete allowlisted catalog and verify durable readback.
 	 */
 	public static function materialize( $deployment_id = '' ) {
+		if ( ! class_exists( 'Complete99_Campaigns' ) ) { return self::error( 'complete99_live_catalog_campaign_fence_missing', 'Campaign authority fencing is unavailable.', 503 ); }
+		$fenced = Complete99_Campaigns::begin_authority_write( 'live_catalog' );
+		if ( is_wp_error( $fenced ) ) { return $fenced; }
+		try {
+			return self::materialize_under_authority_fence( $deployment_id );
+		} finally {
+			if ( ! Complete99_Campaigns::end_authority_write() ) { throw new \RuntimeException( 'Live Catalog authority lock release could not be proven.' ); }
+		}
+	}
+
+	/** Apply only while the Campaign authority fence is held. */
+	private static function materialize_under_authority_fence( $deployment_id = '' ) {
 		$deployment_id = sanitize_text_field( (string) $deployment_id );
 		if ( 1 !== preg_match( '/\A[A-Za-z0-9._-]{8,96}\z/', $deployment_id ) ) {
 			return self::error( 'complete99_live_catalog_deployment_id', 'A valid deployment ID is required for catalog apply.', 400 );
@@ -2434,6 +2447,7 @@ final class Complete99_Live_Catalog {
 
 	private static function acquire_lock() {
 		global $wpdb;
+		if ( self::$advisory_lock_poisoned ) { return self::error( 'complete99_live_catalog_lock_release_unknown', 'Catalog writes are paused because prior advisory-lock ownership is uncertain.', 500 ); }
 		if ( ! is_object( $wpdb ) || true !== $wpdb->is_mysql ) {
 			return self::error( 'complete99_live_catalog_lock_driver', 'The production catalog requires a MySQL advisory lock.', 500 );
 		}
@@ -2448,7 +2462,11 @@ final class Complete99_Live_Catalog {
 	private static function release_lock( $name ) {
 		global $wpdb;
 		if ( is_string( $name ) && '' !== $name && is_object( $wpdb ) ) {
-			$wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $name ) );
+			$released = $wpdb->get_var( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $name ) );
+			if ( 1 !== (int) $released ) {
+				self::$advisory_lock_poisoned = true;
+				throw new \RuntimeException( 'Live Catalog advisory-lock release could not be proven.' );
+			}
 		}
 	}
 

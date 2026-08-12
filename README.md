@@ -11,9 +11,18 @@ not public website content or public search targets.
 
 ## Release target
 
-The source tree targets Complete99 Platform `1.21.0`. Production truth comes
+The source tree targets Complete99 Platform `1.22.0`. Production truth comes
 from the public health response, installed plugin digest, deployment audit and
 fresh Chrome acceptance, not from a local version string alone.
+
+Release 1.22.0 adds a private WordPress-native Campaign Studio with governed
+drafts, approvals, prepared packages, owned-site scheduling, exact readback,
+receipts, observed results, privacy-safe aggregate measurement and bounded
+moderation. External networks remain manual package handoffs unless a real
+provider account and independent receipt prove publication. The dedicated
+Campaign worker and its heartbeat monitor keep reconciliation moving without
+public traffic; neither source code nor a local artifact is evidence of a live
+deployment.
 
 Release 1.21.0 begins the owner-authorized operational migration into
 WordPress. It adds a private Complete99 OS Today shell, WordPress authentication
@@ -407,6 +416,8 @@ Production deployment requires:
   Application Password;
 - `WP_PRODUCTION_READY` set exactly to `true`;
 - the scoped `complete99-deploy` Windows runner;
+- the separately scoped `complete99-monitor` Windows runner and green Campaign
+  heartbeat before any owned placement is scheduled;
 - health, package, source, database, cache, cleanup and rollback evidence;
 - exact WooCommerce `10.9.4` package and installed-tree verification;
 - a dry run, one owner-authenticated catalog apply and fresh strict readback;

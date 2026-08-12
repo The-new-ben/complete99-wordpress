@@ -323,7 +323,9 @@ def validate_database_manifest(value: Any, digest: Any, label: str) -> None:
         "evaluation_ids",
     ]
     schema = manifest.get("schema")
-    if schema == "complete99-database-snapshot-manifest/v2":
+    if schema == "complete99-database-snapshot-manifest/v3":
+        components.extend(["ops_tables", "campaign_tables"])
+    elif schema == "complete99-database-snapshot-manifest/v2":
         components.append("ops_tables")
     else:
         require(
@@ -349,7 +351,8 @@ def validate_database_manifest(value: Any, digest: Any, label: str) -> None:
         require(
             type(count) is int
             and count >= 0
-            and (component != "ops_tables" or count == 7),
+            and count <= 9223372036854775807
+            and (component not in {"ops_tables", "campaign_tables"} or count == 7),
             f"{label} count is invalid for {component}",
         )
         require_digest(
@@ -956,6 +959,8 @@ INTERRUPTED_FORWARD_SAFE_PHASES = {
     "committing",
     "failed",
     "finalized",
+    "candidate_activation_pending",
+    "candidate_activation_complete",
     "installed",
     "installed_pending_cleanup",
     "installed_pending_stabilization",

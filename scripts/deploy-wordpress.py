@@ -1735,6 +1735,8 @@ def poll_deployment_status(
         "committing",
     }
     terminal = {
+        "candidate_activation_pending",
+        "candidate_activation_complete",
         "installed",
         "installed_pending_cleanup",
         "installed_pending_stabilization",
@@ -1788,9 +1790,37 @@ def install_with_recovery(
     if re.fullmatch(r"[a-f0-9]{64}", expected_plugin_sha256) is None:
         raise DeployError("Expected installed plugin digest is invalid")
     try:
-        return bridge_call(client, "run", token, deployment_id, **run_fields)
+        result = bridge_call(client, "run", token, deployment_id, **run_fields)
     except DeployError as original_error:
         status = poll_deployment_status(client, token, deployment_id)
+        if candidate_activation_status_exact(
+            status,
+            deployment_id,
+            run_fields,
+            expected_plugin_sha256,
+            completed=False,
+        ) or candidate_activation_status_exact(
+            status,
+            deployment_id,
+            run_fields,
+            expected_plugin_sha256,
+            completed=True,
+        ):
+            result = candidate_activation_install_result_from_status(
+                status,
+                deployment_id,
+                run_fields,
+                expected_plugin_sha256,
+            )
+            result["write_response_recovered"] = True
+            return continue_candidate_activation(
+                client,
+                token,
+                deployment_id,
+                run_fields,
+                expected_plugin_sha256,
+                result,
+            )
         if (
             status.get("phase")
             in {
@@ -1842,6 +1872,327 @@ def install_with_recovery(
                 "write_response_recovered": True,
             }
         raise original_error
+    if result.get("continuation_required") is True:
+        return continue_candidate_activation(
+            client,
+            token,
+            deployment_id,
+            run_fields,
+            expected_plugin_sha256,
+            result,
+        )
+    return result
+
+
+def candidate_activation_status_exact(
+    status: dict[str, Any],
+    deployment_id: str,
+    run_fields: dict[str, Any],
+    expected_plugin_sha256: str,
+    *,
+    completed: bool,
+) -> bool:
+    """Validate the bounded, non-secret candidate handoff projection."""
+    phase = str(status.get("phase", ""))
+    common = (
+        status.get("deployment_id") == deployment_id
+        and status.get("state_exists") is True
+        and status.get("lock_owned") is True
+        and status.get("temp_removed") is True
+        and status.get("expected_sha256") == run_fields.get("expected_sha256")
+        and status.get("expected_version") == run_fields.get("version")
+        and status.get("installed_plugin_sha256") == expected_plugin_sha256
+        and status.get("current_plugin_sha256") == expected_plugin_sha256
+        and status.get("current_version") == run_fields.get("version")
+        and status.get("candidate_activation_required") is True
+        and status.get("candidate_requested_active") is True
+        and type(status.get("candidate_prior_active")) is bool
+        and status.get("baseline_database_journal_valid") is True
+        and re.fullmatch(
+            r"[a-f0-9]{64}", str(status.get("baseline_database_fingerprint", ""))
+        )
+        is not None
+        and status.get("no_rollback_artifacts") is True
+    )
+    if not common:
+        return False
+    if not completed:
+        return (
+            phase == "candidate_activation_pending"
+            and status.get("candidate_activation_phase") == "pending"
+            and status.get("forward_ready") is False
+        )
+    candidate_fingerprint = str(status.get("candidate_database_fingerprint", ""))
+    return (
+        phase in {"candidate_activation_complete", "installed_pending_stabilization"}
+        and status.get("candidate_activation_phase") == "complete"
+        and type(status.get("candidate_activation_completed_at")) is int
+        and status.get("candidate_activation_completed_at", 0) > 0
+        and re.fullmatch(r"[a-f0-9]{64}", candidate_fingerprint) is not None
+        and status.get("database_fingerprint") == candidate_fingerprint
+        and status.get("current_database_version") == run_fields.get("version")
+        and status.get("current_deployment") == deployment_id
+        and status.get("current_active") is True
+        and status.get("migration_failed") is False
+        and status.get("migration_invariants_valid") is True
+        and status.get("forward_ready") is True
+        and status.get("robots_applied") is True
+        and re.fullmatch(
+            r"[a-f0-9]{64}", str(status.get("robots_managed_sha256", ""))
+        )
+        is not None
+        and status.get("robots_managed_sha256")
+        == status.get("current_robots_sha256")
+    )
+
+
+def candidate_activation_install_result_from_status(
+    status: dict[str, Any],
+    deployment_id: str,
+    run_fields: dict[str, Any],
+    expected_plugin_sha256: str,
+) -> dict[str, Any]:
+    return {
+        "active": bool(status.get("current_active")),
+        "backup_ready": True,
+        "baseline_database_fingerprint": status.get(
+            "baseline_database_fingerprint", ""
+        ),
+        "continuation_required": True,
+        "deployment_id": deployment_id,
+        "had_plugin": bool(status.get("had_plugin")),
+        "installed": True,
+        "installed_plugin_sha256": expected_plugin_sha256,
+        "prior_active": bool(status.get("prior_active")),
+        "prior_deployment": status.get("prior_deployment", ""),
+        "prior_plugin_sha256": status.get("prior_plugin_sha256", ""),
+        "prior_version": status.get("prior_version", ""),
+        "requested_active": True,
+        "robots_prior_exists": bool(status.get("robots_prior_exists")),
+        "robots_prior_sha256": status.get("robots_prior_sha256", ""),
+        "sha256": run_fields["expected_sha256"],
+        "slug": run_fields["slug"],
+        "temp_removed": True,
+        "version": run_fields["version"],
+    }
+
+
+def candidate_activation_status_matches_handoff(
+    status: dict[str, Any], install_result: dict[str, Any]
+) -> bool:
+    """Bind every rollback-relevant handoff field to the same durable journal."""
+    return (
+        status.get("baseline_database_fingerprint")
+        == install_result.get("baseline_database_fingerprint")
+        and status.get("had_plugin") is install_result.get("had_plugin")
+        and status.get("prior_active") is install_result.get("prior_active")
+        and status.get("candidate_prior_active")
+        is install_result.get("prior_active")
+        and status.get("prior_deployment")
+        == install_result.get("prior_deployment")
+        and status.get("prior_plugin_sha256")
+        == install_result.get("prior_plugin_sha256")
+        and status.get("prior_version") == install_result.get("prior_version")
+        and status.get("robots_prior_exists")
+        is install_result.get("robots_prior_exists")
+        and status.get("robots_prior_sha256")
+        == install_result.get("robots_prior_sha256")
+    )
+
+
+def continue_candidate_activation(
+    client: Client,
+    token: str,
+    deployment_id: str,
+    run_fields: dict[str, Any],
+    expected_plugin_sha256: str,
+    install_result: dict[str, Any],
+) -> dict[str, Any]:
+    """Complete the fresh-request activation handoff with bounded ACK recovery."""
+    handoff_keys = {
+        "active",
+        "backup_ready",
+        "baseline_database_fingerprint",
+        "continuation_required",
+        "deployment_id",
+        "had_plugin",
+        "installed",
+        "installed_plugin_sha256",
+        "prior_active",
+        "prior_deployment",
+        "prior_plugin_sha256",
+        "prior_version",
+        "requested_active",
+        "robots_prior_exists",
+        "robots_prior_sha256",
+        "sha256",
+        "slug",
+        "temp_removed",
+        "version",
+    }
+    actual_handoff_keys = frozenset(install_result)
+    if (
+        actual_handoff_keys
+        not in {frozenset(handoff_keys), frozenset(handoff_keys | {"write_response_recovered"})}
+        or (
+            "write_response_recovered" in install_result
+            and install_result.get("write_response_recovered") is not True
+        )
+        or install_result.get("continuation_required") is not True
+        or install_result.get("installed") is not True
+        or install_result.get("requested_active") is not True
+        or install_result.get("backup_ready") is not True
+        or install_result.get("deployment_id") != deployment_id
+        or install_result.get("slug") != run_fields.get("slug")
+        or install_result.get("sha256") != run_fields.get("expected_sha256")
+        or install_result.get("version") != run_fields.get("version")
+        or install_result.get("installed_plugin_sha256") != expected_plugin_sha256
+        or install_result.get("temp_removed") is not True
+        or type(install_result.get("active")) is not bool
+        or type(install_result.get("had_plugin")) is not bool
+        or type(install_result.get("prior_active")) is not bool
+        or type(install_result.get("robots_prior_exists")) is not bool
+        or (
+            install_result.get("prior_active") is True
+            and install_result.get("had_plugin") is not True
+        )
+        or re.fullmatch(
+            r"[a-f0-9]{64}", str(install_result.get("baseline_database_fingerprint", ""))
+        )
+        is None
+        or (
+            install_result.get("robots_prior_exists") is True
+            and re.fullmatch(
+                r"[a-f0-9]{64}", str(install_result.get("robots_prior_sha256", ""))
+            )
+            is None
+        )
+        or (
+            install_result.get("robots_prior_exists") is False
+            and install_result.get("robots_prior_sha256") != ""
+        )
+        or (
+            install_result.get("had_plugin") is True
+            and re.fullmatch(
+                r"[a-f0-9]{64}", str(install_result.get("prior_plugin_sha256", ""))
+            )
+            is None
+        )
+        or (
+            install_result.get("had_plugin") is False
+            and install_result.get("prior_plugin_sha256") != ""
+        )
+    ):
+        raise DeployError("Candidate activation handoff identity is invalid")
+
+    response: dict[str, Any] | None = None
+    response_recovered = False
+    first_error: DeployError | None = None
+    for attempt in range(2):
+        try:
+            response = bridge_call(
+                client,
+                "continue-activation",
+                token,
+                deployment_id,
+            )
+            break
+        except DeployError as error:
+            if first_error is None:
+                first_error = error
+            retryable = isinstance(error, NetworkDeployError) or (
+                isinstance(error, HTTPDeployError)
+                and type(error.status) is int
+                and 500 <= error.status <= 599
+            )
+            if not retryable:
+                raise
+            status = poll_deployment_status(client, token, deployment_id)
+            if candidate_activation_status_exact(
+                status,
+                deployment_id,
+                run_fields,
+                expected_plugin_sha256,
+                completed=True,
+            ) and candidate_activation_status_matches_handoff(status, install_result):
+                if attempt == 0:
+                    response_recovered = True
+                    continue
+                response = {
+                    "active": True,
+                    "continued": True,
+                    "deployment_id": deployment_id,
+                    "idempotent": True,
+                    "phase": "installed_pending_stabilization",
+                }
+                response_recovered = True
+                break
+            if attempt == 0 and candidate_activation_status_exact(
+                status,
+                deployment_id,
+                run_fields,
+                expected_plugin_sha256,
+                completed=False,
+            ) and candidate_activation_status_matches_handoff(status, install_result):
+                response_recovered = True
+                continue
+            raise first_error
+
+    if response is None:
+        if first_error is not None:
+            raise first_error
+        raise DeployError("Candidate activation continuation returned no result")
+    response_keys = set(response)
+    required_keys = {"active", "continued", "deployment_id", "phase"}
+    if (
+        frozenset(response_keys)
+        not in {frozenset(required_keys), frozenset(required_keys | {"idempotent"})}
+        or response.get("active") is not True
+        or response.get("continued") is not True
+        or response.get("deployment_id") != deployment_id
+        or response.get("phase") != "installed_pending_stabilization"
+        or ("idempotent" in response and response.get("idempotent") is not True)
+    ):
+        raise DeployError("Candidate activation continuation response is invalid")
+
+    status = bridge_call(client, "status", token, deployment_id)
+    if not (
+        candidate_activation_status_exact(
+            status,
+            deployment_id,
+            run_fields,
+            expected_plugin_sha256,
+            completed=True,
+        )
+        and candidate_activation_status_matches_handoff(status, install_result)
+    ):
+        raise DeployError("Candidate activation completion was not durably verified")
+
+    normalized = dict(install_result)
+    normalized.update(
+        {
+            "active": True,
+            "cache_purge": {
+                "candidate_activation_continuation": True,
+                "response_recovered": response_recovered,
+            },
+            "candidate_activation": {
+                "schema": "complete99-candidate-activation-client-receipt/v1",
+                "deployment_id": deployment_id,
+                "phase": "installed_pending_stabilization",
+                "artifact_sha256": run_fields["expected_sha256"],
+                "plugin_sha256": expected_plugin_sha256,
+                "version": run_fields["version"],
+                "completed_at": status["candidate_activation_completed_at"],
+                "database_fingerprint": status["candidate_database_fingerprint"],
+                "idempotent": bool(response.get("idempotent")),
+                "response_recovered": response_recovered,
+            },
+            "continuation_required": False,
+            "robots_sha256": status["robots_managed_sha256"],
+        }
+    )
+    return normalized
 
 
 def stabilize_deployment(
@@ -2062,6 +2413,8 @@ def rollback_with_recovery(
             raise
         status = poll_deployment_status(client, token, deployment_id)
         if status.get("phase") in {
+            "candidate_activation_pending",
+            "candidate_activation_complete",
             "installed",
             "installed_pending_cleanup",
             "installed_pending_stabilization",
@@ -2266,7 +2619,9 @@ def observe_orphaned_rollback(
         "evaluation_ids",
     ]
     schema = manifest.get("schema") if isinstance(manifest, dict) else None
-    if schema == "complete99-database-snapshot-manifest/v2":
+    if schema == "complete99-database-snapshot-manifest/v3":
+        components.extend(["ops_tables", "campaign_tables"])
+    elif schema == "complete99-database-snapshot-manifest/v2":
         components.append("ops_tables")
     elif schema != "complete99-database-snapshot-manifest/v1":
         raise DeployError("Orphaned rollback database manifest schema is invalid")
@@ -2288,7 +2643,12 @@ def observe_orphaned_rollback(
     for component in components:
         count = manifest.get(f"{component}_count")
         digest = manifest.get(f"{component}_sha256")
-        if type(count) is not int or count < 0 or (component == "ops_tables" and count != 7):
+        if (
+            type(count) is not int
+            or count < 0
+            or count > 9223372036854775807
+            or (component in {"ops_tables", "campaign_tables"} and count != 7)
+        ):
             raise DeployError(
                 f"Orphaned rollback database manifest count is invalid for {component}"
             )
@@ -2315,6 +2675,7 @@ def observe_orphaned_rollback(
         or set(database_storage) != {"engine", "tables"}
         or database_storage.get("engine")
         not in {"INNODB", "XTRADB", "INNODB,XTRADB"}
+        or type(database_storage.get("tables")) is not int
         or database_storage.get("tables") != 3
     ):
         raise DeployError(
@@ -3264,6 +3625,7 @@ def main() -> int:
                     "baseline_database_fingerprint", ""
                 ),
                 "cache_purge": result.get("cache_purge", {}),
+                "candidate_activation": result.get("candidate_activation", {}),
                 "had_plugin": bool(result.get("had_plugin")),
                 "prior_active": bool(result.get("prior_active")),
                 "prior_deployment": result.get("prior_deployment", ""),

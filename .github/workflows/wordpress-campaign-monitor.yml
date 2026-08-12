@@ -1,0 +1,49 @@
+name: Monitor Complete99 Campaign Worker
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: complete99-campaign-monitor
+  cancel-in-progress: false
+
+jobs:
+  campaign-worker:
+    runs-on: [self-hosted, Windows, X64, complete99-monitor]
+    environment: campaign-monitor
+    timeout-minutes: 10
+    steps:
+      - name: Refuse a Campaign monitor run from any non-main ref
+        shell: powershell
+        run: |
+          if ($env:GITHUB_REF -ne "refs/heads/main") {
+            Write-Error "Campaign monitor runs are restricted to refs/heads/main."
+            exit 1
+          }
+
+      - name: Check out the monitored source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/monitor-campaign-worker.py
+          sparse-checkout-cone-mode: false
+
+      - name: Run the fixed Campaign worker and verify its durable heartbeat
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_CAMPAIGN_WORKER_USER: ${{ secrets.WP_CAMPAIGN_WORKER_USER }}
+          WP_CAMPAIGN_WORKER_APP_PASSWORD: ${{ secrets.WP_CAMPAIGN_WORKER_APP_PASSWORD }}
+          WP_ALLOWED_MONITOR_HOSTS: ${{ secrets.WP_ALLOWED_MONITOR_HOSTS }}
+        shell: powershell
+        run: |
+          & python --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & python scripts/monitor-campaign-worker.py
+          exit $LASTEXITCODE

@@ -88,11 +88,8 @@ final class Complete99_Consumer {
 		$items = Complete99_REST::public_indexable_items();
 		foreach ( $items as &$item ) {
 			$item['_complete99_source']           = sanitize_key( (string) ( $item['_complete99_source'] ?? 'synced_read_model' ) );
-			$item['_complete99_media_provenance'] = sanitize_key( (string) ( $item['media_provenance'] ?? 'business_owned' ) );
-			if ( 'complete99_archive' === $item['_complete99_media_provenance'] ) {
-				$item['_complete99_media_provenance'] = 'business_owned';
-			}
-			$item['_complete99_media_rights'] = sanitize_key( (string) ( $item['media_rights_state'] ?? 'approved_public_use' ) );
+			$item['_complete99_media_provenance'] = sanitize_key( (string) ( $item['media_provenance'] ?? 'unverified' ) );
+			$item['_complete99_media_rights'] = sanitize_key( (string) ( $item['media_rights_state'] ?? 'review_required' ) );
 		}
 		unset( $item );
 		usort(

@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PLUGIN = ROOT / "plugin" / "complete99-platform"
 REST = PLUGIN / "includes" / "class-complete99-rest.php"
+MEDIA_RIGHTS = PLUGIN / "includes" / "class-complete99-consumer-media-rights.php"
 FRONTEND = PLUGIN / "includes" / "class-complete99-frontend.php"
 CONTENT = PLUGIN / "includes" / "class-complete99-content.php"
 TEMPLATE = PLUGIN / "templates" / "live-dish.php"
@@ -310,11 +311,14 @@ function c99_legacy_model($items = array(), $generated = null, $with_digest = fa
 function c99_bundled_transport_items($generated_at) {
     $items = require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php';
     foreach ($items as &$item) {
+        $rights = Complete99_Consumer_Media_Rights::record_for_asset(
+            $item['image_asset'] ?? ''
+        );
         $item['section_id'] = 'section-default';
         $item['verification_state'] = 'launch_ready';
         $item['updated_at'] = $generated_at;
-        $item['media_provenance'] = 'business_owned';
-        $item['media_rights_state'] = 'approved_public_use';
+        $item['media_provenance'] = $rights['media_provenance'] ?? 'unverified';
+        $item['media_rights_state'] = $rights['media_rights_state'] ?? 'review_required';
         $item['vegetarian'] = in_array(
             'vegetarian',
             $item['facets'] ?? array(),
@@ -338,6 +342,7 @@ class Complete99_Platform {
     public static function migration_failed() { return false; }
 }
 
+require '__MEDIA_RIGHTS_PATH__';
 require '__REST_PATH__';
 """
 
@@ -353,9 +358,11 @@ class LiveReadModelContracts(unittest.TestCase):
 
     def run_php_runtime(self, body: str) -> dict:
         rest_path = REST.as_posix().replace("'", "\\'")
+        media_rights_path = MEDIA_RIGHTS.as_posix().replace("'", "\\'")
         plugin_path = PLUGIN.as_posix().replace("'", "\\'")
         script = (
             PHP_RUNTIME_BOOTSTRAP.replace("__REST_PATH__", rest_path)
+            .replace("__MEDIA_RIGHTS_PATH__", media_rights_path)
             .replace("__PLUGIN_PATH__", plugin_path)
             .replace("__FIXTURE_PATH__", DIGEST_FIXTURE.as_posix().replace("'", "\\'"))
             + "\n"

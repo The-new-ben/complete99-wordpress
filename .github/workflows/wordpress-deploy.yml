@@ -472,3 +472,47 @@ jobs:
             commerce-audit/*.json
           if-no-files-found: error
           retention-days: 30
+
+  verify-campaign-worker:
+    name: Gate the final deployed Campaign worker heartbeat
+    if: ${{ always() && inputs.orphaned_rollback_observe_only != true && inputs.interrupted_forward_observe_only != true && inputs.recovery_only != true }}
+    needs: deploy
+    runs-on: [self-hosted, Windows, X64, complete99-monitor]
+    environment: campaign-monitor
+    timeout-minutes: 10
+    steps:
+      - name: Require a successful normal deployment outcome
+        env:
+          COMPLETE99_DEPLOY_OUTCOME: ${{ needs.deploy.result }}
+          COMPLETE99_ROLLBACK_EXERCISE: ${{ inputs.rollback_exercise }}
+        shell: powershell
+        run: |
+          if ($env:COMPLETE99_DEPLOY_OUTCOME -ne "success") {
+            Write-Error "The deployment job did not complete successfully."
+            exit 1
+          }
+          if ($env:COMPLETE99_ROLLBACK_EXERCISE.ToLowerInvariant() -eq "true") {
+            Write-Output "Campaign worker verification is deferred until the final identical-artifact redeploy is complete."
+          }
+
+      - name: Check out the exact deployed source for the worker gate
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/monitor-campaign-worker.py
+          sparse-checkout-cone-mode: false
+
+      - name: Require a fresh Campaign worker heartbeat from the final release
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_CAMPAIGN_WORKER_USER: ${{ secrets.WP_CAMPAIGN_WORKER_USER }}
+          WP_CAMPAIGN_WORKER_APP_PASSWORD: ${{ secrets.WP_CAMPAIGN_WORKER_APP_PASSWORD }}
+          WP_ALLOWED_MONITOR_HOSTS: ${{ secrets.WP_ALLOWED_MONITOR_HOSTS }}
+        shell: powershell
+        run: |
+          & python --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & python scripts/monitor-campaign-worker.py
+          exit $LASTEXITCODE
