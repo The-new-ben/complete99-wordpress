@@ -1660,6 +1660,27 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                 if phase == "installed_pending_stabilization":
                     safe.update(
                         {
+                            "campaign_lifecycle": {
+                                "canonical": True,
+                                "generation": 7,
+                                "state": "active",
+                            },
+                            "campaign_operational": {
+                                "cache_ready": True,
+                                "capabilities_ready": True,
+                                "capacity_inspectable": True,
+                                "capacity_ready": True,
+                                "capacity_write_ready": True,
+                                "cron_inspectable": True,
+                                "cron_ready": False,
+                                "evidence_inspectable": True,
+                                "evidence_ready": True,
+                                "ready": False,
+                                "suppression_inspectable": True,
+                                "suppression_invalid": False,
+                                "suppression_ready": True,
+                                "suppression_recoverable_pending": False,
+                            },
                             "candidate_activation_completed_at": 1_786_533_000,
                             "candidate_activation_phase": "complete",
                             "candidate_activation_required": True,
@@ -1668,6 +1689,14 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
                             "candidate_requested_active": True,
                             "forward_ready": True,
                             "forward_stabilization_candidate": True,
+                            "migration_invariant_checks": {
+                                "campaigns": True,
+                                "content": True,
+                                "culinary_science": True,
+                                "evaluation_catalog": True,
+                                "ops": True,
+                                "settings": True,
+                            },
                             "temp_removed": True,
                         }
                     )

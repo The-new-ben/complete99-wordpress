@@ -310,6 +310,40 @@ def interrupted_forward_status(
     }
 
 
+def pending_stabilization_diagnostics() -> dict[str, Any]:
+    return {
+        "campaign_lifecycle": {
+            "canonical": True,
+            "generation": 7,
+            "state": "active",
+        },
+        "campaign_operational": {
+            "cache_ready": True,
+            "capabilities_ready": True,
+            "capacity_inspectable": True,
+            "capacity_ready": True,
+            "capacity_write_ready": True,
+            "cron_inspectable": True,
+            "cron_ready": False,
+            "evidence_inspectable": True,
+            "evidence_ready": True,
+            "ready": False,
+            "suppression_inspectable": True,
+            "suppression_invalid": False,
+            "suppression_ready": True,
+            "suppression_recoverable_pending": False,
+        },
+        "migration_invariant_checks": {
+            "campaigns": True,
+            "content": True,
+            "culinary_science": True,
+            "evaluation_catalog": True,
+            "ops": True,
+            "settings": True,
+        },
+    }
+
+
 def interrupted_robots_checkpoint_loaded() -> tuple[
     dict[str, Any], dict[str, Any]
 ]:
@@ -2116,6 +2150,7 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
         status = interrupted_forward_status(loaded)
         status.update(
             {
+                **pending_stabilization_diagnostics(),
                 "candidate_activation_completed_at": 1_786_533_000,
                 "candidate_activation_phase": "complete",
                 "candidate_activation_required": True,
@@ -2146,6 +2181,47 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
             "e" * 64,
             observed["safe_status"]["candidate_database_fingerprint"],
         )
+        self.assertEqual(
+            pending_stabilization_diagnostics()["migration_invariant_checks"],
+            observed["safe_status"]["migration_invariant_checks"],
+        )
+        self.assertEqual(
+            {"canonical": True, "generation": 7, "state": "active"},
+            observed["safe_status"]["campaign_lifecycle"],
+        )
+        self.assertFalse(observed["safe_status"]["campaign_operational"]["cron_ready"])
+
+        for label, mutate in (
+            (
+                "extra invariant",
+                lambda value: value["migration_invariant_checks"].__setitem__(
+                    "unexpected", True
+                ),
+            ),
+            (
+                "nonboolean campaign status",
+                lambda value: value["campaign_operational"].__setitem__(
+                    "ready", 1
+                ),
+            ),
+            (
+                "noncanonical lifecycle",
+                lambda value: value["campaign_lifecycle"].update(
+                    {"canonical": False, "generation": 7, "state": "active"}
+                ),
+            ),
+        ):
+            with self.subTest(label=label):
+                changed = copy.deepcopy(status)
+                mutate(changed)
+                with self.assertRaisesRegex(
+                    DEPLOY.DeployError, "stabilization diagnostics"
+                ):
+                    RECOVER.capture_interrupted_forward_mismatch_diagnostic(
+                        DEPLOY,
+                        changed,
+                        loaded,
+                    )
         self.assertFalse(observed["recovery_authority"])
 
     def test_real_v1_proof_and_exact_dist_are_bound(self) -> None:
@@ -2945,6 +3021,7 @@ class InterruptedForwardRecoveryTests(unittest.TestCase):
                 if phase == "installed_pending_stabilization":
                     phase_changed.update(
                         {
+                            **pending_stabilization_diagnostics(),
                             "candidate_activation_completed_at": 1_786_533_000,
                             "candidate_activation_phase": "complete",
                             "candidate_activation_required": True,

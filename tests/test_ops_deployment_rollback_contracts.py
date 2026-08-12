@@ -424,7 +424,10 @@ class OpsDeploymentRollbackContractTests(unittest.TestCase):
             self.bridge.count("method_exists( 'Complete99_Ops', 'assert_invariants' )"),
             5,
         )
-        self.assertEqual(self.bridge.count("Complete99_Ops::assert_invariants();"), 5)
+        self.assertEqual(self.bridge.count("Complete99_Ops::assert_invariants();"), 4)
+        self.assertEqual(
+            self.bridge.count("array( 'Complete99_Ops', 'assert_invariants' )"), 1
+        )
         self.assertEqual(
             self.bridge.count("class_exists( 'Complete99_Campaigns', false )"), 6
         )
@@ -435,7 +438,11 @@ class OpsDeploymentRollbackContractTests(unittest.TestCase):
             6,
         )
         self.assertEqual(
-            self.bridge.count("Complete99_Campaigns::assert_invariants();"), 6
+            self.bridge.count("Complete99_Campaigns::assert_invariants();"), 5
+        )
+        self.assertEqual(
+            self.bridge.count("array( 'Complete99_Campaigns', 'assert_invariants' )"),
+            1,
         )
         self.assertEqual(
             self.bridge.count("class_exists( 'Complete99_Culinary_Science', false )"),
@@ -449,7 +456,13 @@ class OpsDeploymentRollbackContractTests(unittest.TestCase):
         )
         self.assertEqual(
             self.bridge.count("Complete99_Culinary_Science::assert_invariants();"),
-            5,
+            4,
+        )
+        self.assertEqual(
+            self.bridge.count(
+                "array( 'Complete99_Culinary_Science', 'assert_invariants' )"
+            ),
+            1,
         )
 
         status = self.bridge.split("$route_prefix . '/status'", 1)[1].split(
@@ -466,13 +479,11 @@ class OpsDeploymentRollbackContractTests(unittest.TestCase):
             self.assertIn(
                 "method_exists( 'Complete99_Ops', 'assert_invariants' )", segment
             )
-            self.assertIn("Complete99_Ops::assert_invariants();", segment)
             self.assertIn("class_exists( 'Complete99_Campaigns', false )", segment)
             self.assertIn(
                 "method_exists( 'Complete99_Campaigns', 'assert_invariants' )",
                 segment,
             )
-            self.assertIn("Complete99_Campaigns::assert_invariants();", segment)
             self.assertIn(
                 "class_exists( 'Complete99_Culinary_Science', false )", segment
             )
@@ -480,6 +491,15 @@ class OpsDeploymentRollbackContractTests(unittest.TestCase):
                 "method_exists( 'Complete99_Culinary_Science', 'assert_invariants' )",
                 segment,
             )
+        self.assertIn("array( 'Complete99_Ops', 'assert_invariants' )", status)
+        self.assertIn("array( 'Complete99_Campaigns', 'assert_invariants' )", status)
+        self.assertIn(
+            "array( 'Complete99_Culinary_Science', 'assert_invariants' )", status
+        )
+        self.assertIn("call_user_func( $callback );", status)
+        for segment in (attestation, stabilize, self.finalize):
+            self.assertIn("Complete99_Ops::assert_invariants();", segment)
+            self.assertIn("Complete99_Campaigns::assert_invariants();", segment)
             self.assertIn(
                 "Complete99_Culinary_Science::assert_invariants();", segment
             )

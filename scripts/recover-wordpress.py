@@ -2377,6 +2377,8 @@ INTERRUPTED_FORWARD_SAFE_VERSION_FIELDS = (
 )
 
 INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS = (
+    "campaign_lifecycle",
+    "campaign_operational",
     "candidate_activation_completed_at",
     "candidate_activation_phase",
     "candidate_activation_required",
@@ -2385,8 +2387,35 @@ INTERRUPTED_FORWARD_STABILIZATION_SAFE_STATUS_KEYS = (
     "candidate_requested_active",
     "forward_ready",
     "forward_stabilization_candidate",
+    "migration_invariant_checks",
     "temp_removed",
 )
+
+INTERRUPTED_FORWARD_MIGRATION_INVARIANT_KEYS = {
+    "campaigns",
+    "content",
+    "culinary_science",
+    "evaluation_catalog",
+    "ops",
+    "settings",
+}
+
+INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS = {
+    "cache_ready",
+    "capabilities_ready",
+    "capacity_inspectable",
+    "capacity_ready",
+    "capacity_write_ready",
+    "cron_inspectable",
+    "cron_ready",
+    "evidence_inspectable",
+    "evidence_ready",
+    "ready",
+    "suppression_inspectable",
+    "suppression_invalid",
+    "suppression_ready",
+    "suppression_recoverable_pending",
+}
 
 INTERRUPTED_FORWARD_SAFE_PHASES = {
     "",
@@ -2535,6 +2564,40 @@ def validate_interrupted_forward_safe_status_shape(
         raise deployer.DeployError(
             f"{label} stabilization checkpoint status is invalid"
         )
+    if safe_status["phase"] == "installed_pending_stabilization":
+        invariant_checks = safe_status.get("migration_invariant_checks")
+        campaign = safe_status.get("campaign_operational")
+        lifecycle = safe_status.get("campaign_lifecycle")
+        if (
+            not isinstance(invariant_checks, dict)
+            or set(invariant_checks) != INTERRUPTED_FORWARD_MIGRATION_INVARIANT_KEYS
+            or any(type(value) is not bool for value in invariant_checks.values())
+            or not isinstance(campaign, dict)
+            or set(campaign) != INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS
+            or any(type(value) is not bool for value in campaign.values())
+            or not isinstance(lifecycle, dict)
+            or set(lifecycle) != {"canonical", "generation", "state"}
+            or type(lifecycle.get("canonical")) is not bool
+            or type(lifecycle.get("generation")) is not int
+            or lifecycle["generation"] < 0
+            or lifecycle["generation"] > 9_223_372_036_854_775_807
+            or type(lifecycle.get("state")) is not str
+            or lifecycle["state"] not in {"", "active", "suspending", "inactive"}
+            or (
+                lifecycle["canonical"]
+                and (
+                    lifecycle["generation"] < 1
+                    or lifecycle["state"] not in {"active", "suspending", "inactive"}
+                )
+            )
+            or (
+                not lifecycle["canonical"]
+                and (lifecycle["generation"] != 0 or lifecycle["state"] != "")
+            )
+        ):
+            raise deployer.DeployError(
+                f"{label} stabilization diagnostics are invalid"
+            )
     return safe_status
 
 
