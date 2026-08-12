@@ -496,6 +496,7 @@ jobs:
           }
 
       - name: Check out the exact deployed source for the worker gate
+        if: inputs.rollback_exercise != true
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 1
@@ -505,6 +506,7 @@ jobs:
           sparse-checkout-cone-mode: false
 
       - name: Require a fresh Campaign worker heartbeat from the final release
+        if: inputs.rollback_exercise != true
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_CAMPAIGN_WORKER_USER: ${{ secrets.WP_CAMPAIGN_WORKER_USER }}
