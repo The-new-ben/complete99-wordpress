@@ -332,6 +332,14 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             "CHARACTER SET {$column_charset} COLLATE {$column_collation} NOT NULL",
             self.candidate_repair,
         )
+        self.assertIn(
+            "'c99_candidate_repair_review_changed_' . $review_changed_field",
+            self.candidate_repair,
+        )
+        self.assertIn(
+            "array( 'status' => 409, 'field' => $review_changed_field )",
+            self.candidate_repair,
+        )
         self.assertIn("c99_rollback_candidate_repair", self.rollback)
         self.assertIn("candidate_repair_started", self.rollback)
         self.assertIn(
