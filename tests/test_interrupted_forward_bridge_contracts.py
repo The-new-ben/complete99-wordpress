@@ -350,6 +350,24 @@ class InterruptedForwardBridgeContractTests(unittest.TestCase):
             ),
             self.candidate_repair.index("$status_response = rest_do_request("),
         )
+        self.assertIn(
+            "$canonicalize_json_value( $review_manifest ) !== "
+            "$canonicalize_json_value( $reviewed_status['database_manifest'] ?? null )",
+            self.candidate_repair,
+        )
+        self.assertIn(
+            "$canonicalize_json_value( $review_storage ) !== "
+            "$canonicalize_json_value( $reviewed_status['database_storage'] ?? null )",
+            self.candidate_repair,
+        )
+        self.assertNotIn(
+            "$review_manifest !== ( $reviewed_status['database_manifest'] ?? null )",
+            self.candidate_repair,
+        )
+        self.assertNotIn(
+            "$review_storage !== ( $reviewed_status['database_storage'] ?? null )",
+            self.candidate_repair,
+        )
         self.assertIn("c99_rollback_candidate_repair", self.rollback)
         self.assertIn("candidate_repair_started", self.rollback)
         self.assertIn(
