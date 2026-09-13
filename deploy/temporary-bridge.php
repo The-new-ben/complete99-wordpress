@@ -3284,6 +3284,14 @@ add_action(
 								if ( 'campaigns' === $component ) {
 									// Never return the exception, SQL, URLs or private row contents.
 									$campaign_invariant_failure = $campaign_invariant_failure_codes[ $error->getMessage() ] ?? 'unknown';
+									if ( 'unknown' === $campaign_invariant_failure && is_callable( array( 'Complete99_Consumer_Media_Rights', 'assert_invariants' ) ) ) {
+										try {
+											// Re-read the checked-in registry only; this validator has no durable writes.
+											Complete99_Consumer_Media_Rights::assert_invariants();
+										} catch ( \Throwable $media_error ) {
+											$campaign_invariant_failure = 'media_rights_registry';
+										}
+									}
 								}
 							}
 						}

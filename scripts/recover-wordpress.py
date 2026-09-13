@@ -3233,7 +3233,7 @@ def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
         campaign_group["available"]
         and type(campaign_code) is str
         and campaign_code in {
-            "passed", "media_rights_authority", "schema", "capacity", "lifecycle",
+            "passed", "media_rights_authority", "media_rights_registry", "schema", "capacity", "lifecycle",
             "evidence", "suppression", "capabilities", "unknown",
         }
         and (campaign_code == "passed") is campaign_group["checks"]["campaigns"]

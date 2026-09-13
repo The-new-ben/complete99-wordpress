@@ -73,7 +73,7 @@ def test_diagnostic_log_does_not_change_signed_audit_shape():
 
 
 def test_campaign_failure_is_an_allowlisted_code_not_an_exception():
-    for code in ("media_rights_authority", "schema", "capacity", "lifecycle", "evidence", "suppression", "capabilities", "unknown"):
+    for code in ("media_rights_authority", "media_rights_registry", "schema", "capacity", "lifecycle", "evidence", "suppression", "capabilities", "unknown"):
         status = status_fixture()
         status["campaign_invariant_failure"] = code
         assert RECOVER.bounded_observation_diagnostics(status)["campaign_invariant"] == {
@@ -113,3 +113,25 @@ def test_bridge_failure_codes_correspond_to_real_invariant_messages():
         assert code in {"media_rights_authority", "schema", "capacity", "lifecycle", "evidence", "suppression", "capabilities"}
     assert "$campaign_invariant_failure_codes[ $error->getMessage() ] ?? 'unknown'" in bridge
     assert "'campaign_invariant_failure' => $campaign_invariant_failure" in bridge
+
+
+def test_missing_and_invalid_media_registry_cannot_collapse_to_unknown():
+    import shutil
+    import subprocess
+    bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")
+    start = bridge.index("if ( 'unknown' === $campaign_invariant_failure && is_callable")
+    end = bridge.index("\n\t\t\t\t\t\t\t\t\t}", start) + len("\n\t\t\t\t\t\t\t\t\t}")
+    block = bridge[start:end]
+    php = shutil.which("php")
+    assert php
+    # Execute the actual bridge fallback, replacing only the read-only registry source.
+    for message in ("consumer_media_rights.missing", "registry.schema", "registry.records.0.rights_boundary", "PRIVATE_DO_NOT_LOG"):
+        program = ("class Complete99_Consumer_Media_Rights { public static function assert_invariants() { throw new RuntimeException($GLOBALS['failure']); } } "
+                   + "$failure = json_decode(stream_get_contents(STDIN)); $campaign_invariant_failure = 'unknown'; "
+                   + block + " echo $campaign_invariant_failure;")
+        result = subprocess.run([php, "-r", program], input=json.dumps(message), text=True, capture_output=True, check=True)
+        assert result.stdout == "media_rights_registry"
+        assert message not in result.stdout
+    program = ("class Complete99_Consumer_Media_Rights { public static function assert_invariants() { return true; } } "
+               + "$campaign_invariant_failure = 'unknown'; " + block + " echo $campaign_invariant_failure;")
+    assert subprocess.run([php, "-r", program], text=True, capture_output=True, check=True).stdout == "unknown"
