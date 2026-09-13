@@ -42,6 +42,7 @@ final class Complete99_Campaigns {
 	const AGGREGATE_CLEANUP_DIGEST_VECTOR_MAX_PAGES = 1300;
 	const AGGREGATE_CLEANUP_CHAIN_CACHE_MAX = 4;
 	const RECEIPT_PHASE_INVENTORY_CACHE_MAX = 4;
+	const PROVIDER_EXTERNAL_STATE_MAX_BYTES = 32;
 	const MAX_JSON_BYTES        = 65536;
 	const MAX_EVIDENCE_BYTES    = 8192;
 	const MAX_PRIVATE_EVIDENCE_FILE_BYTES = 8388608;
@@ -594,7 +595,7 @@ final class Complete99_Campaigns {
 		$identity = self::aggregate_cleanup_receipt_identity( $payload, $kind ); $tables = self::table_names(); $ops = Complete99_Ops::table_names(); $lock = self::is_sqlite_database() ? '' : ' FOR UPDATE';
 		$wpdb->last_error = '';
 		$existing = $wpdb->get_results( $wpdb->prepare( "SELECT id FROM {$tables['provider_receipts']} WHERE receipt_id=%s OR (provider_key=%s AND external_id=%s) ORDER BY id ASC LIMIT 2{$lock}", $identity['receiptId'], self::AGGREGATE_CLEANUP_PROVIDER, $identity['externalId'] ), ARRAY_A );
-		if ( '' !== (string) $wpdb->last_error || ! is_array( $existing ) || ! empty( $existing ) || 60000 < strlen( $identity['proofRef'] ) || ! preg_match( '/\A[a-f0-9]{64}\z/', $identity['materialDigest'] ) || '' === (string) $identity['occurredAt'] ) { return new WP_Error( 'complete99_campaign_aggregate_cleanup_receipt_collision', 'Aggregate cleanup receipt identity is occupied or invalid.', array( 'status' => 503 ) ); }
+		if ( '' !== (string) $wpdb->last_error || ! is_array( $existing ) || ! empty( $existing ) || 60000 < strlen( $identity['proofRef'] ) || self::PROVIDER_EXTERNAL_STATE_MAX_BYTES < strlen( (string) $identity['externalState'] ) || ! preg_match( '/\A[a-f0-9]{64}\z/', $identity['materialDigest'] ) || '' === (string) $identity['occurredAt'] ) { return new WP_Error( 'complete99_campaign_aggregate_cleanup_receipt_collision', 'Aggregate cleanup receipt identity is occupied or invalid.', array( 'status' => 503 ) ); }
 		$stored = $wpdb->insert( $tables['provider_receipts'], array( 'receipt_id' => $identity['receiptId'], 'campaign_id' => self::AGGREGATE_CLEANUP_CAMPAIGN_ID, 'campaign_version' => (int) $payload['generation'], 'channel' => 'website', 'provider_key' => self::AGGREGATE_CLEANUP_PROVIDER, 'provider_account_ref' => 'complete99-wordpress', 'receipt_status' => 'confirmed', 'proof_level' => 'system_verified', 'external_state' => $identity['externalState'], 'external_id' => $identity['externalId'], 'proof_ref' => $identity['proofRef'], 'material_digest' => $identity['materialDigest'], 'payload_digest' => $identity['payloadDigest'], 'occurred_at' => $identity['occurredAt'], 'created_by' => 0, 'created_at' => $identity['occurredAt'] ) );
 		if ( 1 !== (int) $stored || '' !== (string) $wpdb->last_error ) { return new WP_Error( 'complete99_campaign_aggregate_cleanup_receipt_store', 'Aggregate cleanup provider receipt could not be stored.', array( 'status' => 503 ) ); }
 		self::invalidate_receipt_phase_inventory_cache();
@@ -3327,7 +3328,7 @@ final class Complete99_Campaigns {
 				provider_account_ref varchar(191) NOT NULL,
 				receipt_status varchar(24) NOT NULL,
 				proof_level varchar(32) NOT NULL,
-				external_state varchar(24) NOT NULL,
+				external_state varchar(32) NOT NULL,
 				external_id varchar(191) NULL,
 				proof_ref text NULL,
 				material_digest char(64) NOT NULL,
@@ -3581,7 +3582,7 @@ final class Complete99_Campaigns {
 					'provider_key'       => array( 'type' => 'varchar(64)', 'nullable' => false ),
 					'receipt_status'     => array( 'type' => 'varchar(24)', 'nullable' => false ),
 					'proof_level'        => array( 'type' => 'varchar(32)', 'nullable' => false ),
-					'external_state'     => array( 'type' => 'varchar(24)', 'nullable' => false ),
+					'external_state'     => array( 'type' => 'varchar(32)', 'nullable' => false ),
 					'external_id'        => array( 'type' => 'varchar(191)', 'nullable' => true ),
 					'proof_ref'          => array( 'type' => 'text', 'nullable' => true ),
 					'material_digest'    => array( 'type' => 'char(64)', 'nullable' => false ),
@@ -9634,7 +9635,7 @@ final class Complete99_Campaigns {
 
 	/** Prevent public slot HTML from becoming a durable full-page cache artifact. */
 	public static function enforce_public_slot_no_cache() {
-		if ( is_admin() || ( ! is_front_page() && ! ( function_exists( 'is_shop' ) && is_shop() ) ) ) { return; }
+		if ( '' === self::public_placement_slot_for_request() ) { return; }
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); }
 		nocache_headers();
 		if ( ! headers_sent() ) {
@@ -9659,6 +9660,16 @@ final class Complete99_Campaigns {
 	private static function purge_public_placement_caches( $reason ) {
 		$urls = array( home_url( '/' ) );
 		$page_ids = array( (int) get_option( 'page_on_front', 0 ) );
+		if ( class_exists( 'Complete99_Content' ) ) {
+			$store_id = (int) Complete99_Content::find_translation_post_id( 'store', 'he', true );
+			if ( 0 < $store_id ) {
+				$store_url = self::placement_public_url( 'store_banner' );
+				if ( is_wp_error( $store_url ) ) { return $store_url; }
+				$page_ids[] = $store_id;
+				$urls[] = $store_url;
+			}
+		}
+		/* Also invalidate the legacy alias, but never use it as render/readback truth. */
 		if ( function_exists( 'wc_get_page_id' ) ) {
 			$shop_id = (int) wc_get_page_id( 'shop' );
 			if ( 0 < $shop_id ) {
@@ -9737,7 +9748,7 @@ final class Complete99_Campaigns {
 	}
 
 	public static function enqueue_public_assets() {
-		if ( is_admin() || ( ! is_front_page() && ! ( function_exists( 'is_shop' ) && is_shop() ) ) ) { return; }
+		if ( '' === self::public_placement_slot_for_request() ) { return; }
 		wp_enqueue_style( 'complete99-campaign-placement', COMPLETE99_PLATFORM_URL . 'assets/css/campaign-placement.css', array(), COMPLETE99_PLATFORM_VERSION );
 		wp_enqueue_script( 'complete99-campaign-placement', COMPLETE99_PLATFORM_URL . 'assets/js/campaign-placement.js', array(), COMPLETE99_PLATFORM_VERSION, true );
 	}
@@ -10253,12 +10264,24 @@ final class Complete99_Campaigns {
 
 	private static function placement_public_url( $slot ) {
 		if ( 'home_banner' === $slot ) { return home_url( '/' ); }
-		if ( 'store_banner' === $slot && function_exists( 'wc_get_page_id' ) ) {
-			$page_id = (int) wc_get_page_id( 'shop' );
+		if ( 'store_banner' === $slot && class_exists( 'Complete99_Content' ) ) {
+			/* The WooCommerce shop is a redirect, not the owned public storefront. */
+			$page_id = (int) Complete99_Content::find_translation_post_id( 'store', 'he', true );
 			$url = 0 < $page_id ? get_permalink( $page_id ) : '';
 			if ( is_string( $url ) && self::is_first_party_url( $url ) ) { return $url; }
 		}
 		return new WP_Error( 'complete99_campaign_public_slot_url_missing', 'The owned placement has no exact first-party public page.' );
+	}
+
+	/** Match the same published surface used by the independent placement readback. */
+	private static function public_placement_slot_for_request() {
+		if ( is_admin() || is_preview() ) { return ''; }
+		if ( is_front_page() ) { return 'home_banner'; }
+		if ( ! is_page() || ! class_exists( 'Complete99_Content' ) ) { return ''; }
+		$store_id = (int) Complete99_Content::find_translation_post_id( 'store', 'he', true );
+		if ( 0 >= $store_id || $store_id !== (int) get_queried_object_id() ) { return ''; }
+		$url = self::placement_public_url( 'store_banner' );
+		return is_wp_error( $url ) ? '' : 'store_banner';
 	}
 
 	private static function rendered_copy_digest( $public, $locale ) {
@@ -10636,10 +10659,10 @@ final class Complete99_Campaigns {
 	}
 
 	public static function render_public_placement() {
-		if ( is_admin() || ( ! is_front_page() && ! ( function_exists( 'is_shop' ) && is_shop() ) ) ) { return; }
+		$slot = self::public_placement_slot_for_request();
+		if ( '' === $slot ) { return; }
 		global $wpdb;
 		$tables = self::table_names();
-		$slot = function_exists( 'is_shop' ) && is_shop() ? 'store_banner' : 'home_banner';
 		$probe_id = isset( $_SERVER['HTTP_X_COMPLETE99_READBACK'] ) && is_string( $_SERVER['HTTP_X_COMPLETE99_READBACK'] ) ? $_SERVER['HTTP_X_COMPLETE99_READBACK'] : '';
 		$probe_token = isset( $_SERVER['HTTP_X_COMPLETE99_READBACK_TOKEN'] ) && is_string( $_SERVER['HTTP_X_COMPLETE99_READBACK_TOKEN'] ) ? $_SERVER['HTTP_X_COMPLETE99_READBACK_TOKEN'] : '';
 		$probe_requested = '' !== $probe_id || '' !== $probe_token;
