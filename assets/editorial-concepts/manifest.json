@@ -1,0 +1,18 @@
+{
+  "schema": "complete99-editorial-assets/v1",
+  "generator": "built-in image_gen",
+  "status": "generated and visually inspected, not deployed",
+  "use_boundary": "Conceptual editorial images, not actual products, kitchens or supplier evidence. Existing real menu images remain intact.",
+  "assets": [
+    {
+      "file": "ingredient-still-life-v01.png",
+      "intended_placement": "Ingredient hub editorial feature",
+      "prompt": "Create one premium editorial food photography asset for Complete99, an Israeli food discovery and large-group home-style food ordering website. Use case photorealistic-natural. Wide landscape 3:2 composition, art-directed still life of fresh aubergines, whole and halved ripe tomatoes, chickpeas in a shallow small ceramic bowl, a cut lemon, flat-leaf parsley, tahini in a small bowl, a few grains and olive oil in a small unlabelled bottle. Honesty: this is a conceptual ingredient still life, not an actual sold dish or actual restaurant. The concept is the ingredients behind the food. Sophisticated restrained magazine food photography, appetizing tactile imperfect produce, strong directional natural afternoon light, dimensional soft shadows, unpolished off-white stone table, subtle linen, deep aubergine purple and tomato red with fresh green accents. Asymmetric intentional art direction, abundant breathing room, no excessive beige or brown, no gold, no typographic overlay, no letters, no logos, no infographic, no frames, no split panels, no decorative icons. Real photographic quality with detailed natural textures, not plastic or hyperglossy. Beautiful enough for a leading international food publication. Keep key subjects centrally safe for responsive cropping."
+    },
+    {
+      "file": "aubergine-pan-v01.png",
+      "intended_placement": "Cooking technique editorial feature",
+      "prompt": "Use case photorealistic-natural. Create a single premium editorial food photography asset for an Israeli culinary information website, Complete99. This is a conceptual cooking-technique image, not a restaurant's actual kitchen or a product sold by a business. Landscape 3:2. A close low oblique view of aubergine slices roasting in a simple dark iron pan, showing richly browned surfaces and a small amount of glistening oil. A few raw aubergines out of focus at the edge, restrained parsley, a simple unlabelled oil bottle far back. Strong controlled natural window light with fine steam just barely visible, appetizing texture, real editorial food photography, tactile and imperfect. Frame the pan boldly with a little cool off-white stone surface and negative space, not lots of surrounding props. Rich purple skin, golden-brown cooked flesh, tiny green accent, dark pan balanced by a bright background. Professional art direction for a leading international food magazine. No flames, no people, no hands, no commercial kitchen branding, no words, no watermark, no letters, no labels, no decorative graphics, no fake logos, no collage. It should feel complementary to a cream-red-green food website but be a complete photograph. Do not make it plastic, excessively glossy, dark and muddy, or a generic overhead flat lay."
+    }
+  ]
+}
