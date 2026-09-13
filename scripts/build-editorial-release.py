@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = 'complete99-editorial-home'
-VERSION = '1.1.0'
+VERSION = '1.2.0'
 DIST = ROOT / 'editorial-dist'
 spec = importlib.util.spec_from_file_location('canonical_builder', ROOT / 'scripts/build-plugin-zip.py')
 builder = importlib.util.module_from_spec(spec)
@@ -26,6 +26,7 @@ def entries():
     assert source.count(b'final class Complete99_Consumer {') == 1
     source = source.replace(b'final class Complete99_Consumer {', b'final class Complete99_Editorial_Consumer {')
     shell = builder.canonical_contents(platform / 'templates/public-shell.php')
+    editorial_shell = shell.replace(b'Complete99_Consumer::render_current', b'c99_editorial_render_content')
     assert shell.count(b'Complete99_Consumer::render_current') == 1
     shell = shell.replace(b'Complete99_Consumer::render_current', b'Complete99_Editorial_Consumer::render_current')
     shell = shell.replace(b'<main id="c99-main"', f'<main data-c99-editorial-release="{VERSION}" id="c99-main"'.encode())
@@ -37,12 +38,19 @@ def entries():
         'includes/class-complete99-editorial-consumer.php': source,
         'includes/views/food-home.php': view,
         'public-shell.php': shell,
+        'editorial-shell.php': editorial_shell,
+        'editorial-content.php': builder.canonical_contents(ROOT / 'editorial-release/plugin/editorial-content.php'),
+        'assets/discovery-local.js': builder.canonical_contents(ROOT / 'editorial-release/plugin/assets/discovery-local.js'),
         'assets/consumer.css': builder.canonical_contents(platform / 'assets/css/consumer.css'),
         'assets/public.js': builder.canonical_contents(platform / 'assets/js/public.js'),
         'assets/site-editorial.css': builder.canonical_contents(ROOT / 'editorial-release/plugin/assets/site-editorial.css'),
     }
     for name in ('c99-shared-table-v01.webp', 'c99-shared-table-v01-768.webp'):
         result['assets/' + name] = (platform / 'assets/images/editorial' / name).read_bytes()
+    for stem in ('ingredient-still-life-v01', 'aubergine-pan-v01'):
+        for width in (640, 1200):
+            name = f'{stem}-{width}.webp'
+            result['assets/' + name] = (ROOT / 'editorial-release/plugin/assets' / name).read_bytes()
     for name, raw in result.items():
         if builder.forbidden_secret_path_reason(Path(name)) or builder.credential_signature_label(raw):
             raise ValueError('Unsafe package input: ' + name)

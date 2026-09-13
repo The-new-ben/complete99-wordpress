@@ -61,6 +61,9 @@ body.c99-consumer-site {
 .c99-consumer-site :is(input:not([type=checkbox]):not([type=hidden]), select) { min-height: 48px; }
 .c99-consumer-site .c99-ingredient-index-card { border-radius: 4px; box-shadow: none; border-color: #d5d2c7; }
 .c99-consumer-site .c99-consumer-footer { background: #233c31; }
+.c99-consumer-site .c99-nutrition-context { border-block: 1px solid #d5d2c7; padding: 24px 0; margin-bottom: 36px; }
+.c99-consumer-site .c99-nutrition-context h2 { margin-top: 0; }
+.c99-consumer-site .c99-nutrition-sources { font-size: 15px; line-height: 1.6; }
 @media (max-width: 900px) {
   .c99-consumer-site :is(.c99-consumer-page-hero-grid, .c99-consumer-dish-grid, .c99-consumer-editorial-grid, .c99-group-order-form-grid) { grid-template-columns: minmax(0, 1fr); }
   .c99-consumer-site .c99-consumer-page-hero { padding-block: 16px 40px; }

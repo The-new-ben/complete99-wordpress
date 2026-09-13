@@ -9,7 +9,7 @@ const start = source.lastIndexOf('(function () {', marker);
 const end = source.indexOf('}());', marker) + 5;
 const script = source.slice(start, end);
 
-function fixture(local = true, language = 'he') {
+function fixture(local = true, language = 'he', enhance = false, href = 'https://complete99.co.il/') {
   const search = {value: '', addEventListener(event, fn) { this[event] = fn; }};
   const count = {textContent: ''};
   const empty = {hidden: true};
@@ -23,17 +23,20 @@ function fixture(local = true, language = 'he') {
     focus() { this.focused = true; }
   }));
   const shell = {
+    setAttribute(key) { if (key === 'data-c99-local-search') { local = true; } },
     querySelectorAll() { return buttons; },
     querySelector(selector) { return selector === '[data-c99-menu-search]' ? search : count; },
     hasAttribute() { return local; }
   };
   const urls = [];
-  vm.runInNewContext(script, {
-    URL, window: {location: {href: 'https://complete99.co.il/'}, history: {replaceState(a,b,url) { urls.push(url); }}},
-    document: {documentElement: {lang: language}, querySelector(selector) {
+  const context = {
+    URL, window: {location: {href}, history: {replaceState(a,b,url) { urls.push(url); }}},
+    document: {documentElement: {lang: language}, querySelectorAll() {return [shell];}, querySelector(selector) {
       return selector === '[data-c99-dish-filter]' ? shell : selector === '[data-c99-dish-grid]' ? {querySelectorAll() { return cards; }} : empty;
     }}
-  });
+  };
+  if (enhance) { vm.runInNewContext(fs.readFileSync('editorial-release/plugin/assets/discovery-local.js', 'utf8'), context); }
+  vm.runInNewContext(script, context);
   return {search, count, empty, cards, buttons, urls};
 }
 const f = fixture();
@@ -57,4 +60,12 @@ assert.equal(en.count.textContent, '1 dish');
 const legacy = fixture(false);
 legacy.buttons[1].click();
 assert.equal(legacy.urls[0], 'https://complete99.co.il/?dish-style=pots');
+const upgraded = fixture(false, 'he', true, 'https://complete99.co.il/dishes/');
+upgraded.buttons[1].click();
+assert.equal(upgraded.count.textContent, '2 מנות');
+assert.equal(upgraded.urls.length, 0, 'Upgraded internal filters keep the clean URL');
+const oldLink = fixture(false, 'en', true, 'https://complete99.co.il/en/dishes/?dish-style=pots&utm_source=email#menu');
+assert.equal(oldLink.urls[0], '/en/dishes/?utm_source=email#menu');
+oldLink.buttons[2].click();
+assert.equal(oldLink.urls.length, 1, 'No new history writes after legacy filter cleanup');
 console.log('PASS: Hebrew marks, case-insensitive English, combined filters, empty/reset states, keyboard navigation, clean homepage URL, legacy isolation');

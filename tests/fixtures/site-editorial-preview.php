@@ -4,22 +4,34 @@ if (PHP_SAPI !== 'cli-server') { http_response_code(404); exit; }
 header("Content-Security-Policy: form-action 'none'");
 if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') { http_response_code(405); exit; }
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
-$pages = ['dishes', 'dish', 'group', 'ingredients'];
+$pages = ['dishes', 'dish', 'group', 'ingredients', 'knowledge', 'en-ingredients', 'en-knowledge'];
+if (preg_match('~^/editorial-assets/([a-z0-9-]+\.(webp|js))$~D', $path, $asset)) {
+    $file = dirname(__DIR__, 2) . '/editorial-release/plugin/assets/' . $asset[1];
+    if (!is_file($file)) { http_response_code(404); exit; }
+    header('Content-Type: ' . ($asset[2] === 'webp' ? 'image/webp' : 'text/javascript')); readfile($file); exit;
+}
 if ($path === '/site-editorial.css') {
     header('Content-Type: text/css; charset=utf-8');
     readfile(dirname(__DIR__, 2) . '/editorial-release/plugin/assets/site-editorial.css'); exit;
 }
-if (preg_match('~^/page/(dishes|dish|group|ingredients)/$~D', $path, $match)) {
+if (preg_match('~^/page/(dishes|dish|group|ingredients|knowledge|en-ingredients|en-knowledge)/$~D', $path, $match)) {
     $file = 'C:/Users/777/Downloads/codexmanager/complete99-editorial-internal-preview/' . $match[1] . '.html';
     if (!is_file($file)) { http_response_code(404); exit; }
     $html = file_get_contents($file);
+    define('ABSPATH', '/local/'); define('C99_EDITORIAL_URL', '/editorial-assets/../');
+    function esc_attr($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
+    function esc_html($s) { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
+    function esc_url($s) { return str_replace('/editorial-assets/../assets/', '/editorial-assets/', $s); }
+    require dirname(__DIR__, 2) . '/editorial-release/plugin/editorial-content.php';
+    $key = str_replace('en-', '', $match[1]);
+    $html = c99_editorial_enrich_html($html, $key, str_starts_with($match[1], 'en-') ? 'en' : 'he');
     // Remove analytics and CMS scripts from a local preview; keep only menu/filter behavior.
     $html = preg_replace('~<script\b[^>]*>.*?</script>~is', '', $html);
     $html = str_replace('</head>', '<link rel="stylesheet" href="/site-editorial.css"></head>', $html);
-    $html = str_replace('</body>', '<script src="https://complete99.co.il/wp-content/plugins/complete99-editorial-home/assets/public.js"></script></body>', $html);
+    $html = str_replace('</body>', '<script src="/editorial-assets/discovery-local.js"></script><script src="https://complete99.co.il/wp-content/plugins/complete99-editorial-home/assets/public.js"></script></body>', $html);
     echo $html; exit;
 }
-if (!preg_match('~^/(dishes|dish|group|ingredients)/$~D', $path, $match)) { http_response_code(404); exit; }
+if (!preg_match('~^/(dishes|dish|group|ingredients|knowledge|en-ingredients|en-knowledge)/$~D', $path, $match)) { http_response_code(404); exit; }
 ?><!doctype html><html lang="he" dir="rtl"><meta charset="utf-8"><title>Complete99 internal-page visual preview</title>
 <style>body{margin:0;background:#ddd;font:16px Arial}nav{padding:16px}a{margin:12px}iframe{display:block;border:0;margin:16px;background:white}p{margin:16px}</style>
 <nav>בדיקה מקומית של עמודים קיימים עם עיצוב מוצע. לא האתר החי.
