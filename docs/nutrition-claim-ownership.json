@@ -1,0 +1,15 @@
+{
+  "schema": "complete99-nutrition-claim-ownership/v1",
+  "reviewed_on": "2026-09-13",
+  "scope": "Ingredient notes on existing HE/EN ingredient hub cards. No numeric dish values, new pages, metadata or index-policy changes.",
+  "runtime_registry": "editorial-release/plugin/ingredient-nutrition.json",
+  "prior_research": "plugin/complete99-platform/data/nutrition-guide-seeds.php",
+  "owner_override": "Healthy-food information is a cross-site editorial layer, not a medical service or a generic badge. Preserve current index policy; the older seed registry's default noindex does not authorize new noindex changes.",
+  "claims": [
+    {"entity":"ingredient-chickpea","source":"moh-pulses","support":"MOH identifies chickpeas as pulses containing protein and dietary fibre and suggests soups, salads and stews.","boundary":"A cooked chickpea ingredient is not the composition of a restaurant hummus serving."},
+    {"entity":"ingredient-tahini","source":"moh-fats","support":"MOH includes tahini in daily plant-fat choices.","boundary":"Paste and diluted sauce differ; no calcium, protein or calorie figure is asserted for this SKU."},
+    {"entity":"ingredient-olive-oil","source":"who-diet","support":"WHO identifies olive oil among unsaturated-fat sources and prefers unsaturated to saturated fats.","boundary":"No superiority claim, disease prevention promise or unlimited-intake suggestion."}
+  ],
+  "remaining": ["Expand specific ingredient facts after source matching, including bulgur and vegetables", "Dish notes must follow real recipe identity, preparation and serving size", "Numeric profiles require exact food record, edible-weight basis, raw/cooked state and recipe yield", "Home, dish and group-order integration remains separate work, not completed by these three notes"],
+  "publication_state": "Candidate 1.2.2, not yet deployed"
+}

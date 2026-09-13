@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/ingredient-nutrition.php';
 
 /** Only the existing ingredient/guide pages; original CMS copy and links are retained. */
 function c99_editorial_page_key() {
@@ -12,6 +13,7 @@ function c99_editorial_page_key() {
 
 function c99_editorial_enrich_html( $html, $key, $lang ) {
 	if ( ! in_array( $key, array( 'ingredients', 'knowledge' ), true ) || ! in_array( $lang, array( 'he', 'en' ), true ) ) { return $html; }
+	if ( 'ingredients' === $key ) { $html = c99_editorial_ingredient_nutrition( $html, $lang ); }
 	$he = 'he' === $lang;
 	$stem = 'ingredients' === $key ? 'ingredient-still-life-v01' : 'aubergine-pan-v01';
 	$old = 'ingredients' === $key ? 'c99-food-shakshuka-plate-gallery-2021-wp-v01' : 'c99-food-kubeh-beet-soup-gallery-2021-wp-v01';

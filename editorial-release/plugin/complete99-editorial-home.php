@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Complete99 Editorial Home
  * Description: Shared public food-site presentation and bilingual editorial homepage. No content migrations.
- * Version: 1.2.1
+ * Version: 1.2.2
  * Requires PHP: 8.0
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
-define( 'C99_EDITORIAL_VERSION', '1.2.1' );
+define( 'C99_EDITORIAL_VERSION', '1.2.2' );
 define( 'C99_EDITORIAL_URL', plugin_dir_url( __FILE__ ) );
 require_once __DIR__ . '/editorial-content.php';
 

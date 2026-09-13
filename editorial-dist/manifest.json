@@ -1,5 +1,5 @@
 {
-  "artifact": "complete99-editorial-home-1.2.1.zip",
+  "artifact": "complete99-editorial-home-1.2.2.zip",
   "files": {
     "assets/aubergine-pan-v01-1200.webp": "940e05298e24f6c4b876b0bb0d928fd57c880a01a1ad66509e3f7a4e866b1f72",
     "assets/aubergine-pan-v01-640.webp": "c37550234b8c708223781d0d93179420904f1f964900993d467604dcc4f0cc97",
@@ -11,16 +11,18 @@
     "assets/ingredient-still-life-v01-640.webp": "081013e9e9113ceb6f720ab29dd3dd29df48df8601343c0b9cc346000cfe4127",
     "assets/legacy-public.js": "aa5acbeb9c7cb9ecdc0bad3dcb004d78589dcc4fd1685d9dfff81e8242b12686",
     "assets/public.js": "8e55db0dd2f7980894903a4e3cf171a56d9e5337b73ec675b409584b78989df6",
-    "assets/site-editorial.css": "1484189972287298bf44e58dbba8300c9af16ca9cfc927b6e712eb32b3ebab8b",
-    "complete99-editorial-home.php": "7ceb83f5c1729ddaa4e25c90b52bf3eb5c84a3a97bfc8443aa5a412df97ab881",
-    "editorial-content.php": "9a5a57f199f319237b17bab8e297ff5c0c1bf2589795957f5c2de389ab1a7b3f",
+    "assets/site-editorial.css": "d57e570a7ae652a432cf25d356368a997e19d4d14f9322bc6648d85115b03ac7",
+    "complete99-editorial-home.php": "4dcd58a36164569ff11ab3adc2b98918e459d788b237d63d2bf062c6061db366",
+    "editorial-content.php": "1a31e3cff9005fd82e60e44439c483db00d2c5678d95a1b1451dd37afa7584f2",
     "editorial-shell.php": "531e53673c443956cd046e0078e019cdd40338f8fceab56ec63b2f44b38c4383",
     "includes/class-complete99-editorial-consumer.php": "7e44db24735802753acbf3f06a09302966c99ae6024a32217a2ec1dcb971dcd7",
     "includes/views/food-home.php": "18ca376f9c5cd98e79548ea43cd683e2d140320a37e5b50a22515b8f587f4f68",
-    "public-shell.php": "4cf669f43bc779d67005bd780fa9ff9ed07b4aec5cf75f27992202cf65d3f00e"
+    "ingredient-nutrition.json": "3c69a36d45e303ccc823d15c10e1a9acd51be790483af7ea980ba2d788a5e39a",
+    "ingredient-nutrition.php": "3294aa4211a5dd78ab8fbc75f787f5fb282dec0838056514bea6c92b331d8a04",
+    "public-shell.php": "82a062c78779b81b2ec5653d4fe34afa18521bd47e0b8335c2bb4ab63456fb01"
   },
   "schema": "complete99-editorial-release/v1",
-  "sha256": "99081667e34302186d53f783ac4f0b5b0bdcd87fc78b36094d51225f23b8fc60",
+  "sha256": "6df3a07130af2004d5485ad7e0f80bb64b0face0f66fadb636ebef81602d7824",
   "slug": "complete99-editorial-home",
-  "version": "1.2.1"
+  "version": "1.2.2"
 }
