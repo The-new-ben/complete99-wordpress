@@ -114,6 +114,27 @@ class CandidateResumeReviewTests(unittest.TestCase):
         with self.assertRaises(DEPLOY.DeployError):
             DEPLOY.render_bridge("t" * 64, "c99-test-resume", 40000000, False, candidate_resume_review_sha256="f" * 64)
 
+    def test_resume_requires_v5_adoption_before_loading_bound_audits(self):
+        original = json.loads((ROOT / PROOF).read_text(encoding="utf-8"))
+        invalid_adoptions = [None, [], {}, *[
+            {"schema": f"complete99-interrupted-forward-adoption/v{version}"}
+            for version in (1, 2, 3, 4, 6)
+        ]]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            path = root / PROOF
+            path.parent.mkdir(parents=True)
+            for adoption in invalid_adoptions:
+                modified = copy.deepcopy(original)
+                modified["proof"]["forward_adoption"] = adoption
+                modified["proof_sha256"] = RECOVER.canonical_proof_sha256(modified["proof"])
+                path.write_text(json.dumps(modified), encoding="utf-8")
+                with self.subTest(adoption=adoption), mock.patch.object(RECOVER, "ROOT", root):
+                    with self.assertRaisesRegex(DEPLOY.DeployError, "requires a v5 adoption"):
+                        RECOVER.load_interrupted_forward_proof(DEPLOY, PROOF)
+                    with self.assertRaisesRegex(AUDIT.AuditValidationError, "requires a v5 adoption"):
+                        AUDIT.load_interrupted_forward_proof(PROOF, root)
+
     def test_resume_skips_repair_route_and_keeps_original_authority(self):
         loaded = self.load()
         initial = copy.deepcopy(loaded["reviewed_resume_observation"]["safe_status"])

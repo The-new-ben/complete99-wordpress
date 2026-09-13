@@ -2186,6 +2186,13 @@ def load_interrupted_forward_proof(
     ):
         raise deployer.DeployError("Interrupted forward proof schema is invalid")
     proof = envelope["proof"]
+    if "resume_review" in envelope and (
+        schema != "complete99-interrupted-forward-proof/v4"
+        or not isinstance(proof.get("forward_adoption"), dict)
+        or proof["forward_adoption"].get("schema")
+        != "complete99-interrupted-forward-adoption/v5"
+    ):
+        raise deployer.DeployError("Candidate resume review requires a v5 adoption")
     proof_sha256 = canonical_proof_sha256(proof)
     if not secrets.compare_digest(str(envelope.get("proof_sha256", "")), proof_sha256):
         raise deployer.DeployError("Interrupted forward proof digest does not match")

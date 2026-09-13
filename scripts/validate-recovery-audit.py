@@ -2155,6 +2155,14 @@ def load_interrupted_forward_proof(
         "Interrupted forward proof schema is invalid",
     )
     proof = require_mapping(envelope.get("proof"), "Interrupted forward proof payload")
+    if "resume_review" in envelope:
+        require(
+            schema == "complete99-interrupted-forward-proof/v4"
+            and isinstance(proof.get("forward_adoption"), dict)
+            and proof["forward_adoption"].get("schema")
+            == "complete99-interrupted-forward-adoption/v5",
+            "Candidate resume review requires a v5 adoption",
+        )
     proof_sha256 = canonical_json_sha256(proof)
     require(
         envelope.get("proof_sha256") == proof_sha256,
