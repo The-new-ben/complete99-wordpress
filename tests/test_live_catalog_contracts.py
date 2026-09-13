@@ -526,7 +526,7 @@ echo wp_json_encode(array(
 
     def test_release_version_is_exact_1_24_0(self) -> None:
         source = MAIN.read_text(encoding="utf-8")
-        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.23\.1$")
+        self.assertRegex(source, r"(?m)^ \* Version:\s+1\.24\.0$")
         self.assertIn("define( 'COMPLETE99_PLATFORM_VERSION', '1.24.0' );", source)
         self.assertIn("define( 'COMPLETE99_PLATFORM_DEPLOYMENT_ID', 'c99-wp-1.24.0' );", source)
 
