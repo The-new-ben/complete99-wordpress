@@ -71,7 +71,7 @@ def test_public_verification_checks_metadata_assets_and_destinations():
 
 def test_package_is_exact_reproducible_and_derived():
     files = builder.entries()
-    assert len(files) == 16
+    assert len(files) == 17
     assert builder.package_bytes(files) == builder.package_bytes(files)
     archive = ROOT / f'editorial-dist/complete99-editorial-home-{builder.VERSION}.zip'
     assert archive.read_bytes() == builder.package_bytes(files)
@@ -148,7 +148,8 @@ def test_home_gate_and_assets_execute(tmp_path):
         fixture.write_text(code,encoding='utf-8')
         result=json.loads(subprocess.check_output(['php',str(fixture)],text=True))
         assert result['gate'] is expected
-        assert len(result['assets']) == ((2 if expected else 0) + (0 if admin else 1))
+        legacy_menu = version == '1.22.1' and group == 'dishes' and locale in ('he','en') and not admin and singular and not notfound
+        assert len(result['assets']) == ((2 if expected else 0) + (0 if admin else 1) + int(legacy_menu))
         if expected:
             assert all('complete99-editorial-home/' in asset[1] for asset in result['assets'])
 
