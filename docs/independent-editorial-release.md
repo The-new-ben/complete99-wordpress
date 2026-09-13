@@ -24,3 +24,9 @@ Public verification must show the new body marker and absence of the old hero,
 both languages, real dish links/images, combined search/facets, group enquiry,
 canonical/hreflang continuity and mobile/desktop screenshots. Preparing this
 package alone is not a live release.
+
+The installer records HTTP installation verification separately from release
+acceptance. It checks preserved canonical/language tags, internal destinations,
+image loading and exact public asset hashes. Browser search/facet behavior and
+desktop/mobile screenshots remain explicitly pending until separately tested;
+the installer never reports those as complete.

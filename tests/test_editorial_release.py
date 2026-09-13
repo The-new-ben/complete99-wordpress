@@ -2,12 +2,39 @@ import importlib.util
 import json
 import subprocess
 import zipfile
+import hashlib
+import pytest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('editorial_build_test', ROOT / 'scripts/build-editorial-release.py')
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
+
+def test_public_verification_checks_metadata_assets_and_destinations():
+    spec = importlib.util.spec_from_file_location('editorial_public_test', ROOT / 'scripts/deploy-editorial-release.py')
+    driver = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(driver)
+    head = ('<link rel="canonical" href="https://complete99.co.il/">'
+            '<link rel="alternate" hreflang="he" href="https://complete99.co.il/">'
+            '<link rel="alternate" hreflang="en" href="https://complete99.co.il/en/">')
+    html = head + ('<body><input data-c99-menu-search><button data-c99-filter></button>'
+                   '<p data-c99-filter-empty></p><a data-c99-dish-card href="/dishes/example/">Dish</a>'
+                   '<img src="/photo.webp"></body>')
+    manifest = {'files': {'assets/public.js': hashlib.sha256(b'script').hexdigest()}}
+    responses = {'https://complete99.co.il/dishes/example/': b'<html><body>Dish</body></html>',
+                 'https://complete99.co.il/photo.webp': b'RIFFimage',
+                 'https://complete99.co.il/wp-content/plugins/complete99-editorial-home/assets/public.js': b'script'}
+    result = driver.verify_public(html, head, 'https://complete99.co.il/', manifest, responses.__getitem__)
+    assert result['links_checked'] == 1 and result['images_checked'] == 1
+    assert result['browser_interactions'] == 'pending'
+    for broken in (html.replace('canonical', 'missing'), html.replace('data-c99-menu-search', 'missing'),
+                   html.replace('href="/dishes/example/"', 'href="#"')):
+        with pytest.raises(RuntimeError):
+            driver.verify_public(broken, head, 'https://complete99.co.il/', manifest, responses.__getitem__)
+    responses['https://complete99.co.il/wp-content/plugins/complete99-editorial-home/assets/public.js'] = b'wrong'
+    with pytest.raises(RuntimeError, match='Public asset'):
+        driver.verify_public(html, head, 'https://complete99.co.il/', manifest, responses.__getitem__)
 
 def test_package_is_exact_reproducible_and_derived():
     files = builder.entries()

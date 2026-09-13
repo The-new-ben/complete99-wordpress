@@ -14,10 +14,12 @@ jobs:
       - name: Require protected main and exact green CI
         env:
           GH_TOKEN: ${{ github.token }}
+          WP_PRODUCTION_READY: ${{ vars.WP_PRODUCTION_READY }}
         shell: bash
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = refs/heads/main
+          test "$WP_PRODUCTION_READY" = true
           gh api "repos/$GITHUB_REPOSITORY/actions/workflows/wordpress-ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&status=success" --jq '.workflow_runs[] | select(.event == "push") | .head_sha' | grep -Fx "$GITHUB_SHA"
   deploy:
     needs: verify

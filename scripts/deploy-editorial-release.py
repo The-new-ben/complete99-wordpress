@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 import urllib.request
+from urllib.parse import urljoin, urlsplit
+from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,6 +34,63 @@ def assert_home(raw, new):
     if (marker in body) != new or ('c99-consumer-hero-grid' in body) == new:
         raise RuntimeError('Rendered homepage does not match expected release')
     return text
+
+class PublicPage(HTMLParser):
+    def __init__(self, text):
+        super().__init__()
+        self.tags = []
+        self.feed(text)
+
+    def handle_starttag(self, tag, attrs):
+        self.tags.append((tag, dict(attrs)))
+
+    def seo(self):
+        return sorted((a.get('rel'), a.get('hreflang', ''), a.get('href', ''))
+                      for tag, a in self.tags if tag == 'link'
+                      and a.get('rel') in ('canonical', 'alternate'))
+
+def verify_public(text, prior, page_url, manifest, read=public_bytes):
+    page = PublicPage(text)
+    previous = PublicPage(prior)
+    seo = page.seo()
+    if seo != previous.seo() or not any(x[0] == 'canonical' and x[2] == page_url for x in seo):
+        raise RuntimeError('Canonical or language links changed or are missing')
+    if not all(any(x[1] == language for x in seo) for language in ('he', 'en')):
+        raise RuntimeError('Missing reciprocal language destinations')
+    for attribute in ('data-c99-menu-search', 'data-c99-filter', 'data-c99-filter-empty'):
+        if not any(attribute in a for _, a in page.tags):
+            raise RuntimeError('Missing search control: ' + attribute)
+    cards = [a for tag, a in page.tags if tag == 'a' and 'data-c99-dish-card' in a]
+    if not cards or any(not a.get('href') or a['href'].startswith('#') for a in cards):
+        raise RuntimeError('Missing real dish destinations')
+    links = set()
+    images = set()
+    for tag, attrs in page.tags:
+        if tag == 'a' and attrs.get('href') and not attrs['href'].startswith('#'):
+            candidate = urljoin(page_url, attrs['href'])
+            if urlsplit(candidate).netloc == urlsplit(page_url).netloc:
+                links.add(candidate)
+        if tag == 'img' and attrs.get('src'):
+            images.add(urljoin(page_url, attrs['src']))
+    for url in sorted(links):
+        result = read(url).decode('utf-8')
+        if '<body' not in result or 'error404' in result.split('<body', 1)[1].split('>', 1)[0]:
+            raise RuntimeError('Internal destination is not a working page')
+    for url in sorted(images):
+        image = read(url)
+        if not image or b'<html' in image[:256].lower():
+            raise RuntimeError('Image failed to load')
+    assets = {}
+    for name, digest in manifest['files'].items():
+        if not name.startswith('assets/'):
+            continue
+        url = urljoin(page_url, '/wp-content/plugins/complete99-editorial-home/' + name)
+        if hashlib.sha256(read(url)).hexdigest() != digest:
+            raise RuntimeError('Public asset differs from reviewed package: ' + name)
+        assets[name] = digest
+    return {'seo_preserved': True, 'dish_count': len(cards), 'links_checked': len(links),
+            'images_checked': len(images), 'assets': assets,
+            'browser_interactions': 'pending', 'desktop_mobile_screenshots': 'pending'}
 
 def main():
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
@@ -56,7 +115,8 @@ def main():
     existing = transport.active_snippets(client)
     if any(row.get('name') == name for row in existing):
         raise RuntimeError('Existing release bridge must be inspected, not duplicated')
-    audit = {'commit': commit, 'artifact_sha256': manifest['sha256'], 'live': False}
+    audit = {'commit': commit, 'artifact_sha256': manifest['sha256'],
+             'installed_and_http_verified': False, 'release_acceptance': 'pending_browser_verification'}
     audit_path = ROOT / 'editorial-audit.json'
     snippet_id = None
     def call(action):
@@ -88,9 +148,11 @@ def main():
         audit['final_status'] = call('status')
         if not audit['final_status']['active'] or not audit['final_status']['core_unchanged'] or audit['final_status']['files'] != manifest['files']:
             raise RuntimeError('Final state verification failed')
+        audit['public_verification'] = {}
         for path in prior:
-            assert_home(public_bytes(client.base_url + path), True)
-        audit['live'] = True
+            text = assert_home(public_bytes(client.base_url + path), True)
+            audit['public_verification'][path] = verify_public(text, prior[path], client.base_url + path, manifest)
+        audit['installed_and_http_verified'] = True
     except Exception as error:
         audit['error_type'] = type(error).__name__
         if snippet_id:
@@ -122,7 +184,9 @@ def main():
                 audit_path.write_text(json.dumps(audit, indent=2) + '\n', encoding='utf-8')
         else:
             audit_path.write_text(json.dumps(audit, indent=2) + '\n', encoding='utf-8')
-    print(json.dumps({'live': audit['live'], 'commit': commit, 'route_404': audit.get('route_404', False)}))
+    print(json.dumps({'installed_and_http_verified': audit['installed_and_http_verified'],
+                      'release_acceptance': audit['release_acceptance'], 'commit': commit,
+                      'route_404': audit.get('route_404', False)}))
 
 if __name__ == '__main__':
     main()

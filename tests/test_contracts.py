@@ -867,7 +867,10 @@ class Complete99ContractTests(unittest.TestCase):
 
     def test_github_actions_are_read_only_pinned_and_serialized(self) -> None:
         workflows = sorted((ROOT / ".github" / "workflows").glob("*.yml"))
-        self.assertEqual(3, len(workflows))
+        self.assertEqual({
+            'wordpress-ci.yml', 'wordpress-deploy.yml',
+            'wordpress-campaign-monitor.yml', 'editorial-deploy.yml',
+        }, {path.name for path in workflows})
         for path in workflows:
             text = path.read_text(encoding="utf-8")
             self.assertRegex(text, r"(?m)^permissions:\n(?:  [a-z-]+: read\n)+")
@@ -895,6 +898,13 @@ class Complete99ContractTests(unittest.TestCase):
             deploy,
         )
         self.assertNotIn("build-plugin-zip.py", deploy)
+        editorial = (ROOT / '.github/workflows/editorial-deploy.yml').read_text(encoding='utf-8')
+        for required in ('environment: production', 'group: complete99-wordpress-production',
+                         'cancel-in-progress: false', 'refs/heads/main',
+                         'WP_PRODUCTION_READY: ${{ vars.WP_PRODUCTION_READY }}',
+                         'test "$WP_PRODUCTION_READY" = true',
+                         'branch=main&status=success'):
+            self.assertIn(required, editorial)
         ci = (ROOT / ".github" / "workflows" / "wordpress-ci.yml").read_text(encoding="utf-8")
         self.assertIn(
             "python -m pip install --disable-pip-version-check --no-input pytest==9.0.2",
