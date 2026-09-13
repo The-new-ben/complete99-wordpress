@@ -134,6 +134,28 @@ class Complete99CampaignMonitorContracts(unittest.TestCase):
                 with self.assertRaises(MONITOR.MonitorError):
                     MONITOR.parse_allowed_monitor_hosts(value)
 
+    def test_redundant_production_allowlist_entries_do_not_disable_monitor(self) -> None:
+        for configured in (
+            "complete99.co.il",
+            "www.complete99.co.il",
+            "COMPLETE99.CO.IL, www.complete99.co.il",
+            "complete99.co.il a235232-tmp.s1242.upress.link",
+        ):
+            with self.subTest(configured=configured):
+                self.assertEqual(
+                    "https://complete99.co.il",
+                    MONITOR.validate_target_url("https://complete99.co.il/", configured),
+                )
+                with self.assertRaises(MONITOR.MonitorError):
+                    MONITOR.validate_target_url("https://other.example", configured)
+        for configured in ("complete99.co.il,other.example", "complete99.co.il.evil.example",
+                           "*.complete99.co.il", "https://complete99.co.il"):
+            with self.subTest(invalid=configured):
+                with self.assertRaises(MONITOR.MonitorError):
+                    MONITOR.validate_target_url("https://complete99.co.il", configured)
+        with self.assertRaises(MONITOR.MonitorError):
+            MONITOR.validate_target_url("https://a235232-tmp.s1242.upress.link", "complete99.co.il")
+
     def test_response_requires_exact_fresh_75_minute_contract(self) -> None:
         now = datetime(2026, 8, 12, 9, 0, 0, tzinfo=timezone.utc)
         self.assertEqual(
