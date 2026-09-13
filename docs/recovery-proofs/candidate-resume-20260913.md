@@ -1,0 +1,9 @@
+# Separately reviewed candidate resume
+
+The v4 repair proof remains unchanged (SHA-256 `fc3402a527ce8e3ed2bc337afadea108192911a46fe5a3fd887e88144ff826b7`). The new `c99-prod-31620203121-1-resume-v1.json` envelope adds a byte-bound observation from run 34761217960 **attempt 2**, artifact 10318722870. Attempt 1 failed and must not be substituted.
+
+The current database differs from the original observation. Scoped post count remains 379, but post content digests changed and postmeta count rose from 3012 to 3013. These are scoped storage counts, not published page counts. The later checkpoint does not classify those edits as disposable.
+
+Resume requires the exact repaired plugin, original durable repair receipt, current database fingerprint/manifest/storage and original deployment ownership. It does not repeat the source/column repair or rewrite the historical proof. Before activation, the existing worker fence protects a separately encrypted current snapshot, independently read back. The original rollback journal stays intact. Existing Campaign suspension, public-absence, migration and finalization checks remain mandatory.
+
+No normal 1.23.1 deployment until the interrupted transaction is verified finalized. No redirects, page merges, URL changes or indexing-policy changes are part of this patch. The public release remains unverified until the recovery workflow, deployment audit and live browser checks pass.

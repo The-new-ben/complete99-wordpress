@@ -2171,7 +2171,10 @@ def load_interrupted_forward_proof(
     schema = envelope.get("schema") if isinstance(envelope, dict) else None
     if (
         not isinstance(envelope, dict)
-        or set(envelope) != {"schema", "proof", "proof_sha256"}
+        or set(envelope) not in (
+            {"schema", "proof", "proof_sha256"},
+            {"schema", "proof", "proof_sha256", "resume_review", "resume_review_sha256"},
+        )
         or schema
         not in {
             "complete99-interrupted-forward-proof/v1",
@@ -2752,6 +2755,54 @@ def load_interrupted_forward_proof(
     }
     if reviewed_forward_observation is not None:
         loaded["reviewed_forward_observation"] = reviewed_forward_observation
+    if "resume_review" in envelope:
+        review = envelope["resume_review"]
+        review_keys = {
+            "schema", "original_proof_sha256", "observation_audit_path",
+            "observation_audit_sha256", "observation_commit", "observation_run_id",
+            "observation_run_attempt",
+        }
+        if (
+            schema != "complete99-interrupted-forward-proof/v4"
+            or not isinstance(review, dict) or set(review) != review_keys
+            or review.get("schema") != "complete99-candidate-repair-resume-review/v1"
+            or review.get("original_proof_sha256") != proof_sha256
+            or envelope.get("resume_review_sha256") != canonical_proof_sha256(review)
+            or type(review.get("observation_run_id")) is not int
+            or review["observation_run_id"] <= adoption["observation_run_id"]
+            or type(review.get("observation_run_attempt")) is not int
+            or not 1 <= review["observation_run_attempt"] <= 100
+            or type(review.get("observation_commit")) is not str
+            or deployer.re.fullmatch(r"[a-f0-9]{40}", review["observation_commit"]) is None
+        ):
+            raise deployer.DeployError("Candidate resume review identity is invalid")
+        resume_audit = load_bound_recovery_audit(
+            deployer, review["observation_audit_path"],
+            review["observation_audit_sha256"], "Candidate resume review",
+        )
+        resume_observation = resume_audit.get("interrupted_forward_observation", {})
+        safe = resume_observation.get("safe_status", {}) if isinstance(resume_observation, dict) else {}
+        if not isinstance(safe, dict):
+            raise deployer.DeployError("Candidate resume review status is invalid")
+        resume_adoption = dict(adoption)
+        resume_adoption.update({
+            key: review[key] for key in ("observation_commit", "observation_run_id", "observation_run_attempt")
+        })
+        resume_adoption.update({
+            "observation_safe_status_sha256": resume_observation.get("safe_status_sha256"),
+            "observed_plugin_sha256": repair["plugin_after_sha256"],
+            "observed_database_fingerprint": safe.get("database_fingerprint"),
+            "observed_database_manifest": safe.get("database_manifest"),
+            "observed_database_manifest_sha256": safe.get("database_manifest_sha256"),
+            "observed_database_storage": safe.get("database_storage"),
+        })
+        observed = validate_interrupted_forward_candidate_repair_observation_audit(
+            deployer, resume_audit, historical, resume_adoption,
+        )
+        if safe.get("interrupted_forward_proof_sha256") != proof_sha256:
+            raise deployer.DeployError("Candidate resume review is bound to another repair")
+        loaded["reviewed_resume_observation"] = observed
+        loaded["resume_review_sha256"] = envelope["resume_review_sha256"]
     return loaded
 
 
@@ -2838,6 +2889,9 @@ def interrupted_forward_bridge_fields(
         if adoption_schema == "complete99-interrupted-forward-adoption/v5":
             candidate_repair = adoption["candidate_repair"]
             bridge_prior = proof["recovered_baseline"]
+    if "reviewed_resume_observation" in loaded_proof:
+        reviewed_safe_status = loaded_proof["reviewed_resume_observation"]["safe_status"]
+        reviewed_safe_status_sha256 = loaded_proof["reviewed_resume_observation"]["safe_status_sha256"]
     return {
         "interrupted_forward_adoption_schema": adoption_schema,
         "expected_artifact_sha256": failed["artifact_sha256"],
@@ -2868,6 +2922,7 @@ def interrupted_forward_bridge_fields(
         "reviewed_safe_status": reviewed_safe_status,
         "reviewed_safe_status_sha256": reviewed_safe_status_sha256,
         "candidate_repair_schema": str(candidate_repair.get("schema", "")),
+        "candidate_resume_review_sha256": loaded_proof.get("resume_review_sha256", ""),
         "candidate_source_before_sha256": str(
             candidate_repair.get("source_before_sha256", "")
         ),
@@ -3703,6 +3758,22 @@ def validate_interrupted_forward_candidate_repair_status(
             "recovery_identity": loaded_proof["recovery_identity"],
         },
     )
+    resume = loaded_proof.get("reviewed_resume_observation")
+    if resume is not None:
+        if (
+            not exact_json_equal(observed, resume)
+            or status.get("candidate_repair_started") is not True
+            or status.get("candidate_repair_no_rollback") is not True
+            or status.get("interrupted_forward_proof_sha256") != loaded_proof["proof_sha256"]
+        ):
+            raise deployer.DeployError("Candidate resume checkpoint changed after review")
+        receipt = validate_candidate_repair_receipt(deployer, status.get("candidate_repair_receipt"), loaded_proof)
+        return {
+            "schema": "complete99-candidate-repair-resume-checkpoint/v1",
+            "review_sha256": loaded_proof["resume_review_sha256"],
+            "observation": observed,
+            "repair_receipt": receipt,
+        }
     if not exact_json_equal(observed, reviewed):
         raise deployer.DeployError(
             "Candidate repair checkpoint changed after read-only review"
@@ -4631,7 +4702,17 @@ def adopt_interrupted_forward(
             )
         repair_response: dict[str, Any] | None = None
         repair_error: Exception | None = None
-        for _attempt in range(2):
+        if "reviewed_resume_observation" in loaded_proof:
+            checkpoint = validate_interrupted_forward_candidate_repair_status(deployer, initial_status, loaded_proof)
+            repair = adoption["candidate_repair"]
+            repair_response = {
+                "column_type": repair["to_type"], "deployment_id": deployment_id,
+                "idempotent": True, "phase": "candidate_activation_pending",
+                "plugin_sha256": repair["plugin_after_sha256"],
+                "receipt": checkpoint["repair_receipt"], "repaired": True,
+                "source_sha256": repair["source_after_sha256"],
+            }
+        for _attempt in range(0 if repair_response is not None else 2):
             try:
                 raw_repair = deployer.bridge_call(
                     client,

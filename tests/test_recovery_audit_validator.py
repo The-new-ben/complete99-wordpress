@@ -1542,6 +1542,25 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             probe_id,
         )
 
+        reviewed_resume = VALIDATOR.load_interrupted_forward_proof(
+            "docs/recovery-proofs/c99-prod-31620203121-1-resume-v1.json", ROOT,
+        )
+        resume_audit = copy.deepcopy(audit)
+        resume_audit["interrupted_forward_proof"]["path"] = reviewed_resume["path"]
+        resume_audit["pre_adoption_observation"] = {
+            "schema": "complete99-candidate-repair-resume-checkpoint/v1",
+            "review_sha256": reviewed_resume["resume_review_sha256"],
+            "observation": reviewed_resume["reviewed_resume_observation"],
+            "repair_receipt": repair_receipt,
+        }
+        resume_audit["interrupted_forward_adoption"]["repair"]["idempotent"] = True
+        VALIDATOR.validate_interrupted_forward_recovery_audit(resume_audit, reviewed_resume, probe_id)
+        for field in ("review_sha256", "repair_receipt", "observation"):
+            changed = copy.deepcopy(resume_audit)
+            changed["pre_adoption_observation"][field] = {} if field != "review_sha256" else "0" * 64
+            with self.subTest(resume_field=field), self.assertRaises(VALIDATOR.AuditValidationError):
+                VALIDATOR.validate_interrupted_forward_recovery_audit(changed, reviewed_resume, probe_id)
+
     def test_independent_robots_checkpoint_authority_rejects_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository_root = Path(temporary)

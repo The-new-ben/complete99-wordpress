@@ -42,6 +42,7 @@ add_action(
 				'reviewed_safe_status'              => json_decode( base64_decode( '__C99_REVIEWED_SAFE_STATUS_BASE64__' ), true ),
 				'reviewed_safe_status_sha256'       => '__C99_REVIEWED_SAFE_STATUS_SHA256__',
 				'candidate_repair_schema'            => '__C99_CANDIDATE_REPAIR_SCHEMA__',
+				'candidate_resume_review_sha256'     => '__C99_CANDIDATE_RESUME_REVIEW_SHA256__',
 				'candidate_source_before_sha256'     => '__C99_CANDIDATE_SOURCE_BEFORE_SHA256__',
 				'candidate_source_after_sha256'      => '__C99_CANDIDATE_SOURCE_AFTER_SHA256__',
 				'candidate_plugin_before_sha256'     => '__C99_CANDIDATE_PLUGIN_BEFORE_SHA256__',
@@ -6218,7 +6219,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $heartbeat_state, $set_state_phase, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $apply_managed_robots, $purge_caches, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $decrypt_database_state, $campaign_snapshot_coherent, $core_plugin_active_persisted, $candidate_repair_receipt_valid, $deployment_id_valid ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $heartbeat_state, $set_state_phase, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $apply_managed_robots, $purge_caches, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $encrypt_database_state, $decrypt_database_state, $campaign_snapshot_coherent, $core_plugin_active_persisted, $candidate_repair_receipt_valid, $deployment_id_valid ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) { return $filesystem; }
@@ -6300,6 +6301,33 @@ add_action(
 							}
 							$pending = $set_state_phase( $state_dir, $deployment_id, 'installed_pending_stabilization', array( 'candidate_activation_phase' => 'complete', 'candidate_activation_completed_at' => (int) $state['candidate_activation_completed_at'], 'candidate_database_fingerprint' => (string) $state['candidate_database_fingerprint'], 'forward_ready' => true, 'installed_active' => true ) );
 							return is_wp_error( $pending ) ? $pending : array( 'continued' => true, 'idempotent' => true, 'phase' => 'installed_pending_stabilization', 'active' => true, 'deployment_id' => $deployment_id );
+						}
+						$resume_review_sha256 = (string) ( $interrupted['candidate_resume_review_sha256'] ?? '' );
+						if ( '' !== $resume_review_sha256 ) {
+							/* A separate reviewed checkpoint preserves post-interruption editor changes.
+							 * Never replace the original rollback journal or repeat the source/DDL repair. */
+							$reviewed_status = $interrupted['reviewed_safe_status'] ?? null;
+							$reviewed_json = is_array( $reviewed_status ) ? wp_json_encode( $reviewed_status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) : false;
+							if ( ! $repair_continuation || 'candidate_activation_pending' !== $phase || ! preg_match( '/\A[a-f0-9]{64}\z/', $resume_review_sha256 ) || false === $reviewed_json || ! hash_equals( (string) ( $interrupted['reviewed_safe_status_sha256'] ?? '' ), hash( 'sha256', $reviewed_json ) ) || ! hash_equals( $proof_sha256, (string) ( $reviewed_status['interrupted_forward_proof_sha256'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_resume_review', 'Candidate resume review is not bound to this pending repair.', array( 'status' => 409 ) ); }
+							$resume_snapshot = $capture_database_state_consistent();
+							$resume_json = is_wp_error( $resume_snapshot ) ? false : wp_json_encode( $resume_snapshot );
+							$resume_manifest_record = is_wp_error( $resume_snapshot ) ? $resume_snapshot : $database_snapshot_manifest( $resume_snapshot );
+							$resume_storage = $verify_transactional_storage();
+							$resume_fingerprint = false === $resume_json ? '' : hash( 'sha256', $resume_json );
+							if ( false === $resume_json || ! $campaign_snapshot_coherent( $resume_snapshot ) || ! hash_equals( (string) ( $reviewed_status['database_fingerprint'] ?? '' ), $resume_fingerprint ) || ! is_array( $resume_manifest_record ) || ! $database_snapshot_manifest_valid( $resume_manifest_record['manifest'] ?? null, $resume_manifest_record['manifest_sha256'] ?? '' ) || ! hash_equals( (string) ( $reviewed_status['database_manifest_sha256'] ?? '' ), (string) $resume_manifest_record['manifest_sha256'] ) || is_wp_error( $resume_storage ) || $resume_storage !== ( $reviewed_status['database_storage'] ?? null ) ) { return new WP_Error( 'c99_candidate_resume_database_changed', 'Candidate resume database changed after its separate review.', array( 'status' => 409 ) ); }
+							if ( array_key_exists( 'candidate_resume_database_journal', $state ) ) {
+								if ( ! hash_equals( $resume_review_sha256, (string) ( $state['candidate_resume_review_sha256'] ?? '' ) ) || ! hash_equals( $resume_fingerprint, (string) ( $state['candidate_resume_database_fingerprint'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_resume_rebinding', 'Candidate resume backup cannot be rebound to another checkpoint.', array( 'status' => 409 ) ); }
+							} else {
+								$resume_journal = $encrypt_database_state( $resume_snapshot );
+								if ( is_wp_error( $resume_journal ) ) { return $resume_journal; }
+								$saved = $set_state_phase( $state_dir, $deployment_id, $phase, array( 'candidate_resume_database_journal' => $resume_journal, 'candidate_resume_database_fingerprint' => $resume_fingerprint, 'candidate_resume_review_sha256' => $resume_review_sha256 ) );
+								if ( is_wp_error( $saved ) ) { return $saved; }
+							}
+							$resume_state = json_decode( $wp_filesystem->get_contents( $state_path ), true );
+							$resume_readback = $decrypt_database_state( $resume_state['candidate_resume_database_journal'] ?? array() );
+							$resume_readback_json = is_wp_error( $resume_readback ) ? false : wp_json_encode( $resume_readback );
+							if ( false === $resume_readback_json || ! hash_equals( $resume_fingerprint, hash( 'sha256', $resume_readback_json ) ) || ! hash_equals( $resume_review_sha256, (string) ( $resume_state['candidate_resume_review_sha256'] ?? '' ) ) || ( $state['database_journal'] ?? null ) !== ( $resume_state['database_journal'] ?? null ) ) { return new WP_Error( 'c99_candidate_resume_backup_readback', 'Candidate resume backup failed independent readback.', array( 'status' => 500 ) ); }
+							$state = $resume_state;
 						}
 						if ( ! empty( $state['candidate_prior_active'] ) ) {
 							if ( true !== $core_active ) { return new WP_Error( 'c99_candidate_activation_core_state', 'Active upgrade lost persisted core plugin membership.', array( 'status' => 409 ) ); }

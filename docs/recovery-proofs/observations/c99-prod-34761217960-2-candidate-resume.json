@@ -1,0 +1,182 @@
+{
+  "bootstrap_cleanup": {
+    "exact_name": "c99-deploy-bootstrap",
+    "known_id": 5,
+    "known_id_matched": false,
+    "removed_ids": [],
+    "row_absence_verified": true
+  },
+  "bridge_site_identity": {
+    "home_host": "complete99.co.il",
+    "rest_host": "complete99.co.il",
+    "siteurl_host": "complete99.co.il"
+  },
+  "cleanup": {
+    "removed_ids": [
+      265
+    ],
+    "route_404": true,
+    "row_absence_verified": true,
+    "snippet_active": false,
+    "snippet_deleted": true
+  },
+  "commit": "62b0c14ff549e7f149ee9288fc810fee814af625",
+  "decision": "observe_interrupted_forward_mismatch_diagnostic",
+  "deployment_id": "c99-prod-31620203121-1",
+  "discovery": {
+    "bootstrap_cleanup": {
+      "exact_name": "c99-deploy-bootstrap",
+      "known_id": 5,
+      "known_id_matched": false,
+      "removed_ids": [],
+      "row_absence_verified": true
+    },
+    "cleanup": {
+      "removed_ids": [
+        264
+      ],
+      "route_404": true,
+      "row_absence_verified": true,
+      "snippet_active": false,
+      "snippet_deleted": true
+    },
+    "owner_deployment_id": "c99-prod-31620203121-1",
+    "owner_phase": "candidate_activation_pending",
+    "probe_id": "c99-recovery-probe-34761217960-2",
+    "result": "owner-discovered"
+  },
+  "finished_at": "2026-09-13T14:00:59Z",
+  "health": {
+    "component": "complete99-platform",
+    "database_version": "1.22.1",
+    "deployment_id": "c99-prod-31598196288-1",
+    "status": "ok",
+    "sync_configured": true,
+    "version": "1.22.1"
+  },
+  "identity": {
+    "id": 1,
+    "roles": [
+      "administrator"
+    ],
+    "site_identity": {
+      "home": "https://complete99.co.il",
+      "url": "https://complete99.co.il"
+    }
+  },
+  "interrupted_forward_observation": {
+    "diagnostic_only": true,
+    "mismatches": [
+      "baseline_sync_configured",
+      "baseline_sync_secret_existed",
+      "current_deployment",
+      "current_plugin_sha256",
+      "database_fingerprint",
+      "database_manifest_sha256",
+      "installed_plugin_sha256",
+      "interrupted_forward_candidate",
+      "interrupted_forward_proof_sha256",
+      "migration_invariants_valid",
+      "phase",
+      "recovery_ready",
+      "robots_applied",
+      "robots_managed_sha256"
+    ],
+    "proof_consumed": false,
+    "recovery_authority": false,
+    "safe_status": {
+      "adopted_forward_no_rollback": false,
+      "baseline_database_fingerprint": "29d2ba5971d96d374c63ca998dcb7fa166ef52bccb8367541082914095fb003b",
+      "baseline_database_journal_valid": true,
+      "baseline_sync_configured": false,
+      "baseline_sync_secret_existed": false,
+      "current_active": true,
+      "current_database_version": "1.22.1",
+      "current_deployment": "c99-prod-31598196288-1",
+      "current_plugin_main_exists": true,
+      "current_plugin_sha256": "da8e321e6f521076c104132d91e3022fc573846ec7c66934c8ee6591285aef0c",
+      "current_robots_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "current_sync_configured": true,
+      "current_target_dir_exists": true,
+      "current_version": "1.22.1",
+      "database_fingerprint": "531084099c88823a0af3e07e0e7eab1cac67f9b16b797f94499665aafda38f44",
+      "database_fingerprint_available": true,
+      "database_manifest": {
+        "campaign_tables_count": 7,
+        "campaign_tables_sha256": "5583b4f25aa65db35f5749f255d89dc905c171471f02837277515c49e997c7e9",
+        "evaluation_ids_count": 72,
+        "evaluation_ids_sha256": "9e68465010fd0a9c345ad8937e093bdbc72b41ac5b624dd9f32924aa2d7d787b",
+        "ops_tables_count": 7,
+        "ops_tables_sha256": "a65d1c3b35a34d8f272aa7997dfff174069566a434558eb4fd1c8f064f1447c6",
+        "options_without_deployment_marker_count": 12,
+        "options_without_deployment_marker_sha256": "fa1fcb742b6f8e7a058b91f996df2cbc4bf96f36ab435d3ad0b1702cbfde69f5",
+        "postmeta_count": 3013,
+        "postmeta_sha256": "9c76153fd73aee34ceb10ead2b0bc4720a2075c1d240ae4c4538108eb94e5eb4",
+        "posts_count": 379,
+        "posts_sha256": "d88219471d2c39c1f81c121daee98b607d3fbc54724db0a284856b5be4da1dbd",
+        "schema": "complete99-database-snapshot-manifest/v3",
+        "seed_ids_count": 78,
+        "seed_ids_sha256": "00455cb67da773d904bd01979070c5fcc07fd82acdc5adaf07df60d9e8e99eba",
+        "sync_secret_configured": true,
+        "sync_secret_existed": true
+      },
+      "database_manifest_sha256": "827d97a57051ffddeaedcbc70a31bd4f9407264213d4c75f6eb0ad63ee81d225",
+      "database_restored": false,
+      "database_storage": {
+        "engine": "INNODB",
+        "tables": 3
+      },
+      "deployment_id": "c99-prod-31620203121-1",
+      "expected_sha256": "b5a90bab452bbbb54d55cc639c368e262d2c5c702a56d401286d581b816542f1",
+      "expected_version": "1.22.1",
+      "had_plugin": true,
+      "installed_plugin_sha256": "da8e321e6f521076c104132d91e3022fc573846ec7c66934c8ee6591285aef0c",
+      "interrupted_forward_candidate": false,
+      "interrupted_forward_database_manifest_sha256": "",
+      "interrupted_forward_proof_sha256": "fc3402a527ce8e3ed2bc337afadea108192911a46fe5a3fd887e88144ff826b7",
+      "lock_owned": true,
+      "migration_failed": false,
+      "migration_invariants_valid": false,
+      "no_rollback_artifacts": true,
+      "phase": "candidate_activation_pending",
+      "post_install_database_fingerprint": "",
+      "prior_active": true,
+      "prior_deployment": "c99-prod-31598196288-1",
+      "prior_plugin_main_exists": true,
+      "prior_plugin_sha256": "0046b5cfcd2db0a5ec87c2a75dc7f1d7956cad2e43bde0983c2f4e84b2836c1e",
+      "prior_target_dir_exists": true,
+      "prior_version": "1.22.0",
+      "process_lock_available": true,
+      "recovery_ready": false,
+      "robots_applied": false,
+      "robots_managed_sha256": "",
+      "robots_prior_exists": true,
+      "robots_prior_sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+      "robots_restored": false,
+      "runtime_loaded": true,
+      "runtime_version": "1.22.1",
+      "state_exists": true
+    },
+    "safe_status_sha256": "c2ef551596c4d65230c31cfd6c057f63b68fd90fe1f94e400084e513a691600c",
+    "schema": "complete99-interrupted-forward-observation/v3"
+  },
+  "interrupted_forward_proof": {
+    "path": "docs/recovery-proofs/c99-prod-31620203121-1.json",
+    "proof_sha256": "a5b7c0d705e6f8a8107074a5e7a277832cb91bf525ab148bb703698cee49d224",
+    "schema": "complete99-interrupted-forward-proof/v3"
+  },
+  "local_test": false,
+  "proof_consumed": false,
+  "rendered_home": {
+    "body_sha256": "d50953827e9f3e833627430addf662e54ebee0b3f798cee697eb77c81ad85456",
+    "deployment_id": "c99-prod-31598196288-1",
+    "exact_path": "/",
+    "version": "1.22.1"
+  },
+  "result": "interrupted_forward_mismatch_diagnostic_observed",
+  "robots": {
+    "sha256": "b25fdd90cfd62119544ff19ddecf01bd33f94e66e8645190f03c06cd32229b7e",
+    "status": 200
+  },
+  "started_at": "2026-09-13T14:00:44Z"
+}
