@@ -192,7 +192,8 @@ class Complete99ContractTests(unittest.TestCase):
             )
         )
         changelog = manifest["sections"]["changelog"]
-        self.assertTrue(changelog.startswith("<h4>1.22.1</h4>"))
+        self.assertTrue(changelog.startswith(f"<h4>{manifest['version']}</h4>"))
+        self.assertIn("<h4>1.22.1</h4>", changelog)
         self.assertIn("durable suspending lifecycle", changelog)
         self.assertIn("receipt-less 1.22 bootstrap states", changelog)
         self.assertIn("Corrected resumed-generation capacity binding", changelog)

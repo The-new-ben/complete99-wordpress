@@ -20,7 +20,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-08-12 14:38:02"
+RELEASE_LAST_UPDATED = "2026-09-13 12:00:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -588,6 +588,12 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Introduced a bilingual food-discovery homepage opening with immediate menu and group-meal paths, plus server-rendered links into ingredient knowledge.</li>"
+                "<li>Refined homepage-only image framing, typography, responsive layouts and keyboard focus without changing shared page layouts.</li>"
+                "<li>Preserved existing URLs, canonicals, language relationships, menu records, commerce settings and private operational data. No redirects or page merges.</li>"
+                "</ul>"
+                "<h4>1.22.1</h4>"
                 "<ul>"
                 "<li>Made every activation-recovery bootstrap enter the durable suspending lifecycle, complete the bounded cleanup and public-absence receipt chain, and only then restore active Campaign truth.</li>"
                 "<li>Repaired the two receipt-less 1.22 bootstrap states only under exact lifecycle and worker ownership, while partial or conflicting immutable receipt identities remain fail closed.</li>"
