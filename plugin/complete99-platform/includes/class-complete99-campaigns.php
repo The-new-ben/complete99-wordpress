@@ -10253,12 +10253,24 @@ final class Complete99_Campaigns {
 
 	private static function placement_public_url( $slot ) {
 		if ( 'home_banner' === $slot ) { return home_url( '/' ); }
-		if ( 'store_banner' === $slot && function_exists( 'wc_get_page_id' ) ) {
-			$page_id = (int) wc_get_page_id( 'shop' );
+		if ( 'store_banner' === $slot && class_exists( 'Complete99_Content' ) ) {
+			/* The WooCommerce shop is a redirect, not the owned public storefront. */
+			$page_id = (int) Complete99_Content::find_translation_post_id( 'store', 'he', true );
 			$url = 0 < $page_id ? get_permalink( $page_id ) : '';
 			if ( is_string( $url ) && self::is_first_party_url( $url ) ) { return $url; }
 		}
 		return new WP_Error( 'complete99_campaign_public_slot_url_missing', 'The owned placement has no exact first-party public page.' );
+	}
+
+	/** Match the same published surface used by the independent placement readback. */
+	private static function public_placement_slot_for_request() {
+		if ( is_admin() || is_preview() ) { return ''; }
+		if ( is_front_page() ) { return 'home_banner'; }
+		if ( ! is_page() || ! class_exists( 'Complete99_Content' ) ) { return ''; }
+		$store_id = (int) Complete99_Content::find_translation_post_id( 'store', 'he', true );
+		if ( 0 >= $store_id || $store_id !== (int) get_queried_object_id() ) { return ''; }
+		$url = self::placement_public_url( 'store_banner' );
+		return is_wp_error( $url ) ? '' : 'store_banner';
 	}
 
 	private static function rendered_copy_digest( $public, $locale ) {
@@ -10636,10 +10648,10 @@ final class Complete99_Campaigns {
 	}
 
 	public static function render_public_placement() {
-		if ( is_admin() || ( ! is_front_page() && ! ( function_exists( 'is_shop' ) && is_shop() ) ) ) { return; }
+		$slot = self::public_placement_slot_for_request();
+		if ( '' === $slot ) { return; }
 		global $wpdb;
 		$tables = self::table_names();
-		$slot = function_exists( 'is_shop' ) && is_shop() ? 'store_banner' : 'home_banner';
 		$probe_id = isset( $_SERVER['HTTP_X_COMPLETE99_READBACK'] ) && is_string( $_SERVER['HTTP_X_COMPLETE99_READBACK'] ) ? $_SERVER['HTTP_X_COMPLETE99_READBACK'] : '';
 		$probe_token = isset( $_SERVER['HTTP_X_COMPLETE99_READBACK_TOKEN'] ) && is_string( $_SERVER['HTTP_X_COMPLETE99_READBACK_TOKEN'] ) ? $_SERVER['HTTP_X_COMPLETE99_READBACK_TOKEN'] : '';
 		$probe_requested = '' !== $probe_id || '' !== $probe_token;
