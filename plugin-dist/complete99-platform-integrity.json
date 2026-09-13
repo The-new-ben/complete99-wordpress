@@ -1,7 +1,7 @@
 {
   "artifact": "complete99-platform-1.24.1.zip",
   "deployment_id": "c99-wp-1.24.1",
-  "installed_sha256": "a6b3eac00ec4edc48302a6bbad38defe4147d507096051435c006d11aa10925a",
+  "installed_sha256": "b812563512c08dc4c0ca66fe538a89ea25cb0404ac98a45ae8d0a56f7c699455",
   "science_media_approval_registry_sha256": "050e2e4b7d7db3c8ec391306d0cb21270413a0035e911446cf6c63d9f14e09c8",
   "science_media_approved_archive_repository_only_stem_count": 1,
   "science_media_delivery_file_count": 70,
@@ -15,10 +15,10 @@
   "science_media_source_file_count": 175,
   "science_media_stem_count": 47,
   "science_media_superseded_archive_file_count": 3,
-  "sha256": "7416ca3d9385e105685b7ea39f95a798f3ff17312feb325cefab8061fd83523d",
-  "size": 28746069,
+  "sha256": "8b253bd105c223985b5b76f2332be08e7f4172ad24990fb532b99a7c704c041e",
+  "size": 28746164,
   "slug": "complete99-platform",
-  "source_sha256": "2521316226c1cf802f6152f74de518a75383c68c157e105a40a87c9add2977ef",
+  "source_sha256": "d52784eb08951922cb7a9be24dcd68f9e8c2f54d9644f316b31dba7b3407f296",
   "type": "plugin",
   "version": "1.24.1"
 }

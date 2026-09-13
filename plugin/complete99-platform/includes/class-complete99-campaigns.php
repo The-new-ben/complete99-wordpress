@@ -9635,7 +9635,7 @@ final class Complete99_Campaigns {
 
 	/** Prevent public slot HTML from becoming a durable full-page cache artifact. */
 	public static function enforce_public_slot_no_cache() {
-		if ( is_admin() || ( ! is_front_page() && ! ( function_exists( 'is_shop' ) && is_shop() ) ) ) { return; }
+		if ( '' === self::public_placement_slot_for_request() ) { return; }
 		if ( ! defined( 'DONOTCACHEPAGE' ) ) { define( 'DONOTCACHEPAGE', true ); }
 		nocache_headers();
 		if ( ! headers_sent() ) {
@@ -9660,6 +9660,16 @@ final class Complete99_Campaigns {
 	private static function purge_public_placement_caches( $reason ) {
 		$urls = array( home_url( '/' ) );
 		$page_ids = array( (int) get_option( 'page_on_front', 0 ) );
+		if ( class_exists( 'Complete99_Content' ) ) {
+			$store_id = (int) Complete99_Content::find_translation_post_id( 'store', 'he', true );
+			if ( 0 < $store_id ) {
+				$store_url = self::placement_public_url( 'store_banner' );
+				if ( is_wp_error( $store_url ) ) { return $store_url; }
+				$page_ids[] = $store_id;
+				$urls[] = $store_url;
+			}
+		}
+		/* Also invalidate the legacy alias, but never use it as render/readback truth. */
 		if ( function_exists( 'wc_get_page_id' ) ) {
 			$shop_id = (int) wc_get_page_id( 'shop' );
 			if ( 0 < $shop_id ) {
@@ -9738,7 +9748,7 @@ final class Complete99_Campaigns {
 	}
 
 	public static function enqueue_public_assets() {
-		if ( is_admin() || ( ! is_front_page() && ! ( function_exists( 'is_shop' ) && is_shop() ) ) ) { return; }
+		if ( '' === self::public_placement_slot_for_request() ) { return; }
 		wp_enqueue_style( 'complete99-campaign-placement', COMPLETE99_PLATFORM_URL . 'assets/css/campaign-placement.css', array(), COMPLETE99_PLATFORM_VERSION );
 		wp_enqueue_script( 'complete99-campaign-placement', COMPLETE99_PLATFORM_URL . 'assets/js/campaign-placement.js', array(), COMPLETE99_PLATFORM_VERSION, true );
 	}

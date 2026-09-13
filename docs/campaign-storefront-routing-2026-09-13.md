@@ -17,6 +17,8 @@ only the front page and WooCommerce `is_shop()`, excluding the owned custom stor
   WooCommerce shop option.
 - Render that placement only on the exact published store ID. Preserve the
   existing home placement. Exclude admin, previews, unrelated pages and aliases.
+- Use the identical surface selector for asset loading and no-cache headers.
+  Purge the owned store cache as well as the legacy alias cache.
 - Reject missing, ambiguous or off-origin store ownership. Preserve redirect
   rejection, Campaign lifecycle checks, immutable receipts and historical proof URLs.
 - Retain the complete 1.24.0 editorial homepage implementation in the package.
@@ -27,7 +29,7 @@ only the front page and WooCommerce `is_shop()`, excluding the owned custom stor
 
 ## Verification and limits
 
-Local focused suite: 165 passed, 1 skipped, 30 subtests. Full source PHP lint,
+Local focused suite: 166 passed, 1 skipped, 30 subtests. Full source PHP lint,
 secret scan and reproducible packaging passed. Executable PHP tests exercise the
 actual class, including a custom slug and a WooCommerce alias that must never be
 read. CI and independent review remain required before deployment.
