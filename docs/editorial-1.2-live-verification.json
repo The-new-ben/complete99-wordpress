@@ -1,0 +1,18 @@
+{
+  "schema": "complete99-release-evidence/v1",
+  "version": "1.2.1",
+  "source_commit": "eb3c8903734f0e89150bcbcd445273805a58dc97",
+  "artifact_sha256": "99081667e34302186d53f783ac4f0b5b0bdcd87fc78b36094d51225f23b8fc60",
+  "ci": "https://github.com/The-new-ben/complete99-wordpress/actions/runs/34776128109",
+  "deployment": "https://github.com/The-new-ben/complete99-wordpress/actions/runs/34776299159",
+  "live": true,
+  "core_version_unchanged": "1.22.1",
+  "rollback_predecessor_verified": "1.2.0",
+  "temporary_snippet_deleted": 275,
+  "temporary_route_404": true,
+  "browser_verified": ["Hebrew /dishes/ pots filter:3 dishes, clean URL", "English /en/dishes/ pots filter:3 dishes, clean URL", "Ingredient and knowledge hubs: original responsive editorial imagery and short source-linked nutrition in HE/EN"],
+  "nutrition_scope": "Two general hub modules, not measured nutrient data for every dish. Ingredient values must not be applied to complete dishes without recipe, state, weight and yield data.",
+  "sources": ["https://www.gov.il/he/pages/dietary-guidelines", "https://fdc.nal.usda.gov/Foundation_Foods_Documentation/"],
+  "review_followup": "PR99 comment4000543614: extend exact archived-script compatibility to1.23.0/1.23.1 before any core upgrade. Current production1.22.1 verified.",
+  "remaining": ["Per-entity source-backed nutrition", "Broad-portal brand and copy", "Real street and food-business import", "Group-order journey", "Store pagination URL policy", "Physical mobile-device verification", "Full product and organic traffic outcomes"]
+}
