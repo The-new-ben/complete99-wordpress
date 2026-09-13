@@ -5,6 +5,24 @@
   "runtime_registry": "editorial-release/plugin/ingredient-nutrition.json",
   "prior_research": "plugin/complete99-platform/data/nutrition-guide-seeds.php",
   "owner_override": "Healthy-food information is a cross-site editorial layer, not a medical service or a generic badge. Preserve current index policy; the older seed registry's default noindex does not authorize new noindex changes.",
+  "sitewide_acceptance": {
+    "requested_on": "2026-09-13",
+    "coverage": {
+      "homepage": "Make nutritious food choices discoverable with real ingredient-led imagery and concise wording; link to existing relevant content rather than repeat health keywords everywhere.",
+      "ingredient": "One specific useful nutrition note, matched to the ingredient and its raw/cooked state, with a supporting source.",
+      "dish": "Explain relevant ingredients, preparation and portion context from the actual recipe. Do not transfer an ingredient's nutrient concentration to the whole serving.",
+      "cuisine_and_technique": "Discuss practical preparation choices and meal balance without labelling an entire cuisine healthy or unhealthy.",
+      "group_order": "Help customers discuss vegetables, legumes, whole grains and preparation preferences without promising substitutions or service capabilities that are not offered.",
+      "business_and_location": "Surface supported menu choices through related dishes. Geographic proximity or a business category is not evidence of a health benefit."
+    },
+    "balanced_evidence": "Include relevant portion size, sodium, added sugar, saturated fat and preparation effects alongside positive properties. Scientific does not mean finding a positive health claim for every food.",
+    "public_style": "Short, appetising, natural Israeli Hebrew. No internal review status, missing-data notices, disease promises or automatic healthy badges.",
+    "private_claim_record": ["entity_id", "claim_text", "source_url", "supporting_finding", "food_state", "serving_basis_if_numeric", "recipe_version_if_applicable", "review_owner", "refresh_trigger"],
+    "refresh_triggers": ["Recipe or portion changes", "Supplier or product changes", "Source correction or updated guidance"],
+    "structured_data": "Publish nutrient values only when supported by the matching visible content and actual food or recipe. No hidden invented nutrition properties for SEO.",
+    "sources_rechecked": ["https://www.who.int/news-room/fact-sheets/detail/healthy-diet", "https://fdc.nal.usda.gov/data-documentation/"],
+    "status": "Cross-site acceptance criteria recorded, not a claim that every template is implemented. Existing three live ingredient notes remain the verified coverage."
+  },
   "claims": [
     {"entity":"ingredient-chickpea","source":"moh-pulses","support":"MOH identifies chickpeas as pulses containing protein and dietary fibre and suggests soups, salads and stews.","boundary":"A cooked chickpea ingredient is not the composition of a restaurant hummus serving."},
     {"entity":"ingredient-tahini","source":"moh-fats","support":"MOH includes tahini in daily plant-fat choices.","boundary":"Paste and diluted sauce differ; no calcium, protein or calorie figure is asserted for this SKU."},

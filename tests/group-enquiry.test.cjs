@@ -3,10 +3,10 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const source = fs.readFileSync('editorial-release/plugin/assets/group-enquiry.js', 'utf8');
 
-function fixture({language='he', response, failure, valid=true, interest='group-order', endpoint='https://complete99.co.il/wp-admin/admin-post.php'}={}) {
+function fixture({language='he', response, failure, valid=true, interest='group-order', publicForm=false, page='https://complete99.co.il/request-proposal/', endpoint='https://complete99.co.il/wp-admin/admin-post.php'}={}) {
   const state = {calls:0, payload:null};
   const button = {textContent:'שליחת בקשה',disabled:false};
-  const attrs = {};
+  const attrs = publicForm ? {'data-c99-public-enquiry':'1'} : {};
   const status = {hidden:true,setAttribute(k,v){this[k]=v;},focus(){this.focused=true;}};
   const form = {
     action:{value:'complete99_submit_lead'}, hidden:false, values:{contact_name:'Example',email:'test@example.invalid'},
@@ -16,7 +16,7 @@ function fixture({language='he', response, failure, valid=true, interest='group-
     reportValidity(){return valid;},parentNode:{insertBefore(){}}, addEventListener(type,fn){this[type]=fn;}
   };
   const window = {
-    location:{href:'https://complete99.co.il/request-proposal/',origin:'https://complete99.co.il'},
+    location:{href:page,origin:'https://complete99.co.il'},
     FormData:class{constructor(f){this.values={...f.values};}},
     AbortController:class{constructor(){this.signal={};}abort(){}},
     setTimeout(){return 1;},clearTimeout(){},
@@ -46,6 +46,22 @@ function fixture({language='he', response, failure, valid=true, interest='group-
     {ok:true,redirected:true,url:'https://complete99.co.il/request-proposal/'},
   ]) { const f=fixture({response}); await f.submit(); assert.equal(f.status['data-state'],'error');assert(!f.form.hidden); }
   const offline=fixture({failure:true}); await offline.submit();assert.equal(offline.state.calls,1); assert.equal(offline.status['data-state'],'error');
+  for(const language of ['he','en']){
+    const page='https://complete99.co.il/'+(language==='en'?'en/':'')+'request-proposal/';
+    for(const status of [200,400,403,429,500]){
+      const f=fixture({language,page,endpoint:page,publicForm:true,response:{ok:status===200,status,redirected:status===200,url:page+(status===200?'?c99_sent=1':'')}});
+      await f.submit();assert.equal(f.status['data-state'],status===200?'success':'error');
+      assert.equal(f.form.hidden,status===200);assert.equal(f.form.values.email,'test@example.invalid');
+    }
+  }
+  for(const options of [
+    {endpoint:'https://complete99.co.il/request-proposal/'},
+    {publicForm:true,endpoint:'https://complete99.co.il/other/'},
+    {publicForm:true,endpoint:'https://complete99.co.il/en/request-proposal/'},
+    {publicForm:true,endpoint:'https://complete99.co.il/request-proposal/?other=1'},
+    {publicForm:true,endpoint:'https://complete99.co.il/request-proposal/#other'},
+    {publicForm:true,endpoint:'https://outside.example/request-proposal/'},
+  ]) {assert.equal(fixture(options).form.submit,undefined);}
   const invalid=fixture({valid:false});await invalid.submit();assert.equal(invalid.state.calls,0);
   for(const options of [{interest:'institutional-service'},{endpoint:'https://outside.example/wp-admin/admin-post.php'}]) {assert.equal(fixture(options).form.submit,undefined);}
   const pending=fixture();let resolve;

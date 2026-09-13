@@ -1,9 +1,12 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 require_once __DIR__ . '/ingredient-nutrition.php';
+require_once __DIR__ . '/group-enquiry.php';
 
 /** Only the existing ingredient/guide pages; original CMS copy and links are retained. */
 function c99_editorial_page_key() {
+	// The public form transport must survive the later native editorial upgrade.
+	if ( c99_editorial_enquiry_url() ) { return 'proposal'; }
 	if ( is_admin() || is_404() || ! is_singular() || ! class_exists( 'Complete99_Content' ) || ! class_exists( 'Complete99_Consumer' ) ) { return ''; }
 	if ( ! defined( 'COMPLETE99_PLATFORM_VERSION' ) || version_compare( COMPLETE99_PLATFORM_VERSION, '1.22.1', '<' ) || version_compare( COMPLETE99_PLATFORM_VERSION, '1.24.0', '>=' ) ) { return ''; }
 	$key = Complete99_Content::translation_group_for_post( get_queried_object_id() );
@@ -41,5 +44,6 @@ function c99_editorial_render_content( $post ) {
 	ob_start();
 	Complete99_Consumer::render_current( $post );
 	$html = ob_get_clean();
+	$html = c99_editorial_enquiry_form( $html, c99_editorial_enquiry_url() );
 	echo c99_editorial_enrich_html( $html, c99_editorial_page_key(), Complete99_Content::language_for_post( $post->ID ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 }

@@ -8,7 +8,11 @@
   if (!interest || interest.value !== 'group-order' || !action || action.value !== 'complete99_submit_lead') { return; }
   // A hidden input named "action" shadows form.action in actual browsers.
   var endpoint = new URL(form.getAttribute('action'), window.location.href);
-  if (endpoint.origin !== window.location.origin || endpoint.pathname !== '/wp-admin/admin-post.php') { return; }
+  var currentPage = new URL(window.location.href);
+  var publicForm = form.getAttribute('data-c99-public-enquiry') === '1' &&
+    (endpoint.pathname === '/request-proposal/' || endpoint.pathname === '/en/request-proposal/') &&
+    endpoint.pathname === currentPage.pathname && !endpoint.search && !endpoint.hash;
+  if (endpoint.origin !== window.location.origin || (!publicForm && endpoint.pathname !== '/wp-admin/admin-post.php')) { return; }
   var button = form.querySelector('button[type="submit"]');
   if (!button) { return; }
   var language = form.querySelector('[name="language"]');
