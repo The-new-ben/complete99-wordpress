@@ -1560,6 +1560,13 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             changed["pre_adoption_observation"][field] = {} if field != "review_sha256" else "0" * 64
             with self.subTest(resume_field=field), self.assertRaises(VALIDATOR.AuditValidationError):
                 VALIDATOR.validate_interrupted_forward_recovery_audit(changed, reviewed_resume, probe_id)
+        for field, value in (("completed_at", 2), ("table", "other_c99_campaign_provider_receipts"), ("collation", "utf8mb4_general_ci")):
+            changed = copy.deepcopy(resume_audit)
+            changed["pre_adoption_observation"]["repair_receipt"][field] = value
+            # Individually valid receipts must nevertheless match the exact adoption receipt.
+            VALIDATOR.validate_candidate_repair_receipt(changed["pre_adoption_observation"]["repair_receipt"], reviewed_resume)
+            with self.subTest(receipt_field=field), self.assertRaisesRegex(VALIDATOR.AuditValidationError, "differs from the durable"):
+                VALIDATOR.validate_interrupted_forward_recovery_audit(changed, reviewed_resume, probe_id)
 
     def test_independent_robots_checkpoint_authority_rejects_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -3345,6 +3345,12 @@ def validate_interrupted_forward_recovery_audit(
                 "Candidate resume checkpoint changed before adoption",
             )
             validate_candidate_repair_receipt(pre_adoption.get("repair_receipt"), loaded)
+            resume_adoption = require_mapping(audit.get("interrupted_forward_adoption"), "Candidate resume adoption")
+            resume_repair = require_mapping(resume_adoption.get("repair"), "Candidate resume repair")
+            require(
+                exact_json_equal(pre_adoption["repair_receipt"], resume_repair.get("receipt")),
+                "Candidate resume checkpoint receipt differs from the durable adoption receipt",
+            )
         elif (
             adoption.get("schema")
             in {

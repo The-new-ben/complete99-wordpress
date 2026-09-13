@@ -146,13 +146,14 @@ $proof_sha256 = str_repeat('a',64); $review = str_repeat('b',64);
 $reviewed = ['interrupted_forward_proof_sha256'=>$proof_sha256,'database_fingerprint'=>$fingerprint,'database_manifest_sha256'=>$manifest_sha,'database_manifest'=>$manifest,'database_storage'=>$storage];
 $interrupted = ['candidate_resume_review_sha256'=>$review,'reviewed_safe_status'=>$reviewed,'reviewed_safe_status_sha256'=>hash('sha256',json_encode($reviewed,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES))];
 $phase='candidate_activation_pending'; $repair_continuation=true; $state_dir='/memory'; $state_path='/memory/state.json'; $deployment_id='c99-fixture'; $writes=0;
-if (in_array($case,['retry','rebind','corrupt'])) {
-  $state += ['candidate_resume_database_journal'=>['encrypted'=>$snapshot], 'candidate_resume_database_fingerprint'=>$fingerprint,'candidate_resume_review_sha256'=>$review];
+if (in_array($case,['retry','rebind','corrupt','postcommit','notstarted'])) {
+  $state += ['candidate_resume_database_journal'=>['encrypted'=>$snapshot], 'candidate_resume_database_fingerprint'=>$fingerprint,'candidate_resume_review_sha256'=>$review,'candidate_resume_activation_started'=>true];
   if ($case==='rebind') $state['candidate_resume_review_sha256']=str_repeat('c',64);
   if ($case==='corrupt') $state['candidate_resume_database_journal']=['broken'=>true];
+  if ($case==='notstarted') $state['candidate_resume_activation_started']=false;
 }
 $wp_filesystem->state=$state;
-$capture_database_state_consistent=fn()=>($case==='drift'?['posts'=>['changed']]:$snapshot);
+$capture_database_state_consistent=fn()=>(in_array($case,['drift','postcommit'])?['posts'=>['changed by committed migration']]:$snapshot);
 $campaign_snapshot_coherent=fn($v)=>true;
 $database_snapshot_manifest=fn($v)=>['manifest'=>$manifest,'manifest_sha256'=>$manifest_sha];
 $database_snapshot_manifest_valid=fn($v,$h)=>true;
@@ -168,7 +169,7 @@ $set_state_phase=function($dir,$id,$phase,$extra) use($wp_filesystem,$case,&$wri
 $run = function() use(&$state,$wp_filesystem,$interrupted,$proof_sha256,$phase,$repair_continuation,$state_dir,$state_path,$deployment_id,$capture_database_state_consistent,$campaign_snapshot_coherent,$database_snapshot_manifest,$database_snapshot_manifest_valid,$verify_transactional_storage,$encrypt_database_state,$decrypt_database_state,$set_state_phase) {
 '''
         end = "return true; }; $result=$run(); echo json_encode(['result'=>is_wp_error($result)?$result->code:$result,'writes'=>$writes,'original'=>$state['database_journal']]);"
-        cases = {"ok": (True, 1), "retry": (True, 0), "drift": ("c99_candidate_resume_database_changed", 0), "storage": ("c99_candidate_resume_database_changed", 0), "rebind": ("c99_candidate_resume_rebinding", 0), "corrupt": ("c99_candidate_resume_backup_readback", 0), "encrypt": ("encrypt", 0), "readback": ("c99_candidate_resume_backup_readback", 1), "original": ("c99_candidate_resume_backup_readback", 1)}
+        cases = {"ok": (True, 1), "retry": (True, 0), "postcommit": (True, 0), "notstarted": ("c99_candidate_resume_rebinding", 0), "drift": ("c99_candidate_resume_database_changed", 0), "storage": ("c99_candidate_resume_database_changed", 0), "rebind": ("c99_candidate_resume_rebinding", 0), "corrupt": ("c99_candidate_resume_backup_readback", 0), "encrypt": ("encrypt", 0), "readback": ("c99_candidate_resume_backup_readback", 1), "original": ("c99_candidate_resume_backup_readback", 1)}
         with tempfile.TemporaryDirectory() as directory:
             fixture = Path(directory) / "guard.php"
             fixture.write_text(setup + guard + end, encoding="utf-8")

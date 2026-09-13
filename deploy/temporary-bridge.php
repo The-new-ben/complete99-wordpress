@@ -6309,18 +6309,23 @@ add_action(
 							$reviewed_status = $interrupted['reviewed_safe_status'] ?? null;
 							$reviewed_json = is_array( $reviewed_status ) ? wp_json_encode( $reviewed_status, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) : false;
 							if ( ! $repair_continuation || 'candidate_activation_pending' !== $phase || ! preg_match( '/\A[a-f0-9]{64}\z/', $resume_review_sha256 ) || false === $reviewed_json || ! hash_equals( (string) ( $interrupted['reviewed_safe_status_sha256'] ?? '' ), hash( 'sha256', $reviewed_json ) ) || ! hash_equals( $proof_sha256, (string) ( $reviewed_status['interrupted_forward_proof_sha256'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_resume_review', 'Candidate resume review is not bound to this pending repair.', array( 'status' => 409 ) ); }
-							$resume_snapshot = $capture_database_state_consistent();
-							$resume_json = is_wp_error( $resume_snapshot ) ? false : wp_json_encode( $resume_snapshot );
-							$resume_manifest_record = is_wp_error( $resume_snapshot ) ? $resume_snapshot : $database_snapshot_manifest( $resume_snapshot );
+							$resume_fingerprint = (string) ( $reviewed_status['database_fingerprint'] ?? '' );
 							$resume_storage = $verify_transactional_storage();
-							$resume_fingerprint = false === $resume_json ? '' : hash( 'sha256', $resume_json );
-							if ( false === $resume_json || ! $campaign_snapshot_coherent( $resume_snapshot ) || ! hash_equals( (string) ( $reviewed_status['database_fingerprint'] ?? '' ), $resume_fingerprint ) || ! is_array( $resume_manifest_record ) || ! $database_snapshot_manifest_valid( $resume_manifest_record['manifest'] ?? null, $resume_manifest_record['manifest_sha256'] ?? '' ) || ! hash_equals( (string) ( $reviewed_status['database_manifest_sha256'] ?? '' ), (string) $resume_manifest_record['manifest_sha256'] ) || is_wp_error( $resume_storage ) || $resume_storage !== ( $reviewed_status['database_storage'] ?? null ) ) { return new WP_Error( 'c99_candidate_resume_database_changed', 'Candidate resume database changed after its separate review.', array( 'status' => 409 ) ); }
+							if ( is_wp_error( $resume_storage ) || $resume_storage !== ( $reviewed_status['database_storage'] ?? null ) ) { return new WP_Error( 'c99_candidate_resume_database_changed', 'Candidate resume storage changed after review.', array( 'status' => 409 ) ); }
 							if ( array_key_exists( 'candidate_resume_database_journal', $state ) ) {
-								if ( ! hash_equals( $resume_review_sha256, (string) ( $state['candidate_resume_review_sha256'] ?? '' ) ) || ! hash_equals( $resume_fingerprint, (string) ( $state['candidate_resume_database_fingerprint'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_resume_rebinding', 'Candidate resume backup cannot be rebound to another checkpoint.', array( 'status' => 409 ) ); }
+								/* The same fenced activation may have committed before its response/state update.
+								 * Authenticate its immutable pre-activation journal, then let the existing
+								 * idempotent migration/lifecycle continuation reconcile committed work.
+								 * Never rebind this journal to the changed post-migration database. */
+								if ( true !== ( $state['candidate_resume_activation_started'] ?? null ) || ! hash_equals( $resume_review_sha256, (string) ( $state['candidate_resume_review_sha256'] ?? '' ) ) || ! hash_equals( $resume_fingerprint, (string) ( $state['candidate_resume_database_fingerprint'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_resume_rebinding', 'Candidate resume backup cannot be rebound to another checkpoint.', array( 'status' => 409 ) ); }
 							} else {
+								$resume_snapshot = $capture_database_state_consistent();
+								$resume_json = is_wp_error( $resume_snapshot ) ? false : wp_json_encode( $resume_snapshot );
+								$resume_manifest_record = is_wp_error( $resume_snapshot ) ? $resume_snapshot : $database_snapshot_manifest( $resume_snapshot );
+								if ( false === $resume_json || ! $campaign_snapshot_coherent( $resume_snapshot ) || ! hash_equals( $resume_fingerprint, hash( 'sha256', $resume_json ) ) || ! is_array( $resume_manifest_record ) || ! $database_snapshot_manifest_valid( $resume_manifest_record['manifest'] ?? null, $resume_manifest_record['manifest_sha256'] ?? '' ) || ! hash_equals( (string) ( $reviewed_status['database_manifest_sha256'] ?? '' ), (string) $resume_manifest_record['manifest_sha256'] ) ) { return new WP_Error( 'c99_candidate_resume_database_changed', 'Candidate resume database changed before the first reviewed activation attempt.', array( 'status' => 409 ) ); }
 								$resume_journal = $encrypt_database_state( $resume_snapshot );
 								if ( is_wp_error( $resume_journal ) ) { return $resume_journal; }
-								$saved = $set_state_phase( $state_dir, $deployment_id, $phase, array( 'candidate_resume_database_journal' => $resume_journal, 'candidate_resume_database_fingerprint' => $resume_fingerprint, 'candidate_resume_review_sha256' => $resume_review_sha256 ) );
+								$saved = $set_state_phase( $state_dir, $deployment_id, $phase, array( 'candidate_resume_database_journal' => $resume_journal, 'candidate_resume_database_fingerprint' => $resume_fingerprint, 'candidate_resume_review_sha256' => $resume_review_sha256, 'candidate_resume_activation_started' => true ) );
 								if ( is_wp_error( $saved ) ) { return $saved; }
 							}
 							$resume_state = json_decode( $wp_filesystem->get_contents( $state_path ), true );
