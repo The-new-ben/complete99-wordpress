@@ -2677,6 +2677,27 @@ add_action(
 				: new WP_Error( 'c99_db_journal_json', 'The decrypted database rollback journal is invalid.', array( 'status' => 500 ) );
 		};
 
+		$candidate_resume_commit_valid = static function ( $state, $interrupted, $snapshot ) use ( $config, $decrypt_database_state ) {
+			$receipt = $decrypt_database_state( $state['candidate_resume_committed_journal'] ?? array() );
+			if ( is_wp_error( $receipt ) || ! is_array( $snapshot ) || 'complete99-candidate-resume-committed/v1' !== ( $receipt['schema'] ?? '' )
+				|| ( $receipt['review_sha256'] ?? null ) !== ( $interrupted['candidate_resume_review_sha256'] ?? '' )
+				|| ( $receipt['proof_sha256'] ?? null ) !== ( $interrupted['proof_sha256'] ?? '' )
+				|| ( $receipt['baseline_sha256'] ?? null ) !== ( $interrupted['reviewed_safe_status']['database_fingerprint'] ?? '' )
+				|| ! is_array( $receipt['snapshot'] ?? null ) ) { return false; }
+			$committed = $receipt['snapshot'];
+			/* Only the bridge-owned deployment marker may advance after this receipt.
+			 * All content, metadata, lifecycle rows and other options remain byte-exact. */
+			$allowed = array( (string) ( $interrupted['reviewed_safe_status']['current_deployment'] ?? '' ), (string) $config['deployment_id'] );
+			foreach ( array( 'committed', 'snapshot' ) as $name ) {
+				$row = ${$name}['options']['complete99_last_deployment_id'] ?? null;
+				if ( ! is_array( $row ) || ! in_array( $row['option_value'] ?? null, $allowed, true ) ) { return false; }
+				${$name}['options']['complete99_last_deployment_id']['option_value'] = $allowed[0];
+			}
+			$committed_json = wp_json_encode( $committed );
+			$current_json = wp_json_encode( $snapshot );
+			return is_string( $committed_json ) && is_string( $current_json ) && hash_equals( $committed_json, $current_json );
+		};
+
 		$restore_database_state = static function ( $snapshot, $deployment_id, $snapshot_generation, $expected_forward_ops_sha256, $expected_forward_campaign_sha256 ) use ( $capture_database_state, $database_snapshot_generation, $normalize_database_snapshot, $capture_ops_tables, $capture_campaign_tables, $ops_table_names, $campaign_table_names, $ops_quarantine_names, $campaign_quarantine_names, $ops_snapshot_valid, $campaign_snapshot_valid, $ops_snapshot_digest, $campaign_snapshot_digest, $ops_reconstruct_forward, $campaign_reconstruct_forward, $ops_atomic_rename, $protected_rejoin_forward ) {
 			global $wpdb;
 			if (
@@ -3125,7 +3146,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $decrypt_database_state, $managed_robots_path, $ops_quarantine_residue, $campaign_lifecycle_reservation_valid ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $decrypt_database_state, $candidate_resume_commit_valid, $managed_robots_path, $ops_quarantine_residue, $campaign_lifecycle_reservation_valid ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -3512,7 +3533,9 @@ add_action(
 						$resume_json = is_wp_error( $resume_journal ) ? false : wp_json_encode( $resume_journal );
 						$resume_fingerprint = (string) ( $status_interrupted_config['reviewed_safe_status']['database_fingerprint'] ?? '' );
 						if ( false !== $resume_json && preg_match( '/\A[a-f0-9]{64}\z/', $resume_fingerprint ) && hash_equals( $resume_fingerprint, hash( 'sha256', $resume_json ) ) && hash_equals( $resume_fingerprint, (string) ( $state['candidate_resume_database_fingerprint'] ?? '' ) ) && hash_equals( (string) ( $status_interrupted_config['proof_sha256'] ?? '' ), (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ) ) ) {
-							$resume_checkpoint = array( 'schema' => 'complete99-candidate-resume-durable-checkpoint/v1', 'review_sha256' => $resume_review, 'proof_sha256' => (string) $state['interrupted_forward_proof_sha256'], 'database_fingerprint' => $resume_fingerprint, 'journal_valid' => true, 'activation_started' => true );
+							if ( $candidate_resume_commit_valid( $state, $status_interrupted_config, $database_snapshot ) ) {
+								$resume_checkpoint = array( 'schema' => 'complete99-candidate-resume-durable-checkpoint/v2', 'review_sha256' => $resume_review, 'proof_sha256' => (string) $state['interrupted_forward_proof_sha256'], 'database_fingerprint' => $resume_fingerprint, 'current_database_fingerprint' => hash( 'sha256', wp_json_encode( $database_snapshot ) ), 'journal_valid' => true, 'activation_completed' => true );
+							}
 						}
 					}
 					$status = array(
@@ -6230,7 +6253,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $heartbeat_state, $set_state_phase, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $apply_managed_robots, $purge_caches, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $encrypt_database_state, $decrypt_database_state, $campaign_snapshot_coherent, $core_plugin_active_persisted, $candidate_repair_receipt_valid, $deployment_id_valid ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $heartbeat_state, $set_state_phase, $acquire_process_lock, $release_process_lock, $acquire_worker_fence, $release_worker_fence, $directory_sha256, $apply_managed_robots, $purge_caches, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $database_snapshot_manifest_valid, $verify_transactional_storage, $encrypt_database_state, $decrypt_database_state, $candidate_resume_commit_valid, $campaign_snapshot_coherent, $core_plugin_active_persisted, $candidate_repair_receipt_valid, $deployment_id_valid ) {
 					global $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) { return $filesystem; }
@@ -6314,6 +6337,7 @@ add_action(
 							return is_wp_error( $pending ) ? $pending : array( 'continued' => true, 'idempotent' => true, 'phase' => 'installed_pending_stabilization', 'active' => true, 'deployment_id' => $deployment_id );
 						}
 						$resume_review_sha256 = (string) ( $interrupted['candidate_resume_review_sha256'] ?? '' );
+						$resume_activation_proven = false;
 						if ( '' !== $resume_review_sha256 ) {
 							/* A separate reviewed checkpoint preserves post-interruption editor changes.
 							 * Never replace the original rollback journal or repeat the source/DDL repair. */
@@ -6324,11 +6348,13 @@ add_action(
 							$resume_storage = $verify_transactional_storage();
 							if ( is_wp_error( $resume_storage ) || $resume_storage !== ( $reviewed_status['database_storage'] ?? null ) ) { return new WP_Error( 'c99_candidate_resume_database_changed', 'Candidate resume storage changed after review.', array( 'status' => 409 ) ); }
 							if ( array_key_exists( 'candidate_resume_database_journal', $state ) ) {
-								/* The same fenced activation may have committed before its response/state update.
-								 * Authenticate its immutable pre-activation journal, then let the existing
-								 * idempotent migration/lifecycle continuation reconcile committed work.
-								 * Never rebind this journal to the changed post-migration database. */
+								/* A start flag is not a commit witness. Require exact baseline data or
+								 * the authenticated snapshot captured after activation actually succeeded.
+								 * Never absorb an unknown post-interruption edit into a new baseline. */
 								if ( true !== ( $state['candidate_resume_activation_started'] ?? null ) || ! hash_equals( $resume_review_sha256, (string) ( $state['candidate_resume_review_sha256'] ?? '' ) ) || ! hash_equals( $resume_fingerprint, (string) ( $state['candidate_resume_database_fingerprint'] ?? '' ) ) ) { return new WP_Error( 'c99_candidate_resume_rebinding', 'Candidate resume backup cannot be rebound to another checkpoint.', array( 'status' => 409 ) ); }
+								$resume_current = $capture_database_state_consistent();
+								$resume_activation_proven = $candidate_resume_commit_valid( $state, $interrupted, $resume_current );
+								if ( is_wp_error( $resume_current ) || ( ! $resume_activation_proven && ( isset( $state['candidate_resume_committed_journal'] ) || ! hash_equals( $resume_fingerprint, hash( 'sha256', wp_json_encode( $resume_current ) ) ) ) ) ) { return new WP_Error( 'c99_candidate_resume_unproven_drift', 'Candidate activation has no exact committed checkpoint for the current database.', array( 'status' => 409 ) ); }
 							} else {
 								$resume_snapshot = $capture_database_state_consistent();
 								$resume_json = is_wp_error( $resume_snapshot ) ? false : wp_json_encode( $resume_snapshot );
@@ -6345,7 +6371,9 @@ add_action(
 							if ( false === $resume_readback_json || ! hash_equals( $resume_fingerprint, hash( 'sha256', $resume_readback_json ) ) || ! hash_equals( $resume_review_sha256, (string) ( $resume_state['candidate_resume_review_sha256'] ?? '' ) ) || ( $state['database_journal'] ?? null ) !== ( $resume_state['database_journal'] ?? null ) ) { return new WP_Error( 'c99_candidate_resume_backup_readback', 'Candidate resume backup failed independent readback.', array( 'status' => 500 ) ); }
 							$state = $resume_state;
 						}
-						if ( ! empty( $state['candidate_prior_active'] ) ) {
+						if ( $resume_activation_proven ) {
+							$activation = true;
+						} elseif ( ! empty( $state['candidate_prior_active'] ) ) {
 							if ( true !== $core_active ) { return new WP_Error( 'c99_candidate_activation_core_state', 'Active upgrade lost persisted core plugin membership.', array( 'status' => 409 ) ); }
 							$activation = Complete99_Platform::recover_active_upgrade();
 						} elseif ( true === $core_active ) {
@@ -6355,6 +6383,18 @@ add_action(
 							$activation = activate_plugin( $config['plugin_file'] );
 						}
 						if ( is_wp_error( $activation ) ) { return $activation; }
+						if ( '' !== $resume_review_sha256 && ! $resume_activation_proven ) {
+							if ( true !== $activation ) { return new WP_Error( 'c99_candidate_resume_commit_result', 'Candidate activation did not acknowledge completion.', array( 'status' => 500 ) ); }
+							$committed_snapshot = $capture_database_state_consistent();
+							if ( is_wp_error( $committed_snapshot ) || ! $campaign_snapshot_coherent( $committed_snapshot ) ) { return new WP_Error( 'c99_candidate_resume_commit_capture', 'Committed activation snapshot is unavailable.', array( 'status' => 500 ) ); }
+							$committed_journal = $encrypt_database_state( array( 'schema' => 'complete99-candidate-resume-committed/v1', 'review_sha256' => $resume_review_sha256, 'proof_sha256' => $proof_sha256, 'baseline_sha256' => $resume_fingerprint, 'snapshot' => $committed_snapshot ) );
+							if ( is_wp_error( $committed_journal ) ) { return $committed_journal; }
+							$committed_state = $set_state_phase( $state_dir, $deployment_id, $phase, array( 'candidate_resume_committed_journal' => $committed_journal ) );
+							if ( is_wp_error( $committed_state ) ) { return $committed_state; }
+							$commit_readback = json_decode( (string) $wp_filesystem->get_contents( $state_path ), true );
+							if ( ! is_array( $commit_readback ) || ! $candidate_resume_commit_valid( $commit_readback, $interrupted, $committed_snapshot ) ) { return new WP_Error( 'c99_candidate_resume_commit_readback', 'Committed activation checkpoint was not independently acknowledged.', array( 'status' => 500 ) ); }
+							$state = $commit_readback;
+						}
 						$core_after = $core_plugin_active_persisted( $config['plugin_file'] );
 						if ( true !== $core_after ) { return is_wp_error( $core_after ) ? $core_after : new WP_Error( 'c99_candidate_activation_core_readback', 'Core active plugin persistence was not acknowledged.', array( 'status' => 500 ) ); }
 						update_option( 'complete99_last_deployment_id', $deployment_id, false );

@@ -3771,11 +3771,12 @@ def validate_interrupted_forward_candidate_repair_status(
         durable = status.get("candidate_resume_checkpoint")
         if durable:
             expected_durable = {
-                "schema": "complete99-candidate-resume-durable-checkpoint/v1",
+                "schema": "complete99-candidate-resume-durable-checkpoint/v2",
                 "review_sha256": loaded_proof["resume_review_sha256"],
                 "proof_sha256": loaded_proof["proof_sha256"],
                 "database_fingerprint": resume["safe_status"]["database_fingerprint"],
-                "journal_valid": True, "activation_started": True,
+                "current_database_fingerprint": observed["safe_status"]["database_fingerprint"],
+                "journal_valid": True, "activation_completed": True,
             }
             # These values can change after the same activation commits but before
             # the driver/state records completion. All ownership/source facts stay exact.

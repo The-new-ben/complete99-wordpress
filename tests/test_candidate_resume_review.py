@@ -151,9 +151,10 @@ class CandidateResumeReviewTests(unittest.TestCase):
         loaded = self.load()
         safe = copy.deepcopy(loaded["reviewed_resume_observation"]["safe_status"])
         durable = {
-            "schema": "complete99-candidate-resume-durable-checkpoint/v1",
+            "schema": "complete99-candidate-resume-durable-checkpoint/v2",
             "review_sha256": loaded["resume_review_sha256"], "proof_sha256": loaded["proof_sha256"],
-            "database_fingerprint": safe["database_fingerprint"], "journal_valid": True, "activation_started": True,
+            "database_fingerprint": safe["database_fingerprint"], "current_database_fingerprint": "c" * 64,
+            "journal_valid": True, "activation_completed": True,
         }
         safe.update(database_fingerprint="c" * 64, current_deployment=loaded["proof"]["failed_run"]["deployment_id"], migration_invariants_valid=True, robots_applied=True, robots_managed_sha256=safe["current_robots_sha256"])
         safe.update(candidate_repair_started=True, candidate_repair_no_rollback=True, candidate_repair_receipt=receipt(loaded), candidate_resume_checkpoint=durable)
@@ -167,6 +168,8 @@ class CandidateResumeReviewTests(unittest.TestCase):
             lambda s: s["candidate_resume_checkpoint"].update(journal_valid=False),
             lambda s: s["candidate_resume_checkpoint"].update(review_sha256="f" * 64),
             lambda s: s["candidate_resume_checkpoint"].update(database_fingerprint="f" * 64),
+            lambda s: s["candidate_resume_checkpoint"].update(current_database_fingerprint="f" * 64),
+            lambda s: s["candidate_resume_checkpoint"].update(activation_completed=False),
             lambda s: s.update(lock_owned=False),
             lambda s: s.update(current_plugin_sha256="f" * 64),
             lambda s: s.update(current_deployment="c99-unrelated-deployment"),
@@ -181,7 +184,7 @@ class CandidateResumeReviewTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("php"), "PHP required for executable backup guard")
     def test_executable_php_resume_backup_guard(self):
         bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")
-        block = bridge.split("$resume_review_sha256 =", 1)[1].split("if ( ! empty( $state['candidate_prior_active'] ) )", 1)[0]
+        block = bridge.split("$resume_review_sha256 =", 1)[1].split("if ( $resume_activation_proven )", 1)[0]
         guard = "$resume_review_sha256 =" + block
         # Execute the actual production guard with controlled persistence failures.
         setup = r'''<?php
@@ -207,6 +210,7 @@ if (in_array($case,['retry','rebind','corrupt','postcommit','notstarted'])) {
 }
 $wp_filesystem->state=$state;
 $capture_database_state_consistent=fn()=>(in_array($case,['drift','postcommit'])?['posts'=>['changed by committed migration']]:$snapshot);
+$candidate_resume_commit_valid=fn($s,$i,$d)=>false;
 $campaign_snapshot_coherent=fn($v)=>true;
 $database_snapshot_manifest=fn($v)=>['manifest'=>$manifest,'manifest_sha256'=>$manifest_sha];
 $database_snapshot_manifest_valid=fn($v,$h)=>true;
@@ -219,10 +223,10 @@ $set_state_phase=function($dir,$id,$phase,$extra) use($wp_filesystem,$case,&$wri
   if ($case==='original') $wp_filesystem->state['database_journal']=['changed'=>true];
   return $wp_filesystem->state;
 };
-$run = function() use(&$state,$wp_filesystem,$interrupted,$proof_sha256,$phase,$repair_continuation,$state_dir,$state_path,$deployment_id,$capture_database_state_consistent,$campaign_snapshot_coherent,$database_snapshot_manifest,$database_snapshot_manifest_valid,$verify_transactional_storage,$encrypt_database_state,$decrypt_database_state,$set_state_phase) {
+$run = function() use(&$state,$wp_filesystem,$interrupted,$proof_sha256,$phase,$repair_continuation,$state_dir,$state_path,$deployment_id,$capture_database_state_consistent,$candidate_resume_commit_valid,$campaign_snapshot_coherent,$database_snapshot_manifest,$database_snapshot_manifest_valid,$verify_transactional_storage,$encrypt_database_state,$decrypt_database_state,$set_state_phase) {
 '''
         end = "return true; }; $result=$run(); echo json_encode(['result'=>is_wp_error($result)?$result->code:$result,'writes'=>$writes,'original'=>$state['database_journal']]);"
-        cases = {"ok": (True, 1), "retry": (True, 0), "postcommit": (True, 0), "notstarted": ("c99_candidate_resume_rebinding", 0), "drift": ("c99_candidate_resume_database_changed", 0), "storage": ("c99_candidate_resume_database_changed", 0), "rebind": ("c99_candidate_resume_rebinding", 0), "corrupt": ("c99_candidate_resume_backup_readback", 0), "encrypt": ("encrypt", 0), "readback": ("c99_candidate_resume_backup_readback", 1), "original": ("c99_candidate_resume_backup_readback", 1)}
+        cases = {"ok": (True, 1), "retry": (True, 0), "postcommit": ("c99_candidate_resume_unproven_drift", 0), "notstarted": ("c99_candidate_resume_rebinding", 0), "drift": ("c99_candidate_resume_database_changed", 0), "storage": ("c99_candidate_resume_database_changed", 0), "rebind": ("c99_candidate_resume_rebinding", 0), "corrupt": ("c99_candidate_resume_backup_readback", 0), "encrypt": ("encrypt", 0), "readback": ("c99_candidate_resume_backup_readback", 1), "original": ("c99_candidate_resume_backup_readback", 1)}
         with tempfile.TemporaryDirectory() as directory:
             fixture = Path(directory) / "guard.php"
             fixture.write_text(setup + guard + end, encoding="utf-8")
@@ -246,7 +250,9 @@ $review=str_repeat('b',64); $proof=str_repeat('a',64);
 $status_interrupted_config=['candidate_resume_review_sha256'=>$review,'proof_sha256'=>$proof,'reviewed_safe_status'=>['database_fingerprint'=>$hash]];
 $state=['candidate_resume_activation_started'=>true,'candidate_resume_review_sha256'=>$review,'candidate_resume_database_fingerprint'=>$hash,'interrupted_forward_proof_sha256'=>$proof,'candidate_resume_database_journal'=>['snapshot'=>$snapshot]];
 $decrypt_database_state=fn($v)=>$v['snapshot']??new WP_Error();
+$database_snapshot=$snapshot;
 $case=$argv[1];
+$candidate_resume_commit_valid=fn($s,$i,$d)=>$case!=='unproven';
 if ($case==='flag') $state['candidate_resume_activation_started']=false;
 if ($case==='review') $state['candidate_resume_review_sha256']=str_repeat('c',64);
 if ($case==='proof') $state['interrupted_forward_proof_sha256']=str_repeat('c',64);
@@ -256,16 +262,84 @@ if ($case==='corrupt') $state['candidate_resume_database_journal']=[];
         with tempfile.TemporaryDirectory() as directory:
             fixture = Path(directory) / "attestation.php"
             fixture.write_text(setup + block + "echo json_encode($resume_checkpoint);", encoding="utf-8")
-            for case in ("ok", "flag", "review", "proof", "hash", "corrupt"):
+            for case in ("ok", "flag", "review", "proof", "hash", "corrupt", "unproven"):
                 with self.subTest(case=case):
                     result = subprocess.run(["php", str(fixture), case], check=True, text=True, capture_output=True)
                     data = json.loads(result.stdout)
                     self.assertNotIn("must-not-leak", result.stdout)
                     if case == "ok":
-                        self.assertEqual({"schema", "review_sha256", "proof_sha256", "database_fingerprint", "journal_valid", "activation_started"}, set(data))
+                        self.assertEqual({"schema", "review_sha256", "proof_sha256", "database_fingerprint", "current_database_fingerprint", "journal_valid", "activation_completed"}, set(data))
                         self.assertTrue(data["journal_valid"])
                     else:
                         self.assertEqual([], data)
+
+    @unittest.skipUnless(shutil.which("php"), "PHP required for committed-state proof")
+    def test_committed_journal_matches_exact_data_not_started_flag(self):
+        bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")
+        block = "$candidate_resume_commit_valid =" + bridge.split("$candidate_resume_commit_valid =", 1)[1].split("$restore_database_state =", 1)[0]
+        setup = r'''<?php
+class WP_Error {}
+function is_wp_error($v) { return $v instanceof WP_Error; }
+function wp_json_encode($v) { return json_encode($v); }
+$config=['deployment_id'=>'target'];
+$decrypt_database_state=fn($v)=>$v['encrypted']??new WP_Error();
+$interrupted=['candidate_resume_review_sha256'=>'review','proof_sha256'=>'proof','reviewed_safe_status'=>['database_fingerprint'=>'baseline','current_deployment'=>'original']];
+$snapshot=['posts'=>['editor content'],'options'=>['complete99_last_deployment_id'=>['option_name'=>'complete99_last_deployment_id','option_value'=>'original','autoload'=>'no'],'other'=>['value'=>'kept']]];
+$receipt=['schema'=>'complete99-candidate-resume-committed/v1','review_sha256'=>'review','proof_sha256'=>'proof','baseline_sha256'=>'baseline','snapshot'=>$snapshot];
+$state=['candidate_resume_activation_started'=>true,'candidate_resume_committed_journal'=>['encrypted'=>$receipt]];
+$case=$argv[1];
+if ($case==='no-proof') unset($state['candidate_resume_committed_journal']);
+if ($case==='corrupt') $state['candidate_resume_committed_journal']=[];
+if ($case==='review') $interrupted['candidate_resume_review_sha256']='other';
+if ($case==='proof') $interrupted['proof_sha256']='other';
+if ($case==='baseline') $interrupted['reviewed_safe_status']['database_fingerprint']='other';
+if ($case==='posts') $snapshot['posts'][]='unrelated edit';
+if ($case==='options') $snapshot['options']['other']['value']='unrelated edit';
+if ($case==='target') $snapshot['options']['complete99_last_deployment_id']['option_value']='target';
+if ($case==='marker') $snapshot['options']['complete99_last_deployment_id']['option_value']='someone-else';
+if ($case==='autoload') $snapshot['options']['complete99_last_deployment_id']['autoload']='yes';
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "committed.php"
+            fixture.write_text(setup + block + "echo json_encode($candidate_resume_commit_valid($state,$interrupted,$snapshot));", encoding="utf-8")
+            for case in ("ok", "target", "no-proof", "corrupt", "review", "proof", "baseline", "posts", "options", "marker", "autoload"):
+                with self.subTest(case=case):
+                    result = subprocess.run(["php", str(fixture), case], check=True, text=True, capture_output=True)
+                    self.assertEqual(case in {"ok", "target"}, json.loads(result.stdout))
+
+    @unittest.skipUnless(shutil.which("php"), "PHP required for completion persistence")
+    def test_completion_receipt_written_only_after_acknowledged_activation(self):
+        bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")
+        start = "if ( '' !== $resume_review_sha256 && ! $resume_activation_proven )"
+        block = start + bridge.split(start, 1)[1].split("$core_after =", 1)[0]
+        setup = r'''<?php
+class WP_Error { public function __construct(public $code,public $message='',public $data=[]) {} }
+function is_wp_error($v) { return $v instanceof WP_Error; }
+function wp_json_encode($v) { return json_encode($v); }
+class MemoryFS { public $state=[]; public function get_contents($p) { return json_encode($this->state); } }
+$case=$argv[1]; $writes=0; $wp_filesystem=new MemoryFS();
+$resume_review_sha256='review'; $resume_activation_proven=$case==='already';
+$activation=$case==='not-success'?false:true; $resume_fingerprint='baseline'; $proof_sha256='proof';
+$snapshot=['posts'=>['current content']]; $state=['database_journal'=>['original'=>'keep']];
+$wp_filesystem->state=$state; $state_dir='memory'; $state_path='memory/state'; $deployment_id='target'; $phase='candidate_activation_pending'; $interrupted=[];
+$capture_database_state_consistent=fn()=>$case==='capture'?new WP_Error('capture'):$snapshot;
+$campaign_snapshot_coherent=fn($s)=>true;
+$encrypt_database_state=fn($s)=>$case==='encrypt'?new WP_Error('encrypt'):['encrypted'=>$s];
+$set_state_phase=function($dir,$id,$phase,$extra)use($case,$wp_filesystem,&$writes){$writes++;if($case==='write')return new WP_Error('write');$wp_filesystem->state=array_merge($wp_filesystem->state,$extra);if($case==='readback')$wp_filesystem->state['candidate_resume_committed_journal']=[];return $wp_filesystem->state;};
+$candidate_resume_commit_valid=fn($s,$i,$d)=>($s['candidate_resume_committed_journal']['encrypted']['snapshot']??null)===$d;
+$run=function()use(&$state,$case,$wp_filesystem,$resume_review_sha256,$resume_activation_proven,$activation,$resume_fingerprint,$proof_sha256,$snapshot,$state_dir,$state_path,$deployment_id,$phase,$interrupted,$capture_database_state_consistent,$campaign_snapshot_coherent,$encrypt_database_state,$set_state_phase,$candidate_resume_commit_valid){
+'''
+        end = "return true;};$r=$run();echo json_encode(['result'=>is_wp_error($r)?$r->code:$r,'writes'=>$writes,'original'=>$wp_filesystem->state['database_journal']]);"
+        cases = {"ok": (True, 1), "already": (True, 0), "not-success": ("c99_candidate_resume_commit_result", 0), "capture": ("c99_candidate_resume_commit_capture", 0), "encrypt": ("encrypt", 0), "write": ("write", 1), "readback": ("c99_candidate_resume_commit_readback", 1)}
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "persist.php"
+            fixture.write_text(setup + block + end, encoding="utf-8")
+            for case, expected in cases.items():
+                with self.subTest(case=case):
+                    result = subprocess.run(["php", str(fixture), case], check=True, text=True, capture_output=True)
+                    data = json.loads(result.stdout)
+                    self.assertEqual(expected, (data["result"], data["writes"]))
+                    self.assertEqual({"original": "keep"}, data["original"])
 
     def test_php_backup_guard_precedes_activation_and_preserves_original_journal(self):
         bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")

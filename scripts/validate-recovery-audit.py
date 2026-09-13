@@ -3364,11 +3364,12 @@ def validate_interrupted_forward_recovery_audit(
                 }
                 require(
                     exact_json_equal(pre_adoption["resume_receipt"], {
-                        "schema": "complete99-candidate-resume-durable-checkpoint/v1",
+                        "schema": "complete99-candidate-resume-durable-checkpoint/v2",
                         "review_sha256": loaded["resume_review_sha256"],
                         "proof_sha256": loaded["proof_sha256"],
                         "database_fingerprint": reviewed_safe["database_fingerprint"],
-                        "journal_valid": True, "activation_started": True,
+                        "current_database_fingerprint": safe["database_fingerprint"],
+                        "journal_valid": True, "activation_completed": True,
                     })
                     and exact_json_equal({k: v for k, v in safe.items() if k not in mutable}, {k: v for k, v in reviewed_safe.items() if k not in mutable})
                     and safe["current_deployment"] in {reviewed_safe["current_deployment"], failed["deployment_id"]}
