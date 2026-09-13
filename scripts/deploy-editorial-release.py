@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 import urllib.request
+import io
+import zipfile
 from urllib.parse import urljoin, urlsplit
 from html.parser import HTMLParser
 from pathlib import Path
@@ -34,6 +36,37 @@ def assert_home(raw, new):
     if (marker in body) != new or ('c99-consumer-hero-grid' in body) == new:
         raise RuntimeError('Rendered homepage does not match expected release')
     return text
+
+def predecessor(commit, version, read=public_bytes):
+    if version == '1.0.0':
+        return None
+    if version != '1.1.0':
+        raise RuntimeError('Unsupported presentation upgrade')
+    filename = 'complete99-editorial-home-1.0.0.zip'
+    url = f'https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/{commit}/editorial-dist/{filename}'
+    raw = read(url)
+    digest = '10dd228e113b9cc1673930167ba8aa81a6e373d0c865be7017990de05d4907f8'
+    if hashlib.sha256(raw).hexdigest() != digest:
+        raise RuntimeError('Predecessor archive differs from verified live release')
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        files = {name.removeprefix('complete99-editorial-home/'): hashlib.sha256(archive.read(name)).hexdigest()
+                 for name in archive.namelist() if not name.endswith('/')}
+    return {'version': '1.0.0', 'sha256': digest, 'files': dict(sorted(files.items())),
+            'url': url + '?nlcb=' + str(int(time.time()))}
+
+def assert_status(status, expected):
+    if (not status['active'] or not status['core_unchanged'] or
+            status['files'] != expected['files'] or status['version'] != expected['version']):
+        raise RuntimeError('Independent installed-state verification failed')
+
+def verify_internal(text, prior, version):
+    page = PublicPage(text)
+    if page.seo() != PublicPage(prior).seo() or not any(s[0] == 'canonical' for s in page.seo()):
+        raise RuntimeError('Internal page SEO changed')
+    if not any(tag == 'link' and '/complete99-editorial-home/assets/site-editorial.css' in a.get('href', '')
+               and ('ver=' + version) in a.get('href', '') for tag, a in page.tags):
+        raise RuntimeError('Shared presentation stylesheet not loaded')
+    return {'seo_preserved': True, 'shared_stylesheet': version}
 
 class PublicPage(HTMLParser):
     def __init__(self, text):
@@ -97,6 +130,7 @@ def main():
     if os.environ.get('GITHUB_REF') != 'refs/heads/main' or os.environ.get('GITHUB_SHA') != commit or not re.fullmatch('[a-f0-9]{40}', commit):
         raise RuntimeError('Only the exact protected main workflow may deploy')
     manifest = json.loads((ROOT / 'editorial-dist/manifest.json').read_text())
+    previous = predecessor(commit, manifest['version'])
     url = f'https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/{commit}/editorial-dist/{manifest["artifact"]}'
     raw = public_bytes(url)
     if hashlib.sha256(raw).hexdigest() != manifest['sha256']:
@@ -104,9 +138,13 @@ def main():
     client = transport.Client(os.environ['WP_BASE_URL'], os.environ['WP_DEPLOY_USER'], os.environ['WP_APP_PASSWORD'], allowed_deploy_hosts=os.environ.get('WP_ALLOWED_DEPLOY_HOSTS', 'complete99.co.il'))
     transport.authenticate(client)
     transport.ensure_code_snippets(client, False)
-    prior = {path: assert_home(public_bytes(client.base_url + path), False) for path in ('/', '/en/')}
+    prior = {path: assert_home(public_bytes(client.base_url + path), bool(previous)) for path in ('/', '/en/')}
+    internal = {path: public_bytes(client.base_url + path).decode('utf-8') for path in
+                ('/dishes/', '/menu/beet-kubbeh/', '/request-proposal/', '/ingredients/')} if previous else {}
     token = secrets.token_hex(32)
     config = {'commit': commit, 'token': token, 'sha256': manifest['sha256'], 'files': manifest['files'], 'url': url + '?nlcb=' + str(int(time.time()))}
+    if previous:
+        config['prior'] = previous
     encoded = json.dumps(config, separators=(',', ':'), ensure_ascii=True)
     if "'" in encoded:
         raise RuntimeError('Unsafe config encoding')
@@ -135,23 +173,28 @@ def main():
         # Fresh request loads the installed presentation plugin.
         audit['installed_status'] = call('status')
         status = audit['installed_status']
-        if status['files'] != manifest['files'] or not status['active'] or not status['core_unchanged'] or status['version'] != manifest['version']:
-            raise RuntimeError('Independent installed-state verification failed')
+        assert_status(status, manifest)
         for path in prior:
             assert_home(public_bytes(client.base_url + path), True)
         audit['rollback'] = call('rollback')
-        if audit['rollback']['active']:
+        if previous:
+            audit['rollback_status'] = call('status')
+            assert_status(audit['rollback_status'], previous)
+        elif audit['rollback']['active']:
             raise RuntimeError('Rollback deactivation failed')
         for path in prior:
-            assert_home(public_bytes(client.base_url + path), False)
+            restored = assert_home(public_bytes(client.base_url + path), bool(previous))
+            if previous and 'data-c99-editorial-release="1.0.0"' not in restored:
+                raise RuntimeError('Prior rendered release marker not restored')
         audit['redeploy'] = call('install')
         audit['final_status'] = call('status')
-        if not audit['final_status']['active'] or not audit['final_status']['core_unchanged'] or audit['final_status']['files'] != manifest['files']:
-            raise RuntimeError('Final state verification failed')
+        assert_status(audit['final_status'], manifest)
         audit['public_verification'] = {}
         for path in prior:
             text = assert_home(public_bytes(client.base_url + path), True)
             audit['public_verification'][path] = verify_public(text, prior[path], client.base_url + path, manifest)
+        audit['internal_pages'] = {path: verify_internal(public_bytes(client.base_url + path).decode('utf-8'), old, manifest['version'])
+                                   for path, old in internal.items()}
         audit['installed_and_http_verified'] = True
     except Exception as error:
         audit['error_type'] = type(error).__name__

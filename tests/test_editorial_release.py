@@ -3,6 +3,7 @@ import json
 import subprocess
 import zipfile
 import hashlib
+import re
 import pytest
 from pathlib import Path
 
@@ -10,6 +11,35 @@ ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('editorial_build_test', ROOT / 'scripts/build-editorial-release.py')
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
+
+def test_upgrade_uses_exact_prior_archive_and_checks_restored_runtime():
+    spec = importlib.util.spec_from_file_location('editorial_upgrade_test', ROOT / 'scripts/deploy-editorial-release.py')
+    driver = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(driver)
+    old = (ROOT / 'editorial-dist/complete99-editorial-home-1.0.0.zip').read_bytes()
+    previous = driver.predecessor('a' * 40, '1.1.0', lambda url: old)
+    assert previous['version'] == '1.0.0' and len(previous['files']) == 8
+    assert '/'+ 'a' * 40 + '/' in previous['url']
+    with pytest.raises(RuntimeError, match='Predecessor'):
+        driver.predecessor('a' * 40, '1.1.0', lambda url: b'changed')
+    with pytest.raises(RuntimeError, match='Unsupported'):
+        driver.predecessor('a' * 40, '2.0.0')
+    state = {'active': True, 'core_unchanged': True, 'version': '1.0.0', 'files': previous['files']}
+    driver.assert_status(state, previous)
+    for field, value in [('active', False), ('core_unchanged', False), ('version', '1.1.0'), ('files', {})]:
+        with pytest.raises(RuntimeError):
+            driver.assert_status({**state, field: value}, previous)
+
+def test_internal_release_requires_loaded_styles_and_preserved_canonical():
+    spec = importlib.util.spec_from_file_location('editorial_internal_test', ROOT / 'scripts/deploy-editorial-release.py')
+    driver = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(driver)
+    old = '<link rel="canonical" href="https://complete99.co.il/dishes/">'
+    new = old + '<link rel="stylesheet" href="/wp-content/plugins/complete99-editorial-home/assets/site-editorial.css?ver=1.1.0">'
+    assert driver.verify_internal(new, old, '1.1.0')['seo_preserved']
+    for broken in (old, new.replace('1.1.0', '1.0.0'), new.replace('/dishes/', '/wrong/')):
+        with pytest.raises(RuntimeError):
+            driver.verify_internal(broken, old, '1.1.0')
 
 def test_public_verification_checks_metadata_assets_and_destinations():
     spec = importlib.util.spec_from_file_location('editorial_public_test', ROOT / 'scripts/deploy-editorial-release.py')
@@ -38,9 +68,9 @@ def test_public_verification_checks_metadata_assets_and_destinations():
 
 def test_package_is_exact_reproducible_and_derived():
     files = builder.entries()
-    assert len(files) == 8
+    assert len(files) == 9
     assert builder.package_bytes(files) == builder.package_bytes(files)
-    archive = ROOT / 'editorial-dist/complete99-editorial-home-1.0.0.zip'
+    archive = ROOT / f'editorial-dist/complete99-editorial-home-{builder.VERSION}.zip'
     assert archive.read_bytes() == builder.package_bytes(files)
     with zipfile.ZipFile(archive) as z:
         assert all(name.startswith('complete99-editorial-home/') for name in z.namelist())
@@ -58,7 +88,10 @@ def test_presentation_has_no_activation_or_data_migration():
         assert forbidden not in entry
     bridge = (ROOT / 'deploy/editorial-bridge.php').read_text()
     assert "flock( $process, LOCK_EX | LOCK_NB )" in bridge
-    assert "'overwrite_package' => false" in bridge
+    assert "'overwrite_package' => $overwrite" in bridge
+    assert "! $backup['prior_plugin_absent']" in bridge
+    assert "$current_files !== $config['files'] && $current_files !== $backup['prior_files']" in bridge
+    assert "copy( $archive, $working )" in bridge
     assert 'current_user_can( \'update_plugins\' )' in bridge
     assert "hash_equals( $config['sha256'], hash_file( 'sha256', $temp ) )" in bridge
     assert "deactivate_plugins( $plugin, true )" in bridge
@@ -93,7 +126,7 @@ def test_home_gate_and_assets_execute(tmp_path):
         }
         class Complete99_Consumer {}
         function add_filter($n,$f,$p){}
-        function add_action($n,$f,$p){$GLOBALS['actions'][$n]=$f;}
+        function add_action($n,$f,$p){$GLOBALS['actions'][$n][]=$f;}
         function wp_dequeue_style($h){}
         function wp_deregister_style($h){}
         function wp_enqueue_style(...$args){$GLOBALS['assets'][]=$args;}
@@ -101,13 +134,27 @@ def test_home_gate_and_assets_execute(tmp_path):
         function wp_deregister_script($h){}
         function wp_enqueue_script(...$args){$GLOBALS['assets'][]=$args;}
         require '__ENTRY__';
-        $actions['wp_enqueue_scripts']();
+        foreach($actions['wp_enqueue_scripts'] as $callback){$callback();}
         echo json_encode(['gate'=>c99_editorial_home_request(),'assets'=>$assets]);
         """.replace('__CONFIG__',cfg).replace('__ENTRY__',entry)
         fixture=tmp_path/'gate.php'
         fixture.write_text(code,encoding='utf-8')
         result=json.loads(subprocess.check_output(['php',str(fixture)],text=True))
         assert result['gate'] is expected
-        assert len(result['assets']) == (2 if expected else 0)
+        assert len(result['assets']) == ((2 if expected else 0) + (0 if admin else 1))
         if expected:
             assert all('complete99-editorial-home/' in asset[1] for asset in result['assets'])
+
+def test_shared_styles_do_not_hide_content_or_change_public_controls():
+    css = (ROOT / 'editorial-release/plugin/assets/site-editorial.css').read_text()
+    assert 'body.c99-consumer-site' in css
+    assert 'prefers-reduced-motion' in css
+    assert 'minmax(0, 1fr)' in css
+    for component in ('c99-consumer-dish-grid', 'c99-consumer-menu-card',
+                      'c99-consumer-editorial-grid', 'c99-group-order-form-card',
+                      'c99-ingredient-index-card', 'c99-consumer-header'):
+        assert component in css
+    for forbidden in ('display: none', 'visibility: hidden', 'pointer-events: none',
+                      'position: fixed', 'url('):
+        assert forbidden not in css
+    assert not re.search(r'(?<![\w-])content\s*:', css)

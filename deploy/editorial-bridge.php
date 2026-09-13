@@ -34,9 +34,22 @@ add_action( 'rest_api_init', static function () {
 		do_action( 'litespeed_purge_all' );
 		wp_cache_flush();
 	};
+	$install_archive = static function ( $archive, $digest, $overwrite ) {
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/misc.php';
+		require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+		if ( ! is_file( $archive ) || is_link( $archive ) || ! hash_equals( $digest, hash_file( 'sha256', $archive ) ) ) { return new WP_Error( 'c99_editorial_archive', 'Exact local archive unavailable.' ); }
+		$upgrader = new Plugin_Upgrader( new WP_Ajax_Upgrader_Skin() );
+		// The upgrader may consume its input. Never hand it the retained recovery archive.
+		$working = wp_tempnam( 'c99-editorial-install.zip' );
+		if ( ! $working || ! copy( $archive, $working ) ) { return new WP_Error( 'c99_editorial_copy', 'Cannot prepare installation copy.' ); }
+		try { $result = $upgrader->install( $working, array( 'overwrite_package' => $overwrite ) ); }
+		finally { if ( is_file( $working ) ) { unlink( $working ); } }
+		return true === $result ? true : ( is_wp_error( $result ) ? $result : new WP_Error( 'c99_editorial_install', 'Installation failed.' ) );
+	};
 	register_rest_route( 'c99-editorial-deploy/v1', $prefix, array(
 		'methods' => 'POST', 'permission_callback' => $permission,
-		'callback' => static function ( $request ) use ( $config, $files_digest, $snapshot, $purge ) {
+		'callback' => static function ( $request ) use ( $config, $files_digest, $snapshot, $purge, $install_archive ) {
 			if ( 'complete99.co.il' !== strtolower( (string) wp_parse_url( home_url( '/' ), PHP_URL_HOST ) ) ) { return new WP_Error( 'c99_editorial_host', 'Unexpected website.' ); }
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 			$plugin = 'complete99-editorial-home/complete99-editorial-home.php';
@@ -54,27 +67,52 @@ add_action( 'rest_api_init', static function () {
 				}
 				if ( 'rollback' === $action ) {
 					if ( ! is_array( $backup ) || $backup['snapshot'] !== $before ) { return new WP_Error( 'c99_editorial_rollback_guard', 'Core state changed; preserve evidence.' ); }
-					deactivate_plugins( $plugin, true );
+					if ( $backup['prior_plugin_absent'] ) {
+						deactivate_plugins( $plugin, true );
+					} else {
+						$current_files = $files_digest( $directory );
+						if ( $current_files !== $config['files'] && $current_files !== $backup['prior_files'] ) { return new WP_Error( 'c99_editorial_rollback_drift', 'Presentation files changed; preserve evidence.' ); }
+						if ( $current_files !== $backup['prior_files'] ) {
+							$result = $install_archive( $backup['prior_archive'], $backup['prior_sha256'], true );
+							if ( is_wp_error( $result ) ) { return $result; }
+						}
+						if ( $files_digest( $directory ) !== $backup['prior_files'] || $snapshot() !== $backup['snapshot'] ) { return new WP_Error( 'c99_editorial_restore', 'Restored state does not match backup.' ); }
+						$result = activate_plugin( $plugin, '', false, true );
+						if ( is_wp_error( $result ) ) { return $result; }
+						$actual = get_option( 'active_plugins', array() ); $expected = $backup['active_plugins']; sort( $actual ); sort( $expected );
+						if ( $actual !== $expected ) { return new WP_Error( 'c99_editorial_restore_membership', 'Plugin membership changed during restore.' ); }
+					}
 					$purge();
-					return array( 'active' => is_plugin_active( $plugin ), 'snapshot' => $snapshot() );
+					return array( 'active' => is_plugin_active( $plugin ), 'snapshot' => $snapshot(), 'files' => $files_digest( $directory ) );
 				}
 				if ( 'install' !== $action || ! defined( 'COMPLETE99_PLATFORM_VERSION' ) || '1.22.1' !== COMPLETE99_PLATFORM_VERSION ) { return new WP_Error( 'c99_editorial_request', 'Unsupported release request.' ); }
 				if ( is_array( $backup ) ) {
-					if ( $backup['snapshot'] !== $before || $files_digest( $directory ) !== $config['files'] ) { return new WP_Error( 'c99_editorial_retry', 'Existing attempt requires inspection, not overwrite.' ); }
+					$current_files = $files_digest( $directory );
+					if ( $backup['snapshot'] !== $before || ( $current_files !== $config['files'] && $current_files !== ( $backup['prior_files'] ?? '' ) ) ) { return new WP_Error( 'c99_editorial_retry', 'Existing attempt requires inspection, not overwrite.' ); }
 				} else {
-					if ( file_exists( $directory ) ) { return new WP_Error( 'c99_editorial_existing', 'Will not overwrite an existing presentation plugin.' ); }
-					$backup = array( 'snapshot' => $before, 'active_plugins' => get_option( 'active_plugins', array() ), 'artifact_sha256' => $config['sha256'], 'commit' => $config['commit'], 'prior_plugin_absent' => true );
+					$prior_exists = file_exists( $directory );
+					if ( $prior_exists && ( empty( $config['prior'] ) || ! is_plugin_active( $plugin ) || $files_digest( $directory ) !== $config['prior']['files'] || ! defined( 'C99_EDITORIAL_VERSION' ) || C99_EDITORIAL_VERSION !== $config['prior']['version'] ) ) { return new WP_Error( 'c99_editorial_existing', 'Existing presentation is not the exact approved predecessor.' ); }
+					if ( ! $prior_exists && ! empty( $config['prior'] ) ) { return new WP_Error( 'c99_editorial_missing_prior', 'Expected installed predecessor is absent.' ); }
+					$backup = array( 'snapshot' => $before, 'active_plugins' => get_option( 'active_plugins', array() ), 'artifact_sha256' => $config['sha256'], 'commit' => $config['commit'], 'prior_plugin_absent' => ! $prior_exists );
+					if ( $prior_exists ) {
+						require_once ABSPATH . 'wp-admin/includes/file.php';
+						$prior_archive = download_url( $config['prior']['url'], 60 );
+						if ( is_wp_error( $prior_archive ) ) { return $prior_archive; }
+						if ( ! hash_equals( $config['prior']['sha256'], hash_file( 'sha256', $prior_archive ) ) ) { unlink( $prior_archive ); return new WP_Error( 'c99_editorial_prior_zip', 'Prior archive checksum mismatch.' ); }
+						$backup['prior_archive'] = $prior_archive;
+						$backup['prior_sha256'] = $config['prior']['sha256'];
+						$backup['prior_files'] = $config['prior']['files'];
+					}
 					if ( ! add_option( $backup_key, $backup, '', false ) || get_option( $backup_key ) !== $backup ) { return new WP_Error( 'c99_editorial_backup', 'Backup readback failed.' ); }
+				}
+				if ( $files_digest( $directory ) !== $config['files'] ) {
 					require_once ABSPATH . 'wp-admin/includes/file.php';
-					require_once ABSPATH . 'wp-admin/includes/misc.php';
-					require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
 					$temp = download_url( $config['url'], 60 );
 					if ( is_wp_error( $temp ) ) { return $temp; }
 					try {
 						if ( ! hash_equals( $config['sha256'], hash_file( 'sha256', $temp ) ) ) { return new WP_Error( 'c99_editorial_zip', 'Package checksum mismatch.' ); }
-						$upgrader = new Plugin_Upgrader( new WP_Ajax_Upgrader_Skin() );
-						$result = $upgrader->install( $temp, array( 'overwrite_package' => false ) );
-						if ( is_wp_error( $result ) || true !== $result ) { return is_wp_error( $result ) ? $result : new WP_Error( 'c99_editorial_install', 'Installation failed.' ); }
+						$result = $install_archive( $temp, $config['sha256'], ! $backup['prior_plugin_absent'] );
+						if ( is_wp_error( $result ) ) { return $result; }
 					} finally { if ( is_file( $temp ) ) { unlink( $temp ); } }
 				}
 				if ( $files_digest( $directory ) !== $config['files'] || $snapshot() !== $backup['snapshot'] ) { return new WP_Error( 'c99_editorial_verify', 'Installed files or core state mismatch.' ); }

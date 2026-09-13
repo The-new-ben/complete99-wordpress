@@ -1,4 +1,4 @@
-name: Deploy independent Complete99 homepage
+name: Deploy Complete99 editorial presentation
 on:
   workflow_dispatch:
 permissions:
@@ -27,7 +27,7 @@ jobs:
     environment: production
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Install exact presentation release and exercise deactivation rollback
+      - name: Install exact presentation release and exercise predecessor rollback
         env:
           WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
           WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
