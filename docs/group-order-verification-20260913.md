@@ -24,7 +24,7 @@ only. It now has a CLI-only `persist` mode that executes the real handler with
 in-memory WordPress adapters. No network, real database, email or production
 credentials are used. The browser preview remains GET-only and cannot persist.
 
-The focused suite passes 38 tests, including 12 new storage scenarios:
+The focused suite passes 39 tests, including 13 new storage scenarios:
 
 - Hebrew and English successful private records, exact 16 metadata fields and fresh readback;
 - quotes, backslashes and Hebrew text survive the storage boundary;
@@ -35,7 +35,7 @@ The focused suite passes 38 tests, including 12 new storage scenarios:
 - rate limit and honeypot never create a successful record.
 
 Command: `python -m pytest -q tests/test_group_request_friction.py tests/test_group_lead_storage.py tests/test_lead_operator_workflow.py`.
-Result: **38 passed**, plus PHP syntax passed for the fixture.
+Result: **39 passed**, plus PHP syntax passed for the fixture.
 
 ## Important boundaries and remaining work
 
