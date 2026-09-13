@@ -58,4 +58,5 @@ def test_diagnostic_log_does_not_change_signed_audit_shape():
     branch = source.split("            if interrupted_observe_only:\n", 1)[1].split("                raise ObservationComplete()", 1)[0]
     assert '"OBSERVATION_DIAGNOSTICS "' in branch
     assert "bounded_observation_diagnostics(status)" in branch
+    assert "file=sys.stderr" in branch
     assert 'audit["observation_diagnostics"]' not in source

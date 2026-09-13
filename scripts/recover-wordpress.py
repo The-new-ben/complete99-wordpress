@@ -5739,7 +5739,8 @@ def main() -> int:
             if interrupted_observe_only:
                 print(
                     "OBSERVATION_DIAGNOSTICS "
-                    + json.dumps(bounded_observation_diagnostics(status), sort_keys=True)
+                    + json.dumps(bounded_observation_diagnostics(status), sort_keys=True),
+                    file=sys.stderr,
                 )
                 recovery_identity = interrupted_proof["recovery_identity"]
                 database_drift = (
