@@ -62,3 +62,12 @@ def test_renderer_uses_resolver_without_weakening_absence_proof():
     proof = source.split('private static function prove_public_quarantine_absence', 1)[1].split('private static function', 1)[0]
     assert "'redirection' => 0" in proof
     assert 'public_html_contains_campaign_marker' in proof
+
+
+def test_previously_deployed_receipt_width_repair_is_not_regressed():
+    source = SOURCE.read_text(encoding='utf-8')
+    assert 'const PROVIDER_EXTERNAL_STATE_MAX_BYTES = 32;' in source
+    assert 'external_state varchar(32) NOT NULL,' in source
+    assert "'external_state'     => array( 'type' => 'varchar(32)', 'nullable' => false )" in source
+    assert 'external_state varchar(24) NOT NULL,' not in source
+    assert "self::PROVIDER_EXTERNAL_STATE_MAX_BYTES < strlen( (string) $identity['externalState'] )" in source

@@ -20,6 +20,10 @@ only the front page and WooCommerce `is_shop()`, excluding the owned custom stor
 - Reject missing, ambiguous or off-origin store ownership. Preserve redirect
   rejection, Campaign lifecycle checks, immutable receipts and historical proof URLs.
 - Retain the complete 1.24.0 editorial homepage implementation in the package.
+- Preserve the already-deployed provider-receipt width repair (32 bytes) in
+  schema creation, schema invariants and bounded aggregate receipt writes.
+  This was previously represented only by the recovery bridge and live repair,
+  not by release source. Shipping the former source would regress live repair.
 
 ## Verification and limits
 

@@ -588,7 +588,8 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
-                "<ul><li>Aligned campaign storefront rendering and readback with the published Complete99 store instead of its WooCommerce redirect alias.</li></ul>"
+                "<ul><li>Aligned campaign storefront rendering and readback with the published Complete99 store instead of its WooCommerce redirect alias.</li>"
+                "<li>Preserved the previously deployed provider-receipt width repair in release source and schema checks.</li></ul>"
                 "<h4>1.24.0</h4>"
                 "<ul>"
                 "<li>Rebuilt the bilingual homepage with editorial food imagery, responsive discovery sections and a direct group-meal enquiry path.</li>"
