@@ -3261,6 +3261,7 @@ add_action(
 						'settings'          => array( 'Complete99_Settings', 'assert_defaults' ),
 					);
 					$migration_invariant_checks = array_fill_keys( array_keys( $migration_invariant_callbacks ), false );
+					$observation_checks_executed = array( 'migration_invariant_checks' => false, 'campaign_operational' => false, 'campaign_capacity_diagnostic' => false );
 					if ( $runtime_loaded && ! $migration_failed ) {
 						foreach ( $migration_invariant_callbacks as $component => $callback ) {
 							try {
@@ -3271,6 +3272,7 @@ add_action(
 							}
 						}
 					}
+					$observation_checks_executed['migration_invariant_checks'] = $runtime_loaded && ! $migration_failed;
 					$migration_invariants_valid = ! in_array( false, $migration_invariant_checks, true );
 					$campaign_operational = array(
 						'cache_ready'                    => false,
@@ -3296,7 +3298,8 @@ add_action(
 						'prior_inactive_receipt_valid'   => false,
 						'quarantine_reserve_inspectable' => false,
 					);
-					if ( $runtime_loaded && 'installed_pending_stabilization' === $phase && method_exists( 'Complete99_Ops', 'status_snapshot' ) ) {
+					$campaign_diagnostic_phase = in_array( $phase, array( 'candidate_activation_pending', 'installed_pending_stabilization' ), true );
+					if ( $runtime_loaded && $campaign_diagnostic_phase && method_exists( 'Complete99_Ops', 'status_snapshot' ) ) {
 						try {
 							$ops_status = Complete99_Ops::status_snapshot();
 							$campaign_status = is_array( $ops_status ) && is_array( $ops_status['campaigns'] ?? null ) ? $ops_status['campaigns'] : array();
@@ -3322,6 +3325,7 @@ add_action(
 							);
 							$campaign_capacity_diagnostic['campaign_cohort_inspectable'] = is_array( $capacity_status['cohorts']['campaign'] ?? null );
 							$campaign_capacity_diagnostic['operations_cohort_inspectable'] = is_array( $capacity_status['cohorts']['operations'] ?? null );
+							$observation_checks_executed['campaign_operational'] = ! empty( $campaign_status );
 						} catch ( \Throwable $error ) {
 							// Preserve the all-false bounded projection on diagnostic failure.
 						}
@@ -3338,7 +3342,7 @@ add_action(
 							);
 						}
 					}
-					if ( $runtime_loaded && 'installed_pending_stabilization' === $phase && $campaign_lifecycle['canonical'] ) {
+					if ( $runtime_loaded && $campaign_diagnostic_phase && $campaign_lifecycle['canonical'] ) {
 						$invoke_campaign_private = static function ( $method, $arguments = array() ) {
 							try {
 								$reflection = new \ReflectionMethod( 'Complete99_Campaigns', (string) $method );
@@ -3363,6 +3367,7 @@ add_action(
 							$non_sentinel = array_values( array_filter( $placement_rows, static fn( $row ) => ! is_array( $row ) || ! hash_equals( (string) $sentinel['value'], (string) ( $row['placement_id'] ?? '' ) ) ) );
 							$campaign_capacity_diagnostic['fresh_install_empty'] = empty( $campaign_rows ) && empty( $non_sentinel );
 						}
+						$observation_checks_executed['campaign_capacity_diagnostic'] = true;
 					}
 					$baseline_database_snapshot = $rollback_journal_status
 						? $decrypt_database_state( $state['database_journal'] ?? array() )
@@ -3487,6 +3492,7 @@ add_action(
 						'runtime_version'  => $runtime_version,
 						'migration_failed' => $migration_failed,
 						'migration_invariant_checks' => $migration_invariant_checks,
+						'observation_checks_executed' => $observation_checks_executed,
 						'migration_invariants_valid'=> $migration_invariants_valid,
 						'campaign_operational' => $campaign_operational,
 						'campaign_capacity_diagnostic' => $campaign_capacity_diagnostic,
