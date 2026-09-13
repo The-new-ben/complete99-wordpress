@@ -2677,6 +2677,40 @@ add_action(
 				: new WP_Error( 'c99_db_journal_json', 'The decrypted database rollback journal is invalid.', array( 'status' => 500 ) );
 		};
 
+		/* Log-only classification. No database values, writes or recovery authority. */
+		$candidate_resume_diagnostic = static function ( $state, $snapshot ) use ( $decrypt_database_state ) {
+			$journal = $decrypt_database_state( $state['candidate_resume_database_journal'] ?? array() );
+			$json = is_wp_error( $journal ) ? false : wp_json_encode( $journal );
+			$fingerprint = (string) ( $state['candidate_resume_database_fingerprint'] ?? '' );
+			$valid = false !== $json && preg_match( '/\A[a-f0-9]{64}\z/', $fingerprint ) && hash_equals( $fingerprint, hash( 'sha256', $json ) );
+			$result = array( 'available' => false, 'journal_valid' => (bool) $valid, 'committed_journal_present' => isset( $state['candidate_resume_committed_journal'] ), 'checks' => array() );
+			if ( ! $valid || ! is_array( $snapshot ) || ! is_array( $journal['posts'] ?? null ) || ! is_array( $snapshot['posts'] ?? null ) || ! is_array( $journal['options'] ?? null ) || ! is_array( $snapshot['options'] ?? null ) ) { return $result; }
+			$checks = array();
+			foreach ( array( 'posts', 'postmeta', 'options', 'seed_ids', 'evaluation_ids', 'ops_tables', 'campaign_tables', 'sync_secret_existed', 'sync_secret_configured' ) as $key ) {
+				$checks[ $key . '_changed' ] = ( $journal[ $key ] ?? null ) !== ( $snapshot[ $key ] ?? null );
+			}
+			foreach ( array( 'active_plugins', 'complete99_last_deployment_id', 'complete99_evaluation_catalog_receipt', 'complete99_os_public_url', 'complete99_os_url', 'complete99_campaign_schema_version', 'complete99_campaign_lifecycle_reservation_v1', 'complete99_ops_schema_version', 'complete99_platform_version', 'page_on_front', 'rewrite_rules', 'show_on_front' ) as $key ) {
+				$checks[ 'option_' . $key . '_changed' ] = ( $journal['options'][ $key ] ?? null ) !== ( $snapshot['options'][ $key ] ?? null );
+			}
+			$index = static function ( $rows ) {
+				$indexed = array();
+				foreach ( $rows as $row ) {
+					if ( ! is_array( $row ) || ! isset( $row['ID'] ) || ! ctype_digit( (string) $row['ID'] ) || isset( $indexed[ (string) $row['ID'] ] ) ) { return false; }
+					$indexed[ (string) $row['ID'] ] = $row;
+				}
+				ksort( $indexed, SORT_NUMERIC ); return $indexed;
+			};
+			$before = $index( $journal['posts'] ); $after = $index( $snapshot['posts'] );
+			if ( false === $before || false === $after ) { return $result; }
+			$checks['post_membership_changed'] = array_keys( $before ) !== array_keys( $after );
+			foreach ( array( 'post_title', 'post_content', 'post_excerpt', 'post_status', 'post_name', 'post_modified', 'post_modified_gmt', 'post_date', 'post_date_gmt', 'post_parent', 'post_type', 'guid' ) as $field ) {
+				$changed = false;
+				foreach ( array_intersect_key( $before, $after ) as $id => $row ) { if ( ( $row[ $field ] ?? null ) !== ( $after[ $id ][ $field ] ?? null ) ) { $changed = true; break; } }
+				$checks[ $field . '_changed' ] = $changed;
+			}
+			$result['available'] = true; $result['checks'] = $checks; return $result;
+		};
+
 		$candidate_resume_commit_valid = static function ( $state, $interrupted, $snapshot ) use ( $config, $decrypt_database_state ) {
 			$receipt = $decrypt_database_state( $state['candidate_resume_committed_journal'] ?? array() );
 			if ( is_wp_error( $receipt ) || ! is_array( $snapshot ) || 'complete99-candidate-resume-committed/v1' !== ( $receipt['schema'] ?? '' )
@@ -3146,7 +3180,7 @@ add_action(
 			array(
 				'methods'             => 'POST',
 				'permission_callback' => $permission,
-				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $decrypt_database_state, $candidate_resume_commit_valid, $managed_robots_path, $ops_quarantine_residue, $campaign_lifecycle_reservation_valid ) {
+				'callback'            => static function ( WP_REST_Request $request ) use ( $config, $bootstrap_filesystem, $verify_site_identity, $state_directory, $read_lock, $process_lock_available, $directory_sha256, $verify_transactional_storage, $capture_database_state, $capture_database_state_consistent, $database_snapshot_manifest, $decrypt_database_state, $candidate_resume_commit_valid, $candidate_resume_diagnostic, $managed_robots_path, $ops_quarantine_residue, $campaign_lifecycle_reservation_valid ) {
 					global $wpdb, $wp_filesystem;
 					$filesystem = $bootstrap_filesystem();
 					if ( is_wp_error( $filesystem ) ) {
@@ -3197,7 +3231,8 @@ add_action(
 					$consistent_database_status = '' !== $projected_deployment_id
 						|| $orphaned_consistent_status
 						|| $interrupted_installing_status
-						|| $interrupted_adopted_status;
+						|| $interrupted_adopted_status
+						|| 'candidate_activation_pending' === $phase;
 					$database_storage = array();
 					if ( $consistent_database_status ) {
 						$database_storage = $verify_transactional_storage();
@@ -3581,6 +3616,7 @@ add_action(
 						'candidate_prior_active'=> ! empty( $state['candidate_prior_active'] ?? $lock['candidate_prior_active'] ?? false ),
 						'candidate_repair_started'=> ! empty( $state['candidate_repair_started'] ?? $lock['candidate_repair_started'] ?? false ),
 						'candidate_resume_checkpoint'=> $resume_checkpoint,
+						'candidate_resume_diagnostic'=> 'candidate_activation_pending' === $phase ? $candidate_resume_diagnostic( $state, $database_snapshot ) : array(),
 						'candidate_repair_no_rollback'=> ! empty( $state['candidate_repair_no_rollback'] ?? $lock['candidate_repair_no_rollback'] ?? false ),
 						'candidate_repair_receipt'=> is_array( $state['candidate_repair_receipt'] ?? null ) ? $state['candidate_repair_receipt'] : array(),
 						'committed_outcome'=> (string) ( $state['committed_outcome'] ?? $lock['committed_outcome'] ?? '' ),

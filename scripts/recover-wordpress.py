@@ -3263,6 +3263,22 @@ INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS = {
     "quarantine_reserve_inspectable",
 }
 
+CANDIDATE_RESUME_DIAGNOSTIC_KEYS = {
+    *(key + "_changed" for key in (
+        "posts", "postmeta", "options", "seed_ids", "evaluation_ids", "ops_tables",
+        "campaign_tables", "sync_secret_existed", "sync_secret_configured", "post_membership",
+        "post_title", "post_content", "post_excerpt", "post_status", "post_name", "post_modified",
+        "post_modified_gmt", "post_date", "post_date_gmt", "post_parent", "post_type", "guid",
+    )),
+    *("option_" + key + "_changed" for key in (
+        "active_plugins", "complete99_last_deployment_id", "complete99_evaluation_catalog_receipt",
+        "complete99_os_public_url", "complete99_os_url", "complete99_campaign_schema_version",
+        "complete99_campaign_lifecycle_reservation_v1", "complete99_ops_schema_version",
+        "complete99_platform_version", "page_on_front", "rewrite_rules", "show_on_front",
+    )),
+}
+
+
 def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
     """Log-only booleans and fixed failure codes, never recovery authority.
 
@@ -3370,6 +3386,19 @@ def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
             receipt["proof_sha256"] == source.get("interrupted_forward_proof_sha256")
         ) if repair_available and receipt_shape_valid else None,
         "completed_at": receipt["completed_at"] if repair_available and receipt_shape_valid else None,
+    }
+    resume = source.get("candidate_resume_diagnostic")
+    flags = ("available", "journal_valid", "committed_journal_present")
+    shape = isinstance(resume, dict) and all(type(resume.get(k)) is bool for k in flags)
+    checks = resume.get("checks") if shape else None
+    available = bool(shape and resume["available"] and resume["journal_valid"]
+                     and isinstance(checks, dict) and set(checks) == CANDIDATE_RESUME_DIAGNOSTIC_KEYS
+                     and all(type(value) is bool for value in checks.values()))
+    result["candidate_resume_drift"] = {
+        "available": available,
+        "journal_valid": resume["journal_valid"] if shape else None,
+        "committed_journal_present": resume["committed_journal_present"] if shape else None,
+        "checks": {key: checks[key] for key in sorted(checks)} if available else {},
     }
     return result
 
