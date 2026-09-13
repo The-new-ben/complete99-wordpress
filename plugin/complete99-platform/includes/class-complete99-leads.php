@@ -83,8 +83,8 @@ final class Complete99_Leads {
 				<input type="text" name="contact_name" maxlength="120" required autocomplete="name" />
 			</label>
 			<label>
-				<span><?php echo esc_html( $is_he ? 'ארגון' : 'Organisation' ); ?></span>
-				<input type="text" name="organisation" maxlength="160" required autocomplete="organization" />
+				<span><?php echo esc_html( $is_group_order ? ( $is_he ? 'שם החברה או הארגון (רשות)' : 'Company or organisation (optional)' ) : ( $is_he ? 'ארגון' : 'Organisation' ) ); ?></span>
+				<input type="text" name="organisation" maxlength="160" <?php if ( ! $is_group_order ) { echo 'required'; } ?> autocomplete="organization" />
 			</label>
 			<label>
 				<span><?php echo esc_html( $is_he ? 'דוא״ל' : 'Email' ); ?></span>
@@ -145,8 +145,8 @@ final class Complete99_Leads {
 				</label>
 			<?php endif; ?>
 			<label class="c99-field-wide">
-				<span><?php echo esc_html( $is_he ? 'מה עוד חשוב שנדע?' : 'What else should we know?' ); ?></span>
-				<textarea name="message" rows="5" maxlength="3000" required></textarea>
+				<span><?php echo esc_html( $is_group_order ? ( $is_he ? 'מה עוד חשוב שנדע? (רשות)' : 'Anything else? (optional)' ) : ( $is_he ? 'מה עוד חשוב שנדע?' : 'What else should we know?' ) ); ?></span>
+				<textarea name="message" rows="5" maxlength="3000" <?php if ( ! $is_group_order ) { echo 'required'; } ?>></textarea>
 			</label>
 			<label class="c99-consent c99-field-wide">
 				<input type="checkbox" name="consent" value="1" required />
@@ -229,7 +229,7 @@ final class Complete99_Leads {
 			}
 		}
 
-		if ( '' === $contact_name || '' === $organisation || ! is_email( $email ) || '' === $message ) {
+		if ( '' === $contact_name || ! is_email( $email ) || ( ! $is_group_order && ( '' === $organisation || '' === $message ) ) ) {
 			wp_die( esc_html__( 'Please complete all required fields.', 'complete99-platform' ), '', array( 'response' => 400 ) );
 		}
 
@@ -716,13 +716,15 @@ final class Complete99_Leads {
 			}
 			$contact      = (string) get_post_meta( $lead->ID, '_c99_contact_name', true );
 			$organisation = (string) get_post_meta( $lead->ID, '_c99_organisation', true );
+			$heading = '' !== $organisation ? $organisation : $contact;
+			$contact_suffix = '' !== $organisation ? ' - ' . $contact : '';
 			$preview      = self::bounded_preview( (string) get_post_meta( $lead->ID, '_c99_message', true ), 120 );
 			$link         = get_edit_post_link( $lead->ID, '' );
 			echo '<li>';
 			if ( $link ) {
-				echo '<a href="' . esc_url( $link ) . '"><strong>' . esc_html( $organisation ) . '</strong> - ' . esc_html( $contact ) . '</a>';
+				echo '<a href="' . esc_url( $link ) . '"><strong>' . esc_html( $heading ) . '</strong>' . esc_html( $contact_suffix ) . '</a>';
 			} else {
-				echo '<strong>' . esc_html( $organisation ) . '</strong> - ' . esc_html( $contact );
+				echo '<strong>' . esc_html( $heading ) . '</strong>' . esc_html( $contact_suffix );
 			}
 			echo '<br><span>' . esc_html( $preview ) . '</span>';
 			echo '<br><small>' . esc_html( get_the_date( '', $lead ) ) . '</small>';
