@@ -121,9 +121,41 @@ class CandidateResumeReviewTests(unittest.TestCase):
         with mock.patch.object(DEPLOY, "bridge_call", side_effect=[initial, {"continued": True}, {}]) as calls, mock.patch.object(RECOVER, "validate_candidate_repair_continue_response", side_effect=lambda d, value, p: value), mock.patch.object(RECOVER, "validate_candidate_repair_adoption_status", return_value={}):
             result = RECOVER.adopt_interrupted_forward(DEPLOY, object(), "token", loaded["proof"]["failed_run"]["deployment_id"], loaded)
         self.assertEqual(["status", "continue-activation", "status"], [call.args[1] for call in calls.call_args_list])
+        self.assertEqual(loaded["proof"]["failed_run"]["deployment_id"], calls.call_args_list[0].kwargs["projected_deployment_id"])
         self.assertEqual(loaded["proof_sha256"], calls.call_args_list[1].kwargs["interrupted_forward_proof_sha256"])
         self.assertEqual(receipt(loaded), result["repair"]["receipt"])
         self.assertTrue(result["repair"]["idempotent"])
+
+    def test_fresh_driver_restart_reaches_continuation_after_committed_changes(self):
+        loaded = self.load()
+        safe = copy.deepcopy(loaded["reviewed_resume_observation"]["safe_status"])
+        durable = {
+            "schema": "complete99-candidate-resume-durable-checkpoint/v1",
+            "review_sha256": loaded["resume_review_sha256"], "proof_sha256": loaded["proof_sha256"],
+            "database_fingerprint": safe["database_fingerprint"], "journal_valid": True, "activation_started": True,
+        }
+        safe.update(database_fingerprint="c" * 64, current_deployment=loaded["proof"]["failed_run"]["deployment_id"], migration_invariants_valid=True, robots_applied=True, robots_managed_sha256=safe["current_robots_sha256"])
+        safe.update(candidate_repair_started=True, candidate_repair_no_rollback=True, candidate_repair_receipt=receipt(loaded), candidate_resume_checkpoint=durable)
+        checkpoint = RECOVER.validate_interrupted_forward_candidate_repair_status(DEPLOY, safe, loaded)
+        self.assertEqual("complete99-candidate-repair-resume-checkpoint/v2", checkpoint["schema"])
+        with mock.patch.object(DEPLOY, "bridge_call", side_effect=[safe, {"continued": True}, {}]) as calls, mock.patch.object(RECOVER, "validate_candidate_repair_continue_response", side_effect=lambda d, v, p: v), mock.patch.object(RECOVER, "validate_candidate_repair_adoption_status", return_value={}):
+            RECOVER.adopt_interrupted_forward(DEPLOY, object(), "token", loaded["proof"]["failed_run"]["deployment_id"], loaded)
+        self.assertEqual(["status", "continue-activation", "status"], [c.args[1] for c in calls.call_args_list])
+        changes = [
+            lambda s: s.update(candidate_resume_checkpoint={}),
+            lambda s: s["candidate_resume_checkpoint"].update(journal_valid=False),
+            lambda s: s["candidate_resume_checkpoint"].update(review_sha256="f" * 64),
+            lambda s: s["candidate_resume_checkpoint"].update(database_fingerprint="f" * 64),
+            lambda s: s.update(lock_owned=False),
+            lambda s: s.update(current_plugin_sha256="f" * 64),
+            lambda s: s.update(current_deployment="c99-unrelated-deployment"),
+            lambda s: s.update(robots_managed_sha256="f" * 64),
+        ]
+        for index, change in enumerate(changes):
+            modified = copy.deepcopy(safe)
+            change(modified)
+            with self.subTest(change=index), self.assertRaises(DEPLOY.DeployError):
+                RECOVER.validate_interrupted_forward_candidate_repair_status(DEPLOY, modified, loaded)
 
     @unittest.skipUnless(shutil.which("php"), "PHP required for executable backup guard")
     def test_executable_php_resume_backup_guard(self):
@@ -179,6 +211,40 @@ $run = function() use(&$state,$wp_filesystem,$interrupted,$proof_sha256,$phase,$
                     result = json.loads(output.stdout)
                     self.assertEqual(expected, (result["result"], result["writes"]))
                     self.assertEqual({"original": "never replace"}, result["original"])
+
+    @unittest.skipUnless(shutil.which("php"), "PHP required for executable status attestation")
+    def test_status_attestation_requires_authenticated_resume_journal(self):
+        bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")
+        block = "$resume_checkpoint =" + bridge.split("$resume_checkpoint =", 1)[1].split("$status = array(", 1)[0]
+        setup = r'''<?php
+class WP_Error {}
+function is_wp_error($v) { return $v instanceof WP_Error; }
+function wp_json_encode($v) { return json_encode($v); }
+$snapshot=['private'=>'must-not-leak']; $hash=hash('sha256',json_encode($snapshot));
+$review=str_repeat('b',64); $proof=str_repeat('a',64);
+$status_interrupted_config=['candidate_resume_review_sha256'=>$review,'proof_sha256'=>$proof,'reviewed_safe_status'=>['database_fingerprint'=>$hash]];
+$state=['candidate_resume_activation_started'=>true,'candidate_resume_review_sha256'=>$review,'candidate_resume_database_fingerprint'=>$hash,'interrupted_forward_proof_sha256'=>$proof,'candidate_resume_database_journal'=>['snapshot'=>$snapshot]];
+$decrypt_database_state=fn($v)=>$v['snapshot']??new WP_Error();
+$case=$argv[1];
+if ($case==='flag') $state['candidate_resume_activation_started']=false;
+if ($case==='review') $state['candidate_resume_review_sha256']=str_repeat('c',64);
+if ($case==='proof') $state['interrupted_forward_proof_sha256']=str_repeat('c',64);
+if ($case==='hash') $state['candidate_resume_database_fingerprint']=str_repeat('c',64);
+if ($case==='corrupt') $state['candidate_resume_database_journal']=[];
+'''
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = Path(directory) / "attestation.php"
+            fixture.write_text(setup + block + "echo json_encode($resume_checkpoint);", encoding="utf-8")
+            for case in ("ok", "flag", "review", "proof", "hash", "corrupt"):
+                with self.subTest(case=case):
+                    result = subprocess.run(["php", str(fixture), case], check=True, text=True, capture_output=True)
+                    data = json.loads(result.stdout)
+                    self.assertNotIn("must-not-leak", result.stdout)
+                    if case == "ok":
+                        self.assertEqual({"schema", "review_sha256", "proof_sha256", "database_fingerprint", "journal_valid", "activation_started"}, set(data))
+                        self.assertTrue(data["journal_valid"])
+                    else:
+                        self.assertEqual([], data)
 
     def test_php_backup_guard_precedes_activation_and_preserves_original_journal(self):
         bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")

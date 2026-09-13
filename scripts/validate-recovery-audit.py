@@ -3337,13 +3337,38 @@ def validate_interrupted_forward_recovery_audit(
             "Interrupted forward pre-adoption observation",
         )
         if "reviewed_resume_observation" in loaded:
+            restart = pre_adoption.get("schema") == "complete99-candidate-repair-resume-checkpoint/v2"
             require(
-                set(pre_adoption) == {"schema", "review_sha256", "observation", "repair_receipt"}
-                and pre_adoption.get("schema") == "complete99-candidate-repair-resume-checkpoint/v1"
-                and pre_adoption.get("review_sha256") == loaded["resume_review_sha256"]
-                and exact_json_equal(pre_adoption.get("observation"), loaded["reviewed_resume_observation"]),
+                set(pre_adoption) == ({"schema", "review_sha256", "observation", "repair_receipt"} | ({"resume_receipt"} if restart else set()))
+                and pre_adoption.get("schema") in {"complete99-candidate-repair-resume-checkpoint/v1", "complete99-candidate-repair-resume-checkpoint/v2"}
+                and pre_adoption.get("review_sha256") == loaded["resume_review_sha256"],
                 "Candidate resume checkpoint changed before adoption",
             )
+            if restart:
+                reviewed_safe = loaded["reviewed_resume_observation"]["safe_status"]
+                safe = validate_interrupted_mismatch_diagnostic_receipt(
+                    pre_adoption["observation"], failed, prior, loaded["recovery_identity"], proof["recovered_baseline"],
+                )
+                mutable = {
+                    "database_fingerprint", "database_manifest", "database_manifest_sha256",
+                    "current_deployment", "migration_failed", "migration_invariants_valid",
+                    "robots_applied", "robots_managed_sha256",
+                }
+                require(
+                    exact_json_equal(pre_adoption["resume_receipt"], {
+                        "schema": "complete99-candidate-resume-durable-checkpoint/v1",
+                        "review_sha256": loaded["resume_review_sha256"],
+                        "proof_sha256": loaded["proof_sha256"],
+                        "database_fingerprint": reviewed_safe["database_fingerprint"],
+                        "journal_valid": True, "activation_started": True,
+                    })
+                    and exact_json_equal({k: v for k, v in safe.items() if k not in mutable}, {k: v for k, v in reviewed_safe.items() if k not in mutable})
+                    and safe["current_deployment"] in {reviewed_safe["current_deployment"], failed["deployment_id"]}
+                    and safe["robots_managed_sha256"] == (reviewed_safe["current_robots_sha256"] if safe["robots_applied"] else ""),
+                    "Candidate resume durable restart checkpoint is invalid",
+                )
+            else:
+                require(exact_json_equal(pre_adoption.get("observation"), loaded["reviewed_resume_observation"]), "Candidate resume checkpoint changed before adoption")
             validate_candidate_repair_receipt(pre_adoption.get("repair_receipt"), loaded)
             resume_adoption = require_mapping(audit.get("interrupted_forward_adoption"), "Candidate resume adoption")
             resume_repair = require_mapping(resume_adoption.get("repair"), "Candidate resume repair")
@@ -3394,7 +3419,9 @@ def validate_interrupted_forward_recovery_audit(
             prefix="pre_adoption_",
             label="Interrupted forward pre-adoption",
             recovered_baseline=(
-                proof.get("recovered_baseline")
+                {**proof["recovered_baseline"], "deployment_id": pre_adoption["observation"]["safe_status"]["current_deployment"]}
+                if pre_adoption.get("schema") == "complete99-candidate-repair-resume-checkpoint/v2"
+                else proof.get("recovered_baseline")
                 if adoption.get("schema")
                 == "complete99-interrupted-forward-adoption/v5"
                 else None
@@ -3410,11 +3437,10 @@ def validate_interrupted_forward_recovery_audit(
         "Interrupted forward adopted database",
     )
     if has_adoption:
+        adoption_idempotent = validate_interrupted_adoption(audit.get("interrupted_forward_adoption"), loaded)
         require(
-            validate_interrupted_adoption(
-                audit.get("interrupted_forward_adoption"), loaded
-            )
-            is (not has_pre_adoption),
+            adoption_idempotent is (not has_pre_adoption)
+            or (has_pre_adoption and "reviewed_resume_observation" in loaded),
             "Interrupted forward adoption idempotency does not match its audit shape",
         )
     validate_interrupted_health_home_robots(

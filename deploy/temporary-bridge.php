@@ -3505,6 +3505,16 @@ add_action(
 						&& is_array( $database_snapshot )
 						&& true === ( $database_snapshot['sync_secret_existed'] ?? null )
 						&& true === ( $database_snapshot['sync_secret_configured'] ?? null );
+					$resume_checkpoint = array();
+					$resume_review = (string) ( $status_interrupted_config['candidate_resume_review_sha256'] ?? '' );
+					if ( '' !== $resume_review && true === ( $state['candidate_resume_activation_started'] ?? null ) && hash_equals( $resume_review, (string) ( $state['candidate_resume_review_sha256'] ?? '' ) ) ) {
+						$resume_journal = $decrypt_database_state( $state['candidate_resume_database_journal'] ?? array() );
+						$resume_json = is_wp_error( $resume_journal ) ? false : wp_json_encode( $resume_journal );
+						$resume_fingerprint = (string) ( $status_interrupted_config['reviewed_safe_status']['database_fingerprint'] ?? '' );
+						if ( false !== $resume_json && preg_match( '/\A[a-f0-9]{64}\z/', $resume_fingerprint ) && hash_equals( $resume_fingerprint, hash( 'sha256', $resume_json ) ) && hash_equals( $resume_fingerprint, (string) ( $state['candidate_resume_database_fingerprint'] ?? '' ) ) && hash_equals( (string) ( $status_interrupted_config['proof_sha256'] ?? '' ), (string) ( $state['interrupted_forward_proof_sha256'] ?? '' ) ) ) {
+							$resume_checkpoint = array( 'schema' => 'complete99-candidate-resume-durable-checkpoint/v1', 'review_sha256' => $resume_review, 'proof_sha256' => (string) $state['interrupted_forward_proof_sha256'], 'database_fingerprint' => $resume_fingerprint, 'journal_valid' => true, 'activation_started' => true );
+						}
+					}
 					$status = array(
 						'deployment_id'    => $deployment_id,
 						'phase'            => $phase,
@@ -3547,6 +3557,7 @@ add_action(
 						'candidate_requested_active'=> ! empty( $state['candidate_requested_active'] ?? $lock['candidate_requested_active'] ?? false ),
 						'candidate_prior_active'=> ! empty( $state['candidate_prior_active'] ?? $lock['candidate_prior_active'] ?? false ),
 						'candidate_repair_started'=> ! empty( $state['candidate_repair_started'] ?? $lock['candidate_repair_started'] ?? false ),
+						'candidate_resume_checkpoint'=> $resume_checkpoint,
 						'candidate_repair_no_rollback'=> ! empty( $state['candidate_repair_no_rollback'] ?? $lock['candidate_repair_no_rollback'] ?? false ),
 						'candidate_repair_receipt'=> is_array( $state['candidate_repair_receipt'] ?? null ) ? $state['candidate_repair_receipt'] : array(),
 						'committed_outcome'=> (string) ( $state['committed_outcome'] ?? $lock['committed_outcome'] ?? '' ),

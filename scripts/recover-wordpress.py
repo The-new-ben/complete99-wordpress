@@ -3760,6 +3760,45 @@ def validate_interrupted_forward_candidate_repair_status(
     )
     resume = loaded_proof.get("reviewed_resume_observation")
     if resume is not None:
+        receipt = validate_candidate_repair_receipt(deployer, status.get("candidate_repair_receipt"), loaded_proof)
+        durable = status.get("candidate_resume_checkpoint")
+        if durable:
+            expected_durable = {
+                "schema": "complete99-candidate-resume-durable-checkpoint/v1",
+                "review_sha256": loaded_proof["resume_review_sha256"],
+                "proof_sha256": loaded_proof["proof_sha256"],
+                "database_fingerprint": resume["safe_status"]["database_fingerprint"],
+                "journal_valid": True, "activation_started": True,
+            }
+            # These values can change after the same activation commits but before
+            # the driver/state records completion. All ownership/source facts stay exact.
+            mutable = {
+                "database_fingerprint", "database_manifest", "database_manifest_sha256",
+                "current_deployment", "migration_failed", "migration_invariants_valid",
+                "robots_applied", "robots_managed_sha256",
+            }
+            safe = observed["safe_status"]
+            reviewed_safe = resume["safe_status"]
+            if (
+                not exact_json_equal(durable, expected_durable)
+                or status.get("candidate_repair_started") is not True
+                or status.get("candidate_repair_no_rollback") is not True
+                or not exact_json_equal(
+                    {k: v for k, v in safe.items() if k not in mutable},
+                    {k: v for k, v in reviewed_safe.items() if k not in mutable},
+                )
+                or safe["current_deployment"] not in {
+                    reviewed_safe["current_deployment"], loaded_proof["proof"]["failed_run"]["deployment_id"],
+                }
+                or safe["robots_managed_sha256"] != (reviewed_safe["current_robots_sha256"] if safe["robots_applied"] else "")
+            ):
+                raise deployer.DeployError("Candidate resume durable restart checkpoint is invalid")
+            return {
+                "schema": "complete99-candidate-repair-resume-checkpoint/v2",
+                "review_sha256": loaded_proof["resume_review_sha256"],
+                "observation": observed, "repair_receipt": receipt,
+                "resume_receipt": durable,
+            }
         if (
             not exact_json_equal(observed, resume)
             or status.get("candidate_repair_started") is not True
@@ -3767,7 +3806,6 @@ def validate_interrupted_forward_candidate_repair_status(
             or status.get("interrupted_forward_proof_sha256") != loaded_proof["proof_sha256"]
         ):
             raise deployer.DeployError("Candidate resume checkpoint changed after review")
-        receipt = validate_candidate_repair_receipt(deployer, status.get("candidate_repair_receipt"), loaded_proof)
         return {
             "schema": "complete99-candidate-repair-resume-checkpoint/v1",
             "review_sha256": loaded_proof["resume_review_sha256"],
@@ -4634,6 +4672,7 @@ def adopt_interrupted_forward(
             "status",
             token,
             deployment_id,
+            projected_deployment_id=deployment_id,
         )
         if (
             initial_status.get("phase") == "installed"
@@ -6037,7 +6076,9 @@ def main() -> int:
                     )
                 audit["pre_adoption_observation"] = observation
                 pre_adoption_deployment = (
-                    live_baseline["deployment_id"]
+                    status["current_deployment"]
+                    if candidate_repair and observation.get("schema") == "complete99-candidate-repair-resume-checkpoint/v2"
+                    else live_baseline["deployment_id"]
                     if candidate_repair
                     else failed_forward["deployment_id"]
                 )

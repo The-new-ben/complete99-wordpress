@@ -1568,6 +1568,29 @@ class RecoveryAuditValidatorTests(unittest.TestCase):
             with self.subTest(receipt_field=field), self.assertRaisesRegex(VALIDATOR.AuditValidationError, "differs from the durable"):
                 VALIDATOR.validate_interrupted_forward_recovery_audit(changed, reviewed_resume, probe_id)
 
+        restarted = copy.deepcopy(resume_audit)
+        pre = restarted["pre_adoption_observation"]
+        pre["schema"] = "complete99-candidate-repair-resume-checkpoint/v2"
+        safe = pre["observation"]["safe_status"]
+        pre["resume_receipt"] = {
+            "schema": "complete99-candidate-resume-durable-checkpoint/v1",
+            "review_sha256": reviewed_resume["resume_review_sha256"], "proof_sha256": reviewed_resume["proof_sha256"],
+            "database_fingerprint": safe["database_fingerprint"], "journal_valid": True, "activation_started": True,
+        }
+        safe.update(database_fingerprint="c" * 64, current_deployment=failed["deployment_id"], migration_invariants_valid=True, robots_applied=True, robots_managed_sha256=safe["current_robots_sha256"])
+        pre["observation"]["safe_status_sha256"] = VALIDATOR.canonical_json_sha256(safe)
+        pre["observation"]["mismatches"] = VALIDATOR.interrupted_status_mismatches(safe, failed, prior, reviewed_resume["recovery_identity"], recovered)
+        restarted.update(interrupted_health_home_robots(failed, recovered, "pre_adoption_"))
+        VALIDATOR.validate_interrupted_forward_recovery_audit(restarted, reviewed_resume, probe_id)
+        # Losing a response after a pending preflight can also yield an idempotent final receipt.
+        restarted["interrupted_forward_adoption"]["receipt"]["idempotent"] = True
+        VALIDATOR.validate_interrupted_forward_recovery_audit(restarted, reviewed_resume, probe_id)
+        for field in ("journal_valid", "review_sha256", "database_fingerprint"):
+            changed = copy.deepcopy(restarted)
+            changed["pre_adoption_observation"]["resume_receipt"][field] = False if field == "journal_valid" else "f" * 64
+            with self.subTest(durable_field=field), self.assertRaises(VALIDATOR.AuditValidationError):
+                VALIDATOR.validate_interrupted_forward_recovery_audit(changed, reviewed_resume, probe_id)
+
     def test_independent_robots_checkpoint_authority_rejects_tampering(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             repository_root = Path(temporary)
