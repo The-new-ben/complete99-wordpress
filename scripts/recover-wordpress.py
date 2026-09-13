@@ -8,6 +8,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import secrets
 import sys
 import time
@@ -3241,6 +3242,72 @@ def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
     result["campaign_invariant"] = {
         "available": campaign_available,
         "failure_code": campaign_code if campaign_available else "unavailable",
+    }
+    # These fields already exist in the authenticated status response, but the
+    # historic signed projection omits them in candidate_activation_pending.
+    # Expose bounded evidence only. Never turn this log into resume authority.
+    lifecycle = source.get("campaign_lifecycle")
+    lifecycle_available = (
+        source.get("database_fingerprint_available") is True
+        and isinstance(lifecycle, dict)
+        and lifecycle.get("canonical") is True
+        and type(lifecycle.get("generation")) is int
+        and 0 < lifecycle["generation"] <= 2**63 - 1
+        and type(lifecycle.get("state")) is str
+        and lifecycle["state"] in {"active", "inactive", "suspending"}
+    )
+    result["campaign_lifecycle"] = {
+        "available": lifecycle_available,
+        "state": lifecycle["state"] if lifecycle_available else "unavailable",
+        "generation": lifecycle["generation"] if lifecycle_available else None,
+    }
+    repair_flags = ("candidate_repair_started", "candidate_repair_no_rollback")
+    repair_available = (
+        source.get("state_exists") is True
+        and all(type(source.get(key)) is bool for key in repair_flags)
+    )
+    receipt = source.get("candidate_repair_receipt")
+    receipt = receipt if isinstance(receipt, dict) else {}
+    digest_keys = (
+        "proof_sha256", "plugin_before_sha256", "plugin_after_sha256",
+        "source_before_sha256", "source_after_sha256",
+    )
+    receipt_shape_valid = (
+        set(receipt) == set(digest_keys) | {
+            "charset", "collation", "column", "completed_at", "default",
+            "from_type", "nullable", "schema", "source_path", "table", "to_type",
+        }
+        and all(type(receipt.get(key)) is str and re.fullmatch(r"[a-f0-9]{64}", receipt[key]) for key in digest_keys)
+        and receipt.get("schema") == "complete99-campaign-provider-receipt-width-repair/v1"
+        and receipt.get("source_path") == "includes/class-complete99-campaigns.php"
+        and receipt.get("column") == "external_state"
+        and receipt.get("from_type") == "varchar(24)"
+        and receipt.get("to_type") == "varchar(32)"
+        and receipt.get("nullable") is False
+        and receipt.get("default") is None
+        and receipt.get("charset") == "utf8mb4"
+        and type(receipt.get("table")) is str
+        and re.fullmatch(r"[A-Za-z0-9_]{1,190}", receipt["table"]) is not None
+        and receipt["table"].endswith("c99_campaign_provider_receipts")
+        and type(receipt.get("collation")) is str
+        and re.fullmatch(r"utf8mb4_[A-Za-z0-9_]+", receipt["collation"]) is not None
+        and type(receipt.get("completed_at")) is int
+        and 0 < receipt["completed_at"] <= 2**63 - 1
+    )
+    result["candidate_repair"] = {
+        "available": repair_available,
+        "started": source[repair_flags[0]] if repair_available else None,
+        "no_rollback": source[repair_flags[1]] if repair_available else None,
+        "receipt_present": bool(receipt) if repair_available else None,
+        "receipt_shape_valid": bool(receipt_shape_valid) if repair_available else None,
+        "receipt_matches_current_plugin": (
+            receipt["plugin_after_sha256"] == source.get("current_plugin_sha256")
+            == source.get("installed_plugin_sha256")
+        ) if repair_available and receipt_shape_valid else None,
+        "receipt_matches_state_proof": (
+            receipt["proof_sha256"] == source.get("interrupted_forward_proof_sha256")
+        ) if repair_available and receipt_shape_valid else None,
+        "completed_at": receipt["completed_at"] if repair_available and receipt_shape_valid else None,
     }
     return result
 

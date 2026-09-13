@@ -135,3 +135,93 @@ def test_missing_and_invalid_media_registry_cannot_collapse_to_unknown():
     program = ("class Complete99_Consumer_Media_Rights { public static function assert_invariants() { return true; } } "
                + "$campaign_invariant_failure = 'unknown'; " + block + " echo $campaign_invariant_failure;")
     assert subprocess.run([php, "-r", program], text=True, capture_output=True, check=True).stdout == "unknown"
+
+
+def repair_status_fixture():
+    status = status_fixture()
+    status.update({
+        "state_exists": True,
+        "candidate_repair_started": True,
+        "candidate_repair_no_rollback": True,
+        "current_plugin_sha256": "b" * 64,
+        "installed_plugin_sha256": "b" * 64,
+        "interrupted_forward_proof_sha256": "a" * 64,
+        "candidate_repair_receipt": {
+            "charset": "utf8mb4", "collation": "utf8mb4_unicode_ci",
+            "column": "external_state", "completed_at": 1786500000,
+            "default": None, "nullable": False,
+            "from_type": "varchar(24)", "to_type": "varchar(32)",
+            "plugin_before_sha256": "c" * 64, "plugin_after_sha256": "b" * 64,
+            "proof_sha256": "a" * 64,
+            "source_before_sha256": "d" * 64, "source_after_sha256": "e" * 64,
+            "schema": "complete99-campaign-provider-receipt-width-repair/v1",
+            "source_path": "includes/class-complete99-campaigns.php",
+            "table": "privateprefix_c99_campaign_provider_receipts",
+        },
+    })
+    return status
+
+
+def test_repair_receipt_diagnostic_is_evidence_not_recovery_permission():
+    status = repair_status_fixture()
+    before = copy.deepcopy(status)
+    result = RECOVER.bounded_observation_diagnostics(status)
+    assert result["candidate_repair"] == {
+        "available": True, "started": True, "no_rollback": True,
+        "receipt_present": True, "receipt_shape_valid": True,
+        "receipt_matches_current_plugin": True, "receipt_matches_state_proof": True,
+        "completed_at": 1786500000,
+    }
+    assert result["recovery_authority"] is False
+    assert status == before
+    assert "privateprefix" not in json.dumps(result)
+    assert "source_path" not in json.dumps(result)
+    for key in ("current_plugin_sha256", "installed_plugin_sha256", "interrupted_forward_proof_sha256"):
+        changed = copy.deepcopy(status)
+        changed[key] = "f" * 64
+        projected = RECOVER.bounded_observation_diagnostics(changed)["candidate_repair"]
+        binding = "receipt_matches_state_proof" if key == "interrupted_forward_proof_sha256" else "receipt_matches_current_plugin"
+        assert projected[binding] is False
+
+
+def test_repair_diagnostic_rejects_missing_malformed_and_private_receipts():
+    for key in repair_status_fixture()["candidate_repair_receipt"]:
+        for value in (None, True, [], {}, "DO_NOT_LOG_ME"):
+            status = repair_status_fixture()
+            status["candidate_repair_receipt"][key] = value
+            if key == "default" and value is None:
+                continue
+            result = RECOVER.bounded_observation_diagnostics(status)
+            assert result["candidate_repair"]["receipt_shape_valid"] is False, (key, value)
+            assert result["candidate_repair"]["receipt_matches_current_plugin"] is None
+            assert "DO_NOT_LOG_ME" not in json.dumps(result)
+    for receipt in (None, [], "DO_NOT_LOG_ME", {}, {"private": "DO_NOT_LOG_ME"}):
+        status = repair_status_fixture()
+        status["candidate_repair_receipt"] = receipt
+        result = RECOVER.bounded_observation_diagnostics(status)
+        assert result["candidate_repair"]["receipt_shape_valid"] is False
+        assert "DO_NOT_LOG_ME" not in json.dumps(result)
+    for key in ("state_exists", "candidate_repair_started", "candidate_repair_no_rollback"):
+        status = repair_status_fixture()
+        status[key] = 1
+        assert RECOVER.bounded_observation_diagnostics(status)["candidate_repair"]["available"] is False
+
+
+def test_lifecycle_requires_a_real_snapshot_and_canonical_finite_state():
+    for state in ("active", "inactive", "suspending"):
+        status = status_fixture()
+        status["database_fingerprint_available"] = True
+        status["campaign_lifecycle"] = {"canonical": True, "generation": 7, "state": state}
+        assert RECOVER.bounded_observation_diagnostics(status)["campaign_lifecycle"] == {
+            "available": True, "generation": 7, "state": state,
+        }
+        for key, value in (("canonical", 1), ("canonical", False), ("generation", True),
+                           ("generation", 0), ("generation", 2**64), ("state", []),
+                           ("state", "DO_NOT_LOG_ME")):
+            changed = copy.deepcopy(status)
+            changed["campaign_lifecycle"][key] = value
+            result = RECOVER.bounded_observation_diagnostics(changed)
+            assert result["campaign_lifecycle"] == {"available": False, "generation": None, "state": "unavailable"}
+            assert "DO_NOT_LOG_ME" not in json.dumps(result)
+        status["database_fingerprint_available"] = False
+        assert RECOVER.bounded_observation_diagnostics(status)["campaign_lifecycle"]["available"] is False
