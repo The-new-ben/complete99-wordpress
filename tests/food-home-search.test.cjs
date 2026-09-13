@@ -9,7 +9,7 @@ const start = source.lastIndexOf('(function () {', marker);
 const end = source.indexOf('}());', marker) + 5;
 const script = source.slice(start, end);
 
-function fixture(local = true, language = 'he', enhance = false, href = 'https://complete99.co.il/') {
+function fixture(local = true, language = 'he', enhance = false, href = 'https://complete99.co.il/', filterScript = script) {
   const search = {value: '', addEventListener(event, fn) { this[event] = fn; }};
   const count = {textContent: ''};
   const empty = {hidden: true};
@@ -36,7 +36,7 @@ function fixture(local = true, language = 'he', enhance = false, href = 'https:/
     }}
   };
   if (enhance) { vm.runInNewContext(fs.readFileSync('editorial-release/plugin/assets/discovery-local.js', 'utf8'), context); }
-  vm.runInNewContext(script, context);
+  vm.runInNewContext(filterScript, context);
   return {search, count, empty, cards, buttons, urls};
 }
 const f = fixture();
@@ -68,4 +68,15 @@ const oldLink = fixture(false, 'en', true, 'https://complete99.co.il/en/dishes/?
 assert.equal(oldLink.urls[0], '/en/dishes/?utm_source=email#menu');
 oldLink.buttons[2].click();
 assert.equal(oldLink.urls.length, 1, 'No new history writes after legacy filter cleanup');
+const archived = require('node:child_process').execFileSync('python', ['-c', "import importlib.util,sys; s=importlib.util.spec_from_file_location('b','scripts/build-editorial-release.py'); b=importlib.util.module_from_spec(s); s.loader.exec_module(b); sys.stdout.buffer.write(b.legacy_public_script())"], {encoding:'utf8'});
+const liveMarker = archived.indexOf("var shell = document.querySelector('[data-c99-dish-filter]')");
+const liveScript = archived.slice(archived.lastIndexOf('(function () {',liveMarker),archived.indexOf('}());',liveMarker)+5);
+for (const language of ['he','en']) {
+  const actual = fixture(false,language,true,'https://complete99.co.il/dishes/',liveScript);
+  actual.buttons[1].click();
+  assert.deepEqual(actual.cards.map(c=>c.hidden),[false,false,true]);
+  assert.equal(actual.urls.length,0,'Actual archived 1.22.1 script must keep URLs clean');
+  actual.buttons[0].keydown({key:'End',preventDefault(){}});
+  assert(actual.buttons[3].focused);
+}
 console.log('PASS: Hebrew marks, case-insensitive English, combined filters, empty/reset states, keyboard navigation, clean homepage URL, legacy isolation');

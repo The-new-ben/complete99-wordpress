@@ -14,11 +14,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = 'complete99-editorial-home'
-VERSION = '1.2.0'
+VERSION = '1.2.1'
 DIST = ROOT / 'editorial-dist'
 spec = importlib.util.spec_from_file_location('canonical_builder', ROOT / 'scripts/build-plugin-zip.py')
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
+
+def legacy_public_script():
+    import io
+    path = ROOT / 'plugin-dist/complete99-platform-1.22.1.zip'
+    raw = path.read_bytes() if path.exists() else subprocess.check_output(['git', 'show', 'HEAD:plugin-dist/complete99-platform-1.22.1.zip'], cwd=ROOT)
+    assert hashlib.sha256(raw).hexdigest() == 'b5a90bab452bbbb54d55cc639c368e262d2c5c702a56d401286d581b816542f1'
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        source = archive.read('complete99-platform/assets/js/public.js')
+    marker = b'function updateAddress(filter) {'
+    assert source.count(marker) == 1
+    source = source.replace(marker, marker + b"\n\t\tif (shell.hasAttribute('data-c99-local-search')) { return; }")
+    requested = b"var requested = new URL(window.location.href).searchParams.get('dish-style');"
+    assert source.count(requested) == 1
+    return source.replace(requested, b"var requested = shell.hasAttribute('data-c99-local-search') ? 'all' : new URL(window.location.href).searchParams.get('dish-style');")
 
 def entries():
     platform = ROOT / 'plugin/complete99-platform'
@@ -41,6 +55,7 @@ def entries():
         'editorial-shell.php': editorial_shell,
         'editorial-content.php': builder.canonical_contents(ROOT / 'editorial-release/plugin/editorial-content.php'),
         'assets/discovery-local.js': builder.canonical_contents(ROOT / 'editorial-release/plugin/assets/discovery-local.js'),
+        'assets/legacy-public.js': legacy_public_script(),
         'assets/consumer.css': builder.canonical_contents(platform / 'assets/css/consumer.css'),
         'assets/public.js': builder.canonical_contents(platform / 'assets/js/public.js'),
         'assets/site-editorial.css': builder.canonical_contents(ROOT / 'editorial-release/plugin/assets/site-editorial.css'),
