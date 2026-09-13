@@ -3261,14 +3261,30 @@ add_action(
 						'settings'          => array( 'Complete99_Settings', 'assert_defaults' ),
 					);
 					$migration_invariant_checks = array_fill_keys( array_keys( $migration_invariant_callbacks ), false );
+					$campaign_invariant_failure = 'unavailable';
+					$campaign_invariant_failure_codes = array(
+						'The Complete99 consumer media-rights authority is unavailable.' => 'media_rights_authority',
+						'The Complete99 campaign schema is incomplete.' => 'schema',
+						'The Complete99 campaign rollback capacity boundary is not satisfied.' => 'capacity',
+						'The Complete99 campaign lifecycle reservation is unavailable or inactive.' => 'lifecycle',
+						'The Complete99 private-evidence disposition journal requires recovery.' => 'evidence',
+						'The Complete99 public-suppression aggregate backlog requires recovery.' => 'suppression',
+						'The durable WordPress roles option is unavailable.' => 'capabilities',
+						'A Campaign Studio capability is not durable.' => 'capabilities',
+					);
 					$observation_checks_executed = array( 'migration_invariant_checks' => false, 'campaign_operational' => false, 'campaign_capacity_diagnostic' => false );
 					if ( $runtime_loaded && ! $migration_failed ) {
 						foreach ( $migration_invariant_callbacks as $component => $callback ) {
 							try {
 								call_user_func( $callback );
 								$migration_invariant_checks[ $component ] = true;
+								if ( 'campaigns' === $component ) { $campaign_invariant_failure = 'passed'; }
 							} catch ( \Throwable $error ) {
 								$migration_invariant_checks[ $component ] = false;
+								if ( 'campaigns' === $component ) {
+									// Never return the exception, SQL, URLs or private row contents.
+									$campaign_invariant_failure = $campaign_invariant_failure_codes[ $error->getMessage() ] ?? 'unknown';
+								}
 							}
 						}
 					}
@@ -3492,6 +3508,7 @@ add_action(
 						'runtime_version'  => $runtime_version,
 						'migration_failed' => $migration_failed,
 						'migration_invariant_checks' => $migration_invariant_checks,
+						'campaign_invariant_failure' => $campaign_invariant_failure,
 						'observation_checks_executed' => $observation_checks_executed,
 						'migration_invariants_valid'=> $migration_invariants_valid,
 						'campaign_operational' => $campaign_operational,

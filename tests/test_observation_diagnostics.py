@@ -70,3 +70,46 @@ def test_diagnostic_log_does_not_change_signed_audit_shape():
     assert "bounded_observation_diagnostics(status)" in branch
     assert "file=sys.stderr" in branch
     assert 'audit["observation_diagnostics"]' not in source
+
+
+def test_campaign_failure_is_an_allowlisted_code_not_an_exception():
+    for code in ("media_rights_authority", "schema", "capacity", "lifecycle", "evidence", "suppression", "capabilities", "unknown"):
+        status = status_fixture()
+        status["campaign_invariant_failure"] = code
+        assert RECOVER.bounded_observation_diagnostics(status)["campaign_invariant"] == {
+            "available": True, "failure_code": code,
+        }
+    for value in (None, [], {}, 1, "DO_NOT_LOG_ME", "passed", "unavailable"):
+        status = status_fixture()
+        status["campaign_invariant_failure"] = value
+        result = RECOVER.bounded_observation_diagnostics(status)
+        assert result["campaign_invariant"] == {"available": False, "failure_code": "unavailable"}
+        assert "DO_NOT_LOG_ME" not in json.dumps(result)
+
+
+def test_campaign_failure_requires_executed_consistent_migration_check():
+    status = status_fixture()
+    status["campaign_invariant_failure"] = "lifecycle"
+    status["observation_checks_executed"]["migration_invariant_checks"] = False
+    assert RECOVER.bounded_observation_diagnostics(status)["campaign_invariant"]["available"] is False
+    status["observation_checks_executed"]["migration_invariant_checks"] = True
+    status["migration_invariant_checks"]["campaigns"] = True
+    assert RECOVER.bounded_observation_diagnostics(status)["campaign_invariant"]["available"] is False
+    status["campaign_invariant_failure"] = "passed"
+    assert RECOVER.bounded_observation_diagnostics(status)["campaign_invariant"] == {
+        "available": True, "failure_code": "passed",
+    }
+
+
+def test_bridge_failure_codes_correspond_to_real_invariant_messages():
+    import re
+    bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")
+    campaigns = (ROOT / "plugin/complete99-platform/includes/class-complete99-campaigns.php").read_text(encoding="utf-8")
+    mapping = bridge.split("$campaign_invariant_failure_codes = array(", 1)[1].split(");", 1)[0]
+    pairs = re.findall(r"'([^']+)' => '([^']+)'", mapping)
+    assert len(pairs) == 8
+    for message, code in pairs:
+        assert message in campaigns
+        assert code in {"media_rights_authority", "schema", "capacity", "lifecycle", "evidence", "suppression", "capabilities"}
+    assert "$campaign_invariant_failure_codes[ $error->getMessage() ] ?? 'unknown'" in bridge
+    assert "'campaign_invariant_failure' => $campaign_invariant_failure" in bridge

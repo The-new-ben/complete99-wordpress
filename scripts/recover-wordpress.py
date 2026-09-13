@@ -3201,7 +3201,7 @@ INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS = {
 }
 
 def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
-    """Log-only booleans, never a recovery proof or raw private status.
+    """Log-only booleans and fixed failure codes, never recovery authority.
 
     Keep historical signed audit shapes and hashes unchanged. Missing or invalid
     groups are unavailable, not all-false. Never emit errors, rows or URLs.
@@ -3227,6 +3227,21 @@ def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
             "available": available,
             "checks": {key: group[key] for key in sorted(keys)} if available else {},
         }
+    campaign_code = source.get("campaign_invariant_failure")
+    campaign_group = result["groups"]["migration_invariant_checks"]
+    campaign_available = (
+        campaign_group["available"]
+        and type(campaign_code) is str
+        and campaign_code in {
+            "passed", "media_rights_authority", "schema", "capacity", "lifecycle",
+            "evidence", "suppression", "capabilities", "unknown",
+        }
+        and (campaign_code == "passed") is campaign_group["checks"]["campaigns"]
+    )
+    result["campaign_invariant"] = {
+        "available": campaign_available,
+        "failure_code": campaign_code if campaign_available else "unavailable",
+    }
     return result
 
 
