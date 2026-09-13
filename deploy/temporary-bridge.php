@@ -3296,7 +3296,8 @@ add_action(
 						'prior_inactive_receipt_valid'   => false,
 						'quarantine_reserve_inspectable' => false,
 					);
-					if ( $runtime_loaded && 'installed_pending_stabilization' === $phase && method_exists( 'Complete99_Ops', 'status_snapshot' ) ) {
+					$campaign_diagnostic_phase = in_array( $phase, array( 'candidate_activation_pending', 'installed_pending_stabilization' ), true );
+					if ( $runtime_loaded && $campaign_diagnostic_phase && method_exists( 'Complete99_Ops', 'status_snapshot' ) ) {
 						try {
 							$ops_status = Complete99_Ops::status_snapshot();
 							$campaign_status = is_array( $ops_status ) && is_array( $ops_status['campaigns'] ?? null ) ? $ops_status['campaigns'] : array();
@@ -3338,7 +3339,7 @@ add_action(
 							);
 						}
 					}
-					if ( $runtime_loaded && 'installed_pending_stabilization' === $phase && $campaign_lifecycle['canonical'] ) {
+					if ( $runtime_loaded && $campaign_diagnostic_phase && $campaign_lifecycle['canonical'] ) {
 						$invoke_campaign_private = static function ( $method, $arguments = array() ) {
 							try {
 								$reflection = new \ReflectionMethod( 'Complete99_Campaigns', (string) $method );

@@ -3200,6 +3200,34 @@ INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS = {
     "quarantine_reserve_inspectable",
 }
 
+def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
+    """Log-only booleans, never a recovery proof or raw private status.
+
+    Keep historical signed audit shapes and hashes unchanged. Missing or invalid
+    groups are unavailable, not all-false. Never emit errors, rows or URLs.
+    """
+    source = status if isinstance(status, dict) else {}
+    result: dict[str, Any] = {
+        "schema": "complete99-observation-diagnostics/v1",
+        "recovery_authority": False,
+        "groups": {},
+    }
+    for name, keys in (
+        ("migration_invariant_checks", INTERRUPTED_FORWARD_MIGRATION_INVARIANT_KEYS),
+        ("campaign_operational", INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS),
+        ("campaign_capacity_diagnostic", INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS),
+    ):
+        group = source.get(name)
+        available = isinstance(group, dict) and all(
+            key in group and type(group[key]) is bool for key in keys
+        )
+        result["groups"][name] = {
+            "available": available,
+            "checks": {key: group[key] for key in sorted(keys)} if available else {},
+        }
+    return result
+
+
 INTERRUPTED_FORWARD_SAFE_PHASES = {
     "",
     "cleanup_failed",
@@ -5709,6 +5737,10 @@ def main() -> int:
                 "schema": interrupted_proof["schema"],
             }
             if interrupted_observe_only:
+                print(
+                    "OBSERVATION_DIAGNOSTICS "
+                    + json.dumps(bounded_observation_diagnostics(status), sort_keys=True)
+                )
                 recovery_identity = interrupted_proof["recovery_identity"]
                 database_drift = (
                     status.get("database_fingerprint")
