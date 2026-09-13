@@ -2,12 +2,13 @@
 /**
  * Plugin Name: Complete99 Editorial Home
  * Description: Shared public food-site presentation and bilingual editorial homepage. No content migrations.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Requires PHP: 8.0
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
-define( 'C99_EDITORIAL_VERSION', '1.1.0' );
+define( 'C99_EDITORIAL_VERSION', '1.2.0' );
 define( 'C99_EDITORIAL_URL', plugin_dir_url( __FILE__ ) );
+require_once __DIR__ . '/editorial-content.php';
 
 function c99_editorial_home_request() {
 	return ! is_admin() && ! is_404() && is_singular()
@@ -20,6 +21,7 @@ function c99_editorial_home_request() {
 }
 
 add_filter( 'template_include', static function ( $template ) {
+	if ( c99_editorial_page_key() ) { return __DIR__ . '/editorial-shell.php'; }
 	if ( ! c99_editorial_home_request() ) { return $template; }
 	require_once __DIR__ . '/includes/class-complete99-editorial-consumer.php';
 	return __DIR__ . '/public-shell.php';
@@ -38,4 +40,5 @@ add_action( 'wp_enqueue_scripts', static function () {
 add_action( 'wp_enqueue_scripts', static function () {
 	if ( is_admin() || ! class_exists( 'Complete99_Consumer' ) ) { return; }
 	wp_enqueue_style( 'complete99-site-editorial', C99_EDITORIAL_URL . 'assets/site-editorial.css', array( 'complete99-consumer' ), C99_EDITORIAL_VERSION );
+	wp_add_inline_script( 'complete99-public', file_get_contents( __DIR__ . '/assets/discovery-local.js' ), 'before' );
 }, 30 );

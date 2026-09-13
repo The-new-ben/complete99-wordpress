@@ -1,0 +1,74 @@
+{
+  "schema": "complete99-content-expansion/v1",
+  "status": "implementation_plan_not_published_inventory",
+  "owner_direction": "Broad food portal. Prepared and home-style food, nearby discovery and group orders lead; do not limit the knowledge system to existing menu dishes.",
+  "current_registry": "plugin/complete99-platform/data/keyword-ownership.csv",
+  "recovered_mapping_inventory": {
+    "source_root": "C:/Users/777/Documents/Codex/2026-08-27/https-www-nadlan-gov-il-https/platform/data",
+    "street_file": "raw/tlv-citywide/street-names.geojson",
+    "street_features": 8703,
+    "distinct_street_name_strings": 2397,
+    "count_caution": "Features are not unique streets or published pages; name strings require entity reconciliation",
+    "editorial_file": "editorial/north-tlv-datafirst.json",
+    "editorial_entity_count": 365,
+    "editorial_street_count": 191,
+    "food_businesses_in_this_editorial_file": 0,
+    "state": "Read-only local inventory, not imported into Complete99. Other mapping files and the live source may contain more entities.",
+    "reuse": "Reuse geographic facts and stable IDs, not the prior project's generic multilingual marketing copy"
+  },
+  "url_policy": {
+    "slugs": "English, stable and descriptive",
+    "preserve_existing": true,
+    "redirects_or_merges": "None authorized",
+    "filter_state": "Local UI state; no query-parameter landing-page proliferation",
+    "index_policy": "Preserve current policy; no blanket noindex",
+    "planned_routes": "Resolve against actual CMS ownership before publication, never overwrite an existing owner"
+  },
+  "entities": [
+    {"type":"dish","existing_owner_example":"/menu/beet-kubbeh/","intent":"A specific dish and its available ordering path","relations":["ingredient","cuisine","technique","business_branch","occasion"],"fields":["name","short_description","ingredients","actual_photo","serving_formats","order_destination"]},
+    {"type":"ingredient","existing_hub":"/ingredients/","intent":"What the ingredient is and practical ways to use it","relations":["dish","technique","cuisine","product"],"fields":["name","varieties","taste_texture","preparation_uses","substitutions","related_dishes"]},
+    {"type":"cuisine","intent":"A culinary tradition and the food that defines it","relations":["dish","ingredient","technique","business_branch","culture_article"],"fields":["name","regional_distinctions","signature_dishes","pantry","cooking_methods"]},
+    {"type":"technique","intent":"How a specific cooking method works","relations":["ingredient","dish","equipment"],"fields":["name","steps","visual_cues","common_errors","equipment","related_dishes"]},
+    {"type":"business_brand","intent":"One business or restaurant brand","relations":["business_branch"],"fields":["stable_id","name","official_destination"]},
+    {"type":"business_branch","intent":"The specific branch at its actual address","relations":["business_brand","street","neighborhood","dish","cuisine","service_area"],"fields":["stable_id","address","coordinates","hours","menu","order_link","group_order_contact","service_facts"]},
+    {"type":"street","intent":"Food options on and near one street","relations":["city","neighborhood","business_branch","transport_stop"],"fields":["stable_geographic_id","English_slug","geometry","businesses_on_street","nearby_businesses","walking_context"]},
+    {"type":"neighborhood","intent":"Food discovery across a neighborhood","relations":["city","street","business_branch","cuisine"],"fields":["boundary","streets","food_clusters","transport","ordering_context"]},
+    {"type":"occasion","existing_conversion_owner":"/request-proposal/","intent":"Choose food for a group or occasion","relations":["dish","business_branch","serving_format"],"fields":["occasion","group_size","delivery_area","lead_time","enquiry_destination"]}
+  ],
+  "relationship_rules": {
+    "geography": "Keep located_on, nearby and delivers_to separate. Geometric proximity never proves delivery coverage.",
+    "branches": "One brand entity, distinct branch IDs and addresses; no repeated generic brand-only titles.",
+    "links": "Render useful selected relationships as server-side descriptive links, not every entity connected to every entity.",
+    "radius": "Context-specific geographic query; preserve exact distance and method privately. No claim of full-city coverage until measured.",
+    "dishes": "An ingredient mention is not an allergen certification; retain actual menu provenance separately."
+  },
+  "nutrition_layer": {
+    "owner_requested": "Scientific useful healthy-food information throughout relevant pages",
+    "source_priority": ["https://www.gov.il/he/pages/dietary-guidelines", "https://fdc.nal.usda.gov/data-documentation/", "https://fdc.nal.usda.gov/Foundation_Foods_Documentation/"],
+    "ingredient_fields": ["source_record_id", "food_state_raw_or_cooked", "edible_portion_basis", "protein_g", "fiber_g", "sodium_mg", "saturated_fat_g", "energy_kcal", "source_url"],
+    "dish_fields": ["recipe_version", "ingredient_weights", "cooked_yield", "serving_weight", "calculation_method", "estimated_or_measured"],
+    "public_module": "Short practical nutrition note appropriate to the entity, with a relevant source and clear raw/cooked and serving basis when numbers are shown",
+    "scientific_limits": ["Ingredient properties are not proof of the nutrient content of a served dish", "No invented nutrient numbers", "Home-style does not automatically mean healthy", "No disease-treatment claims", "No generic healthy badge on every item", "No raw-food values silently reused for cooked food"],
+    "SEO_ownership": "Nutrition is a relevant supporting section on existing entity pages; avoid an automatic duplicate healthy-food URL for every page",
+    "state": "Source research and data contract prepared; not yet published"
+  },
+  "editorial_contract": {
+    "public": ["Natural Israeli Hebrew","Concrete concise information","Specific action labels","No presentation language","No public production status","No long dashes","No repetitive head terms"],
+    "private": ["Sources","Last change","Refresh due","Conflicts","Keyword owner","Image provenance"],
+    "economy": "Reuse normalized facts and templates; batch long writing through connected ChatGPT Pro, medium writing through the owner's selected high-reasoning ChatGPT. Primary agent handles architecture, short corrections and verification. No per-visitor text generation.",
+    "publication": "Each page must answer a distinct useful question. A map record can remain a record until there is useful page content; do not manufacture paragraphs or businesses."
+  },
+  "incremental_delivery": [
+    {"wave":1,"scope":"Live visual system across existing templates","state":"v1.1.0 release merged, deployment pending"},
+    {"wave":2,"scope":"Ingredient and technique editorial imagery; remove mechanical explanatory copy from existing dish modules","state":"assets in progress, not yet live"},
+    {"wave":3,"scope":"Recover existing Tel Aviv street dataset, normalize street/branch IDs and reconcile CMS URLs","state":"Street-name GIS and 191 editorial street records located; food-business dataset still to reconcile"},
+    {"wave":4,"scope":"One real street to branch to dish to group-enquiry journey, then repeat the same importer","state":"planned"},
+    {"wave":5,"scope":"Cuisine, technique, equipment and cultural clusters expanded from demand and evidence","state":"planned, no bulk writing started"}
+  ],
+  "benchmarks": [
+    {"url":"https://www.sweetgreen.com/","observed":"Large ingredient-led photography, menu categories, direct ordering and a distinct workplace-food section","adapt":"Stronger food imagery and short menu-to-order paths","do_not_copy":"Autoplay/carousel dependence or cookie overlay"},
+    {"url":"https://ottolenghi.co.uk/collections/ingredients","observed":"Ingredient catalogue, ingredient/keyword search, recipes and commerce under one brand","adapt":"Useful ingredient-to-dish connections and consistent photography","do_not_copy":"Their assets, copy or unavailable commercial functionality"},
+    {"url":"https://www.awwwards.com/sites/mate-libre","observed":"Recorded Site of the Day October 3 2023, with separate design/usability/creativity/content and developer criteria","adapt":"Assess art direction and interactions alongside responsive behavior and accessibility","do_not_copy":"Treating a visual refresh as an award or rank guarantee"}
+  ],
+  "honest_gap": ["Current brand still reads as one local restaurant in shared header/footer","The v1.1 visual release is not the complete broad portal","Existing dish explanatory copy contains mechanical wording","Full street/business discovery and coverage counts are not yet verified","Award-level differentiation requires more than CSS"]
+}

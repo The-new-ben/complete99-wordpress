@@ -40,18 +40,22 @@ def assert_home(raw, new):
 def predecessor(commit, version, read=public_bytes):
     if version == '1.0.0':
         return None
-    if version != '1.1.0':
+    versions = {
+        '1.1.0': ('1.0.0', '10dd228e113b9cc1673930167ba8aa81a6e373d0c865be7017990de05d4907f8'),
+        '1.2.0': ('1.1.0', '3464b7f620bd52b10c20350688e1ec4644cce76edc921d2e160e6fed9b0aa0c4'),
+    }
+    if version not in versions:
         raise RuntimeError('Unsupported presentation upgrade')
-    filename = 'complete99-editorial-home-1.0.0.zip'
+    prior_version, digest = versions[version]
+    filename = f'complete99-editorial-home-{prior_version}.zip'
     url = f'https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/{commit}/editorial-dist/{filename}'
     raw = read(url)
-    digest = '10dd228e113b9cc1673930167ba8aa81a6e373d0c865be7017990de05d4907f8'
     if hashlib.sha256(raw).hexdigest() != digest:
         raise RuntimeError('Predecessor archive differs from verified live release')
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         files = {name.removeprefix('complete99-editorial-home/'): hashlib.sha256(archive.read(name)).hexdigest()
                  for name in archive.namelist() if not name.endswith('/')}
-    return {'version': '1.0.0', 'sha256': digest, 'files': dict(sorted(files.items())),
+    return {'version': prior_version, 'sha256': digest, 'files': dict(sorted(files.items())),
             'url': url + '?nlcb=' + str(int(time.time()))}
 
 def assert_status(status, expected):
@@ -59,14 +63,27 @@ def assert_status(status, expected):
             status['files'] != expected['files'] or status['version'] != expected['version']):
         raise RuntimeError('Independent installed-state verification failed')
 
-def verify_internal(text, prior, version):
+def verify_internal(text, prior, version, path=''):
     page = PublicPage(text)
     if page.seo() != PublicPage(prior).seo() or not any(s[0] == 'canonical' for s in page.seo()):
         raise RuntimeError('Internal page SEO changed')
     if not any(tag == 'link' and '/complete99-editorial-home/assets/site-editorial.css' in a.get('href', '')
                and ('ver=' + version) in a.get('href', '') for tag, a in page.tags):
         raise RuntimeError('Shared presentation stylesheet not loaded')
-    return {'seo_preserved': True, 'shared_stylesheet': version}
+    result = {'seo_preserved': True, 'shared_stylesheet': version}
+    key = path.removeprefix('/en').strip('/')
+    if version == '1.2.0' and key in ('ingredients', 'knowledge'):
+        stem = 'ingredient-still-life-v01' if key == 'ingredients' else 'aubergine-pan-v01'
+        if (text.count('id="c99-nutrition-title"') != 1 or
+                not any(tag == 'picture' and a.get('data-c99-editorial-picture') == key for tag, a in page.tags) or
+                not any(tag == 'img' and a.get('src', '').endswith(stem + '-1200.webp') for tag, a in page.tags)):
+            raise RuntimeError('Editorial image or nutrition module missing')
+        prior_links = {a.get('href') for tag, a in PublicPage(prior).tags if tag == 'a'}
+        current_links = {a.get('href') for tag, a in page.tags if tag == 'a'}
+        if not prior_links.issubset(current_links):
+            raise RuntimeError('Existing editorial navigation removed')
+        result.update(editorial_image=stem, nutrition_module=True, existing_links_preserved=True)
+    return result
 
 class PublicPage(HTMLParser):
     def __init__(self, text):
@@ -140,7 +157,7 @@ def main():
     transport.ensure_code_snippets(client, False)
     prior = {path: assert_home(public_bytes(client.base_url + path), bool(previous)) for path in ('/', '/en/')}
     internal = {path: public_bytes(client.base_url + path).decode('utf-8') for path in
-                ('/dishes/', '/menu/beet-kubbeh/', '/request-proposal/', '/ingredients/')} if previous else {}
+                ('/dishes/', '/en/dishes/', '/menu/beet-kubbeh/', '/request-proposal/', '/ingredients/', '/knowledge/', '/en/ingredients/', '/en/knowledge/')} if previous else {}
     token = secrets.token_hex(32)
     config = {'commit': commit, 'token': token, 'sha256': manifest['sha256'], 'files': manifest['files'], 'url': url + '?nlcb=' + str(int(time.time()))}
     if previous:
@@ -184,7 +201,7 @@ def main():
             raise RuntimeError('Rollback deactivation failed')
         for path in prior:
             restored = assert_home(public_bytes(client.base_url + path), bool(previous))
-            if previous and 'data-c99-editorial-release="1.0.0"' not in restored:
+            if previous and ('data-c99-editorial-release="' + previous['version'] + '"') not in restored:
                 raise RuntimeError('Prior rendered release marker not restored')
         audit['redeploy'] = call('install')
         audit['final_status'] = call('status')
@@ -193,7 +210,7 @@ def main():
         for path in prior:
             text = assert_home(public_bytes(client.base_url + path), True)
             audit['public_verification'][path] = verify_public(text, prior[path], client.base_url + path, manifest)
-        audit['internal_pages'] = {path: verify_internal(public_bytes(client.base_url + path).decode('utf-8'), old, manifest['version'])
+        audit['internal_pages'] = {path: verify_internal(public_bytes(client.base_url + path).decode('utf-8'), old, manifest['version'], path)
                                    for path, old in internal.items()}
         audit['installed_and_http_verified'] = True
     except Exception as error:

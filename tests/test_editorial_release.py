@@ -20,6 +20,9 @@ def test_upgrade_uses_exact_prior_archive_and_checks_restored_runtime():
     previous = driver.predecessor('a' * 40, '1.1.0', lambda url: old)
     assert previous['version'] == '1.0.0' and len(previous['files']) == 8
     assert '/'+ 'a' * 40 + '/' in previous['url']
+    prior_live = (ROOT / 'editorial-dist/complete99-editorial-home-1.1.0.zip').read_bytes()
+    next_previous = driver.predecessor('a' * 40, '1.2.0', lambda url: prior_live)
+    assert next_previous['version'] == '1.1.0' and len(next_previous['files']) == 9
     with pytest.raises(RuntimeError, match='Predecessor'):
         driver.predecessor('a' * 40, '1.1.0', lambda url: b'changed')
     with pytest.raises(RuntimeError, match='Unsupported'):
@@ -68,7 +71,7 @@ def test_public_verification_checks_metadata_assets_and_destinations():
 
 def test_package_is_exact_reproducible_and_derived():
     files = builder.entries()
-    assert len(files) == 9
+    assert len(files) == 16
     assert builder.package_bytes(files) == builder.package_bytes(files)
     archive = ROOT / f'editorial-dist/complete99-editorial-home-{builder.VERSION}.zip'
     assert archive.read_bytes() == builder.package_bytes(files)
@@ -136,6 +139,7 @@ def test_home_gate_and_assets_execute(tmp_path):
         function wp_dequeue_script($h){}
         function wp_deregister_script($h){}
         function wp_enqueue_script(...$args){$GLOBALS['assets'][]=$args;}
+        function wp_add_inline_script(...$args){}
         require '__ENTRY__';
         foreach($actions['wp_enqueue_scripts'] as $callback){$callback();}
         echo json_encode(['gate'=>c99_editorial_home_request(),'assets'=>$assets]);
