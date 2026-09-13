@@ -50,7 +50,7 @@
     "public_module": "Short practical nutrition note appropriate to the entity, with a relevant source and clear raw/cooked and serving basis when numbers are shown",
     "scientific_limits": ["Ingredient properties are not proof of the nutrient content of a served dish", "No invented nutrient numbers", "Home-style does not automatically mean healthy", "No disease-treatment claims", "No generic healthy badge on every item", "No raw-food values silently reused for cooked food"],
     "SEO_ownership": "Nutrition is a relevant supporting section on existing entity pages; avoid an automatic duplicate healthy-food URL for every page",
-    "state": "Source research and data contract prepared; not yet published"
+    "state": "Two short HE/EN hub nutrition modules LIVE in editorial1.2.1; individual ingredient/dish scientific profiles and calculated values not yet published"
   },
   "editorial_contract": {
     "public": ["Natural Israeli Hebrew","Concrete concise information","Specific action labels","No presentation language","No public production status","No long dashes","No repetitive head terms"],
@@ -59,8 +59,8 @@
     "publication": "Each page must answer a distinct useful question. A map record can remain a record until there is useful page content; do not manufacture paragraphs or businesses."
   },
   "incremental_delivery": [
-    {"wave":1,"scope":"Live visual system across existing templates","state":"v1.1.0 release merged, deployment pending"},
-    {"wave":2,"scope":"Ingredient and technique editorial imagery; remove mechanical explanatory copy from existing dish modules","state":"assets in progress, not yet live"},
+    {"wave":1,"scope":"Live visual system across existing templates","state":"LIVE, extended to editorial1.2.1; evidence in docs/editorial-1.2-live-verification.json"},
+    {"wave":2,"scope":"Ingredient and technique editorial imagery; remove mechanical explanatory copy from existing dish modules","state":"New imagery and short nutrition modules LIVE; mechanical legacy copy still needs refinement"},
     {"wave":3,"scope":"Recover existing Tel Aviv street dataset, normalize street/branch IDs and reconcile CMS URLs","state":"Street-name GIS and 191 editorial street records located; food-business dataset still to reconcile"},
     {"wave":4,"scope":"One real street to branch to dish to group-enquiry journey, then repeat the same importer","state":"planned"},
     {"wave":5,"scope":"Cuisine, technique, equipment and cultural clusters expanded from demand and evidence","state":"planned, no bulk writing started"}
