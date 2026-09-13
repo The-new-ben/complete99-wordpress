@@ -29,7 +29,7 @@ The focused suite passes 38 tests, including 12 new storage scenarios:
 - Hebrew and English successful private records, exact 16 metadata fields and fresh readback;
 - quotes, backslashes and Hebrew text survive the storage boundary;
 - post creation failure, early/late metadata failure and corruption on fresh readback;
-- partial-record cleanup, including a failed deletion retaining only a private reference;
+- partial-record cleanup, including a failed post deletion with successful metadata cleanup;
 - a false update return with identical stored metadata is accepted;
 - source query and fragment removal, external-origin rejection;
 - rate limit and honeypot never create a successful record.
@@ -42,6 +42,11 @@ Result: **38 passed**, plus PHP syntax passed for the fixture.
 - These memory-adapter tests do not prove production database durability, actual
   operator visibility or email delivery. WordPress sanitization is approximated
   by the fixture, not an integration test of WordPress itself.
+- PR101 review 4000673595 identified an important omitted fault: if both post
+  deletion and a metadata deletion fail, the native handler leaves that metadata
+  in a private failed record. Added explicit fault injection and a test documenting
+  the actual residual email, not a false cleanup guarantee. Native cleanup repair
+  is still open; the frontend recovery release does not claim to resolve it.
 - The inspected repository handler saves and redirects; it does not send mail.
   A separate installed notification integration has not been ruled out. Do not
   describe a received email or a notified operator as verified.

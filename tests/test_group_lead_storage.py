@@ -55,13 +55,24 @@ def test_storage_failure_never_reports_success_and_discards_partial_record(optio
     assert not result['posts'] and not result['meta']
 
 
-def test_failed_cleanup_leaves_private_reference_only():
+def test_failed_post_cleanup_leaves_reference_only_when_metadata_deletion_succeeds():
     result = persist({'write_failure': '_c99_group_size', 'delete_failure': True})
     assert result['result'] == 'rejected:500'
     assert result['redirect'] is None
     assert not result['meta']['101']
     assert result['posts']['101']['post_status'] == 'private'
     assert result['posts']['101']['post_title'] == 'C99-STORAGE-FAILED-101'
+
+
+def test_failed_metadata_cleanup_exposes_existing_unresolved_core_limitation():
+    # Regression evidence, not a claim that an unavailable database can be scrubbed.
+    # This production limitation requires a separately reviewed native-core fix.
+    result = persist({'write_failure': '_c99_group_size', 'delete_failure': True,
+                      'meta_delete_failure': '_c99_email'})
+    assert result['result'] == 'rejected:500'
+    assert result['redirect'] is None
+    assert result['posts']['101']['post_status'] == 'private'
+    assert result['meta']['101'] == {'_c99_email': 'fixture@example.invalid'}
 
 
 def test_false_update_result_with_identical_readback_is_not_a_failure():

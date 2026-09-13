@@ -56,7 +56,11 @@ function wp_delete_post($id, $force) {
     unset($GLOBALS['fixture_posts'][$id], $GLOBALS['fixture_meta'][$id]);
     return true;
 }
-function delete_post_meta($id, $key) { unset($GLOBALS['fixture_meta'][$id][$key]); }
+function delete_post_meta($id, $key) {
+    if (($GLOBALS['fixture_options']['meta_delete_failure'] ?? '') === $key) { return false; }
+    unset($GLOBALS['fixture_meta'][$id][$key]);
+    return true;
+}
 function wp_update_post($post) { $GLOBALS['fixture_posts'][$post['ID']] = array_merge($GLOBALS['fixture_posts'][$post['ID']] ?? [], $post); }
 function home_url($path = '/') { return 'https://complete99.co.il' . $path; }
 function wp_get_referer() { return $GLOBALS['fixture_options']['referer'] ?? 'https://complete99.co.il/request-proposal/'; }
