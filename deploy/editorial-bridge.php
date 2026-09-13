@@ -99,7 +99,13 @@ add_action( 'rest_api_init', static function () {
 						$prior_archive = download_url( $config['prior']['url'], 60 );
 						if ( is_wp_error( $prior_archive ) ) { return $prior_archive; }
 						if ( ! hash_equals( $config['prior']['sha256'], hash_file( 'sha256', $prior_archive ) ) ) { unlink( $prior_archive ); return new WP_Error( 'c99_editorial_prior_zip', 'Prior archive checksum mismatch.' ); }
-						$backup['prior_archive'] = $prior_archive;
+						$backup_dir = WP_CONTENT_DIR . '/.complete99-deploy-backups/editorial-' . $config['commit'];
+						$durable = $backup_dir . '/predecessor.zip';
+						if ( is_link( $backup_dir ) || ! wp_mkdir_p( $backup_dir ) || is_link( $durable ) || ( file_exists( $durable ) && ! hash_equals( $config['prior']['sha256'], hash_file( 'sha256', $durable ) ) ) ) { unlink( $prior_archive ); return new WP_Error( 'c99_editorial_backup_directory', 'Durable recovery directory unavailable.' ); }
+						if ( ! file_exists( $durable ) && ! rename( $prior_archive, $durable ) ) { unlink( $prior_archive ); return new WP_Error( 'c99_editorial_backup_move', 'Cannot retain predecessor archive.' ); }
+						if ( is_file( $prior_archive ) ) { unlink( $prior_archive ); }
+						if ( ! hash_equals( $config['prior']['sha256'], hash_file( 'sha256', $durable ) ) ) { return new WP_Error( 'c99_editorial_backup_readback', 'Durable archive readback failed.' ); }
+						$backup['prior_archive'] = $durable;
 						$backup['prior_sha256'] = $config['prior']['sha256'];
 						$backup['prior_files'] = $config['prior']['files'];
 					}

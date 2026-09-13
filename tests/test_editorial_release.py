@@ -92,6 +92,9 @@ def test_presentation_has_no_activation_or_data_migration():
     assert "! $backup['prior_plugin_absent']" in bridge
     assert "$current_files !== $config['files'] && $current_files !== $backup['prior_files']" in bridge
     assert "copy( $archive, $working )" in bridge
+    assert "/.complete99-deploy-backups/editorial-" in bridge
+    assert "rename( $prior_archive, $durable )" in bridge
+    assert "$backup['prior_archive'] = $durable" in bridge
     assert 'current_user_can( \'update_plugins\' )' in bridge
     assert "hash_equals( $config['sha256'], hash_file( 'sha256', $temp ) )" in bridge
     assert "deactivate_plugins( $plugin, true )" in bridge
