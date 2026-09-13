@@ -50,7 +50,7 @@
     "public_module": "Short practical nutrition note appropriate to the entity, with a relevant source and clear raw/cooked and serving basis when numbers are shown",
     "scientific_limits": ["Ingredient properties are not proof of the nutrient content of a served dish", "No invented nutrient numbers", "Home-style does not automatically mean healthy", "No disease-treatment claims", "No generic healthy badge on every item", "No raw-food values silently reused for cooked food"],
     "SEO_ownership": "Nutrition is a relevant supporting section on existing entity pages; avoid an automatic duplicate healthy-food URL for every page",
-    "state": "Two short HE/EN hub nutrition modules LIVE in editorial1.2.1; individual ingredient/dish scientific profiles and calculated values not yet published"
+    "state": "Two HE/EN hub modules and three source-linked ingredient notes LIVE in editorial1.2.2: chickpea, tahini and olive oil. Registry in editorial-release/plugin/ingredient-nutrition.json. Quantitative profiles, dish-specific notes and full-site coverage still pending. Batch future additions rather than one release per ingredient."
   },
   "editorial_contract": {
     "public": ["Natural Israeli Hebrew","Concrete concise information","Specific action labels","No presentation language","No public production status","No long dashes","No repetitive head terms"],

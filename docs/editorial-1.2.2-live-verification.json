@@ -1,0 +1,14 @@
+{
+  "version": "1.2.2",
+  "source": "970a3e9f4b5b259aa211324980f845e62342bcee",
+  "sha256": "6df3a07130af2004d5485ad7e0f80bb64b0face0f66fadb636ebef81602d7824",
+  "reviewed_head": "b09844394585b144c5b7ec352ff904a05bb8bf83",
+  "review_comment": "https://github.com/The-new-ben/complete99-wordpress/pull/100#issuecomment-5655521807",
+  "pr_ci": 34777172064,
+  "main_ci": 34777602442,
+  "deployment": "https://github.com/The-new-ben/complete99-wordpress/actions/runs/34777768315",
+  "http_audit": "C:/Users/777/Downloads/codexmanager/complete99-editorial-live-34777768315/editorial-audit.json",
+  "verified": ["Exact active companion1.2.2 files", "Core1.22.1 unchanged", "Prior1.2.1 restored and exact candidate redeployed", "Temporary snippet276 permanently deleted and route404", "Original links and canonical/hreflang preserved", "Three notes live in both ingredient hubs", "Real Chrome HE/EN notes visible and versioned stylesheet1.2.2", "Live desktop1023px no horizontal overflow", "Local narrow375px and desktop945px previews without overflow"],
+  "screenshots": ["C:/Users/777/Downloads/codexmanager/complete99-ingredient-nutrition-live-1.2.2.png"],
+  "limits": ["Not physical-mobile device testing", "No quantitative dish or SKU nutrient values", "Only three ingredient identities, not full-site nutrition coverage", "Broader portal goal remains active", "Carry nutrition modules into native core before1.24 upgrade; current shell guard disables them there"]
+}
