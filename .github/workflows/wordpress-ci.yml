@@ -43,6 +43,12 @@ jobs:
       - name: Homepage search behavior
         run: node tests/food-home-search.test.cjs
 
+      - name: Independent homepage package
+        run: |
+          python scripts/build-editorial-release.py
+          php -l deploy/editorial-bridge.php
+          git diff --exit-code -- editorial-dist
+
       - name: Secret scan
         run: python scripts/secret-scan.py
 
