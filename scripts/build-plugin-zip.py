@@ -20,7 +20,7 @@ DEFAULT_DIST = ROOT / "plugin-dist"
 UPDATE_MANIFEST_NAME = f"{SLUG}.json"
 INTEGRITY_METADATA_NAME = f"{SLUG}-integrity.json"
 RAW_REPOSITORY_ROOT = "https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/main"
-RELEASE_LAST_UPDATED = "2026-09-13 12:00:00"
+RELEASE_LAST_UPDATED = "2026-09-13 13:30:00"
 FIXED_TIME = (1980, 1, 1, 0, 0, 0)
 EXCLUDED_NAMES = {".DS_Store", "Thumbs.db"}
 EXCLUDED_PARTS = {".git", ".github", "tests", "node_modules", "__pycache__"}
@@ -588,6 +588,11 @@ def main() -> int:
         "sections": {
             "changelog": (
                 f"<h4>{version}</h4>"
+                "<ul>"
+                "<li>Made company name and extra free-text notes optional for group-meal enquiries in Hebrew and English, while preserving required meal details and contact validation.</li>"
+                "<li>Kept institutional enquiry requirements, consent, storage and anti-spam behavior unchanged. Enquiries without a company show the contact name in the private dashboard.</li>"
+                "</ul>"
+                "<h4>1.23.0</h4>"
                 "<ul>"
                 "<li>Introduced a bilingual food-discovery homepage opening with immediate menu and group-meal paths, plus server-rendered links into ingredient knowledge.</li>"
                 "<li>Refined homepage-only image framing, typography, responsive layouts and keyboard focus without changing shared page layouts.</li>"
