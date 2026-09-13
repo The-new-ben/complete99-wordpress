@@ -1000,6 +1000,7 @@ def render_bridge(
     reviewed_safe_status: dict[str, Any] | None = None,
     reviewed_safe_status_sha256: str = "",
     candidate_repair_schema: str = "",
+    candidate_resume_review_sha256: str = "",
     candidate_source_before_sha256: str = "",
     candidate_source_after_sha256: str = "",
     candidate_plugin_before_sha256: str = "",
@@ -1040,6 +1041,7 @@ def render_bridge(
         "reviewed database": reviewed_database_fingerprint,
         "reviewed database manifest": reviewed_database_manifest_sha256,
         "reviewed safe status": reviewed_safe_status_sha256,
+        "candidate resume review": candidate_resume_review_sha256,
         "candidate source before": candidate_source_before_sha256,
         "candidate source after": candidate_source_after_sha256,
         "candidate plugin before": candidate_plugin_before_sha256,
@@ -1140,6 +1142,14 @@ def render_bridge(
         or candidate_plugin_after_sha256 != expected_plugin_sha256
     ):
         raise DeployError("Temporary bridge candidate repair identity is invalid")
+    if candidate_resume_review_sha256 and (
+        interrupted_forward_adoption_schema != "complete99-interrupted-forward-adoption/v5"
+        or reviewed_status.get("phase") != "candidate_activation_pending"
+        or reviewed_status.get("interrupted_forward_proof_sha256") != interrupted_forward_proof_sha256
+        or reviewed_status.get("current_plugin_sha256") != candidate_plugin_after_sha256
+        or reviewed_status.get("installed_plugin_sha256") != candidate_plugin_after_sha256
+    ):
+        raise DeployError("Temporary bridge candidate resume checkpoint is invalid")
     reviewed_manifest_json = json.dumps(
         reviewed_manifest,
         ensure_ascii=False,
@@ -1173,6 +1183,7 @@ def render_bridge(
             if label
             not in {
                 "reviewed safe status",
+                "candidate resume review",
                 "candidate source before",
                 "candidate source after",
                 "candidate plugin before",
@@ -1243,6 +1254,7 @@ def render_bridge(
         ).decode("ascii"),
         "__C99_REVIEWED_SAFE_STATUS_SHA256__": reviewed_safe_status_sha256,
         "__C99_CANDIDATE_REPAIR_SCHEMA__": candidate_repair_schema,
+        "__C99_CANDIDATE_RESUME_REVIEW_SHA256__": candidate_resume_review_sha256,
         "__C99_CANDIDATE_SOURCE_BEFORE_SHA256__": candidate_source_before_sha256,
         "__C99_CANDIDATE_SOURCE_AFTER_SHA256__": candidate_source_after_sha256,
         "__C99_CANDIDATE_PLUGIN_BEFORE_SHA256__": candidate_plugin_before_sha256,
