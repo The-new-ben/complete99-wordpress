@@ -1,0 +1,46 @@
+name: Deploy independent Complete99 homepage
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: complete99-wordpress-production
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require protected main and exact green CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WP_PRODUCTION_READY: ${{ vars.WP_PRODUCTION_READY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$WP_PRODUCTION_READY" = true
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/wordpress-ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&status=success" --jq '.workflow_runs[] | select(.event == "push") | .head_sha' | grep -Fx "$GITHUB_SHA"
+  deploy:
+    needs: verify
+    runs-on: [self-hosted, Windows, X64, complete99-deploy]
+    environment: production
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install exact presentation release and exercise deactivation rollback
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          WP_ALLOWED_DEPLOY_HOSTS: ${{ vars.WP_ALLOWED_DEPLOY_HOSTS }}
+        shell: powershell
+        run: |
+          python scripts/deploy-editorial-release.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain exact private release audit
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: complete99-editorial-release-audit
+          path: editorial-audit.json
+          if-no-files-found: warn

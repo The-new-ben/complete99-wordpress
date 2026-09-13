@@ -1,0 +1,17 @@
+{
+  "artifact": "complete99-editorial-home-1.0.0.zip",
+  "files": {
+    "assets/c99-shared-table-v01-768.webp": "8ed709eee4cb0d078d7e0e2e45dc7c3ee35b89c6c433b0cbfdb31f20bc93386f",
+    "assets/c99-shared-table-v01.webp": "5611c1a7fc2ce9ba4a76f62506d5fa6f3a08929d9baa665efe70eaf368dac749",
+    "assets/consumer.css": "da33279c73a6b466d0c47119ffeaf7aed4ff6996a02a1b91b1249e1bddce1db8",
+    "assets/public.js": "8e55db0dd2f7980894903a4e3cf171a56d9e5337b73ec675b409584b78989df6",
+    "complete99-editorial-home.php": "dc0a8638a04d0243eacfb858e41017fda0613f976772081d724914cd55252dd5",
+    "includes/class-complete99-editorial-consumer.php": "7e44db24735802753acbf3f06a09302966c99ae6024a32217a2ec1dcb971dcd7",
+    "includes/views/food-home.php": "18ca376f9c5cd98e79548ea43cd683e2d140320a37e5b50a22515b8f587f4f68",
+    "public-shell.php": "8e9882a03b05e6a26986fe42c2c6df062e13b11c7880cba7b450e1c098e7cee9"
+  },
+  "schema": "complete99-editorial-release/v1",
+  "sha256": "10dd228e113b9cc1673930167ba8aa81a6e373d0c865be7017990de05d4907f8",
+  "slug": "complete99-editorial-home",
+  "version": "1.0.0"
+}
