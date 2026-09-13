@@ -12,6 +12,35 @@ spec = importlib.util.spec_from_file_location('editorial_build_test', ROOT / 'sc
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 
+def test_upgrade_uses_exact_prior_archive_and_checks_restored_runtime():
+    spec = importlib.util.spec_from_file_location('editorial_upgrade_test', ROOT / 'scripts/deploy-editorial-release.py')
+    driver = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(driver)
+    old = (ROOT / 'editorial-dist/complete99-editorial-home-1.0.0.zip').read_bytes()
+    previous = driver.predecessor('a' * 40, '1.1.0', lambda url: old)
+    assert previous['version'] == '1.0.0' and len(previous['files']) == 8
+    assert '/'+ 'a' * 40 + '/' in previous['url']
+    with pytest.raises(RuntimeError, match='Predecessor'):
+        driver.predecessor('a' * 40, '1.1.0', lambda url: b'changed')
+    with pytest.raises(RuntimeError, match='Unsupported'):
+        driver.predecessor('a' * 40, '2.0.0')
+    state = {'active': True, 'core_unchanged': True, 'version': '1.0.0', 'files': previous['files']}
+    driver.assert_status(state, previous)
+    for field, value in [('active', False), ('core_unchanged', False), ('version', '1.1.0'), ('files', {})]:
+        with pytest.raises(RuntimeError):
+            driver.assert_status({**state, field: value}, previous)
+
+def test_internal_release_requires_loaded_styles_and_preserved_canonical():
+    spec = importlib.util.spec_from_file_location('editorial_internal_test', ROOT / 'scripts/deploy-editorial-release.py')
+    driver = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(driver)
+    old = '<link rel="canonical" href="https://complete99.co.il/dishes/">'
+    new = old + '<link rel="stylesheet" href="/wp-content/plugins/complete99-editorial-home/assets/site-editorial.css?ver=1.1.0">'
+    assert driver.verify_internal(new, old, '1.1.0')['seo_preserved']
+    for broken in (old, new.replace('1.1.0', '1.0.0'), new.replace('/dishes/', '/wrong/')):
+        with pytest.raises(RuntimeError):
+            driver.verify_internal(broken, old, '1.1.0')
+
 def test_public_verification_checks_metadata_assets_and_destinations():
     spec = importlib.util.spec_from_file_location('editorial_public_test', ROOT / 'scripts/deploy-editorial-release.py')
     driver = importlib.util.module_from_spec(spec)
@@ -59,7 +88,10 @@ def test_presentation_has_no_activation_or_data_migration():
         assert forbidden not in entry
     bridge = (ROOT / 'deploy/editorial-bridge.php').read_text()
     assert "flock( $process, LOCK_EX | LOCK_NB )" in bridge
-    assert "'overwrite_package' => false" in bridge
+    assert "'overwrite_package' => $overwrite" in bridge
+    assert "! $backup['prior_plugin_absent']" in bridge
+    assert "$current_files !== $config['files'] && $current_files !== $backup['prior_files']" in bridge
+    assert "copy( $archive, $working )" in bridge
     assert 'current_user_can( \'update_plugins\' )' in bridge
     assert "hash_equals( $config['sha256'], hash_file( 'sha256', $temp ) )" in bridge
     assert "deactivate_plugins( $plugin, true )" in bridge
