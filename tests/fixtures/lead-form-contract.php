@@ -27,11 +27,50 @@ function admin_url($path) { return '/wp-admin/' . $path; }
 function wp_nonce_field($action, $name) { echo '<input type="hidden" name="' . esc_attr($name) . '" value="local-test-only">'; }
 function wp_verify_nonce($nonce, $action) { return $nonce === 'local-test-only'; }
 function wp_salt($scheme) { return 'local-test-only-not-a-production-secret'; }
-function get_transient($key) { return 0; }
+function get_transient($key) { return $GLOBALS['fixture_options']['rate_count'] ?? 0; }
 function set_transient($key, $value, $ttl) { return true; }
 function wp_generate_password($length, $special, $extra) { return 'LOCAL'; }
 function wp_die($message, $title = '', $args = []) { throw new RuntimeException('rejected:' . ($args['response'] ?? 500)); }
-function wp_insert_post($post, $return_error) { throw new RuntimeException('validation_passed_no_storage'); }
+function wp_insert_post($post, $return_error) {
+    if (($GLOBALS['mode'] ?? '') !== 'persist') { throw new RuntimeException('validation_passed_no_storage'); }
+    if (!empty($GLOBALS['fixture_options']['insert_failure'])) { return 0; }
+    $GLOBALS['fixture_posts'][101] = $post;
+    return 101;
+}
+function is_wp_error($value) { return false; }
+function wp_slash($value) { return addslashes($value); }
+function update_post_meta($id, $key, $value) {
+    if (($GLOBALS['fixture_options']['write_failure'] ?? '') === $key) { return false; }
+    $GLOBALS['fixture_meta'][$id][$key] = stripslashes($value);
+    return empty($GLOBALS['fixture_options']['unchanged_write_result']);
+}
+function metadata_exists($type, $id, $key) { return array_key_exists($key, $GLOBALS['fixture_meta'][$id] ?? []); }
+function get_post_meta($id, $key, $single) { return $GLOBALS['fixture_meta'][$id][$key] ?? ''; }
+function wp_cache_delete($id, $group) {
+    $GLOBALS['fixture_cache_reads']++;
+    $key = $GLOBALS['fixture_options']['readback_corruption'] ?? '';
+    if ($key !== '' && isset($GLOBALS['fixture_meta'][$id][$key])) { $GLOBALS['fixture_meta'][$id][$key] = 'corrupted'; }
+}
+function wp_delete_post($id, $force) {
+    if (!empty($GLOBALS['fixture_options']['delete_failure'])) { return false; }
+    unset($GLOBALS['fixture_posts'][$id], $GLOBALS['fixture_meta'][$id]);
+    return true;
+}
+function delete_post_meta($id, $key) {
+    if (($GLOBALS['fixture_options']['meta_delete_failure'] ?? '') === $key) { return false; }
+    unset($GLOBALS['fixture_meta'][$id][$key]);
+    return true;
+}
+function wp_update_post($post) { $GLOBALS['fixture_posts'][$post['ID']] = array_merge($GLOBALS['fixture_posts'][$post['ID']] ?? [], $post); }
+function home_url($path = '/') { return 'https://complete99.co.il' . $path; }
+function wp_get_referer() { return $GLOBALS['fixture_options']['referer'] ?? 'https://complete99.co.il/request-proposal/'; }
+function wp_parse_url($url) { return parse_url($url); }
+function esc_url_raw($url) { return $url; }
+function add_query_arg($name, $value, $url) { return $url . '?' . rawurlencode($name) . '=' . rawurlencode($value); }
+function wp_safe_redirect($url) {
+    $GLOBALS['fixture_redirect'] = $url;
+    throw new RuntimeException('redirected');
+}
 require ABSPATH . 'plugin/complete99-platform/includes/class-complete99-leads.php';
 $mode = $preview_language ? 'preview' : ($argv[1] ?? 'render');
 if ($mode === 'render') {
@@ -48,8 +87,21 @@ if ($mode === 'render') {
     <h1><?= $preview_language === 'he' ? 'ספרו לנו מה תרצו לארגן' : 'Tell us what you would like to arrange' ?></h1>
     <div class="c99-group-order-form-card"><?php Complete99_Leads::render_form($preview_language, 'group-order'); ?></div>
     </main></body></html><?php
-} elseif ($mode === 'validate') {
+} elseif (in_array($mode, ['validate', 'persist'], true)) {
     $_POST = json_decode(stream_get_contents(STDIN), true, 32, JSON_THROW_ON_ERROR);
+    $fixture_options = $_POST['_fixture'] ?? [];
+    unset($_POST['_fixture']);
+    $fixture_posts = [];
+    $fixture_meta = [];
+    $fixture_cache_reads = 0;
+    $fixture_redirect = null;
     try { Complete99_Leads::handle(); }
-    catch (RuntimeException $error) { echo json_encode(['result' => $error->getMessage()]); }
+    catch (RuntimeException $error) {
+        $result = ['result' => $error->getMessage()];
+        if ($mode === 'persist') {
+            $result += ['posts' => $fixture_posts, 'meta' => $fixture_meta,
+                'fresh_reads' => $fixture_cache_reads, 'redirect' => $fixture_redirect];
+        }
+        echo json_encode($result);
+    }
 } else { throw new RuntimeException('Unsupported fixture mode'); }

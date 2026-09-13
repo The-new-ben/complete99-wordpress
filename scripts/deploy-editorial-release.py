@@ -45,6 +45,7 @@ def predecessor(commit, version, read=public_bytes):
         '1.2.0': ('1.1.0', '3464b7f620bd52b10c20350688e1ec4644cce76edc921d2e160e6fed9b0aa0c4'),
         '1.2.1': ('1.2.0', '7232ae2c14ce7d164b73d3ac9229dc10b4e257e447721b0589e8bb5491a4a17e'),
         '1.2.2': ('1.2.1', '99081667e34302186d53f783ac4f0b5b0bdcd87fc78b36094d51225f23b8fc60'),
+        '1.2.3': ('1.2.2', '6df3a07130af2004d5485ad7e0f80bb64b0face0f66fadb636ebef81602d7824'),
     }
     if version not in versions:
         raise RuntimeError('Unsupported presentation upgrade')
@@ -74,7 +75,7 @@ def verify_internal(text, prior, version, path=''):
         raise RuntimeError('Shared presentation stylesheet not loaded')
     result = {'seo_preserved': True, 'shared_stylesheet': version}
     key = path.removeprefix('/en').strip('/')
-    if version in ('1.2.0', '1.2.1', '1.2.2') and key in ('ingredients', 'knowledge'):
+    if version in ('1.2.0', '1.2.1', '1.2.2', '1.2.3') and key in ('ingredients', 'knowledge'):
         stem = 'ingredient-still-life-v01' if key == 'ingredients' else 'aubergine-pan-v01'
         if (text.count('id="c99-nutrition-title"') != 1 or
                 not any(tag == 'picture' and a.get('data-c99-editorial-picture') == key for tag, a in page.tags) or
@@ -85,15 +86,19 @@ def verify_internal(text, prior, version, path=''):
         if not prior_links.issubset(current_links):
             raise RuntimeError('Existing editorial navigation removed')
         result.update(editorial_image=stem, nutrition_module=True, existing_links_preserved=True)
-    if version == '1.2.2' and key == 'ingredients':
+    if version in ('1.2.2', '1.2.3') and key == 'ingredients':
         identities = [a['data-c99-ingredient-nutrition'] for tag, a in page.tags if 'data-c99-ingredient-nutrition' in a]
         if sorted(identities) != ['ingredient-chickpea', 'ingredient-olive-oil', 'ingredient-tahini']:
             raise RuntimeError('Exact ingredient nutrition notes missing or duplicated')
         result['ingredient_nutrition_notes'] = identities
-    if version in ('1.2.1', '1.2.2') and key == 'dishes':
+    if version in ('1.2.1', '1.2.2', '1.2.3') and key == 'dishes':
         if not any(tag == 'script' and '/complete99-editorial-home/assets/legacy-public.js?ver=' + version in a.get('src', '') for tag, a in page.tags):
             raise RuntimeError('Exact live-core menu compatibility script missing')
         result['live_core_filter_compatibility'] = True
+    if version == '1.2.3' and key == 'request-proposal':
+        if not any(tag == 'script' and '/complete99-editorial-home/assets/group-enquiry.js?ver=' + version in a.get('src', '') for tag, a in page.tags):
+            raise RuntimeError('Group enquiry recovery script missing')
+        result['group_enquiry_recovery_loaded'] = True
     return result
 
 class PublicPage(HTMLParser):
@@ -168,7 +173,7 @@ def main():
     transport.ensure_code_snippets(client, False)
     prior = {path: assert_home(public_bytes(client.base_url + path), bool(previous)) for path in ('/', '/en/')}
     internal = {path: public_bytes(client.base_url + path).decode('utf-8') for path in
-                ('/dishes/', '/en/dishes/', '/menu/beet-kubbeh/', '/request-proposal/', '/ingredients/', '/knowledge/', '/en/ingredients/', '/en/knowledge/')} if previous else {}
+                ('/dishes/', '/en/dishes/', '/menu/beet-kubbeh/', '/request-proposal/', '/en/request-proposal/', '/ingredients/', '/knowledge/', '/en/ingredients/', '/en/knowledge/')} if previous else {}
     token = secrets.token_hex(32)
     config = {'commit': commit, 'token': token, 'sha256': manifest['sha256'], 'files': manifest['files'], 'url': url + '?nlcb=' + str(int(time.time()))}
     if previous:

@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = 'complete99-editorial-home'
-VERSION = '1.2.2'
+VERSION = '1.2.3'
 DIST = ROOT / 'editorial-dist'
 spec = importlib.util.spec_from_file_location('canonical_builder', ROOT / 'scripts/build-plugin-zip.py')
 builder = importlib.util.module_from_spec(spec)
@@ -57,6 +57,7 @@ def entries():
         'ingredient-nutrition.php': builder.canonical_contents(ROOT / 'editorial-release/plugin/ingredient-nutrition.php'),
         'ingredient-nutrition.json': builder.canonical_contents(ROOT / 'editorial-release/plugin/ingredient-nutrition.json'),
         'assets/discovery-local.js': builder.canonical_contents(ROOT / 'editorial-release/plugin/assets/discovery-local.js'),
+        'assets/group-enquiry.js': builder.canonical_contents(ROOT / 'editorial-release/plugin/assets/group-enquiry.js'),
         'assets/legacy-public.js': legacy_public_script(),
         'assets/consumer.css': builder.canonical_contents(platform / 'assets/css/consumer.css'),
         'assets/public.js': builder.canonical_contents(platform / 'assets/js/public.js'),

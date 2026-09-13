@@ -90,3 +90,17 @@ body.c99-consumer-site {
   .c99-consumer-site .c99-consumer-menu-card img { transition: none; }
   .c99-consumer-site .c99-consumer-menu-card:hover img { transform: none; }
 }
+.c99-enquiry-feedback {
+  padding: 1.25rem;
+  margin-block: 1rem;
+  border: 2px solid currentColor;
+  border-radius: .75rem;
+  color: #173d30;
+  background: #f6f4e9;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.c99-enquiry-feedback[data-state="error"] { color: #892b23; }
+.c99-enquiry-feedback:focus { outline: 3px solid #173d30; outline-offset: 4px; }
+.c99-lead-form[aria-busy="true"] button[type="submit"] { cursor: progress; opacity: .75; }
+.c99-lead-form[hidden], .c99-enquiry-feedback[hidden] { display: none !important; }

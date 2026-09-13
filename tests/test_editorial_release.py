@@ -71,7 +71,7 @@ def test_public_verification_checks_metadata_assets_and_destinations():
 
 def test_package_is_exact_reproducible_and_derived():
     files = builder.entries()
-    assert len(files) == 19
+    assert len(files) == 20
     assert builder.package_bytes(files) == builder.package_bytes(files)
     archive = ROOT / f'editorial-dist/complete99-editorial-home-{builder.VERSION}.zip'
     assert archive.read_bytes() == builder.package_bytes(files)
@@ -115,6 +115,9 @@ def test_home_gate_and_assets_execute(tmp_path):
         ('1.22.1','he','home',False,False,False,False),
         ('1.22.1','he','home',False,True,True,False),
         ('1.22.1','fr','home',False,True,False,False),
+        ('1.22.1','he','proposal',False,True,False,False),
+        ('1.22.1','en','proposal',False,True,False,False),
+        ('1.22.1','fr','proposal',False,True,False,False),
     ]:
         cfg = json.dumps([version,locale,group,admin,singular,notfound])
         code = """<?php
@@ -149,7 +152,8 @@ def test_home_gate_and_assets_execute(tmp_path):
         result=json.loads(subprocess.check_output(['php',str(fixture)],text=True))
         assert result['gate'] is expected
         legacy_menu = version == '1.22.1' and group == 'dishes' and locale in ('he','en') and not admin and singular and not notfound
-        assert len(result['assets']) == ((2 if expected else 0) + (0 if admin else 1) + int(legacy_menu))
+        group_enquiry = group == 'proposal' and locale in ('he','en') and not admin and singular and not notfound
+        assert len(result['assets']) == ((2 if expected else 0) + (0 if admin else 1) + int(legacy_menu) + int(group_enquiry))
         if expected:
             assert all('complete99-editorial-home/' in asset[1] for asset in result['assets'])
 
@@ -162,6 +166,9 @@ def test_shared_styles_do_not_hide_content_or_change_public_controls():
                       'c99-consumer-editorial-grid', 'c99-group-order-form-card',
                       'c99-ingredient-index-card', 'c99-consumer-header'):
         assert component in css
+    explicit_hidden = '.c99-lead-form[hidden], .c99-enquiry-feedback[hidden] { display: none !important; }'
+    assert css.count(explicit_hidden) == 1
+    css = css.replace(explicit_hidden, '')
     for forbidden in ('display: none', 'visibility: hidden', 'pointer-events: none',
                       'position: fixed', 'url('):
         assert forbidden not in css

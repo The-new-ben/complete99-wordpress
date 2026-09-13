@@ -11,5 +11,6 @@
     {"entity":"ingredient-olive-oil","source":"who-diet","support":"WHO identifies olive oil among unsaturated-fat sources and prefers unsaturated to saturated fats.","boundary":"No superiority claim, disease prevention promise or unlimited-intake suggestion."}
   ],
   "remaining": ["Expand specific ingredient facts after source matching, including bulgur and vegetables", "Dish notes must follow real recipe identity, preparation and serving size", "Numeric profiles require exact food record, edible-weight basis, raw/cooked state and recipe yield", "Home, dish and group-order integration remains separate work, not completed by these three notes"],
-  "publication_state": "Candidate 1.2.2, not yet deployed"
+  "publication_state": "LIVE companion1.2.2, source970a3e9f4b5b259aa211324980f845e62342bcee; deployment34777768315 succeeded; exact notes verified in real Chrome HE/EN",
+  "verification": "docs/editorial-1.2.2-live-verification.json"
 }
