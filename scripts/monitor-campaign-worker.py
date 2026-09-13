@@ -65,7 +65,12 @@ class HttpResult:
 
 
 def parse_allowed_monitor_hosts(value: str) -> set[str]:
-    """Accept only explicitly supported exact transitional DNS hostnames."""
+    """Accept supported exact hosts, including redundant production entries.
+
+    Production origins are already allowed independently of this setting.
+    Listing one explicitly must not disable an otherwise valid monitor.
+    This does not add an origin to the existing permitted target set.
+    """
     configured: set[str] = set()
     for item in re.split(r"[\s,]+", value.strip()):
         if not item:
@@ -82,7 +87,7 @@ def parse_allowed_monitor_hosts(value: str) -> set[str]:
                 "WP_ALLOWED_MONITOR_HOSTS must contain exact DNS hostnames only"
             )
         configured.add(host)
-    if configured - SUPPORTED_TRANSITIONAL_HOSTS:
+    if configured - (SUPPORTED_TRANSITIONAL_HOSTS | ALLOWED_PRODUCTION_HOSTS):
         raise MonitorError(
             "WP_ALLOWED_MONITOR_HOSTS contains an unsupported monitor hostname"
         )
