@@ -2,11 +2,11 @@
 /**
  * Plugin Name: Complete99 Editorial Home
  * Description: Shared public food-site presentation and bilingual editorial homepage. No content migrations.
- * Version: 1.2.2
+ * Version: 1.2.3
  * Requires PHP: 8.0
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
-define( 'C99_EDITORIAL_VERSION', '1.2.2' );
+define( 'C99_EDITORIAL_VERSION', '1.2.3' );
 define( 'C99_EDITORIAL_URL', plugin_dir_url( __FILE__ ) );
 require_once __DIR__ . '/editorial-content.php';
 
@@ -52,3 +52,10 @@ add_action( 'wp_enqueue_scripts', static function () {
 	wp_enqueue_style( 'complete99-site-editorial', C99_EDITORIAL_URL . 'assets/site-editorial.css', array( 'complete99-consumer' ), C99_EDITORIAL_VERSION );
 	wp_add_inline_script( 'complete99-public', file_get_contents( __DIR__ . '/assets/discovery-local.js' ), 'before' );
 }, 30 );
+
+// Enhance only the existing group enquiry. Native submission remains the fallback.
+add_action( 'wp_enqueue_scripts', static function () {
+	if ( is_admin() || is_404() || ! is_singular() || ! class_exists( 'Complete99_Content' ) ) { return; }
+	if ( 'proposal' !== Complete99_Content::translation_group_for_post( get_queried_object_id() ) || ! in_array( Complete99_Content::language_for_post( get_queried_object_id() ), array( 'he', 'en' ), true ) ) { return; }
+	wp_enqueue_script( 'complete99-group-enquiry', C99_EDITORIAL_URL . 'assets/group-enquiry.js', array(), C99_EDITORIAL_VERSION, true );
+}, 35 );
