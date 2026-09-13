@@ -44,6 +44,7 @@ def predecessor(commit, version, read=public_bytes):
         '1.1.0': ('1.0.0', '10dd228e113b9cc1673930167ba8aa81a6e373d0c865be7017990de05d4907f8'),
         '1.2.0': ('1.1.0', '3464b7f620bd52b10c20350688e1ec4644cce76edc921d2e160e6fed9b0aa0c4'),
         '1.2.1': ('1.2.0', '7232ae2c14ce7d164b73d3ac9229dc10b4e257e447721b0589e8bb5491a4a17e'),
+        '1.2.2': ('1.2.1', '99081667e34302186d53f783ac4f0b5b0bdcd87fc78b36094d51225f23b8fc60'),
     }
     if version not in versions:
         raise RuntimeError('Unsupported presentation upgrade')
@@ -73,7 +74,7 @@ def verify_internal(text, prior, version, path=''):
         raise RuntimeError('Shared presentation stylesheet not loaded')
     result = {'seo_preserved': True, 'shared_stylesheet': version}
     key = path.removeprefix('/en').strip('/')
-    if version in ('1.2.0', '1.2.1') and key in ('ingredients', 'knowledge'):
+    if version in ('1.2.0', '1.2.1', '1.2.2') and key in ('ingredients', 'knowledge'):
         stem = 'ingredient-still-life-v01' if key == 'ingredients' else 'aubergine-pan-v01'
         if (text.count('id="c99-nutrition-title"') != 1 or
                 not any(tag == 'picture' and a.get('data-c99-editorial-picture') == key for tag, a in page.tags) or
@@ -84,8 +85,13 @@ def verify_internal(text, prior, version, path=''):
         if not prior_links.issubset(current_links):
             raise RuntimeError('Existing editorial navigation removed')
         result.update(editorial_image=stem, nutrition_module=True, existing_links_preserved=True)
-    if version == '1.2.1' and key == 'dishes':
-        if not any(tag == 'script' and '/complete99-editorial-home/assets/legacy-public.js?ver=1.2.1' in a.get('src', '') for tag, a in page.tags):
+    if version == '1.2.2' and key == 'ingredients':
+        identities = [a['data-c99-ingredient-nutrition'] for tag, a in page.tags if 'data-c99-ingredient-nutrition' in a]
+        if sorted(identities) != ['ingredient-chickpea', 'ingredient-olive-oil', 'ingredient-tahini']:
+            raise RuntimeError('Exact ingredient nutrition notes missing or duplicated')
+        result['ingredient_nutrition_notes'] = identities
+    if version in ('1.2.1', '1.2.2') and key == 'dishes':
+        if not any(tag == 'script' and '/complete99-editorial-home/assets/legacy-public.js?ver=' + version in a.get('src', '') for tag, a in page.tags):
             raise RuntimeError('Exact live-core menu compatibility script missing')
         result['live_core_filter_compatibility'] = True
     return result

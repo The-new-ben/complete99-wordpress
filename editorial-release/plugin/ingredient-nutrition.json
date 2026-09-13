@@ -1,0 +1,37 @@
+{
+  "schema": "complete99-ingredient-nutrition/v1",
+  "sources": {
+    "moh-pulses": {
+      "url": "https://efsharibari.health.gov.il/eat-healthy/healthy-nutrition/bread-and-grains/legume/",
+      "he": "משרד הבריאות: קטניות",
+      "en": "Ministry of Health: pulses"
+    },
+    "moh-fats": {
+      "url": "https://efsharibari.health.gov.il/eat-healthy/healthy-nutrition/oils-and-fats/healthier-oils/",
+      "he": "משרד הבריאות: שמנים ושומנים",
+      "en": "Ministry of Health: oils and fats"
+    },
+    "who-diet": {
+      "url": "https://www.who.int/news-room/fact-sheets/detail/healthy-diet",
+      "he": "ארגון הבריאות העולמי: תזונה בריאה",
+      "en": "World Health Organization: healthy diet"
+    }
+  },
+  "ingredients": {
+    "ingredient-chickpea": {
+      "source": "moh-pulses",
+      "he": "גרגרי חומוס מכילים חלבון מהצומח וסיבים תזונתיים. אפשר לשלב אותם אחרי בישול בסלט, במרק או בתבשיל. בממרח חומוס גם כמות הטחינה, השמן והמלח משפיעה על הרכב המנה.",
+      "en": "Chickpeas contain plant protein and dietary fibre. Add cooked chickpeas to salads, soups or stews. In hummus, the amounts of tahini, oil and salt also shape the nutritional composition of the serving."
+    },
+    "ingredient-tahini": {
+      "source": "moh-fats",
+      "he": "טחינה היא אחת מהאפשרויות לשילוב שומן מהצומח בתפריט היומי לפי המלצות משרד הבריאות. ההשוואה בין טחינה גולמית לרוטב מוכן צריכה להביא בחשבון את תוספת המים, המלח וגודל המנה.",
+      "en": "Israeli dietary guidance includes tahini among the plant-fat foods to include in a daily diet. When comparing sesame paste with prepared tahini sauce, account for the added water, salt and serving size."
+    },
+    "ingredient-olive-oil": {
+      "source": "who-diet",
+      "he": "שמן זית מכיל שומן בלתי רווי. ארגון הבריאות העולמי ממליץ להעדיף שומן בלתי רווי על פני שומן רווי. גם בבחירה בשמן זית, הכמות שמוסיפים לארוחה חשובה.",
+      "en": "Olive oil contains unsaturated fat. The World Health Organization recommends choosing unsaturated rather than saturated fats. The amount added to a meal still matters."
+    }
+  }
+}

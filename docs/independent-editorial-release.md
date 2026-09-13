@@ -1,13 +1,17 @@
-# Independent homepage presentation release
+# Independent editorial presentation release
 
 This is a publication lane, not a replacement platform or completion of the full
 food portal objective. The core Campaign upgrade remains pending separately.
 
 The package is generated from the reviewed homepage, CSS, search script and
-consumer renderer. No manually forked marketing copy or new CMS content.
-It changes only the existing Hebrew/English home rendering on platform versions
-1.22.1 through 1.23.x. On 1.24.0 or newer it becomes inert because the same
-homepage is already native. All other pages retain their existing renderer.
+consumer renderer, with separately sourced short nutrition modules. No CMS writes.
+Home and ingredient/knowledge shell overrides apply to platform versions 1.22.1
+through 1.23.x and are disabled on 1.24.0 or newer. Shared CSS and the local-search
+bootstrap have separate enqueue hooks and do not become inert with those shells.
+The menu compatibility script is tested and enabled only for the actual live
+1.22.1 core. PR99's P2 finding requires a tested 1.23.x compatibility extension
+before a core upgrade. Ingredient notes reuse stable card identities and retain
+original content, images and links; they do not calculate product nutrient values.
 
 The deployed platform directory, content, URLs, metadata hooks, database version,
 Campaign workers, original encrypted journals and old deployment lock are not

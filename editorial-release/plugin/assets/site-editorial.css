@@ -64,6 +64,10 @@ body.c99-consumer-site {
 .c99-consumer-site .c99-nutrition-context { border-block: 1px solid #d5d2c7; padding: 24px 0; margin-bottom: 36px; }
 .c99-consumer-site .c99-nutrition-context h2 { margin-top: 0; }
 .c99-consumer-site .c99-nutrition-sources { font-size: 15px; line-height: 1.6; }
+.c99-consumer-site .c99-ingredient-nutrition { border-block-start: 1px solid #d5d2c7; padding-block: 16px; margin-block: 16px; }
+.c99-consumer-site .c99-ingredient-nutrition h4 { color: #233c31; font-size: 18px; line-height: 1.4; margin: 0 0 8px; }
+.c99-consumer-site .c99-ingredient-nutrition p { font-size: 16px; line-height: 1.65; }
+.c99-consumer-site .c99-ingredient-nutrition a { display: inline-flex; align-items: center; min-height: 44px; font-size: 16px; line-height: 1.5; color: #233c31; text-underline-offset: 4px; }
 @media (max-width: 900px) {
   .c99-consumer-site :is(.c99-consumer-page-hero-grid, .c99-consumer-dish-grid, .c99-consumer-editorial-grid, .c99-group-order-form-grid) { grid-template-columns: minmax(0, 1fr); }
   .c99-consumer-site .c99-consumer-page-hero { padding-block: 16px 40px; }

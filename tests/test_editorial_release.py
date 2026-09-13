@@ -71,7 +71,7 @@ def test_public_verification_checks_metadata_assets_and_destinations():
 
 def test_package_is_exact_reproducible_and_derived():
     files = builder.entries()
-    assert len(files) == 17
+    assert len(files) == 19
     assert builder.package_bytes(files) == builder.package_bytes(files)
     archive = ROOT / f'editorial-dist/complete99-editorial-home-{builder.VERSION}.zip'
     assert archive.read_bytes() == builder.package_bytes(files)
