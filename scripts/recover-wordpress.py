@@ -3207,6 +3207,8 @@ def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
     groups are unavailable, not all-false. Never emit errors, rows or URLs.
     """
     source = status if isinstance(status, dict) else {}
+    executed = source.get("observation_checks_executed")
+    executed = executed if isinstance(executed, dict) else {}
     result: dict[str, Any] = {
         "schema": "complete99-observation-diagnostics/v1",
         "recovery_authority": False,
@@ -3218,7 +3220,7 @@ def bounded_observation_diagnostics(status: Any) -> dict[str, Any]:
         ("campaign_capacity_diagnostic", INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS),
     ):
         group = source.get(name)
-        available = isinstance(group, dict) and all(
+        available = executed.get(name) is True and isinstance(group, dict) and all(
             key in group and type(group[key]) is bool for key in keys
         )
         result["groups"][name] = {

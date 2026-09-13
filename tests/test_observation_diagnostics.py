@@ -15,6 +15,7 @@ SPEC.loader.exec_module(RECOVER)
 
 def status_fixture():
     return {
+        "observation_checks_executed": {key: True for key in ("migration_invariant_checks", "campaign_operational", "campaign_capacity_diagnostic")},
         "migration_invariant_checks": {key: key != "campaigns" for key in RECOVER.INTERRUPTED_FORWARD_MIGRATION_INVARIANT_KEYS},
         "campaign_operational": {key: False for key in RECOVER.INTERRUPTED_FORWARD_CAMPAIGN_OPERATIONAL_KEYS},
         "campaign_capacity_diagnostic": {key: True for key in RECOVER.INTERRUPTED_FORWARD_CAMPAIGN_CAPACITY_DIAGNOSTIC_KEYS},
@@ -51,6 +52,15 @@ def test_bridge_projects_existing_read_only_diagnostics_in_pending_activation():
     assert "$campaign_diagnostic_phase = in_array( $phase, array( 'candidate_activation_pending', 'installed_pending_stabilization' ), true );" in status_route
     assert "$runtime_loaded && $campaign_diagnostic_phase && method_exists( 'Complete99_Ops', 'status_snapshot' )" in status_route
     assert "$runtime_loaded && $campaign_diagnostic_phase && $campaign_lifecycle['canonical']" in status_route
+    assert "'observation_checks_executed' => $observation_checks_executed" in status_route
+
+
+def test_default_false_maps_are_unavailable_until_checks_actually_execute():
+    for executed in (None, {}, False, {"campaign_operational": 1}, {"campaign_operational": False}):
+        status = status_fixture()
+        status["observation_checks_executed"] = executed
+        result = RECOVER.bounded_observation_diagnostics(status)
+        assert all(not group["available"] for group in result["groups"].values())
 
 
 def test_diagnostic_log_does_not_change_signed_audit_shape():
