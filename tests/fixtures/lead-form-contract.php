@@ -6,8 +6,8 @@ if (PHP_SAPI === 'cli-server') {
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'GET') { http_response_code(405); exit; }
     if (in_array($path, ['/plugin/complete99-platform/assets/css/public.css', '/plugin/complete99-platform/assets/css/consumer.css'], true)) { return false; }
-    if (!in_array($path, ['/preview/he/', '/preview/en/'], true)) { http_response_code(404); exit; }
-    $preview_language = $path === '/preview/en/' ? 'en' : 'he';
+    if (!in_array($path, ['/preview/he/', '/preview/en/', '/request-proposal/', '/en/request-proposal/'], true)) { http_response_code(404); exit; }
+    $preview_language = in_array($path, ['/preview/en/', '/en/request-proposal/'], true) ? 'en' : 'he';
 }
 define('ABSPATH', dirname(__DIR__, 2) . '/');
 define('HOUR_IN_SECONDS', 3600);
@@ -71,9 +71,11 @@ function wp_safe_redirect($url) {
     $GLOBALS['fixture_redirect'] = $url;
     throw new RuntimeException('redirected');
 }
-require ABSPATH . 'plugin/complete99-platform/includes/class-complete99-leads.php';
+require $fixture_native_leads ?? ABSPATH . 'plugin/complete99-platform/includes/class-complete99-leads.php';
 $mode = $preview_language ? 'preview' : ($argv[1] ?? 'render');
-if ($mode === 'render') {
+if ($mode === 'library' && PHP_SAPI === 'cli') {
+    // Memory-only native handler support for the public-transport contract tests.
+} elseif ($mode === 'render') {
     Complete99_Leads::render_form($argv[2] ?? 'he', $argv[3] ?? 'group-order');
 } elseif ($mode === 'preview') {
     ?><!doctype html><html lang="<?= $preview_language ?>" dir="<?= $preview_language === 'he' ? 'rtl' : 'ltr' ?>">

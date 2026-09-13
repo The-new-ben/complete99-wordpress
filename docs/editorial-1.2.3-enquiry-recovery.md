@@ -1,6 +1,11 @@
 # Editorial 1.2.3: group enquiry recovery
 
-Candidate only until exact deployment and live activation checks are recorded.
+Deployed from23d07c2c31f6be20d481d21275c23b2d45154321 in run34779861825.
+Exact artifact:e397da7b04a43bdf5bea174b39462a8d810e2335b91489fec3fe46d44eb8bbba.
+Installed files, predecessor restore/redeploy and cleanup verified by deployment
+audit. Subsequent negative live POST probes found the native admin-post path
+returns nginx404. This is not a working live submission release. Public canonical
+POST receives200 but is untreated. Transport correction follows in1.2.4.
 
 ## Changed
 

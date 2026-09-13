@@ -46,6 +46,7 @@ def predecessor(commit, version, read=public_bytes):
         '1.2.1': ('1.2.0', '7232ae2c14ce7d164b73d3ac9229dc10b4e257e447721b0589e8bb5491a4a17e'),
         '1.2.2': ('1.2.1', '99081667e34302186d53f783ac4f0b5b0bdcd87fc78b36094d51225f23b8fc60'),
         '1.2.3': ('1.2.2', '6df3a07130af2004d5485ad7e0f80bb64b0face0f66fadb636ebef81602d7824'),
+        '1.2.4': ('1.2.3', 'e397da7b04a43bdf5bea174b39462a8d810e2335b91489fec3fe46d44eb8bbba'),
     }
     if version not in versions:
         raise RuntimeError('Unsupported presentation upgrade')
@@ -75,7 +76,7 @@ def verify_internal(text, prior, version, path=''):
         raise RuntimeError('Shared presentation stylesheet not loaded')
     result = {'seo_preserved': True, 'shared_stylesheet': version}
     key = path.removeprefix('/en').strip('/')
-    if version in ('1.2.0', '1.2.1', '1.2.2', '1.2.3') and key in ('ingredients', 'knowledge'):
+    if version in ('1.2.0', '1.2.1', '1.2.2', '1.2.3', '1.2.4') and key in ('ingredients', 'knowledge'):
         stem = 'ingredient-still-life-v01' if key == 'ingredients' else 'aubergine-pan-v01'
         if (text.count('id="c99-nutrition-title"') != 1 or
                 not any(tag == 'picture' and a.get('data-c99-editorial-picture') == key for tag, a in page.tags) or
@@ -86,19 +87,25 @@ def verify_internal(text, prior, version, path=''):
         if not prior_links.issubset(current_links):
             raise RuntimeError('Existing editorial navigation removed')
         result.update(editorial_image=stem, nutrition_module=True, existing_links_preserved=True)
-    if version in ('1.2.2', '1.2.3') and key == 'ingredients':
+    if version in ('1.2.2', '1.2.3', '1.2.4') and key == 'ingredients':
         identities = [a['data-c99-ingredient-nutrition'] for tag, a in page.tags if 'data-c99-ingredient-nutrition' in a]
         if sorted(identities) != ['ingredient-chickpea', 'ingredient-olive-oil', 'ingredient-tahini']:
             raise RuntimeError('Exact ingredient nutrition notes missing or duplicated')
         result['ingredient_nutrition_notes'] = identities
-    if version in ('1.2.1', '1.2.2', '1.2.3') and key == 'dishes':
+    if version in ('1.2.1', '1.2.2', '1.2.3', '1.2.4') and key == 'dishes':
         if not any(tag == 'script' and '/complete99-editorial-home/assets/legacy-public.js?ver=' + version in a.get('src', '') for tag, a in page.tags):
             raise RuntimeError('Exact live-core menu compatibility script missing')
         result['live_core_filter_compatibility'] = True
-    if version == '1.2.3' and key == 'request-proposal':
+    if version in ('1.2.3', '1.2.4') and key == 'request-proposal':
         if not any(tag == 'script' and '/complete99-editorial-home/assets/group-enquiry.js?ver=' + version in a.get('src', '') for tag, a in page.tags):
             raise RuntimeError('Group enquiry recovery script missing')
         result['group_enquiry_recovery_loaded'] = True
+        if version == '1.2.4':
+            canonical = next(a.get('href') for tag, a in page.tags if tag == 'link' and a.get('rel') == 'canonical')
+            forms = [a for tag, a in page.tags if tag == 'form' and a.get('class') == 'c99-lead-form']
+            if len(forms) != 1 or forms[0].get('method') != 'post' or forms[0].get('action') != canonical or forms[0].get('data-c99-public-enquiry') != '1':
+                raise RuntimeError('Public enquiry form action missing or not canonical')
+            result['public_enquiry_action'] = canonical
     return result
 
 class PublicPage(HTMLParser):
