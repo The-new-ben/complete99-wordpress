@@ -1,0 +1,60 @@
+// Execute the shipped menu-filter IIFE against a minimal DOM contract.
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const source = fs.readFileSync('plugin/complete99-platform/assets/js/public.js', 'utf8');
+const marker = source.indexOf("var shell = document.querySelector('[data-c99-dish-filter]')");
+assert(marker > 0);
+const start = source.lastIndexOf('(function () {', marker);
+const end = source.indexOf('}());', marker) + 5;
+const script = source.slice(start, end);
+
+function fixture(local = true, language = 'he') {
+  const search = {value: '', addEventListener(event, fn) { this[event] = fn; }};
+  const count = {textContent: ''};
+  const empty = {hidden: true};
+  const cards = [['קובה סלק Beet kubbeh', 'pots meat'], ['קוסקוס Couscous', 'pots vegetarian'], ['סביח Sabich', 'pita vegetarian']].map(([textContent, facets]) => ({textContent, hidden: false, getAttribute() { return facets; }}));
+  const buttons = ['all', 'pots', 'pita', 'vegetarian'].map(filter => ({
+    selected: false, focused: false,
+    classList: {toggle() {}},
+    getAttribute() { return filter; },
+    setAttribute(key, value) { this.selected = value === 'true'; },
+    addEventListener(event, fn) { this[event] = fn; },
+    focus() { this.focused = true; }
+  }));
+  const shell = {
+    querySelectorAll() { return buttons; },
+    querySelector(selector) { return selector === '[data-c99-menu-search]' ? search : count; },
+    hasAttribute() { return local; }
+  };
+  const urls = [];
+  vm.runInNewContext(script, {
+    URL, window: {location: {href: 'https://complete99.co.il/'}, history: {replaceState(a,b,url) { urls.push(url); }}},
+    document: {documentElement: {lang: language}, querySelector(selector) {
+      return selector === '[data-c99-dish-filter]' ? shell : selector === '[data-c99-dish-grid]' ? {querySelectorAll() { return cards; }} : empty;
+    }}
+  });
+  return {search, count, empty, cards, buttons, urls};
+}
+const f = fixture();
+assert.equal(f.count.textContent, '3 מנות');
+f.search.value = 'קוּבָּה'; f.search.input();
+assert.deepEqual(f.cards.map(c=>c.hidden), [false,true,true]);
+assert.equal(f.count.textContent, 'מנה אחת');
+f.buttons[2].click();
+assert(f.empty.hidden === false);
+f.search.value = ''; f.search.input();
+assert.deepEqual(f.cards.map(c=>c.hidden), [true,true,false]);
+f.buttons[0].click();
+assert(f.cards.every(c=>!c.hidden));
+assert.equal(f.empty.hidden, true);
+assert.equal(f.urls.length, 0, 'Homepage interactions must not create query URLs');
+f.buttons[0].keydown({key:'End', preventDefault(){}});
+assert(f.buttons[3].focused);
+const en = fixture(true, 'en');
+en.search.value = 'KUBBEH'; en.search.input();
+assert.equal(en.count.textContent, '1 dish');
+const legacy = fixture(false);
+legacy.buttons[1].click();
+assert.equal(legacy.urls[0], 'https://complete99.co.il/?dish-style=pots');
+console.log('PASS: Hebrew marks, case-insensitive English, combined filters, empty/reset states, keyboard navigation, clean homepage URL, legacy isolation');

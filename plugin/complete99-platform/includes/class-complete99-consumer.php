@@ -267,75 +267,10 @@ final class Complete99_Consumer {
 	}
 
 	private static function render_home( $post, $lang ) {
-		$is_he     = 'he' === $lang;
-		$order_url = Complete99_Commerce::order_url( $lang );
-		?>
-		<div class="c99-food-portal" data-c99-home-experience="food-discovery-v1">
-		<section class="c99-consumer-hero" aria-labelledby="c99-home-title">
-			<div class="c99-container c99-consumer-hero-grid">
-				<div class="c99-consumer-hero-copy">
-					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'קומפלט 99 / אוכל ואנשים' : 'Complete99 / Food and people' ); ?></p>
-					<h1 id="c99-home-title"><?php echo esc_html( $is_he ? 'מה אוכלים היום?' : 'What are you hungry for?' ); ?></h1>
-					<p class="c99-hero-summary"><?php echo esc_html( $is_he ? 'משהו חם מהסיר, ארוחה לכל הצוות או טעם שעוד לא הכרתם. מתחילים כאן.' : 'Something warm from the pot, lunch for the whole team or a flavour you have yet to discover. Start here.' ); ?></p>
-					<div class="c99-hero-actions">
-						<a class="c99-button c99-button-primary" href="<?php echo esc_url( self::route( 'dishes', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'מה בתפריט' : 'Explore the menu' ); ?></a>
-						<a class="c99-button c99-button-secondary" href="<?php echo esc_url( self::route( 'proposal', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'מזמינים לקבוצה' : 'Plan a group meal' ); ?></a>
-					</div>
-					<div class="c99-consumer-facts">
-						<a href="<?php echo esc_url( self::route( 'contact', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'המטבח שלנו באבן גבירול 99, תל אביב' : 'Our kitchen at 99 Ibn Gabirol, Tel Aviv' ); ?></a>
-						<a href="<?php echo esc_url( $order_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $is_he ? 'להזמנה ב-Wolt' : 'Order on Wolt' ); ?></a>
-					</div>
-				</div>
-				<figure class="c99-consumer-hero-media">
-					<?php self::brand_picture( 'c99-food-house-spread-hero-2021-wp-v01', $is_he ? 'מבט מלמעלה על קובה סלק, קוסקוס, קציצות, סלט ומנות נוספות' : 'Overhead spread of beet kubbeh, couscous, meatballs, salad and additional dishes', 1400, 788, true ); ?>
-				</figure>
-			</div>
-		</section>
-		<nav class="c99-home-choices c99-container" aria-label="<?php echo esc_attr( $is_he ? 'מה מחפשים היום' : 'Find your next meal' ); ?>">
-			<a href="<?php echo esc_url( self::route( 'dishes', $lang ) ); ?>"><strong><?php echo esc_html( $is_he ? 'אוכל מוכן לשולחן' : 'Ready for the table' ); ?></strong><span><?php echo esc_html( $is_he ? 'קובה, קציצות, קוסקוס ועוד' : 'Kubbeh, meatballs, couscous and more' ); ?></span><i aria-hidden="true">↗</i></a>
-			<a href="<?php echo esc_url( self::route( 'proposal', $lang ) ); ?>"><strong><?php echo esc_html( $is_he ? 'ארוחה לכל הצוות' : 'Lunch for the whole team' ); ?></strong><span><?php echo esc_html( $is_he ? 'למשרד, למפגש ולשולחן גדול' : 'For the office, a gathering or a shared table' ); ?></span><i aria-hidden="true">↗</i></a>
-			<a href="<?php echo esc_url( self::route( 'ingredients', $lang ) ); ?>"><strong><?php echo esc_html( $is_he ? 'מכירים את המרכיבים' : 'Get to know the ingredients' ); ?></strong><span><?php echo esc_html( $is_he ? 'טעמים, שימושים וסיפורים מהמטבח' : 'Flavours, uses and stories from the kitchen' ); ?></span><i aria-hidden="true">↗</i></a>
-		</nav>
-		<?php self::render_menu_preview( $lang, 6 ); ?>
-		<?php self::render_group_order_teaser( $lang ); ?>
-		<section class="c99-consumer-story">
-			<div class="c99-container c99-consumer-story-grid">
-				<div class="c99-consumer-story-copy">
-					<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'הרבה יותר מסביח' : 'Far more than sabich' ); ?></p>
-					<h2><?php echo esc_html( $is_he ? 'פיתה אחת, סירים שלמים וסיפור תל אביבי' : 'One pita, full cooking pots and a Tel Aviv story' ); ?></h2>
-					<p><?php echo esc_html( $is_he ? 'חציל, טחינה ועמבה בפיתה. קובה סלק בקערה עמוקה. קוסקוס וקציצות לצהריים. מהמטבח באבן גבירול יוצאים טעמים של בית, לארוחה לבד או לשולחן משותף.' : 'Aubergine, tahini and amba in a pita. Beet kubbeh in a deep bowl. Couscous and meatballs for lunch. Our Ibn Gabirol kitchen brings home-style flavours to a meal for one or a shared table.' ); ?></p>
-					<div class="c99-inline-links">
-						<a href="<?php echo esc_url( self::route( 'about', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'הסיפור שלנו' : 'Our story' ); ?></a>
-						<a href="<?php echo esc_url( self::route( 'traditions', $lang ) ); ?>"><?php echo esc_html( $is_he ? 'מסורות וסיפורי אוכל' : 'Traditions and food stories' ); ?></a>
-					</div>
-				</div>
-				<div class="c99-story-mosaic">
-					<figure><?php self::brand_picture( 'c99-food-sabich-pita-gallery-2021-wp-v01', $is_he ? 'סביח בפיתה' : 'Sabich in a pita' ); ?></figure>
-					<figure><?php self::brand_picture( 'c99-food-kubeh-beet-soup-gallery-2021-wp-v01', $is_he ? 'קובה במרק סלק' : 'Kubbeh in beet soup' ); ?></figure>
-					<figure><?php self::brand_picture( 'c99-food-couscous-beef-gallery-2021-wp-v01', $is_he ? 'קוסקוס, ירקות ובשר' : 'Couscous, vegetables and beef' ); ?></figure>
-				</div>
-			</div>
-		</section>
-		<section class="c99-consumer-paths">
-			<div class="c99-container">
-				<div class="c99-consumer-section-heading">
-					<div>
-						<p class="c99-eyebrow"><?php echo esc_html( $is_he ? 'נכנסים דרך מה שמעניין אתכם' : 'Start with what interests you' ); ?></p>
-						<h2><?php echo esc_html( $is_he ? 'מנה, מרכיב או סיפור' : 'A dish, an ingredient or a story' ); ?></h2>
-					</div>
-				</div>
-				<div class="c99-consumer-path-grid">
-					<a href="<?php echo esc_url( self::route( 'dishes', $lang ) ); ?>"><span>01</span><h3><?php echo esc_html( $is_he ? 'מה אוכלים' : 'What to eat' ); ?></h3><p><?php echo esc_html( $is_he ? 'תמונות, תיאורים והמשך לתפריט ההזמנות.' : 'Photographs, descriptions and the current ordering menu.' ); ?></p></a>
-					<a href="<?php echo esc_url( self::route( 'ingredients', $lang ) ); ?>"><span>02</span><h3><?php echo esc_html( $is_he ? 'מה יש בפנים' : 'What goes into it' ); ?></h3><p><?php echo esc_html( $is_he ? 'מרכיבים בתוך ההקשר של המנה והמסורת.' : 'Ingredients in the context of dishes and traditions.' ); ?></p></a>
-					<a href="<?php echo esc_url( self::route( 'knowledge', $lang ) ); ?>"><span>03</span><h3><?php echo esc_html( $is_he ? 'נכנסים למטבח' : 'Into the kitchen' ); ?></h3><p><?php echo esc_html( $is_he ? 'מדריכים לבישול, חומרי גלם וטעמים.' : 'Guides to cooking, ingredients and flavour.' ); ?></p></a>
-				</div>
-			</div>
-		</section>
-		<?php self::render_pantry_teaser( $lang ); ?>
-		<?php self::render_order_band( $lang ); ?>
-		</div>
-		<?php
+		$is_he = 'he' === $lang;
+		include __DIR__ . '/views/food-home.php';
 	}
+
 
 	private static function render_menu_preview( $lang, $limit ) {
 		$is_he    = 'he' === $lang;
