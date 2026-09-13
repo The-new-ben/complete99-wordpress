@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SLUG = 'complete99-editorial-home'
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 DIST = ROOT / 'editorial-dist'
 spec = importlib.util.spec_from_file_location('canonical_builder', ROOT / 'scripts/build-plugin-zip.py')
 builder = importlib.util.module_from_spec(spec)
@@ -28,7 +28,7 @@ def entries():
     shell = builder.canonical_contents(platform / 'templates/public-shell.php')
     assert shell.count(b'Complete99_Consumer::render_current') == 1
     shell = shell.replace(b'Complete99_Consumer::render_current', b'Complete99_Editorial_Consumer::render_current')
-    shell = shell.replace(b'<main id="c99-main"', b'<main data-c99-editorial-release="1.0.0" id="c99-main"')
+    shell = shell.replace(b'<main id="c99-main"', f'<main data-c99-editorial-release="{VERSION}" id="c99-main"'.encode())
     view = builder.canonical_contents(platform / 'includes/views/food-home.php')
     assert view.count(b"COMPLETE99_PLATFORM_URL . 'assets/images/editorial/") == 2
     view = view.replace(b"COMPLETE99_PLATFORM_URL . 'assets/images/editorial/", b"C99_EDITORIAL_URL . 'assets/")
@@ -39,6 +39,7 @@ def entries():
         'public-shell.php': shell,
         'assets/consumer.css': builder.canonical_contents(platform / 'assets/css/consumer.css'),
         'assets/public.js': builder.canonical_contents(platform / 'assets/js/public.js'),
+        'assets/site-editorial.css': builder.canonical_contents(ROOT / 'editorial-release/plugin/assets/site-editorial.css'),
     }
     for name in ('c99-shared-table-v01.webp', 'c99-shared-table-v01-768.webp'):
         result['assets/' + name] = (platform / 'assets/images/editorial' / name).read_bytes()

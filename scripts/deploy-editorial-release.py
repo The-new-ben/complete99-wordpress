@@ -97,6 +97,8 @@ def main():
     if os.environ.get('GITHUB_REF') != 'refs/heads/main' or os.environ.get('GITHUB_SHA') != commit or not re.fullmatch('[a-f0-9]{40}', commit):
         raise RuntimeError('Only the exact protected main workflow may deploy')
     manifest = json.loads((ROOT / 'editorial-dist/manifest.json').read_text())
+    if manifest['version'] != '1.0.0':
+        raise RuntimeError('Existing presentation upgrade requires its scoped update/restore driver; first-install driver cannot overwrite it')
     url = f'https://raw.githubusercontent.com/The-new-ben/complete99-wordpress/{commit}/editorial-dist/{manifest["artifact"]}'
     raw = public_bytes(url)
     if hashlib.sha256(raw).hexdigest() != manifest['sha256']:

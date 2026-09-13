@@ -1,0 +1,85 @@
+/* Public presentation only. Content, visibility, URLs and commerce states stay intact. */
+body.c99-consumer-site {
+  --c99-food-paper: #faf7ef; --c99-food-cream: #f1ede3;
+  --c99-food-ink: #24251f; --c99-food-tomato: #a52929;
+  --c99-food-green-dark: #233c31; --c99-food-line: #d5d2c7;
+  background: var(--c99-food-paper);
+}
+.c99-consumer-site .c99-container { width: min(1400px, calc(100% - 64px)); }
+.c99-consumer-site :where(a, button, input, select, textarea):focus-visible { outline: 3px solid #a52929; outline-offset: 4px; }
+.c99-consumer-site .c99-consumer-header { background: #faf7ef; box-shadow: none; }
+.c99-consumer-site .c99-brand-mark { border-radius: 0; background: #a52929; }
+.c99-consumer-site .c99-consumer-nav-link { text-underline-offset: 7px; }
+.c99-consumer-site .c99-consumer-nav-link.is-current { text-decoration: underline; }
+.c99-consumer-site .c99-breadcrumb { padding-block: 22px; font-size: 15px; line-height: 1.6; flex-wrap: wrap; }
+.c99-consumer-site .c99-consumer-page-hero { background: transparent; padding-block: 30px 64px; }
+.c99-consumer-site :is(.c99-consumer-page-hero-grid, .c99-consumer-dish-grid) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+  gap: clamp(28px, 5vw, 76px); align-items: center;
+}
+.c99-consumer-site :is(.c99-consumer-page-hero, .c99-consumer-dish-copy) h1 {
+  color: #a52929; font-size: clamp(38px, 5.5vw, 78px); line-height: 1.12;
+  letter-spacing: -.025em; max-width: 15ch; margin-block: 0 24px; overflow-wrap: break-word;
+}
+.c99-consumer-site :is(.c99-consumer-page-hero, .c99-consumer-dish-copy) .c99-hero-summary { font-size: clamp(18px, 1.6vw, 22px); line-height: 1.65; max-width: 48ch; }
+.c99-consumer-site .c99-eyebrow { font-size: 14px; letter-spacing: .035em; }
+.c99-consumer-site :is(.c99-consumer-page-hero-grid, .c99-consumer-dish-grid) > figure { margin: 0; min-width: 0; }
+.c99-consumer-site :is(.c99-consumer-page-hero-grid, .c99-consumer-dish-grid) > figure img {
+  display: block; width: 100%; height: auto; aspect-ratio: 5 / 4;
+  object-fit: cover; border-radius: 3px; box-shadow: none;
+}
+.c99-consumer-site .c99-button { min-height: 48px; border-radius: 3px; padding: 13px 22px; font-size: 16px; line-height: 1.4; box-shadow: none; }
+.c99-consumer-site .c99-button-primary { background: #a52929; border-color: #a52929; color: #fff; }
+.c99-consumer-site .c99-button-primary:hover { background: #7f2020; border-color: #7f2020; }
+.c99-consumer-site .c99-button-secondary { background: transparent; color: #24251f; border-color: #aaa99c; }
+.c99-consumer-site .c99-consumer-menu-section { padding-block: 36px 72px; }
+.c99-consumer-site .c99-consumer-menu-grid { gap: 36px 26px; }
+.c99-consumer-site .c99-consumer-menu-card { background: transparent; border: 0; border-radius: 0; box-shadow: none; transform: none; }
+.c99-consumer-site .c99-consumer-menu-card figure { border-radius: 3px; overflow: hidden; }
+.c99-consumer-site .c99-consumer-menu-card img { width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .25s ease; }
+.c99-consumer-site .c99-consumer-menu-card:hover img { transform: scale(1.025); }
+.c99-consumer-site .c99-consumer-menu-card-copy { padding: 18px 0 0; }
+.c99-consumer-site .c99-consumer-menu-card-copy h3 { font-size: 26px; line-height: 1.25; margin-block: 10px; }
+.c99-consumer-site .c99-consumer-menu-card-copy p { font-size: 16px; line-height: 1.6; }
+.c99-consumer-site .c99-consumer-menu-card-footer { border: 0; padding-inline: 0; }
+.c99-consumer-site .c99-dish-filter-button { min-height: 46px; border-radius: 3px; font-size: 16px; background: transparent; }
+.c99-consumer-site .c99-dish-filter-button.is-active { background: #24251f; border-color: #24251f; color: #fff; }
+.c99-consumer-site .c99-consumer-editorial { padding-block: 56px 80px; }
+.c99-consumer-site .c99-consumer-editorial-grid { gap: clamp(28px, 5vw, 72px); }
+.c99-consumer-site .c99-article { max-width: 72ch; font-size: 18px; line-height: 1.8; }
+.c99-consumer-site .c99-article h2 { font-size: clamp(28px, 3vw, 40px); line-height: 1.25; margin-top: 1.6em; }
+.c99-consumer-site .c99-article :is(p, li) { color: #45483f; }
+.c99-consumer-site .c99-article a { text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.c99-consumer-site .c99-consumer-note { position: static; border: 0; border-block-start: 3px solid #a52929; border-radius: 0; background: #f1ede3; padding: 28px; box-shadow: none; }
+.c99-consumer-site .c99-consumer-note h2 { font-size: 28px; line-height: 1.25; }
+.c99-consumer-site .c99-group-order-steps { gap: 28px; padding-block: 28px; border-block: 1px solid #d5d2c7; }
+.c99-consumer-site .c99-group-order-steps li { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+.c99-consumer-site .c99-group-order-steps li > span { color: #a52929; background: transparent; }
+.c99-consumer-site .c99-group-order-form-section { background: #f1ede3; padding-block: 64px; }
+.c99-consumer-site .c99-group-order-form-card { border-radius: 4px; background: #fffdf8; box-shadow: none; padding: clamp(20px, 3vw, 42px); }
+.c99-consumer-site :is(input:not([type=checkbox]):not([type=hidden]), select, textarea) { max-width: 100%; min-width: 0; font-size: 16px; border-radius: 3px; }
+.c99-consumer-site :is(input:not([type=checkbox]):not([type=hidden]), select) { min-height: 48px; }
+.c99-consumer-site .c99-ingredient-index-card { border-radius: 4px; box-shadow: none; border-color: #d5d2c7; }
+.c99-consumer-site .c99-consumer-footer { background: #233c31; }
+@media (max-width: 900px) {
+  .c99-consumer-site :is(.c99-consumer-page-hero-grid, .c99-consumer-dish-grid, .c99-consumer-editorial-grid, .c99-group-order-form-grid) { grid-template-columns: minmax(0, 1fr); }
+  .c99-consumer-site .c99-consumer-page-hero { padding-block: 16px 40px; }
+  .c99-consumer-site .c99-consumer-dish { padding-block: 16px 48px; }
+  .c99-consumer-site .c99-group-order-form-section { padding-block: 40px; }
+  .c99-consumer-site .c99-group-order-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  .c99-consumer-site .c99-container { width: calc(100% - 36px); }
+  .c99-consumer-site :is(.c99-consumer-page-hero, .c99-consumer-dish-copy) h1 { max-width: none; font-size: clamp(36px, 10vw, 52px); }
+  .c99-consumer-site .c99-hero-actions { flex-wrap: wrap; gap: 10px; }
+  .c99-consumer-site .c99-hero-actions .c99-button { flex: 1 1 160px; text-align: center; justify-content: center; }
+  .c99-consumer-site .c99-consumer-menu-grid { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .c99-consumer-site .c99-consumer-menu-card-copy h3 { font-size: 25px; }
+  .c99-consumer-site .c99-consumer-editorial { padding-block: 28px 48px; }
+  .c99-consumer-site .c99-article { font-size: 17px; line-height: 1.75; }
+  .c99-consumer-site .c99-group-order-steps { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .c99-consumer-site .c99-consumer-menu-card img { transition: none; }
+  .c99-consumer-site .c99-consumer-menu-card:hover img { transform: none; }
+}

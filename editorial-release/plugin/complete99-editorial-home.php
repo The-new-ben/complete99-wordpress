@@ -1,12 +1,12 @@
 <?php
 /**
  * Plugin Name: Complete99 Editorial Home
- * Description: Independently deployable presentation for the existing bilingual homepage. No content migrations.
- * Version: 1.0.0
+ * Description: Shared public food-site presentation and bilingual editorial homepage. No content migrations.
+ * Version: 1.1.0
  * Requires PHP: 8.0
  */
 if ( ! defined( 'ABSPATH' ) ) { exit; }
-define( 'C99_EDITORIAL_VERSION', '1.0.0' );
+define( 'C99_EDITORIAL_VERSION', '1.1.0' );
 define( 'C99_EDITORIAL_URL', plugin_dir_url( __FILE__ ) );
 
 function c99_editorial_home_request() {
@@ -34,3 +34,8 @@ add_action( 'wp_enqueue_scripts', static function () {
 	wp_deregister_script( 'complete99-public' );
 	wp_enqueue_script( 'complete99-public', C99_EDITORIAL_URL . 'assets/public.js', array(), C99_EDITORIAL_VERSION, true );
 }, 20 );
+
+add_action( 'wp_enqueue_scripts', static function () {
+	if ( is_admin() || ! class_exists( 'Complete99_Consumer' ) ) { return; }
+	wp_enqueue_style( 'complete99-site-editorial', C99_EDITORIAL_URL . 'assets/site-editorial.css', array( 'complete99-consumer' ), C99_EDITORIAL_VERSION );
+}, 30 );
