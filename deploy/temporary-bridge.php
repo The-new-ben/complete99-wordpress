@@ -3231,7 +3231,8 @@ add_action(
 					$consistent_database_status = '' !== $projected_deployment_id
 						|| $orphaned_consistent_status
 						|| $interrupted_installing_status
-						|| $interrupted_adopted_status;
+						|| $interrupted_adopted_status
+						|| 'candidate_activation_pending' === $phase;
 					$database_storage = array();
 					if ( $consistent_database_status ) {
 						$database_storage = $verify_transactional_storage();

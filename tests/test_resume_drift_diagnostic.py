@@ -94,3 +94,18 @@ def test_diagnostic_does_not_change_resume_authority_or_signed_projection():
         assert forbidden not in block
     assert "c99_candidate_resume_unproven_drift" in bridge
     assert "candidate_resume_diagnostic" not in RECOVER.INTERRUPTED_FORWARD_SAFE_STATUS_KEYS
+
+
+def test_pending_resume_status_uses_consistent_transactional_snapshot():
+    if not shutil.which("php"):
+        pytest.skip("PHP required")
+    bridge = (ROOT / "deploy/temporary-bridge.php").read_text(encoding="utf-8")
+    selection = "$consistent_database_status =" + bridge.split("$consistent_database_status =", 1)[1].split(";", 1)[0] + ";"
+    setup = "<?php $projected_deployment_id=''; $orphaned_consistent_status=false; $interrupted_installing_status=false; $interrupted_adopted_status=false;"
+    for phase, expected in (("candidate_activation_pending", True), ("", False)):
+        script = setup + "$phase=" + json.dumps(phase) + ";" + selection + "echo json_encode($consistent_database_status);"
+        result = subprocess.run(["php"], input=script, text=True, capture_output=True, check=True)
+        assert json.loads(result.stdout) is expected
+    capture = bridge.split("$consistent_database_status =", 1)[1].split("$database_json =", 1)[0]
+    assert "$verify_transactional_storage()" in capture
+    assert "? $capture_database_state_consistent()" in capture
