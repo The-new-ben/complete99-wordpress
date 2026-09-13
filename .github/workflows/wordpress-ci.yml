@@ -40,6 +40,9 @@ jobs:
       - name: Contract tests
         run: python -m pytest -q
 
+      - name: Homepage search behavior
+        run: node tests/food-home-search.test.cjs
+
       - name: Secret scan
         run: python scripts/secret-scan.py
 

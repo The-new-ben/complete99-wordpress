@@ -27,7 +27,7 @@ function sanitize_file_name($value) { return basename($value); }
 function home_url($path) { return 'https://complete99.co.il' . $path; }
 class Complete99_Content {
     public static function route_url($key, $lang) {
-        $paths = ['home'=>'', 'dishes'=>'dishes/', 'proposal'=>'request-proposal/', 'ingredients'=>'ingredients/', 'knowledge'=>'knowledge/', 'traditions'=>'traditions/', 'contact'=>'contact/', 'about'=>'about/', 'store'=>'store/'];
+        $paths = ['home'=>'', 'dishes'=>'dishes/', 'proposal'=>'request-proposal/', 'ingredients'=>'ingredients/', 'knowledge'=>'knowledge/', 'traditions'=>'traditions/', 'contact'=>'contact/', 'about'=>'about/', 'store'=>'store/', 'privacy'=>'privacy/', 'terms'=>'terms/', 'accessibility'=>'accessibility/'];
         if (!array_key_exists($key, $paths)) { throw new RuntimeException('Unknown fixture route: ' . $key); }
         return home_url(($lang === 'en' ? '/en/' : '/') . $paths[$key]);
     }
@@ -37,6 +37,7 @@ class Complete99_Commerce {
     public static function is_ready() { return false; }
     public static function catalog_is_ready() { return false; }
     public static function can_preview_commerce() { return false; }
+    public static function is_transaction_page() { return false; }
 }
 class Complete99_REST {
     public static function public_indexable_items() { return require COMPLETE99_PLATFORM_DIR . 'data/consumer-menu.php'; }
@@ -56,9 +57,12 @@ if (!in_array($lang, ['he', 'en'], true)) { throw new RuntimeException('Unknown 
 <link rel="stylesheet" href="/plugin/complete99-platform/assets/css/consumer.css">
 </head>
 <body class="complete99-public c99-consumer-site">
-<aside style="padding:8px 24px;background:#17231f;color:white;font:16px Arial">תצוגת פיתוח מקומית של גוף דף הבית. לא פורסם באתר. כותרת האתר וקטלוג WooCommerce אינם חלק מהבדיקה הזאת.</aside>
+<aside style="padding:6px 24px;background:#17231f;color:white;font:14px Arial">תצוגה מקומית, לא האתר החי. תפריט וקטלוג מוצגים לפי נתוני הבדיקה.</aside>
+<?php Complete99_Consumer::render_header(0, $lang, '', $lang === 'he' ? '/preview/en/' : '/preview/he/', 'home'); ?>
 <main id="c99-main"><?php
 $method = new ReflectionMethod(Complete99_Consumer::class, 'render_home');
 $method->invoke(null, (object) ['post_excerpt'=>''], $lang);
 ?></main>
+<?php Complete99_Consumer::render_footer($lang); ?>
+<script src="/plugin/complete99-platform/assets/js/public.js"></script>
 </body></html>

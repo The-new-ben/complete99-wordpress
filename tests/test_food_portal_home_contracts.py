@@ -10,7 +10,10 @@ PLUGIN = ROOT / "plugin" / "complete99-platform"
 
 def home_source():
     source = (PLUGIN / "includes/class-complete99-consumer.php").read_text(encoding="utf-8")
-    return source.split("private static function render_home", 1)[1].split("private static function render_menu_preview", 1)[0]
+    dispatch = source.split("private static function render_home(", 1)[1].split("private static function render_menu_preview", 1)[0]
+    assert "include __DIR__ . '/views/food-home.php'" in dispatch
+    assert "render_home_legacy" not in source
+    return (PLUGIN / "includes/views/food-home.php").read_text(encoding="utf-8")
 
 
 def test_existing_conversion_and_editorial_owners_are_retained():
@@ -18,8 +21,8 @@ def test_existing_conversion_and_editorial_owners_are_retained():
     for owner in ("dishes", "proposal", "contact", "ingredients", "knowledge", "about", "traditions"):
         assert f"self::route( '{owner}', $lang )" in source
     assert "Complete99_Commerce::order_url( $lang )" in source
-    assert "render_menu_preview( $lang, 6 )" in source
-    assert "render_group_order_teaser( $lang )" in source
+    assert "render_menu_grid( $lang, 0, true )" in source
+    assert "c99-ed-gathering" in source
     assert "render_pantry_teaser( $lang )" in source
 
 
@@ -38,7 +41,9 @@ def test_public_home_copy_has_no_internal_review_filler():
     source = home_source()
     for phrase in ("מדריכים שמתפרסמים רק אחרי", "בלי לנפח הבטחות", "—", "בלי להסתיר"):
         assert phrase not in source
-    assert 'data-c99-home-experience="food-discovery-v1"' in source
+    assert 'data-c99-home-experience="food-editorial-v2"' in source
+    assert "c99-shared-table-v01-768.webp" in source
+    assert "data-c99-local-search" in source
     assert "c99-food-house-spread-hero-2021-wp-v01" in source
 
 

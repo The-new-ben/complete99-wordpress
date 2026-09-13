@@ -233,8 +233,16 @@
 	var count = shell.querySelector('[data-c99-filter-count]');
 	var empty = document.querySelector('[data-c99-filter-empty]');
 	var language = (document.documentElement.lang || 'he').toLowerCase();
+	var search = shell.querySelector('[data-c99-menu-search]');
+	var currentFilter = 'all';
+	function normalizeSearch(value) {
+		return value.toLocaleLowerCase().normalize('NFKD').replace(/[\u0591-\u05c7]/g, '').trim();
+	}
 
 	function cardMatches(card, filter) {
+		if (search && normalizeSearch(card.textContent).indexOf(normalizeSearch(search.value)) === -1) {
+			return false;
+		}
 		if (filter === 'all') {
 			return true;
 		}
@@ -254,6 +262,7 @@
 	}
 
 	function updateAddress(filter) {
+		if (shell.hasAttribute('data-c99-local-search')) { return; }
 		if (!window.history || typeof window.history.replaceState !== 'function') {
 			return;
 		}
@@ -267,6 +276,7 @@
 	}
 
 	function applyFilter(filter, updateUrl) {
+		currentFilter = filter;
 		var visible = 0;
 		buttons.forEach(function (button) {
 			var selected = button.getAttribute('data-c99-filter') === filter;
@@ -311,7 +321,10 @@
 		});
 	});
 
-	var requested = new URL(window.location.href).searchParams.get('dish-style');
+	if (search) {
+		search.addEventListener('input', function () { applyFilter(currentFilter, false); });
+	}
+	var requested = shell.hasAttribute('data-c99-local-search') ? 'all' : new URL(window.location.href).searchParams.get('dish-style');
 	var validRequested = buttons.some(function (button) {
 		return button.getAttribute('data-c99-filter') === requested;
 	});
