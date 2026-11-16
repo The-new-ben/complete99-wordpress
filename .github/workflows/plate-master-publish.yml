@@ -1,0 +1,59 @@
+name: Publish Complete99 game page
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the reviewed game at the fixed /game/ page
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: complete99-wordpress-production
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require main and its successful CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WP_PRODUCTION_READY: ${{ vars.WP_PRODUCTION_READY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = refs/heads/main
+          test "$WP_PRODUCTION_READY" = true
+          gh api "repos/$GITHUB_REPOSITORY/actions/workflows/wordpress-ci.yml/runs?head_sha=$GITHUB_SHA&branch=main&status=success" --jq '.workflow_runs[] | select(.event == "push") | .head_sha' | grep -Fx "$GITHUB_SHA"
+  page:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify or publish only the existing game artifact
+        env:
+          WP_BASE_URL: ${{ secrets.WP_BASE_URL }}
+          WP_DEPLOY_USER: ${{ secrets.WP_DEPLOY_USER }}
+          WP_APP_PASSWORD: ${{ secrets.WP_APP_PASSWORD }}
+          APPLY_GAME: ${{ inputs.publish }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$APPLY_GAME" = true ]; then
+            python scripts/publish-plate-master.py --publish
+          else
+            python scripts/publish-plate-master.py
+          fi
+      - name: Keep the game-only publication receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: complete99-game-page-receipt
+          path: |
+            game-publish-audit.json
+            game-page-before.json
+          if-no-files-found: warn

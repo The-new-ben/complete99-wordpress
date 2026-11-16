@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="מרכיבים סביח, מצלחתים קובה סלק ומכינים צלחת איג׳ה במשחק של סביח קומפלט, אבן גבירול 99." />
+  <meta name="ad.size" content="width=320,height=480" />
+  <title>מאסטר הדלפק | סביח קומפלט אבן גבירול 99</title>
+  <style>
+    :root {
+      --bg-dark: #10181b;
+      --counter-steel: #cfd8dc;
+      --brand-red: #c62828;
+      --brand-gold: #f9a825;
+      --brand-green: #1b5e20;
+      --brand-teal: #00695c;
+      --cream: #fff8e7;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      touch-action: manipulation;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at top, #1f2d33 0%, #0d1417 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: #fff;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    #app {
+      max-width: 460px;
+      height: 100dvh;
+      min-height: 800px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      background: linear-gradient(180deg, #162226 0%, #1d2b30 55%, #263238 100%);
+      box-shadow: 0 0 40px rgba(0,0,0,0.65);
+    }
+    /* Top Brand + HUD Bar */
+    .hud {
+      background: linear-gradient(90deg, #b71c1c 0%, #d32f2f 100%);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid var(--brand-gold);
+      z-index: 10;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.15;
+      flex: 1 1 180px;
+      min-width: 0;
+    }
+    .brand-title strong {
+      font-size: 14px;
+      letter-spacing: 0.2px;
+    }
+    .brand-title span {
+      font-size: 11px;
+      color: #ffe082;
+    }
+    .hud-stats {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .stat-pill {
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .stat-pill.combo {
+      background: #f9a825;
+      color: #111;
+      border-color: #fff;
+      transition: transform 0.15s ease;
+    }
+    .stat-pill.combo.pop {
+      transform: scale(1.18);
+    }
+
+    /* Order / Level Banner */
+    .order-banner {
+      background: rgba(0, 0, 0, 0.42);
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      gap: 8px;
+    }
+    .order-text {
+      font-size: 13px;
+      line-height: 1.3;
+    }
+    .order-text b {
+      color: #ffd54f;
+      font-size: 14px;
+    }
+    .level-dots {
+      display: flex;
+      gap: 5px;
+    }
+    .level-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .level-dot.active {
+      background: var(--brand-gold);
+      color: #111;
+    }
+    .level-dot.done {
+      background: #43a047;
+      color: #fff;
+    }
+
+    /* Main Stainless Steel Counter Stage */
+    .stage {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(255,255,255,0.09) 0%, transparent 65%),
+        linear-gradient(180deg, #212e34 0%, #37474f 78%, #546e7a 100%);
+      overflow: hidden;
+      padding: 8px;
+      min-height: 300px;
+    }
+    .street-window {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 32%;
+      background: linear-gradient(180deg, rgba(13,25,33,0.85) 0%, rgba(33,46,52,0) 100%);
+      pointer-events: none;
+      display: flex;
+      justify-content: space-around;
+      opacity: 0.35;
+    }
+    .rain-drop {
+      width: 2px;
+      height: 18px;
+      background: linear-gradient(180deg, transparent, #80deea);
+      animation: rain 1.1s linear infinite;
+    }
+    @keyframes rain {
+      0% { transform: translateY(-20px); opacity: 0; }
+      40% { opacity: 0.7; }
+      100% { transform: translateY(130px); opacity: 0; }
+    }
+
+    /* Drop Target Dish Zone */
+    #drop-zone {
+      width: 255px;
+      height: 225px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 28px;
+      border: 2.5px dashed rgba(255, 213, 79, 0.35);
+      background: radial-gradient(circle, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0.18) 100%);
+      transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    }
+    #drop-zone.highlight {
+      border-color: #ffd54f;
+      transform: scale(1.04);
+      box-shadow: 0 0 28px rgba(255, 213, 79, 0.45);
+    }
+    #drop-zone.shake {
+      animation: shake 0.32s ease;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+
+    #dish-svg {
+      width: 235px;
+      height: 210px;
+      overflow: visible;
+      filter: drop-shadow(0 12px 16px rgba(0,0,0,0.5));
+    }
+
+    /* Next Hint Pill */
+    .hint-bar {
+      margin-top: 8px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,213,79,0.5);
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 12.5px;
+      color: #fff59d;
+      text-align: center;
+      z-index: 5;
+    }
+
+    /* Floating Score Feedback */
+    .float-msg {
+      position: absolute;
+      font-weight: 800;
+      font-size: 20px;
+      color: #69f0ae;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.85);
+      pointer-events: none;
+      animation: floatUp 0.85s ease-out forwards;
+      z-index: 25;
+    }
+    .float-msg.err {
+      color: #ff5252;
+      font-size: 16px;
+    }
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(0.85); }
+      30% { transform: translateY(-18px) scale(1.12); }
+      100% { opacity: 0; transform: translateY(-58px) scale(1); }
+    }
+
+    /* Ingredient Tray (Drag or Tap) */
+    .tray-wrap {
+      background: #121a1e;
+      border-top: 3px solid #37474f;
+      padding: 10px 10px 12px;
+      z-index: 12;
+    }
+    .tray-title {
+      font-size: 11.5px;
+      color: #b0bec5;
+      margin-bottom: 7px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .tray-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .ing-card {
+      background: linear-gradient(180deg, #263238 0%, #1c2529 100%);
+      border: 2px solid #455a64;
+      border-radius: 14px;
+      padding: 7px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: grab;
+      touch-action: none;
+      transition: transform 0.12s, border-color 0.15s, opacity 0.2s;
+      position: relative;
+    }
+    .ing-card:active {
+      cursor: grabbing;
+      transform: scale(0.95);
+    }
+    .ing-card.used {
+      opacity: 0.28;
+      pointer-events: none;
+      border-color: #2e7d32;
+    }
+    .ing-card .emoji {
+      font-size: 26px;
+      line-height: 1;
+    }
+    .ing-card .label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+    }
+    .ing-card .badge {
+      position: absolute;
+      top: 4px;
+      left: 5px;
+      font-size: 10px;
+      color: #ffd54f;
+      font-weight: 700;
+    }
+
+    /* Drag Ghost */
+    .drag-ghost {
+      position: fixed;
+      pointer-events: none;
+      z-index: 999;
+      transform: translate(-50%, -50%) scale(1.22);
+      background: rgba(38, 50, 56, 0.95);
+      border: 2px solid #ffd54f;
+      border-radius: 16px;
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 12px 26px rgba(0,0,0,0.65);
+      font-weight: 800;
+      font-size: 15px;
+    }
+
+    /* Persistent Bottom CTA Bar */
+    .cta-footer {
+      background: #0b1114;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .cta-footer > span { flex-basis: 100%; text-align: center; }
+    .cta-btn-mini {
+      background: linear-gradient(90deg, #009de0 0%, #0077b6 100%);
+      color: #fff;
+      border: none;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    /* Modals (Start / Level Clear / Final Victory) */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(10, 16, 20, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      text-align: center;
+      z-index: 50;
+    }
+    .overlay.hidden {
+      display: none;
+    }
+    .overlay-card {
+      background: linear-gradient(180deg, #1d2b30 0%, #141e22 100%);
+      border: 2px solid var(--brand-gold);
+      border-radius: 24px;
+      padding: 22px 18px;
+      width: 100%;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.75);
+    }
+    .overlay h1, .overlay h2 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      color: #ffd54f;
+    }
+    .overlay p {
+      margin: 0 0 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #eceff1;
+    }
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(90deg, #e53935 0%, #b71c1c 100%);
+      color: #fff;
+      border: 2px solid #ffd54f;
+      border-radius: 14px;
+      padding: 13px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-bottom: 9px;
+    }
+    .btn-wolt {
+      width: 100%;
+      background: linear-gradient(90deg, #009de0 0%, #0077b6 100%);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 13px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-bottom: 9px;
+    }
+    .btn-secondary {
+      width: 100%;
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .score-big {
+      font-size: 40px;
+      font-weight: 900;
+      color: #69f0ae;
+      margin: 6px 0;
+    }
+    .rank-badge {
+      display: inline-block;
+      background: #ffd54f;
+      color: #111;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+    }
+    button { font-family: inherit; }
+    button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    .ing-card { width: 100%; min-width: 0; color: #fff; }
+    .sound-toggle { background: transparent; color: #fff; border: 1px solid #607d8b; border-radius: 8px; padding: 6px; min-height: 36px; cursor: pointer; }
+    #share-fallback { width: 100%; min-height: 96px; margin-top: 10px; font: inherit; direction: rtl; user-select: text; }
+    #share-status { font-size: 13px; margin: 8px 0; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- Top HUD -->
+  <div class="hud">
+    <div class="brand-title">
+      <strong>סביח קומפלט • אבן גבירול 99</strong>
+      <span>אתגר הצילחות והרכבת המנות</span>
+    </div>
+    <div class="hud-stats">
+      <div class="stat-pill combo" id="combo-pill">🔥 x1</div>
+      <div class="stat-pill">⭐ <span id="score-val">0</span></div>
+    </div>
+  </div>
+
+  <!-- Order Banner -->
+  <div class="order-banner">
+    <div class="order-text" id="order-desc">
+      שלב 1: <b>פיתה סביח קומפלט</b><br/>גררו או לחצו לפי סדר המשחק!
+    </div>
+    <div class="level-dots">
+      <div class="level-dot active" id="dot-0">1</div>
+      <div class="level-dot" id="dot-1">2</div>
+      <div class="level-dot" id="dot-2">3</div>
+    </div>
+  </div>
+
+  <!-- Center Plating Counter -->
+  <div class="stage" id="stage">
+    <div class="street-window">
+      <div class="rain-drop" style="animation-delay:0s"></div>
+      <div class="rain-drop" style="animation-delay:0.4s"></div>
+      <div class="rain-drop" style="animation-delay:0.8s"></div>
+      <div class="rain-drop" style="animation-delay:0.2s"></div>
+      <div class="rain-drop" style="animation-delay:0.6s"></div>
+    </div>
+
+    <div id="drop-zone">
+      <svg id="dish-svg" viewBox="0 0 240 210"></svg>
+    </div>
+
+    <div class="hint-bar" id="hint-bar" aria-live="polite">טיפ: התחילו משכבת הבסיס שמחזיקה את הפיתה!</div>
+  </div>
+
+  <!-- Ingredients Tray -->
+  <div class="tray-wrap">
+    <div class="tray-title">
+      <span>גררו עם האצבע/עכבר אל הצלחת (או לחצו מהר)</span>
+      <span id="progress-txt">0 / 6</span>
+    </div>
+    <div class="tray-grid" id="tray-grid"></div>
+  </div>
+
+  <!-- Persistent CTA -->
+  <div class="cta-footer">
+    <span style="font-size:11.5px;color:#cfd8dc;">📍 אבן גבירול 99, תל אביב</span>
+    <button class="sound-toggle" id="sound-toggle" type="button" aria-label="השתקת צלילים" aria-pressed="false" onclick="toggleSound()">צליל</button>
+    <button class="cta-btn-mini" onclick="handleCTA('wolt')">להזמנה ב-Wolt 🛵</button>
+  </div>
+
+  <!-- Start Screen (<10s Time-to-Fun) -->
+  <div class="overlay" id="start-overlay">
+    <div class="overlay-card">
+      <div style="font-size:44px;margin-bottom:6px;">🥙🍲🌿</div>
+      <h1>מאסטר הדלפק<br/>אבן גבירול 99</h1>
+      <p>
+        מרכיבים <b>סביח קומפלט</b>, מצלחתים <b>קובה סלק</b> ומגישים <b>איג׳ה ירוקה</b>.<br/>
+        גררו או לחצו על המרכיבים לפי הסדר שמופיע במשחק. כל רצף מוצלח מגדיל את הניקוד. מוכנים למשמרת?
+      </p>
+      <button class="btn-primary" onclick="startGame()">התחל להרכיב מנות! ▶</button>
+    </div>
+  </div>
+
+  <!-- Victory / Score Screen -->
+  <div class="overlay hidden" id="end-overlay">
+    <div class="overlay-card">
+      <div style="font-size:38px;">🏆🥙🍲</div>
+      <h2 id="end-title" tabindex="-1">סיימת את המשמרת!</h2>
+      <div class="score-big" id="final-score">0</div>
+      <div class="rank-badge" id="final-rank">שף הדלפק של אבן גבירול 99</div>
+      <p id="end-sub">
+        נפתח התיאבון? סביח קומפלט, אבן גבירול 99. התפריט המעודכן והמנות להזמנה נמצאים בוולט.
+      </p>
+      <button class="btn-wolt" onclick="handleCTA('wolt')">לתפריט ולהזמנה ב-Wolt 🛵</button>
+      <button class="btn-primary" onclick="handleCTA('share')">העתק תוצאה לשיתוף בתגובות 📋</button>
+      <button class="btn-secondary" onclick="restartGame()">שחק שוב לשיפור שיא 🔄</button>
+      <p id="share-status" role="status"></p>
+      <textarea id="share-fallback" readonly hidden aria-label="התוצאה והקישור למשחק להעתקה"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+// Meta Playable Ad + Organic WebView Dual-Mode Audio & CTA Engine
+const WOLT_URL = "https://wolt.com/he/isr/tel-aviv/restaurant/sabich-complete";
+const GAME_URL = "https://complete99.co.il/game/";
+
+let audioCtx = null;
+let soundEnabled = true;
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const button = document.getElementById("sound-toggle");
+  button.textContent = soundEnabled ? "צליל" : "שקט";
+  button.setAttribute("aria-pressed", String(!soundEnabled));
+  button.setAttribute("aria-label", soundEnabled ? "השתקת צלילים" : "הפעלת צלילים");
+  if (soundEnabled) initAudio();
+}
+function initAudio() {
+  if (!soundEnabled) return;
+  try {
+  if (!audioCtx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) audioCtx = new AC();
+  }
+  if (audioCtx && audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+  } catch (_) { audioCtx = null; }
+}
+function playTone(freq, dur, type = "sine", vol = 0.14) {
+  if (!audioCtx || !soundEnabled) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + dur);
+  } catch (e) {}
+}
+function playSuccess(combo) {
+  playTone(440 + combo * 55, 0.12, "triangle", 0.15);
+  setTimeout(() => playTone(660 + combo * 65, 0.16, "sine", 0.14), 60);
+}
+function playError() {
+  playTone(170, 0.18, "sawtooth", 0.12);
+}
+
+const LEVELS = [
+  {
+    name: "פיתה סביח קומפלט",
+    desc: "שלב 1: <b>פיתה סביח קומפלט</b><br/>שש שכבות בדרך לביס!",
+    hint: "סדר המשחק: חומוס, חציל, ביצה ותפו״א, סלט, טחינה ועמבה, פטרוזיליה וחריף",
+    baseSvg: `
+      <ellipse cx="120" cy="182" rx="76" ry="18" fill="#8d6e63" opacity="0.5"/>
+      <path d="M52,115 Q50,185 120,185 Q190,185 188,115 Q186,78 120,78 Q54,78 52,115 Z" fill="#e6c28b" stroke="#b88b4a" stroke-width="3"/>
+      <ellipse cx="120" cy="108" rx="60" ry="20" fill="#5d4037"/>
+    `,
+    ingredients: [
+      { id: "hummus", label: "חומוס חם", emoji: "🥣", svg: `<ellipse cx="120" cy="112" rx="52" ry="15" fill="#f3e5ab"/>` },
+      { id: "eggplant", label: "חציל זהוב", emoji: "🍆", svg: `<g fill="#6d4c41" stroke="#3e2723" stroke-width="2"><ellipse cx="95" cy="104" rx="20" ry="10"/><ellipse cx="138" cy="102" rx="22" ry="11"/><ellipse cx="116" cy="96" rx="18" ry="9"/></g>` },
+      { id: "egg_potato", label: "ביצה חומה ותפו״א", emoji: "🥚", svg: `<g><circle cx="96" cy="90" r="14" fill="#fff8e1" stroke="#d7ccc8" stroke-width="2"/><circle cx="96" cy="90" r="7" fill="#ffb300"/><ellipse cx="140" cy="92" rx="16" ry="11" fill="#ffe082" stroke="#fbc02d" stroke-width="2"/></g>` },
+      { id: "salad", label: "סלט קצוץ דק", emoji: "🥗", svg: `<g><circle cx="105" cy="84" r="6" fill="#e53935"/><circle cx="122" cy="82" r="6" fill="#43a047"/><circle cx="136" cy="86" r="5" fill="#e53935"/><circle cx="115" cy="88" r="5" fill="#7cb342"/><circle cx="128" cy="80" r="5" fill="#fdd835"/></g>` },
+      { id: "tahini_amba", label: "טחינה ועמבה", emoji: "🥭", svg: `<g><path d="M75,86 Q95,72 115,86 T155,84" fill="none" stroke="#fff9c4" stroke-width="7" stroke-linecap="round"/><path d="M84,92 Q105,76 128,90 T160,88" fill="none" stroke="#ff9800" stroke-width="5" stroke-linecap="round"/></g>` },
+      { id: "parsley", label: "פטרוזיליה וחריף", emoji: "🌿", svg: `<g fill="#2e7d32"><circle cx="102" cy="76" r="5"/><circle cx="120" cy="74" r="6"/><circle cx="138" cy="77" r="5"/><circle cx="112" cy="79" r="4" fill="#d32f2f"/></g>` }
+    ]
+  },
+  {
+    name: "קערת קובה סלק לוהטת",
+    desc: "שלב 2: <b>מרק קובה סלק בעבודת יד</b><br/>צלחתו את הקערה המושלמת ליום חורף!",
+    hint: "סדר המשחק: קובות, קוביות סלק, ציר סלק, פטרוזיליה טרייה",
+    baseSvg: `
+      <ellipse cx="120" cy="176" rx="82" ry="18" fill="#111" opacity="0.45"/>
+      <path d="M35,105 Q40,178 120,178 Q200,178 205,105 Z" fill="#fafafa" stroke="#cfd8dc" stroke-width="3"/>
+      <ellipse cx="120" cy="105" rx="85" ry="26" fill="#eceff1" stroke="#b0bec5" stroke-width="3"/>
+    `,
+    ingredients: [
+      { id: "kubbeh_balls", label: "3 קובות עבודת יד", emoji: "🧆", svg: `<g fill="#b71c1c" stroke="#7f0000" stroke-width="2"><circle cx="92" cy="108" r="18"/><circle cx="148" cy="108" r="18"/><circle cx="120" cy="98" r="19"/></g>` },
+      { id: "beet_chunks", label: "קוביות סלק טרי", emoji: "🟣", svg: `<g fill="#880e4f"><rect x="82" y="112" width="12" height="12" rx="2"/><rect x="135" y="114" width="12" height="12" rx="2"/><rect x="112" y="116" width="11" height="11" rx="2"/></g>` },
+      { id: "beet_broth", label: "ציר סלק רותח", emoji: "🍲", svg: `<g><ellipse cx="120" cy="106" rx="76" ry="21" fill="#c2185b" opacity="0.62"/><path d="M85,78 Q92,62 85,48 M120,74 Q128,56 120,42 M152,78 Q160,62 152,48" stroke="#fff" stroke-width="2.5" opacity="0.55" fill="none" stroke-linecap="round"/></g>` },
+      { id: "fresh_herbs", label: "פטרוזיליה קצוצה", emoji: "🌿", svg: `<g fill="#2e7d32"><circle cx="112" cy="95" r="5"/><circle cx="124" cy="93" r="6"/><circle cx="132" cy="98" r="5"/><circle cx="118" cy="100" r="4"/></g>` }
+    ]
+  },
+  {
+    name: "צלחת איג׳ה קומפלט",
+    desc: "שלב 3: <b>צלחת איג׳ה (קציצות ירק)</b><br/>הרכיבו את צלחת הבית המפורסמת!",
+    hint: "סדר המשחק: חומוס, קציצות איג׳ה, סלט קצוץ, טחינה ועמבה",
+    baseSvg: `
+      <ellipse cx="120" cy="168" rx="92" ry="22" fill="#111" opacity="0.4"/>
+      <ellipse cx="120" cy="122" rx="96" ry="48" fill="#e0f2f1" stroke="#b2dfdb" stroke-width="4"/>
+      <ellipse cx="120" cy="122" rx="78" ry="36" fill="#f5f5f5"/>
+    `,
+    ingredients: [
+      { id: "plate_hummus", label: "חומוס הבית", emoji: "🥣", svg: `<ellipse cx="120" cy="126" rx="34" ry="18" fill="#f3e5ab" stroke="#e6ce8a" stroke-width="2"/>` },
+      { id: "ijah_patties", label: "קציצות איג׳ה ירוקות", emoji: "🥬", svg: `<g fill="#33691e" stroke="#1b5e20" stroke-width="2.5"><ellipse cx="86" cy="114" rx="22" ry="15"/><ellipse cx="148" cy="116" rx="22" ry="15"/><ellipse cx="116" cy="104" rx="20" ry="13"/></g>` },
+      { id: "chopped_salad", label: "סלט ישראלי טרי", emoji: "🥗", svg: `<g><circle cx="88" cy="138" r="5" fill="#e53935"/><circle cx="98" cy="142" r="5" fill="#43a047"/><circle cx="108" cy="136" r="5" fill="#e53935"/><circle cx="136" cy="140" r="5" fill="#7cb342"/><circle cx="146" cy="136" r="5" fill="#e53935"/></g>` },
+      { id: "plate_sauces", label: "זילוף טחינה ועמבה", emoji: "🍯", svg: `<g><path d="M72,115 Q118,96 164,116" fill="none" stroke="#fff9c4" stroke-width="6" stroke-linecap="round"/><path d="M84,122 Q122,108 156,122" fill="none" stroke="#ff9800" stroke-width="4.5" stroke-linecap="round"/></g>` }
+    ]
+  }
+];
+
+let levelIdx = 0;
+let stepIdx = 0;
+let score = 0;
+let combo = 1;
+let shuffledOrder = [];
+let dragState = null;
+let transitioning = false;
+let transitionTimer = null;
+
+function shuffle(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function startGame() {
+  clearTimeout(transitionTimer);
+  cancelDrag();
+  transitioning = false;
+  initAudio();
+  document.getElementById("start-overlay").classList.add("hidden");
+  levelIdx = 0;
+  score = 0;
+  combo = 1;
+  loadLevel(0);
+  document.getElementById("share-status").textContent = "";
+  document.getElementById("share-fallback").hidden = true;
+  document.querySelector(".ing-card:not(.used)")?.focus({ preventScroll: true });
+}
+
+function restartGame() {
+  document.getElementById("end-overlay").classList.add("hidden");
+  startGame();
+}
+
+function loadLevel(idx) {
+  transitioning = false;
+  levelIdx = idx;
+  stepIdx = 0;
+  const lv = LEVELS[idx];
+  document.getElementById("order-desc").innerHTML = lv.desc;
+  document.getElementById("hint-bar").textContent = lv.hint;
+  document.getElementById("dish-svg").innerHTML = lv.baseSvg;
+  for (let i = 0; i < LEVELS.length; i++) {
+    const dot = document.getElementById("dot-" + i);
+    dot.className = "level-dot" + (i < idx ? " done" : i === idx ? " active" : "");
+  }
+  shuffledOrder = shuffle(lv.ingredients);
+  renderTray();
+  updateHUD();
+}
+
+function renderTray() {
+  const lv = LEVELS[levelIdx];
+  const grid = document.getElementById("tray-grid");
+  grid.innerHTML = "";
+  shuffledOrder.forEach((ing) => {
+    const correctPos = lv.ingredients.findIndex(x => x.id === ing.id);
+    const used = correctPos < stepIdx;
+    const card = document.createElement("button");
+    card.type = "button";
+    card.disabled = used;
+    card.className = "ing-card" + (used ? " used" : "");
+    card.dataset.id = ing.id;
+    card.innerHTML = `<span class="emoji">${ing.emoji}</span><span class="label">${ing.label}</span>`;
+    card.addEventListener("pointerdown", (e) => onPointerDown(e, ing, card));
+    card.addEventListener("click", (e) => {
+      if (e.detail === 0) { initAudio(); tryPlaceIngredient(ing); }
+    });
+    grid.appendChild(card);
+  });
+  document.getElementById("progress-txt").textContent = `${stepIdx} / ${lv.ingredients.length}`;
+}
+
+function updateHUD() {
+  document.getElementById("score-val").textContent = score;
+  const cp = document.getElementById("combo-pill");
+  cp.textContent = `🔥 x${combo}`;
+  cp.classList.add("pop");
+  setTimeout(() => cp.classList.remove("pop"), 150);
+}
+
+function spawnFloat(text, isErr = false) {
+  const stage = document.getElementById("stage");
+  const el = document.createElement("div");
+  el.className = "float-msg" + (isErr ? " err" : "");
+  el.textContent = text;
+  el.style.left = "50%";
+  el.style.top = "38%";
+  el.style.transform = "translateX(-50%)";
+  stage.appendChild(el);
+  setTimeout(() => el.remove(), 860);
+}
+
+function onPointerDown(e, ing, card) {
+  if (dragState || transitioning || e.button !== 0 || !e.isPrimary) return;
+  initAudio();
+  e.preventDefault();
+  const startX = e.clientX;
+  const startY = e.clientY;
+
+  const ghost = document.createElement("div");
+  ghost.className = "drag-ghost";
+  ghost.innerHTML = `<span>${ing.emoji}</span><span>${ing.label}</span>`;
+  ghost.style.left = startX + "px";
+  ghost.style.top = startY + "px";
+  ghost.style.display = "none";
+  document.body.appendChild(ghost);
+
+  dragState = { ing, card, ghost, startX, startY, moved: false, pointerId: e.pointerId };
+  window.addEventListener("pointermove", onPointerMove);
+  window.addEventListener("pointerup", onPointerUp);
+  window.addEventListener("pointercancel", onPointerCancel);
+}
+
+function onPointerMove(e) {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+  const dx = Math.abs(e.clientX - dragState.startX);
+  const dy = Math.abs(e.clientY - dragState.startY);
+  if (dx > 6 || dy > 6) {
+    dragState.moved = true;
+    dragState.ghost.style.display = "flex";
+  }
+  dragState.ghost.style.left = e.clientX + "px";
+  dragState.ghost.style.top = e.clientY + "px";
+
+  const dz = document.getElementById("drop-zone");
+  const rect = dz.getBoundingClientRect();
+  const inside = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+  dz.classList.toggle("highlight", inside);
+}
+
+function onPointerUp(e) {
+  if (!dragState || e.pointerId !== dragState.pointerId) return;
+  const { ing, ghost, moved } = dragState;
+  const dz = document.getElementById("drop-zone");
+  const rect = dz.getBoundingClientRect();
+  const inside = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
+
+  dz.classList.remove("highlight");
+  ghost.remove();
+  window.removeEventListener("pointermove", onPointerMove);
+  window.removeEventListener("pointerup", onPointerUp);
+  window.removeEventListener("pointercancel", onPointerCancel);
+  dragState = null;
+
+  // Accept either a drop on the dish OR a crisp direct tap!
+  if (!moved || inside) {
+    tryPlaceIngredient(ing);
+  }
+}
+
+function cancelDrag() {
+  if (dragState) dragState.ghost.remove();
+  dragState = null;
+  document.getElementById("drop-zone").classList.remove("highlight");
+  window.removeEventListener("pointermove", onPointerMove);
+  window.removeEventListener("pointerup", onPointerUp);
+  window.removeEventListener("pointercancel", onPointerCancel);
+}
+function onPointerCancel(e) {
+  if (dragState && e.pointerId === dragState.pointerId) cancelDrag();
+}
+window.addEventListener("blur", cancelDrag);
+
+function tryPlaceIngredient(ing) {
+  if (transitioning) return;
+  const lv = LEVELS[levelIdx];
+  const expected = lv.ingredients[stepIdx];
+  if (!expected) return;
+  const keyboardFocus = document.activeElement?.classList.contains("ing-card");
+  if (ing.id === expected.id) {
+    const pts = 100 * combo;
+    score += pts;
+    combo = Math.min(combo + 1, 6);
+    playSuccess(combo);
+    document.getElementById("dish-svg").insertAdjacentHTML("beforeend", expected.svg);
+    spawnFloat(`+${pts} ✨`, false);
+    stepIdx++;
+    renderTray();
+    updateHUD();
+    if (keyboardFocus) document.querySelector(".ing-card:not(.used)")?.focus({ preventScroll: true });
+
+    if (stepIdx >= lv.ingredients.length) {
+      transitioning = true;
+      transitionTimer = setTimeout(() => {
+        if (levelIdx + 1 < LEVELS.length) {
+          spawnFloat("מנה מושלמת! +300", false);
+          score += 300;
+          loadLevel(levelIdx + 1);
+          if (keyboardFocus) document.querySelector(".ing-card:not(.used)")?.focus({ preventScroll: true });
+        } else {
+          score += 500;
+          showEndScreen();
+        }
+      }, 650);
+    }
+  } else {
+    combo = 1;
+    playError();
+    const dz = document.getElementById("drop-zone");
+    dz.classList.add("shake");
+    setTimeout(() => dz.classList.remove("shake"), 340);
+    spawnFloat(`עוד לא! קודם ${expected.label}`, true);
+    updateHUD();
+  }
+}
+
+function showEndScreen() {
+  updateHUD();
+  document.getElementById("dot-2").className = "level-dot done";
+  document.getElementById("final-score").textContent = score + " נק׳";
+  let rank = "מאסטר הדלפק של אבן גבירול 99 👑";
+  if (score < 2200) rank = "טבח הבית של כיכר רבין 🍲";
+  if (score < 1400) rank = "מתלמד סביח קומפלט 🥙";
+  document.getElementById("final-rank").textContent = rank;
+  document.getElementById("end-overlay").classList.remove("hidden");
+  document.getElementById("end-title").focus({ preventScroll: true });
+}
+
+function handleCTA(type) {
+  initAudio();
+  if (type === "wolt") {
+    if (typeof FbPlayableAd !== "undefined" && FbPlayableAd.onCTAClick) {
+      FbPlayableAd.onCTAClick();
+    } else {
+      window.open(WOLT_URL, "_blank", "noopener,noreferrer");
+    }
+  } else if (type === "share") {
+    const shareTxt = `השגתי ${score} נקודות במשחק של סביח קומפלט, אבן גבירול 99! מי שובר את השיא שלי?\n${GAME_URL}`;
+    const status = document.getElementById("share-status");
+    const fallback = () => {
+      const field = document.getElementById("share-fallback");
+      field.value = shareTxt;
+      field.hidden = false;
+      field.focus();
+      field.select();
+      status.textContent = "התוצאה מסומנת. אפשר להעתיק ולשתף.";
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareTxt).then(() => {
+        status.textContent = "התוצאה והקישור הועתקו. עכשיו אפשר לשתף!";
+      }).catch(fallback);
+    } else {
+      fallback();
+    }
+  }
+}
+</script>
+</body>
+</html>
