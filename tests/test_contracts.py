@@ -870,6 +870,7 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertEqual({
             'wordpress-ci.yml', 'wordpress-deploy.yml',
             'wordpress-campaign-monitor.yml', 'editorial-deploy.yml',
+            'plate-master-publish.yml',
         }, {path.name for path in workflows})
         for path in workflows:
             text = path.read_text(encoding="utf-8")
@@ -905,6 +906,17 @@ class Complete99ContractTests(unittest.TestCase):
                          'test "$WP_PRODUCTION_READY" = true',
                          'branch=main&status=success'):
             self.assertIn(required, editorial)
+        game_page = (ROOT / '.github/workflows/plate-master-publish.yml').read_text(encoding='utf-8')
+        for required in ('environment: production', 'group: complete99-wordpress-production',
+                         'cancel-in-progress: false', 'workflow_dispatch:', 'default: false',
+                         'test "$GITHUB_REF" = refs/heads/main',
+                         'test "$WP_PRODUCTION_READY" = true',
+                         'head_sha=$GITHUB_SHA&branch=main&status=success',
+                         'python scripts/publish-plate-master.py --publish'):
+            self.assertIn(required, game_page)
+        self.assertNotIn('schedule:', game_page)
+        self.assertNotIn('pull_request:', game_page)
+        self.assertNotIn('deploy-wordpress.py', game_page)
         ci = (ROOT / ".github" / "workflows" / "wordpress-ci.yml").read_text(encoding="utf-8")
         self.assertIn(
             "python -m pip install --disable-pip-version-check --no-input pytest==9.0.2",
