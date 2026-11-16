@@ -856,8 +856,8 @@ function showEndScreen() {
   document.getElementById("dot-2").className = "level-dot done";
   document.getElementById("final-score").textContent = score + " נק׳";
   let rank = "מאסטר הדלפק של אבן גבירול 99 👑";
-  if (score < 2200) rank = "טבח הבית של כיכר רבין 🍲";
-  if (score < 1400) rank = "מתלמד סביח קומפלט 🥙";
+  if (score < 6500) rank = "טבח הבית של כיכר רבין 🍲";
+  if (score < 4000) rank = "מתלמד סביח קומפלט 🥙";
   document.getElementById("final-rank").textContent = rank;
   document.getElementById("end-overlay").classList.remove("hidden");
   document.getElementById("end-title").focus({ preventScroll: true });
