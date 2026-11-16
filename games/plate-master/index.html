@@ -869,7 +869,7 @@ function handleCTA(type) {
     if (typeof FbPlayableAd !== "undefined" && FbPlayableAd.onCTAClick) {
       FbPlayableAd.onCTAClick();
     } else {
-      window.open(WOLT_URL, "_blank", "noopener,noreferrer");
+      window.open(WOLT_URL, "_blank", "noopener");
     }
   } else if (type === "share") {
     const shareTxt = `השגתי ${score} נקודות במשחק של סביח קומפלט, אבן גבירול 99! מי שובר את השיא שלי?\n${GAME_URL}`;
