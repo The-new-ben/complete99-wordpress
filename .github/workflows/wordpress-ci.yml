@@ -43,6 +43,12 @@ jobs:
       - name: Homepage search behavior
         run: node tests/food-home-search.test.cjs
 
+      - name: Game simulation behavior
+        run: |
+          npm ci --prefix games --ignore-scripts --no-audit --no-fund
+          node tests/kitchen-game.test.cjs
+          node tests/courier-game.test.cjs
+
       - name: Independent homepage package
         run: |
           python scripts/build-editorial-release.py

@@ -870,7 +870,7 @@ class Complete99ContractTests(unittest.TestCase):
         self.assertEqual({
             'wordpress-ci.yml', 'wordpress-deploy.yml',
             'wordpress-campaign-monitor.yml', 'editorial-deploy.yml',
-            'plate-master-publish.yml',
+            'plate-master-publish.yml', 'game-sequels-publish.yml',
         }, {path.name for path in workflows})
         for path in workflows:
             text = path.read_text(encoding="utf-8")
