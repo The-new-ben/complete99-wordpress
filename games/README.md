@@ -30,7 +30,17 @@ Fixed pages: `/game/`, `/kitchen-game/`, `/delivery-game/`. The existing game so
 
 Sources are standalone HTML with no runtime CDN dependency. Sharing a URL in a social browser is distinct from acceptance as a native playable advertisement. No such ad acceptance is claimed.
 
-Deployment and QA receipts will be recorded here once observed. Until then, new games are not claimed live.
+Published and independently verified on 23 November 2026 (Asia/Jerusalem):
+
+* [Kitchen: משמרת על האש](https://complete99.co.il/kitchen-game/), WordPress page 975.
+* [Courier: משלוח 99](https://complete99.co.il/delivery-game/), WordPress page 977.
+* [Existing Plate Master](https://complete99.co.il/game/), WordPress page 970. Its game source is unchanged.
+
+All three parent pages returned HTTP 200, a robots `noindex` in the parent head, the expected iframe source hash and the canonical Wolt URL. The homepage indexing state was preserved. This verifies the indexing instruction, not removal from Google's existing results.
+
+The [guarded publication run](https://github.com/The-new-ben/complete99-wordpress/actions/runs/45077223017) succeeded at main commit `371dd188fc663a21cb77957275f0d2c57589f39c`, following [PR 104](https://github.com/The-new-ben/complete99-wordpress/pull/104) and passing required CI. Final PR CI reported 1266 passed, 1 skipped and 1129 subtests. An initial read-only dry run timed out on the identity check before any mutation; the same failed job was rerun and passed before publishing.
+
+Native Chrome public-page QA observed kitchen shift selection and briefing, courier mission selection, and the existing Plate Master starting. Development viewport and gameplay coverage, with its limits, is described below. Local evidence is in `C:/Users/777/Downloads/codexmanager/tasks/complete99-games-HAD-807/`: `publication-receipt/receipt.json`, `public-readback.json` and `qa-receipt.json`. The handoff is recorded in [HAD-807](https://linear.app/hadmaia/issue/HAD-807) and the existing Notion HQ line.
 
 ## Verified development QA
 
