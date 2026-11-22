@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,follow">
+<meta name="theme-color" content="#17293D">
+<meta name="description" content="משמרת על האש – משחק מטבח של סביח קומפלט, אבן גבירול 99. משחק בדיוני; המספרים הם תרחישי משחק.">
+<title>משמרת על האש · סביח קומפלט</title>
+<style>
+:root{--st:#DFE8EC;--nv:#17293D;--bt:#AA174C;--tq:#008D99;--wh:#fff;--tq2:#6fdbe4;--st2:#b9c9d1;--nv2:#233b55;
+--f:Heebo,"Segoe UI","Arial Hebrew",Arial,sans-serif;--d:"Archivo Black",Heebo,"Arial Black",Impact,sans-serif}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--nv);overflow:hidden}
+body{font-family:var(--f);font-weight:700;color:var(--nv);font-size:14px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+button{font:inherit;font-weight:800;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+a{color:var(--tq);font-weight:800}a:hover{color:var(--bt)}
+button:focus-visible,a:focus-visible{outline:3px solid var(--tq2);outline-offset:2px}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;max-width:560px;margin:0 auto;background:var(--st);height:100vh;height:100dvh;overflow:hidden}
+/* HUD */
+#hud{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--nv);color:var(--wh);border-bottom:3px solid var(--tq);z-index:5}
+#hud .sg{font-family:var(--d);font-size:11px;letter-spacing:.5px;color:var(--tq2);border:1.5px solid var(--tq2);border-radius:3px;padding:2px 5px;text-shadow:0 0 6px var(--tq);white-space:nowrap}
+#hud .st{flex:1;min-width:0;display:flex;gap:10px;font-size:12px;white-space:nowrap;overflow:hidden}
+#hud .st b{font-family:var(--d);font-size:14px;color:var(--wh);font-weight:400}
+#hud .st span{color:var(--st2)}
+.ib{width:34px;height:34px;border-radius:6px;background:var(--nv2);display:grid;place-items:center;color:var(--wh);flex:0 0 auto}
+.ib svg{width:18px;height:18px}.ib:active{background:var(--tq)}
+/* GAME */
+#game{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+#wall{position:absolute;inset:0 0 40% 0;background:var(--st)}
+#wall svg,#ctr svg{position:absolute;inset:0;width:100%;height:100%}
+#ctr{position:absolute;left:0;right:0;bottom:0;height:46%;}
+#railbar{position:relative;z-index:2;flex:0 0 auto;height:8px;margin:6px 6px 0;border-radius:4px;background:linear-gradient(#f4f8fa,#9db0ba 60%,#6e838f);box-shadow:0 2px 0 rgba(23,41,61,.35)}
+#rail{position:relative;z-index:2;flex:0 0 auto;display:flex;gap:8px;padding:0 10px 12px;overflow-x:auto;overflow-y:hidden;min-height:clamp(120px,36%,230px);max-height:50%;align-items:flex-start;scrollbar-width:none;touch-action:pan-x}
+#rail::-webkit-scrollbar{display:none}
+#rail .empty{align-self:center;margin:auto;color:var(--nv);background:rgba(255,255,255,.7);padding:6px 10px;border-radius:4px;font-size:12px}
+.tkw{flex:0 0 128px;width:128px;position:relative;filter:drop-shadow(0 3px 0 rgba(23,41,61,.28));transform-origin:top center;animation:drop .35s cubic-bezier(.3,1.5,.5,1);transition:opacity .5s,transform .5s}
+@keyframes drop{from{transform:translateY(-60px) rotate(-4deg);opacity:0}}
+.tkw.out{opacity:0;transform:translateY(24px) scale(.92)}
+.tkw:before{content:"";position:absolute;top:-6px;left:50%;margin-left:-14px;width:28px;height:9px;border-radius:3px;background:linear-gradient(#e9f0f3,#7f939f);z-index:2}
+.tk{background:var(--wh);padding:10px 8px 14px;font-size:12px;position:relative;color:var(--nv);background-image:repeating-linear-gradient(0deg,transparent 0 3px,rgba(23,41,61,.025) 3px 4px)}
+.tkh{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2px dashed var(--nv);padding-bottom:3px;margin-bottom:3px}
+.tkh b{font-weight:900;font-size:14px}.tkh i{font-family:var(--d);font-style:normal;font-size:11px;color:var(--bt)}
+.pb{height:7px;background:repeating-linear-gradient(90deg,var(--st) 0 3px,#fff 3px 5px);border:1px solid var(--nv);margin:2px 0 5px;position:relative}
+.pb span{position:absolute;inset:0 auto 0 0;background:var(--tq);right:auto}
+.pb.lo span{background:var(--bt)}.tkw.lo .tk{animation:blink .7s steps(2) infinite}
+@keyframes blink{50%{background-color:#fbe6ee}}
+.ln{display:flex;align-items:center;gap:4px;width:100%;min-height:38px;text-align:right;border-bottom:1px dotted var(--st2);padding:2px 0;position:relative}
+.ln:active{background:var(--st)}
+.ln .q{flex:0 0 26px;height:26px;border-radius:50%;background:var(--nv);color:var(--wh);font-family:var(--d);font-weight:400;font-size:13px;display:grid;place-items:center}
+.ln .nm{flex:1;line-height:1.1;font-size:12.5px}
+.ln em{font-style:normal;font-size:9.5px;font-weight:800;padding:1px 4px;border-radius:2px;color:var(--wh);position:absolute;left:0;top:2px}
+.ln em.m{background:var(--bt)}.ln em.v{background:var(--tq);color:var(--wh)}
+.ln.dn{opacity:.5;text-decoration:line-through}.ln.dn .q{background:var(--tq)}
+.ln.fl{animation:fl .5s}@keyframes fl{30%{background:var(--tq2)}}
+.ln.no{animation:sh .3s}@keyframes sh{25%{transform:translateX(5px)}75%{transform:translateX(-5px)}}
+.tkf{font-size:9px;text-align:center;margin-top:4px;letter-spacing:.3px;color:#5b6f80;font-weight:700}
+.stamp{position:absolute;inset:0;display:none;place-items:center;pointer-events:none;z-index:3}
+.stamp b{font-family:var(--d);font-weight:400;font-size:19px;color:var(--bt);border:3px solid var(--bt);padding:2px 8px;transform:rotate(-14deg);background:rgba(255,255,255,.85)}
+.tkw.sv .stamp,.tkw.lt .stamp{display:grid}.tkw.sv .stamp b{color:var(--tq);border-color:var(--tq)}
+/* stove */
+#stove{position:relative;z-index:2;flex:1;min-height:0;display:flex;gap:6px;padding:0 8px 8px;align-items:flex-end}
+.bn{flex:1;min-width:0;height:100%;max-height:260px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;border-radius:10px}
+.bn:active .bs{transform:scale(.97)}
+.bs{width:100%;flex:1;min-height:0;display:flex;align-items:flex-end;justify-content:center;transition:transform .1s}
+.bs svg{width:100%;height:100%;max-width:210px;overflow:visible}
+.bk{position:absolute;top:2px;right:6px;font-family:var(--d);font-size:11px;background:var(--nv);color:var(--wh);padding:1px 6px;border-radius:3px}
+.bi{width:100%;background:var(--wh);color:var(--nv);padding:4px 6px 5px;font-size:11.5px;line-height:1.2;text-align:center;border-radius:3px;border:2px solid var(--nv);box-shadow:0 2px 0 var(--nv);flex:0 0 auto}
+.bi b{display:block;font-size:12.5px;font-weight:900}
+.bar{height:6px;border:1px solid var(--nv);margin-top:3px;background:var(--st);position:relative}.bar i{position:absolute;inset:0 0 0 auto;background:var(--tq);width:0}
+.bar.bt i{background:var(--bt)}
+.fl2{transform-box:fill-box;transform-origin:50% 100%;animation:fx .45s ease-in-out infinite alternate}
+@keyframes fx{from{transform:scaleY(.7) scaleX(1.1)}to{transform:scaleY(1.25) scaleX(.85)}}
+.sm{animation:sm 2s linear infinite;opacity:0}.sm:nth-of-type(2){animation-delay:.6s}.sm:nth-of-type(3){animation-delay:1.2s}
+@keyframes sm{0%{opacity:0;transform:translateY(6px)}30%{opacity:.7}100%{opacity:0;transform:translateY(-16px)}}
+.glow{animation:gl 1s ease-in-out infinite alternate}@keyframes gl{to{opacity:.35}}
+#toast{position:absolute;z-index:6;left:8px;right:8px;top:auto;bottom:44%;pointer-events:none;display:flex;justify-content:center}
+#toast span{background:var(--nv);color:var(--wh);padding:6px 12px;border-radius:3px;font-size:13px;border-inline-start:5px solid var(--tq);box-shadow:0 3px 0 rgba(0,0,0,.25);animation:tin .2s}
+#toast span.e{border-color:var(--bt)}@keyframes tin{from{transform:translateY(8px);opacity:0}}
+.pop{position:absolute;z-index:7;font-family:var(--d);color:var(--tq);font-size:18px;pointer-events:none;animation:pp 1s forwards;text-shadow:0 0 3px #fff,0 0 3px #fff}
+.pop.n{color:var(--bt)}@keyframes pp{to{transform:translateY(-44px);opacity:0}}
+/* sheet */
+#sheet{position:absolute;z-index:8;left:0;right:0;bottom:0;max-height:92%;overflow:auto;background:var(--nv);color:var(--wh);padding:10px 10px calc(10px + env(safe-area-inset-bottom));border-top:4px solid var(--tq);animation:up .22s}
+@keyframes up{from{transform:translateY(40px);opacity:0}}
+#sheet h3{margin:0 0 6px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+#sheet h3 button{width:32px;height:32px;background:var(--nv2);border-radius:5px;color:var(--wh);font-size:16px}
+.lab{font-size:11px;color:var(--tq2);margin:6px 0 3px;font-weight:800}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{min-height:40px;padding:4px 8px;border-radius:4px;background:var(--nv2);color:var(--wh);border:2px solid transparent;text-align:center;line-height:1.15;font-size:12.5px;position:relative}
+.chip small{display:block;font-size:10px;font-weight:700;color:var(--st2)}
+.chip.on{border-color:var(--tq2);background:#0b5e68}.chip[disabled]{opacity:.4}
+.chip .nd{font-size:10px;background:var(--bt);color:#fff;padding:0 4px;border-radius:2px}
+.chip .ok{font-size:10px;background:var(--tq);padding:0 4px;border-radius:2px}
+.row{display:flex;gap:8px;align-items:stretch;margin-top:6px}
+.step{display:flex;align-items:center;gap:6px;background:var(--nv2);border-radius:4px;padding:3px}
+.step button{width:42px;height:42px;background:var(--st);color:var(--nv);border-radius:3px;font-size:22px;font-family:var(--d);font-weight:400}
+.step b{min-width:44px;text-align:center;font-family:var(--d);font-weight:400;font-size:22px}
+.slip{flex:1;background:var(--wh);color:var(--nv);padding:5px 8px;font-size:11.5px;line-height:1.35;border-radius:2px}
+.slip b{display:flex;justify-content:space-between;border-bottom:1px dashed var(--nv);margin-bottom:2px;font-size:11px}
+.slip div{display:flex;justify-content:space-between}
+.go{margin-top:8px;width:100%;min-height:46px;background:var(--bt);color:#fff;border-radius:4px;font-size:16px;font-weight:900;box-shadow:0 3px 0 #6e0e30}
+.go:active{transform:translateY(2px);box-shadow:0 1px 0 #6e0e30}.go[disabled]{opacity:.45}
+/* overlays */
+#ov{position:absolute;inset:0;z-index:20;background:var(--nv);color:var(--wh);overflow:auto;display:flex;flex-direction:column}
+.pn{margin:auto;width:100%;max-width:460px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.sign{position:relative;background:var(--nv2);border:3px solid var(--tq2);border-radius:10px;padding:10px 12px;text-align:center;box-shadow:0 0 14px var(--tq),inset 0 0 14px rgba(0,141,153,.5)}
+.sign h1{margin:0;font-size:clamp(26px,9vw,40px);color:var(--wh);text-shadow:0 0 4px var(--tq2),0 0 14px var(--tq),0 0 28px var(--tq);line-height:1.05;font-weight:900}
+.sign p{margin:4px 0 0;font-family:var(--d);font-weight:400;font-size:13px;letter-spacing:1px;color:var(--tq2)}
+.sign:before,.sign:after{content:"";position:absolute;top:7px;width:7px;height:7px;border-radius:50%;background:var(--st2)}.sign:before{right:8px}.sign:after{left:8px}
+.hero{height:clamp(90px,24vh,170px);display:flex;justify-content:center;gap:8px}.hero svg{height:100%;width:auto;overflow:visible}
+.btn{min-height:50px;border-radius:4px;background:var(--bt);color:#fff;font-size:17px;font-weight:900;box-shadow:0 4px 0 #6e0e30;display:flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;padding:0 14px;text-align:center}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #6e0e30}
+.btn.s{background:var(--st);color:var(--nv);box-shadow:0 4px 0 var(--st2)}.btn.t{background:var(--tq);color:#fff;box-shadow:0 4px 0 #00555c}
+.btn.w{background:var(--wh);color:var(--nv);box-shadow:0 4px 0 var(--st2);border:2px solid var(--tq)}
+.bs2{display:flex;gap:8px}.bs2>*{flex:1}
+.paper{background:var(--wh);color:var(--nv);padding:12px 14px 18px;position:relative;font-size:13.5px;line-height:1.5;clip-path:polygon(0 0,100% 0,100% calc(100% - 7px),95% 100%,90% calc(100% - 7px),85% 100%,80% calc(100% - 7px),75% 100%,70% calc(100% - 7px),65% 100%,60% calc(100% - 7px),55% 100%,50% calc(100% - 7px),45% 100%,40% calc(100% - 7px),35% 100%,30% calc(100% - 7px),25% 100%,20% calc(100% - 7px),15% 100%,10% calc(100% - 7px),5% 100%,0 calc(100% - 7px))}
+.paper h2{margin:0 0 6px;font-size:19px;font-weight:900;border-bottom:2px dashed var(--nv);padding-bottom:4px;display:flex;justify-content:space-between;align-items:baseline}
+.paper h2 i{font-family:var(--d);font-style:normal;font-weight:400;font-size:12px;color:var(--bt)}
+.paper ul{margin:0;padding:0 16px 0 0}.paper li{margin-bottom:3px}
+.paper .fine{font-size:11px;color:#5b6f80;margin-top:6px}
+.sh{display:flex;align-items:center;gap:10px;width:100%;min-height:54px;background:var(--wh);color:var(--nv);padding:6px 10px;text-align:right;border-inline-start:8px solid var(--tq);position:relative}
+.sh[disabled]{opacity:.5;border-color:var(--st2)}
+.sh .n{font-family:var(--d);font-weight:400;font-size:24px;color:var(--bt);width:26px;text-align:center}
+.sh .m{flex:1;line-height:1.2}.sh .m small{display:block;font-weight:700;font-size:11.5px;color:#4a6073}
+.stars{display:flex;gap:2px;direction:ltr}.stars svg{width:20px;height:20px}
+.big .stars svg{width:46px;height:46px}.big .stars{justify-content:center;gap:6px}
+.stats{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:13.5px}.stats b{font-family:var(--d);font-weight:400;text-align:left}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--st2)}
+.top .btn{min-height:34px;font-size:12px;box-shadow:none;padding:0 10px}
+.cta{font-size:12px;text-align:center;color:var(--st2)}
+@media (max-height:480px){.hero{display:none}.pn{padding:8px;gap:6px}.btn{min-height:42px;font-size:15px}#hud{padding:3px 6px}.ib{width:30px;height:30px}.tkw .tk{font-size:11px}#rail{min-height:112px}.paper{font-size:12.5px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<linearGradient id="gS" x1="0" x2="1"><stop offset="0" stop-color="#8fa4b0"/><stop offset=".25" stop-color="#f2f7f9"/><stop offset=".55" stop-color="#c6d4db"/><stop offset="1" stop-color="#7d919d"/></linearGradient>
+<linearGradient id="gT" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f8fa"/><stop offset="1" stop-color="#b3c4cc"/></linearGradient>
+<linearGradient id="gH" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d4663"/><stop offset="1" stop-color="#17293D"/></linearGradient>
+<pattern id="pT" width="30" height="30" patternUnits="userSpaceOnUse"><rect width="30" height="30" fill="#DFE8EC"/><path d="M0 0H30V30" fill="none" stroke="#c3d2d9" stroke-width="1.5"/><path d="M3 3H15" stroke="#f6fafb" stroke-width="2"/></pattern>
+</defs></svg>
+<div id="app">
+ <header id="hud">
+  <span class="sg">SABICH 99</span>
+  <div class="st"><span>משמרת <b id="hS">1</b></span><span>סועדים <b id="hD">0/0</b></span><span>ניקוד <b id="hP">0</b></span></div>
+  <button class="ib" id="bPause" aria-label="השהיה"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg></button>
+  <button class="ib" id="bMute" aria-label="השתקה"></button>
+ </header>
+ <main id="game">
+  <div id="wall"><svg viewBox="0 0 360 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+   <rect width="360" height="200" fill="url(#pT)"/>
+   <path d="M0 0H360V30L330 52H30L0 30Z" fill="url(#gH)"/><path d="M30 52H330L322 60H38Z" fill="#0b1826"/>
+   <rect x="60" y="8" width="240" height="4" rx="2" fill="#008D99" opacity=".8"/>
+   <g stroke="#9db0ba" stroke-width="2"><path d="M18 78H128"/></g>
+   <g fill="#cfdde3" stroke="#17293D" stroke-width="1.5"><rect x="26" y="58" width="22" height="20" rx="3"/><rect x="54" y="62" width="18" height="16" rx="3"/><rect x="78" y="56" width="24" height="22" rx="3"/></g>
+   <g fill="#008D99"><rect x="24" y="54" width="26" height="6" rx="2"/><rect x="76" y="52" width="28" height="6" rx="2"/></g><rect x="54" y="59" width="18" height="4" fill="#AA174C"/>
+   <path d="M236 70V150M262 70V150M288 70V150" stroke="#8fa4b0" stroke-width="1" opacity=".0"/>
+   <path d="M230 82H340" stroke="#7d919d" stroke-width="3"/>
+   <g fill="#17293D"><path d="M244 82V112" stroke="#17293D" stroke-width="2"/><ellipse cx="244" cy="118" rx="7" ry="8"/><path d="M270 82V120" stroke="#17293D" stroke-width="2"/><rect x="264" y="118" width="12" height="16" rx="3"/><path d="M298 82V106" stroke="#17293D" stroke-width="2"/><path d="M290 104h16l-3 18h-10z"/><path d="M324 82v30" stroke="#17293D" stroke-width="2"/><circle cx="324" cy="120" r="8" fill="none" stroke="#17293D" stroke-width="3"/></g>
+   <g transform="translate(150 96)"><rect width="56" height="34" rx="3" fill="#17293D"/><rect x="3" y="3" width="50" height="28" rx="2" fill="none" stroke="#6fdbe4" stroke-width="1.5"/><text x="28" y="18" text-anchor="middle" font-family="Archivo Black,Impact,sans-serif" font-size="12" fill="#6fdbe4">99</text><text x="28" y="27" text-anchor="middle" font-family="Heebo,Arial,sans-serif" font-weight="800" font-size="6.5" fill="#fff">אבן גבירול</text></g>
+  </svg></div>
+  <div id="ctr"><svg viewBox="0 0 360 260" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+   <rect width="360" height="260" fill="#17293D"/>
+   <path d="M0 0H360V30H0Z" fill="url(#gT)"/><path d="M0 30H360V36H0Z" fill="#7d919d"/><path d="M0 4H360" stroke="#fff" stroke-width="2"/>
+   <g stroke="#2d4663" stroke-width="2" fill="#1f3550"><rect x="8" y="48" width="108" height="150" rx="3"/><rect x="126" y="48" width="108" height="150" rx="3"/><rect x="244" y="48" width="108" height="150" rx="3"/></g>
+   <g fill="#c6d4db"><rect x="88" y="56" width="5" height="40" rx="2"/><rect x="206" y="56" width="5" height="40" rx="2"/><rect x="266" y="56" width="5" height="40" rx="2"/></g>
+   <g fill="#8fa4b0"><circle cx="16" cy="56" r="2"/><circle cx="108" cy="56" r="2"/><circle cx="134" cy="56" r="2"/><circle cx="226" cy="56" r="2"/><circle cx="252" cy="56" r="2"/><circle cx="344" cy="56" r="2"/></g>
+   <rect y="208" width="360" height="52" fill="#0f1c2b"/><rect y="204" width="360" height="5" fill="#008D99"/>
+   <g fill="#AA174C"><rect x="150" y="70" width="60" height="6"/></g>
+  </svg></div>
+  <div id="railbar"></div>
+  <div id="rail" aria-label="פתקי הזמנות"></div>
+  <div id="stove"></div>
+  <div id="toast" aria-live="polite"></div>
+  <div id="sheet" hidden></div>
+ </main>
+ <div id="ov"></div>
+</div>
+<script>
+(function(){
+"use strict";
+var $=function(s,r){return (r||document).querySelector(s)};
+var URL_G="https://complete99.co.il/kitchen-game/",WOLT="https://wolt.com/he/isr/tel-aviv/restaurant/sabich-complete";
+var D={
+ lentil:{n:"מרק עדשים",v:1,t:6,c:"#B8591F",ing:[["עדשים כתומות",200,"גר׳"],["בצל",1,"יח׳"],["כמון",1,"כפית"],["מים",800,"מ״ל"]]},
+ beet:{n:"מרק סלק",v:1,t:7,c:"#AA174C",ing:[["סלק",3,"יח׳"],["גזר",1,"יח׳"],["לימון",1,"יח׳"],["מים",900,"מ״ל"]]},
+ chicken:{n:"מרק עוף",v:0,t:8,c:"#D98A2B",ing:[["שוקי עוף",4,"יח׳"],["גזר",2,"יח׳"],["סלרי",1,"גבעול"],["מים",1000,"מ״ל"]]},
+ kubbeh:{n:"קובה חמוסטה",v:0,t:9,c:"#7F9A3A",ing:[["קובה",8,"יח׳"],["סלרי",1,"גבעול"],["לימון",1,"יח׳"],["מים",900,"מ״ל"]]},
+ cholent:{n:"חמין",v:0,t:12,c:"#6B3A22",ing:[["שעועית",250,"גר׳"],["תפו״א",3,"יח׳"],["בשר",400,"גר׳"],["שעורה",100,"גר׳"]]}
+};
+var L="lentil",B="beet",C="chicken",K="kubbeh",H="cholent";
+var SH=[
+ {n:"פתיחה בשקט",story:"בוקר ראשון על האש. שני שולחנות, שני סירים. הכירו את הלהבות ואת הפתקים.",pots:[4,4],dishes:[L,C],g:[[2,45,[[L,2]]],[12,45,[[C,2]]]]},
+ {n:"ארוחת צהריים",story:"עשרה סועדים מגיעים מהמשרדים ברחוב. סיר של 4 לא יספיק לשולחן של 3 וגם לשולחן של 4 – חשבו כמה לבשל.",pots:[4,6],dishes:[L,C,K],g:[[0,50,[[K,3]]],[8,50,[[L,2],[C,2]]],[26,45,[[L,3]]]]},
+ {n:"שולחנות כפולים",story:"שני שולחנות מזמינים יחד. הטבעונים לא יאכלו מסיר ששימש לבשר – תכננו שטיפה.",pots:[4,6,6],dishes:[L,B,C,K],g:[[0,55,[[B,4]]],[6,55,[[K,3],[L,1]]],[22,50,[[C,3]]],[34,45,[[B,3]]]]},
+ {n:"ערב בסיר הגדול",story:"הגיע סיר של 8 וחמין לקבוצה גדולה. שישה עשר סועדים, שתי להבות בלבד.",pots:[4,6,8],dishes:[L,B,C,K,H],g:[[0,60,[[H,5]]],[5,55,[[L,3],[B,2]]],[28,55,[[K,4],[C,2]]]]},
+ {n:"גשם בשישי",story:"הגשם בחוץ והמטבח מלא. עשרים סועדים, ארבע קבוצות, והחמין לא מחכה.",pots:[4,6,8],dishes:[L,B,C,K,H],g:[[0,55,[[K,6]]],[4,50,[[B,3],[L,3]]],[24,50,[[H,4],[C,2]]],[44,40,[[L,2]]]]},
+ {n:"ליל 99",story:"הערב הגדול. עשרים וארבעה סועדים, ארבע קבוצות בו־זמנית. הראו מה למדתם.",pots:[4,6,8],dishes:[L,B,C,K,H],g:[[0,55,[[K,5],[L,3]]],[6,52,[[C,4],[B,3]]],[28,50,[[H,5]]],[50,42,[[L,2],[K,2]]]]}
+];
+SH.forEach(function(s){s.d=0;s.g.forEach(function(g){g[2].forEach(function(l){s.d+=l[1]})})});
+var BURN=14,WASH=3;
+/* storage */
+var sv={stars:[0,0,0,0,0,0],score:[0,0,0,0,0,0],muted:0};
+try{var r=JSON.parse(localStorage.getItem("sabich_kitchen_v1")||"null");if(r)sv=Object.assign(sv,r)}catch(e){}
+function save(){try{localStorage.setItem("sabich_kitchen_v1",JSON.stringify(sv))}catch(e){}}
+function best(){return sv.score.reduce(function(a,b){return a+b},0)}
+/* sound */
+var AC=null;
+function snd(k){if(sv.muted)return;try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume()}catch(e){return}
+ var q={tick:[[700,.05]],serve:[[520,.07],[780,.1]],err:[[150,.16]],ready:[[880,.1],[1175,.2]],burn:[[110,.35]],nw:[[440,.07],[330,.1]],win:[[523,.12],[659,.12],[784,.12],[1047,.35]],lose:[[300,.2],[220,.35]]}[k];if(!q)return;
+ var t=AC.currentTime;q.forEach(function(x){var o=AC.createOscillator(),g=AC.createGain();o.type=(k==="err"||k==="burn")?"sawtooth":"triangle";o.frequency.value=x[0];g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+x[1]);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+x[1]+.02);t+=x[1]*.85})}
+document.addEventListener("pointerdown",function(){if(!AC&&!sv.muted){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){}}},{once:true});
+var ICON_ON='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 4V5L7 9z"/><path d="M15 8.5a5 5 0 010 7M17.5 6a8.5 8.5 0 010 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+var ICON_OFF='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 4V5L7 9z"/><path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+function paintMute(){$("#bMute").innerHTML=sv.muted?ICON_OFF:ICON_ON;$("#bMute").setAttribute("aria-pressed",sv.muted?"true":"false")}
+/* art */
+function star(on,s){return '<svg viewBox="0 0 24 24"><path d="M12 2l3 6.6 7.2.8-5.4 4.9 1.5 7.1L12 17.7 5.7 21.4l1.5-7.1L1.8 9.4 9 8.6z" fill="'+(on?"#AA174C":"#b9c9d1")+'" stroke="#17293D" stroke-width="1.5" stroke-linejoin="round"/></svg>'}
+function stars(n){var o='<div class="stars">';for(var i=0;i<3;i++)o+=star(i<n);return o+"</div>"}
+function potSVG(b){
+ var o='<svg viewBox="0 0 150 135" aria-hidden="true">',st=b&&b.state,lit=st==="cook"||st==="ready";
+ o+='<ellipse cx="75" cy="118" rx="68" ry="15" fill="#0b1826"/><ellipse cx="75" cy="114" rx="64" ry="15" fill="#2d4663" stroke="#9db0ba" stroke-width="2"/><ellipse cx="75" cy="114" rx="44" ry="9" fill="none" stroke="#0f1c2b" stroke-width="3"/>';
+ for(var k=0;k<4;k++){var x=30+k*30;o+='<path d="M'+x+' 109L'+(x+10)+' 120" stroke="#0f1c2b" stroke-width="3"/>'}
+ if(lit){for(var j=0;j<16;j++){var a=j/16*6.283,fx=75+38*Math.cos(a),fy=114+8.5*Math.sin(a);o+='<path class="fl2" style="animation-delay:'+(j*.06)+'s" d="M'+fx.toFixed(1)+' '+fy.toFixed(1)+' q-3.5 -5 0 -12 q3.5 7 0 12z" fill="'+(j%2?"#6fdbe4":"#008D99")+'"/>'}}
+ if(!b||!b.pot){o+='<circle cx="75" cy="112" r="18" fill="none" stroke="#6fdbe4" stroke-width="3" stroke-dasharray="5 5"/><path d="M75 102v20M65 112h20" stroke="#6fdbe4" stroke-width="4" stroke-linecap="round"/>';return o+"</svg>"}
+ var cap=b.pot.cap,hw=30+cap*2.4,h=38+cap*1.8,top=104-h,cx=75,col=st==="burnt"?"#1b1411":D[b.dish].c;
+ o+='<path d="M'+(cx-hw)+' '+top+'V96Q'+(cx-hw)+' 106 '+(cx-hw+10)+' 106H'+(cx+hw-10)+'Q'+(cx+hw)+' 106 '+(cx+hw)+' 96V'+top+'Z" fill="url(#gS)" stroke="#17293D" stroke-width="2.5"/>';
+ o+='<rect x="'+(cx-hw-9)+'" y="'+(top+8)+'" width="10" height="8" rx="3" fill="#17293D"/><rect x="'+(cx+hw-1)+'" y="'+(top+8)+'" width="10" height="8" rx="3" fill="#17293D"/>';
+ o+='<ellipse cx="'+cx+'" cy="'+top+'" rx="'+hw+'" ry="9" fill="#eef4f6" stroke="#17293D" stroke-width="2.5"/><ellipse cx="'+cx+'" cy="'+(top+1)+'" rx="'+(hw-5)+'" ry="6" fill="'+col+'"/><ellipse cx="'+(cx-hw/3)+'" cy="'+top+'" rx="'+(hw/4)+'" ry="1.8" fill="#fff" opacity=".45"/>';
+ o+='<rect x="'+(cx-hw)+'" y="'+(top+h*.55)+'" width="'+(hw*2)+'" height="7" fill="'+(st==="burnt"?"#444":"#AA174C")+'" opacity=".9"/>';
+ o+='<rect x="'+(cx-15)+'" y="'+(top+h*.22)+'" width="30" height="18" rx="2" fill="#17293D"/><text x="'+cx+'" y="'+(top+h*.22+14)+'" text-anchor="middle" font-family="Archivo Black,Impact,sans-serif" font-size="14" fill="#fff">'+b.n+'</text>';
+ if(st==="cook")o+='<g stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity=".8"><path class="sm" d="M'+(cx-14)+' '+(top-8)+'q-6 -8 0 -16"/><path class="sm" d="M'+cx+' '+(top-8)+'q-6 -8 0 -16"/><path class="sm" d="M'+(cx+14)+' '+(top-8)+'q-6 -8 0 -16"/></g>';
+ if(st==="ready")o+='<ellipse class="glow" cx="'+cx+'" cy="'+(top+h/2)+'" rx="'+(hw+10)+'" ry="'+(h/2+10)+'" fill="none" stroke="#6fdbe4" stroke-width="4"/><circle cx="'+(cx+hw-4)+'" cy="'+(top-6)+'" r="11" fill="#008D99" stroke="#fff" stroke-width="2"/><path d="M'+(cx+hw-9)+' '+(top-6)+'l4 4 7-8" stroke="#fff" stroke-width="3" fill="none"/>';
+ if(st==="burnt")o+='<g stroke="#3a3a3a" stroke-width="5" fill="none" stroke-linecap="round" opacity=".7"><path class="sm" d="M'+(cx-14)+' '+(top-8)+'q-8 -8 0 -18"/><path class="sm" d="M'+(cx+4)+' '+(top-8)+'q-8 -8 0 -18"/></g>';
+ return o+"</svg>"}
+/* game state */
+var G=null,SEL=null,paused=false,inGame=false,last=0,ZZ=null;
+function zz(){var p=["0 0","100% 0"];for(var i=16;i>=0;i--)p.push((i*8)+"px "+(i%2?"100%":"calc(100% - 6px)"));return "polygon("+p.join(",")+")"}
+var rail=$("#rail"),stove=$("#stove"),sheet=$("#sheet"),ov=$("#ov"),toastEl=$("#toast"),gameEl=$("#game");
+function toast(t,e){toastEl.innerHTML="";var s=document.createElement("span");s.textContent=t;if(e)s.className="e";toastEl.appendChild(s);clearTimeout(toast.t);toast.t=setTimeout(function(){toastEl.innerHTML=""},2600)}
+function pop(el,t,neg){var r=el.getBoundingClientRect(),g=gameEl.getBoundingClientRect(),s=document.createElement("span");s.className="pop"+(neg?" n":"");s.textContent=t;s.style.left=(r.left-g.left+r.width/2-16)+"px";s.style.top=(r.top-g.top+r.height/2-8)+"px";gameEl.appendChild(s);setTimeout(function(){s.remove()},1000)}
+function fmt(x){var v=Math.round(x*10)/10;return String(v).replace(/\.0$/,"")}
+function needOf(d){var n=0;G.tickets.forEach(function(t){if(t.closed)return;t.lines.forEach(function(l){if(l.d===d)n+=l.q-l.done})});G.b.forEach(function(b){if(b.dish===d&&b.state!=="burnt")n-=b.n});return Math.max(0,n)}
+function startShift(i){
+ var s=SH[i];G={i:i,s:s,t:0,sp:0,tickets:[],score:0,served:0,lost:0,waste:0,seq:0,over:false,
+  pots:s.pots.map(function(c){return{cap:c,meat:false,use:false}}),b:[{state:"empty"},{state:"empty"}]};
+ rail.innerHTML="";SEL=null;sheet.hidden=true;toastEl.innerHTML="";
+ stove.innerHTML="";[0,1].forEach(function(k){var e=document.createElement("button");e.className="bn";e.dataset.b=k;e.setAttribute("aria-label","להבה "+(k+1));e.innerHTML='<span class="bk">'+(k+1)+'</span><div class="bs"></div><div class="bi"><b></b><span></span><div class="bar"><i></i></div></div>';stove.appendChild(e);G.b[k].el=e;G.b[k].key=""});
+ var em=document.createElement("div");em.className="empty";em.id="emp";em.textContent="ממתינים להזמנה הראשונה…";rail.appendChild(em);
+ hud();renderBurners();ov.hidden=true;inGame=true;paused=false;last=performance.now()}
+function hud(){$("#hS").textContent=G.i+1;$("#hD").textContent=G.served+"/"+G.s.d;$("#hP").textContent=G.score}
+function spawn(g){
+ var no=++G.seq,t={id:no,pat:g[1],age:0,closed:false,lines:g[2].map(function(l){return{d:l[0],q:l[1],done:0}}),tbl:[4,7,2,9,5,12,3,8][(no+G.i)%8]};
+ var w=document.createElement("div");w.className="tkw";var h='<div class="tk" style="clip-path:'+(ZZ||(ZZ=zz()))+'"><div class="tkh"><b>שולחן '+t.tbl+'</b><i>#0'+no+'</i></div><div class="pb"><span></span></div>';
+ t.lines.forEach(function(l,k){var d=D[l.d];h+='<button class="ln" data-t="'+no+'" data-l="'+k+'"><span class="q">'+l.q+'</span><span class="nm">'+d.n+'</span><em class="'+(d.v?"v":"m")+'">'+(d.v?"טבעוני":"בשרי")+'</em></button>'});
+ h+='<div class="tkf">סביח קומפלט · אבן גבירול 99</div></div><div class="stamp"><b></b></div>';w.innerHTML=h;
+ t.el=w;t.bar=$(".pb span",w);t.pb=$(".pb",w);t.le=w.querySelectorAll(".ln");
+ var e=$("#emp");if(e)e.remove();rail.appendChild(w);G.tickets.push(t);snd("nw");toast("הזמנה חדשה · שולחן "+t.tbl)}
+function closeT(t,ok){t.closed=true;t.el.classList.add(ok?"sv":"lt");$(".stamp b",t.el).textContent=ok?"הוגש":"עזבו";
+ setTimeout(function(){t.el.classList.add("out");setTimeout(function(){t.el.remove()},520)},900)}
+function serve(t,k){
+ if(!G||paused||t.closed)return;var l=t.lines[k];if(l.done>=l.q)return;var el=t.le[k],bb=null;
+ G.b.forEach(function(b){if(b.state==="ready"&&b.dish===l.d&&b.n>0&&(!bb||b.n>bb.n))bb=b});
+ if(!bb){var ck=G.b.some(function(b){return b.state==="cook"&&b.dish===l.d});el.classList.remove("no");void el.offsetWidth;el.classList.add("no");snd("err");toast(ck?D[l.d].n+" עוד מבשל – חכו לסימן ✓":"אין "+D[l.d].n+" מוכן. הדליקו סיר!",1);return}
+ var n=Math.min(bb.n,l.q-l.done),rem=Math.max(0,1-t.age/t.pat),pts=Math.round(n*(60+40*rem));
+ l.done+=n;bb.n-=n;G.served+=n;G.score+=pts;
+ el.classList.remove("fl");void el.offsetWidth;el.classList.add("fl");
+ var q=$(".q",el);if(l.done>=l.q){el.classList.add("dn");q.textContent="✓"}else q.textContent=l.q-l.done;
+ pop(el,"+"+pts);snd("serve");
+ if(bb.n<=0)release(bb);
+ if(t.lines.every(function(x){return x.done>=x.q})){G.score+=50;pop(t.el,"+50");closeT(t,true)}
+ hud();renderBurners()}
+function release(b){var p=b.pot;if(p){p.use=false;}b.state="empty";b.pot=null;b.dish=null;b.n=0}
+function autoServe(){if(!G)return;var ts=G.tickets.filter(function(t){return!t.closed}).sort(function(a,b){return(b.age/b.pat)-(a.age/a.pat)});
+ for(var i=0;i<ts.length;i++)for(var k=0;k<ts[i].lines.length;k++){var l=ts[i].lines[k];if(l.done<l.q&&G.b.some(function(b){return b.state==="ready"&&b.dish===l.d&&b.n>0})){serve(ts[i],k);return}}
+ toast("אין מה להגיש עכשיו",1);snd("err")}
+function renderBurners(){G.b.forEach(function(b,i){
+ var key=b.state+"|"+b.dish+"|"+b.n+"|"+(b.pot?b.pot.cap:0),info=$(".bi",b.el);
+ if(key!==b.key){b.key=key;$(".bs",b.el).innerHTML=potSVG(b);
+  var nm=$("b",info),sp=$("span",info);
+  if(b.state==="empty"){nm.textContent="להבה פנויה";sp.textContent="הקישו לבישול"}
+  else{nm.textContent=D[b.dish].n+" · "+b.n+"/"+b.pot.cap}
+ }
+ var bar=$(".bar",info),bi=$("i",bar),sp=$("span",info);
+ if(b.state==="cook"){var f=b.prog/b.total;bi.style.width=(f*100)+"%";bar.className="bar";sp.textContent=(b.wash&&b.prog<WASH?"שוטפים סיר… ":"מבשל · ")+Math.ceil(b.total-b.prog)+"״"}
+ else if(b.state==="ready"){bi.style.width=(100*(1-b.burn/BURN))+"%";bar.className="bar bt";sp.textContent="מוכן! נשרף בעוד "+Math.ceil(BURN-b.burn)+"״"}
+ else if(b.state==="burnt"){bi.style.width="0";sp.textContent="נשרף – הקישו לפינוי"}
+ else{bi.style.width="0";if(sp.textContent!=="הקישו לבישול")sp.textContent="הקישו לבישול"}
+ })}
+function update(dt){
+ G.t+=dt;
+ while(G.sp<G.s.g.length&&G.t>=G.s.g[G.sp][0]){spawn(G.s.g[G.sp]);G.sp++}
+ G.tickets.forEach(function(t){if(t.closed)return;t.age+=dt;var f=Math.max(0,1-t.age/t.pat);t.bar.style.width=(f*100)+"%";var lo=f<.25;t.pb.classList.toggle("lo",lo);t.el.classList.toggle("lo",lo);
+  if(t.age>=t.pat){var m=0;t.lines.forEach(function(l){m+=l.q-l.done});G.lost+=m;toast("שולחן "+t.tbl+" עזב – "+m+" מנות לא הוגשו",1);snd("lose");closeT(t,false);hud()}});
+ G.b.forEach(function(b){
+  if(b.state==="cook"){b.prog+=dt;if(b.prog>=b.total){b.state="ready";b.burn=0;snd("ready");toast("מוכן: "+D[b.dish].n+" · "+b.n+" מנות")}}
+  else if(b.state==="ready"){b.burn+=dt;if(b.burn>=BURN){b.state="burnt";G.waste+=b.n;var p=40*b.n;G.score=Math.max(0,G.score-p);snd("burn");toast("נשרף! "+b.n+" מנות ירדו לטמיון",1);pop(b.el,"-"+p,1);hud()}}});
+ renderBurners();
+ if(G.sp>=G.s.g.length&&G.tickets.every(function(t){return t.closed})&&!G.over){G.over=true;setTimeout(finish,1100)}}
+function loop(ts){requestAnimationFrame(loop);var dt=Math.min(.1,(ts-last)/1000);last=ts;if(G&&inGame&&!paused&&!G.over)update(dt)}
+requestAnimationFrame(loop);
+/* sheet */
+function openSheet(i){
+ if(G.b[i].state!=="empty")return;var free=G.pots.filter(function(p){return!p.use});
+ if(!free.length){toast("כל הסירים בשימוש",1);snd("err");return}
+ var bd=G.s.dishes.slice().sort(function(a,b){return needOf(b)-needOf(a)})[0],nd=needOf(bd);
+ var pot=free.filter(function(p){return p.cap>=nd}).sort(function(a,b){return a.cap-b.cap})[0]||free.sort(function(a,b){return b.cap-a.cap})[0];
+ SEL={b:i,d:bd,p:G.pots.indexOf(pot),n:Math.max(1,Math.min(pot.cap,nd||pot.cap))};drawSheet()}
+function drawSheet(){
+ var s=SEL,pot=G.pots[s.p],d=D[s.d],h='<h3><span>הדלקת להבה '+(s.b+1)+'</span><button data-a="x" aria-label="סגירה">✕</button></h3><div class="lab">מה מבשלים? (חסר = מנות שעדיין לא מכוסות)</div><div class="chips">';
+ G.s.dishes.forEach(function(k){var nd=needOf(k);h+='<button class="chip'+(k===s.d?" on":"")+'" data-a="d" data-v="'+k+'">'+D[k].n+'<small>'+(D[k].v?"טבעוני":"בשרי")+' · '+D[k].t+'״ · '+(nd?'<span class="nd">חסר '+nd+'</span>':'<span class="ok">מכוסה</span>')+'</small></button>'});
+ h+='</div><div class="lab">איזה סיר? (קיבולת במנות)</div><div class="chips">';
+ G.pots.forEach(function(p,k){var wash=d.v&&p.meat;h+='<button class="chip'+(k===s.p?" on":"")+'" data-a="p" data-v="'+k+'"'+(p.use?" disabled":"")+'>סיר '+p.cap+'<small>'+(p.use?"בשימוש":wash?"בשרי · שטיפה +"+WASH+"״":p.meat?"בשרי":"נקי")+'</small></button>'});
+ var f=s.n/4,wash=d.v&&pot.meat,tm=d.t+s.n*.5+(wash?WASH:0);
+ h+='</div><div class="lab">כמה מנות? (מתכון בסיס ל־4 מנות, מכפילים ×'+fmt(f)+')</div><div class="row"><div class="step"><button data-a="m" aria-label="פחות">−</button><b>'+s.n+'</b><button data-a="a" aria-label="יותר">+</button></div><div class="slip"><b><span>'+d.n+'</span><span>×'+fmt(f)+'</span></b>';
+ d.ing.forEach(function(g){h+='<div><span>'+g[0]+'</span><span>'+fmt(g[1]*f)+' '+g[2]+'</span></div>'});
+ h+='</div></div><button class="go" data-a="go">הדליקו · '+Math.ceil(tm)+'״ · '+s.n+' מנות</button>';
+ sheet.innerHTML=h;sheet.hidden=false}
+function sheetClick(e){var t=e.target.closest("button");if(!t||!SEL)return;var a=t.dataset.a,s=SEL,v=t.dataset.v;
+ if(a==="x"){closeSheet();return}
+ if(a==="d")s.d=v;else if(a==="p"){s.p=+v;s.n=Math.min(s.n,G.pots[s.p].cap)}
+ else if(a==="m")s.n=Math.max(1,s.n-1);else if(a==="a")s.n=Math.min(G.pots[s.p].cap,s.n+1);
+ else if(a==="go"){go();return}
+ snd("tick");drawSheet()}
+function closeSheet(){SEL=null;sheet.hidden=true}
+function go(){var s=SEL,pot=G.pots[s.p],d=D[s.d],b=G.b[s.b];if(!pot||pot.use||b.state!=="empty")return;
+ var wash=d.v&&pot.meat;pot.use=true;pot.meat=!d.v?true:false;
+ b.state="cook";b.dish=s.d;b.n=s.n;b.pot=pot;b.wash=wash;b.prog=0;b.total=d.t+s.n*.5+(wash?WASH:0);b.key="";
+ snd("tick");closeSheet();toast(wash?"שוטפים סיר בשרי לפני מרק טבעוני":"מתחיל: "+d.n+" · "+s.n+" מנות");renderBurners()}
+sheet.addEventListener("click",sheetClick);
+stove.addEventListener("click",function(e){var b=e.target.closest(".bn");if(!b||!G||paused)return;var i=+b.dataset.b,x=G.b[i];
+ if(x.state==="empty")openSheet(i);else if(x.state==="burnt"){release(x);x.key="";renderBurners();snd("tick");toast("הסיר פונה")}
+ else if(x.state==="ready")toast("מוכן! הקישו על שורה בפתק כדי להגיש "+D[x.dish].n);else toast("מבשל… אפשר להדליק את הלהבה השנייה")});
+rail.addEventListener("click",function(e){var l=e.target.closest(".ln");if(!l||!G)return;var t=G.tickets.filter(function(x){return x.id==+l.dataset.t})[0];if(t)serve(t,+l.dataset.l)});
+/* pause */
+function setPause(p){if(!inGame||!G||G.over)return;if(p===paused)return;paused=p;if(p)showPause();else{ov.hidden=true;last=performance.now()}}
+function showPause(){screen('<div class="pn"><div class="sign"><h1>הפסקה</h1><p>PAUSED</p></div><button class="btn" data-a="resume">להמשיך במשמרת</button><div class="bs2"><button class="btn s" data-a="restart">מההתחלה</button><button class="btn s" data-a="select">לבחירת משמרת</button></div></div>')}
+$("#bPause").addEventListener("click",function(){setPause(true)});
+$("#bMute").addEventListener("click",function(){sv.muted=sv.muted?0:1;save();paintMute();if(!sv.muted)snd("tick")});
+document.addEventListener("visibilitychange",function(){if(document.hidden)setPause(true)});
+window.addEventListener("pagehide",function(){setPause(true)});
+/* keyboard */
+document.addEventListener("keydown",function(e){
+ var k=e.key;if(k==="m"||k==="M"){$("#bMute").click();return}
+ if(!inGame||!G){if(k==="Enter"&&!ov.hidden){var f=$(".btn",ov);if(f&&document.activeElement===document.body)f.click()}return}
+ if(paused){if(k==="Escape"||k==="p"||k==="P"||k==="Enter")setPause(false);return}
+ if(SEL){var s=SEL,ds=G.s.dishes;
+  if(k==="Escape")closeSheet();else if(k==="Enter"){go()}
+  else if(k==="ArrowUp"||k==="+"){s.n=Math.min(G.pots[s.p].cap,s.n+1);drawSheet()}else if(k==="ArrowDown"||k==="-"){s.n=Math.max(1,s.n-1);drawSheet()}
+  else if(k==="ArrowRight"||k==="ArrowLeft"){var j=ds.indexOf(s.d)+(k==="ArrowRight"?-1:1);s.d=ds[(j+ds.length)%ds.length];drawSheet()}
+  else if(k==="Tab"){return}
+  else if(k==="p"||k==="P"){var fr=G.pots.map(function(p,q){return p.use?-1:q}).filter(function(q){return q>=0}),c=fr.indexOf(s.p);s.p=fr[(c+1)%fr.length];s.n=Math.min(s.n,G.pots[s.p].cap);drawSheet()}
+  e.preventDefault();return}
+ if(k==="1"||k==="2"){stove.children[+k-1].click();e.preventDefault()}
+ else if(k==="s"||k==="S"||k===" "){autoServe();e.preventDefault()}
+ else if(k==="Escape"||k==="p"||k==="P")setPause(true)});
+/* screens */
+function screen(h){ov.innerHTML=h;ov.hidden=false;ov.scrollTop=0}
+function heroHTML(){return '<div class="hero">'+potSVG({state:"cook",dish:"beet",n:6,pot:{cap:6}})+potSVG({state:"ready",dish:"kubbeh",n:8,pot:{cap:8}})+'</div>'}
+function woltBtn(c){return '<a class="btn w" href="'+WOLT+'" target="_blank" rel="noopener">'+(c||"הזמנה אמיתית ב־Wolt")+'</a>'}
+function title(){inGame=false;paused=false;
+ screen('<div class="pn"><div class="top"><span>שיא כולל: <b style="color:#fff;font-family:var(--d);font-weight:400">'+best()+'</b></span><button class="btn s" data-a="mute">'+(sv.muted?"קול כבוי":"קול פעיל")+'</button></div><div class="sign"><h1>משמרת על האש</h1><p>SABICH COMPLETE · IBN GVIROL 99</p></div>'+heroHTML()+'<button class="btn" data-a="select">התחלת משמרת</button><div class="bs2"><button class="btn t" data-a="rules">איך משחקים</button>'+woltBtn("Wolt")+'</div><div class="cta">משחק בדיוני. המספרים הם תרחישי משחק. סביח קומפלט, אבן גבירול 99, תל אביב.</div></div>')}
+function rules(){screen('<div class="pn"><div class="paper"><h2><span>איך משחקים</span><i>RULES</i></h2><ul><li><b>כל פתק הוא שולחן.</b> הקישו על שורה בפתק כדי להגיש מסיר מוכן. הסבלנות (הפס העליון) אוזלת.</li><li><b>שתי להבות.</b> הקישו על להבה פנויה: בחרו מנה, סיר וכמות.</li><li><b>מתמטיקה:</b> המתכון הוא ל־4 מנות. מנות רבות יותר = מכפילים את החומרים. לכל סיר קיבולת מוגבלת – ייתכן שתצטרכו כמה סירים ברצף.</li><li><b>בשרי / טבעוני:</b> סיר שבישל בשר דורש שטיפה (+'+WASH+'״) לפני מרק טבעוני.</li><li><b>מוכן = ✓.</b> מנה שלא מוגשת תוך '+BURN+'״ נשרפת.</li><li><b>כוכבים:</b> 1 – חצי מהסועדים · 2 – 80% · 3 – כולם, כמעט בלי פחת.</li></ul><div class="fine">מקלדת: 1/2 להבות · S הגשה אוטומטית · חיצים וEnter בבחירה · P/Esc השהיה · M קול</div></div><button class="btn" data-a="title">הבנתי</button></div>')}
+function select(){inGame=false;var h='<div class="pn"><div class="top"><span>בחרו משמרת</span><button class="btn s" data-a="title">חזרה</button></div>';
+ SH.forEach(function(s,i){var lock=i>0&&sv.stars[i-1]<1;h+='<button class="sh" data-a="story" data-v="'+i+'"'+(lock?" disabled":"")+'><span class="n">'+(i+1)+'</span><span class="m">'+s.n+'<small>'+s.d+' סועדים · סירים '+s.pots.join("/")+(lock?" · נעול":"")+'</small></span>'+stars(sv.stars[i])+'</button>'});
+ screen(h+'<div class="cta">פותחים משמרת הבאה עם כוכב אחד לפחות</div></div>')}
+function story(i){G=null;SEL=null;screen('<div class="pn"><div class="paper"><h2><span>משמרת '+(i+1)+' · '+SH[i].n+'</span><i>#0'+(i+1)+'</i></h2><p style="margin:0 0 6px">'+SH[i].story+'</p><ul><li>'+SH[i].d+' סועדים ב־'+SH[i].g.length+' קבוצות</li><li>סירים: '+SH[i].pots.join(" · ")+' מנות</li><li>בתפריט: '+SH[i].dishes.map(function(k){return D[k].n}).join(", ")+'</li></ul></div><button class="btn" data-a="play" data-v="'+i+'">יאללה, על האש!</button><button class="btn s" data-a="select">חזרה</button></div>')}
+function finish(){
+ inGame=false;var s=G.s,fr=G.served/s.d,n=fr>=1&&G.waste<=2?3:fr>=.8?2:fr>=.5?1:0,i=G.i,nw=G.score>sv.score[i];
+ if(n>sv.stars[i])sv.stars[i]=n;if(nw)sv.score[i]=G.score;save();snd(n?"win":"lose");G.stars=n;
+ var nx=i<5&&n>0;
+ screen('<div class="pn big"><div class="paper"><h2><span>'+(n?"סוף משמרת":"המשמרת נכשלה")+' '+(i+1)+'</span><i>'+s.n+'</i></h2>'+stars(n)+'<p style="text-align:center;margin:6px 0">'+(n===3?"מטבח מושלם! כולם אכלו חם.":n?"הצלחתם – עוד אפשר לחדד.":"לא נורא, מתחילים שוב ומתכננים סירים.")+'</p><div class="stats"><span>סועדים שהוגשו</span><b>'+G.served+'/'+s.d+'</b><span>עזבו רעבים</span><b>'+G.lost+'</b><span>מנות שנשרפו</span><b>'+G.waste+'</b><span>ניקוד</span><b>'+G.score+(nw?" ★":"")+'</b><span>שיא משמרת</span><b>'+sv.score[i]+'</b></div></div>'+(nx?'<button class="btn" data-a="story" data-v="'+(i+1)+'">למשמרת הבאה</button>':'')+'<div class="bs2"><button class="btn t" data-a="play" data-v="'+i+'">שוב</button><button class="btn s" data-a="share">שיתוף</button></div><div class="bs2"><button class="btn s" data-a="select">משמרות</button>'+woltBtn("Wolt")+'</div></div>')}
+function share(){var g=G,t="משמרת על האש · סביח קומפלט, אבן גבירול 99\nמשמרת "+(g.i+1)+": "+"★".repeat(g.stars||0)+"☆".repeat(3-(g.stars||0))+" · "+g.score+" נקודות · "+g.served+"/"+g.s.d+" סועדים\nשחקו: "+URL_G;
+ if(navigator.share){navigator.share({title:"משמרת על האש",text:t,url:URL_G}).catch(function(){})}
+ else if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){shareNote("הועתק ללוח!")},function(){shareNote(t)})}
+ else shareNote(t)}
+function shareNote(t){var d=$("#sn");if(!d){d=document.createElement("div");d.id="sn";d.className="cta";d.style.whiteSpace="pre-line";$(".pn",ov).appendChild(d)}d.textContent=t}
+ov.addEventListener("click",function(e){var t=e.target.closest("[data-a]");if(!t||t.disabled)return;var a=t.dataset.a,v=+t.dataset.v;
+ if(a==="select")select();else if(a==="title")title();else if(a==="rules")rules();else if(a==="story")story(v);
+ else if(a==="play")startShift(v);else if(a==="resume")setPause(false);else if(a==="restart"){startShift(G.i)}
+ else if(a==="share")share();else if(a==="mute"){sv.muted=sv.muted?0:1;save();paintMute();title();if(!sv.muted)snd("tick")}});
+paintMute();title();
+})();
+</script>
+</body>
+</html>

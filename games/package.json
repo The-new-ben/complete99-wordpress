@@ -1,0 +1,1 @@
+{"name":"complete99-game-checks","private":true,"version":"1.0.0","description":"Development-only DOM behavior tests. Games have no runtime dependencies.","devDependencies":{"jsdom":"26.1.0"}}

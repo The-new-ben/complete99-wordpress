@@ -3,3 +3,5 @@ deploy-audit/
 __pycache__/
 tests/__pycache__/
 *.pyc
+game-sequels-audit/
+node_modules/

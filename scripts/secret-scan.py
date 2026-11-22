@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP = {"plugin-dist", "__pycache__", ".git"}
+SKIP = {"plugin-dist", "__pycache__", ".git", "node_modules"}
 PATTERNS = {
     "private-key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     "github-token": re.compile(r"\bgh[opsu]_[A-Za-z0-9]{30,}\b"),
