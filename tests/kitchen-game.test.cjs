@@ -39,6 +39,15 @@ for(let level=0;level<6;level++){
 }
 
 api.startShift(1);api.update(.1);api.openSheet(0);
+const correct=api.dishes[api.selection.d].ing[0][1]*api.selection.n/4;
+for(const key of ['Enter',' ']){
+ const answer=[...doc.querySelectorAll('[data-a="answer"]')].find(b=>+b.dataset.v===correct);
+ answer.focus();const event=new w.KeyboardEvent('keydown',{key,bubbles:true,cancelable:true});answer.dispatchEvent(event);
+ assert.equal(event.defaultPrevented,false,`${key} preserves native focused answer activation`);
+ assert.equal(api.state.mathErrors,0,'focused Enter must not submit the sheet prematurely');
+ // jsdom does not implement keyboard default activation; simulate the preserved native click.
+ answer.click();assert.equal(api.selection.answer,correct);
+}
 api.selection.answer=-1;api.go();assert.equal(api.state.b[0].state,'empty','wrong scaling does not light burner');
 assert.equal(api.state.mathErrors,1);assert(doc.querySelector('#toast').textContent.includes('מחשבים יחד'));
 api.selection.answer=api.dishes[api.selection.d].ing[0][1]*api.selection.n/4;api.go();

@@ -354,7 +354,10 @@ document.addEventListener("visibilitychange",function(){if(document.hidden)setPa
 window.addEventListener("pagehide",function(){setPause(true)});
 /* keyboard */
 document.addEventListener("keydown",function(e){
- var k=e.key;if(k==="m"||k==="M"){$("#bMute").click();return}
+ var k=e.key;
+ // Keep native Tab + Enter/Space activation for focused answer and menu buttons.
+ if((k==="Enter"||k===" ")&&e.target.closest&&e.target.closest("button,a,input,select,textarea"))return;
+ if(k==="m"||k==="M"){$("#bMute").click();return}
  if(!inGame||!G){if(k==="Enter"&&!ov.hidden){var f=$(".btn",ov);if(f&&document.activeElement===document.body)f.click()}return}
  if(paused){if(k==="Escape"||k==="p"||k==="P"||k==="Enter")setPause(false);return}
  if(SEL){var s=SEL,ds=G.s.dishes;
