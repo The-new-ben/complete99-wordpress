@@ -72,19 +72,21 @@ def build_content(game, source):
         raise ValueError("Unexpected source size or restaurant link")
     # Local page styles only. No theme, measurement or global settings change.
     return ('<!-- wp:html -->\n<style>\n'
+            'body:has(#c99-sequel-shell){background:#17293D}\n'
+            'body:has(#c99-sequel-shell) .c99-site-header,body:has(#c99-sequel-shell) .c99-consumer-utility,body:has(#c99-sequel-shell) .c99-breadcrumb{display:none}\n'
             'body:has(#c99-sequel-shell) .c99-consumer-page-hero,body:has(#c99-sequel-shell) .c99-consumer-note{display:none}\n'
-            'body:has(#c99-sequel-shell) .c99-consumer-editorial-grid{display:block}\n'
-            'body:has(#c99-sequel-shell) .c99-consumer-editorial{padding:12px 0}\n'
-            '#c99-sequel-shell{width:100%;max-width:1100px;margin:auto}\n'
-            '#c99-sequel-shell iframe{display:block;width:100%;height:min(860px,95svh);min-height:540px;border:0}\n'
-            '@media(max-width:600px){body:has(#c99-sequel-shell) .c99-container{padding-inline:4px}}\n'
+            'body:has(#c99-sequel-shell) .c99-consumer-editorial-grid{display:block;width:100%;max-width:1100px;padding:0}\n'
+            'body:has(#c99-sequel-shell) .c99-consumer-editorial{padding:0}\n'
+            'body:has(#c99-sequel-shell) .c99-article{max-width:none}\n'
+            '#c99-sequel-shell{width:100%;margin:auto;background:#DFE8EC;color:#17293D}\n'
+            '#c99-sequel-shell iframe{display:block;width:100%;height:min(860px,100svh);min-height:360px;border:0}\n'
             '</style>\n<div id="c99-sequel-shell" dir="rtl">\n'
             f'<iframe id="{game["marker"]}" title="{html.escape(game["title"], quote=True)}" '
             'allow="clipboard-write; web-share; fullscreen" allowfullscreen '
             f'srcdoc="{html.escape(source, quote=True)}"></iframe>\n'
             f'<p style="text-align:center">{html.escape(game["description"])}</p>\n'
             '<nav aria-label="משחקים נוספים" style="text-align:center">'
-            '<a href="/game/">מאסטר הדלפק</a> · <a href="/kitchen-game/">משמרת על האש</a> · '
+            '<a href="/">לעמוד הבית</a> · <a href="/game/">מאסטר הדלפק</a> · <a href="/kitchen-game/">משמרת על האש</a> · '
             '<a href="/delivery-game/">משלוח 99</a></nav></div>\n<!-- /wp:html -->')
 
 
